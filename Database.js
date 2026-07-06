@@ -10,8 +10,8 @@ const Database = {
     insert(sheetName, data) {
 
         SchemaManager.init();
-
-        const sheet = this.sheet(sheetName);
+	const sheet = this.getSheetOrThrow(sheetName);
+        //const sheet = this.sheet(sheetName);
         const headers = sheet.getDataRange().getValues()[0];
 
         const row = headers.map(h => {
