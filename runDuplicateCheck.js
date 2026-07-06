@@ -1,0 +1,3 @@
+function runDuplicateCheck() {
+    DuplicateDetector.run();
+}

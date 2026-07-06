@@ -1,0 +1,41 @@
+const Inspector = {
+
+    inspect() {
+
+        const modules = [
+            "SchemaManager",
+            "Database",
+            "IdService",
+            "EventBus",
+            "EventStore",
+            "DashboardEngine",
+            "ReportEngine",
+            "ClientRepository",
+            "TripRepository",
+            "ClientValidator",
+            "SystemInit"
+        ];
+
+        Logger.log("========== ERP INSPECTOR ==========");
+
+        modules.forEach(name => {
+
+            if (typeof globalThis[name] === "undefined") {
+
+                Logger.log("❌ " + name + " NOT FOUND");
+
+            } else {
+
+                Logger.log("✅ " + name + " OK");
+
+            }
+
+        });
+
+        Logger.log("===================================");
+    }
+
+};
+function inspectSystem() {
+    Inspector.inspect();
+}
