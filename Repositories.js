@@ -31,12 +31,35 @@ const ClientRepository = {
             throw new Error("Client not found");
         }
 
-        Versioning.save("CLIENT", clientId, existing);
+      Versioning.save(
+    "CLIENT",
+    clientId,
+    existing
+);
 
-        data = ClientValidator.validate(data);
 
-        data.OrganizationID = OrganizationContext.get();
-        data.ClientID = clientId;
+// объединяем старые и новые данные
+
+const merged = {
+
+    ...existing,
+
+    ...data
+
+};
+
+
+data = ClientValidator.validate(
+    merged
+);
+
+
+data.OrganizationID =
+    OrganizationContext.get();
+
+
+data.ClientID =
+    clientId;
 
         const updated = Database.update("Clients", clientId, data);
 
