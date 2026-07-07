@@ -13,20 +13,27 @@ const TripValidator = {
         }
 
 
-        if (!data.From) {
+        if (!data.LoadingPoint) {
 
             throw new Error(
-                "Trip origin is required"
+                "LoadingPoint is required"
             );
 
         }
 
 
-        if (!data.To) {
+        if (!data.UnloadingPoint) {
 
             throw new Error(
-                "Trip destination is required"
+                "UnloadingPoint is required"
             );
+
+        }
+
+
+        if (!data.Status) {
+
+            data.Status = "NEW";
 
         }
 
@@ -38,18 +45,24 @@ const TripValidator = {
         }
 
 
-        if (!data.Cost) {
+        if (!data.PlannedCost) {
 
-            data.Cost = 0;
+            data.PlannedCost = 0;
+
+        }
+
+
+        if (!data.ActualCost) {
+
+            data.ActualCost = 0;
 
         }
 
 
-        if (!data.Status) {
-
-            data.Status = "NEW";
-
-        }
+        data.Margin =
+            Number(data.Revenue)
+            -
+            Number(data.ActualCost);
 
 
         return data;
