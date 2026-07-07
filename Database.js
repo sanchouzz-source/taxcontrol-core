@@ -58,8 +58,8 @@ const Database = {
     update(sheetName, id, data) {
 
         SchemaManager.init();
-
-        const sheet = this.sheet(sheetName);
+        const sheet = this.getSheetOrThrow(sheetName);    
+        //const sheet = this.sheet(sheetName);
         const values = sheet.getDataRange().getValues();
         const headers = values[0];
 
@@ -97,8 +97,8 @@ const Database = {
     query(sheetName, filters = {}) {
 
         SchemaManager.init();
-
-        const sheet = this.sheet(sheetName);
+        const sheet = this.getSheetOrThrow(sheetName);
+        //const sheet = this.sheet(sheetName);
         const values = sheet.getDataRange().getValues();
         const headers = values[0];
 
@@ -132,7 +132,7 @@ const Database = {
         }
 
         return results;
-    }
+    },
         // =========================
     // FIND BY ID
     // =========================
