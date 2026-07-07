@@ -1,7 +1,31 @@
 const Database = {
 
+
     sheet(name) {
-        return SpreadsheetApp.getActiveSpreadsheet().getSheetByName(name);
+
+        return SpreadsheetApp
+            .getActiveSpreadsheet()
+            .getSheetByName(name);
+
+    },
+
+
+    getSheetOrThrow(name) {
+
+        const sheet = this.sheet(name);
+
+
+        if (!sheet) {
+
+            throw new Error(
+                "Sheet not found: " + name
+            );
+
+        }
+
+
+        return sheet;
+
     },
 
     // =========================
