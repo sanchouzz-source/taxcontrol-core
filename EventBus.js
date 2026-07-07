@@ -27,3 +27,4 @@ const EventBus = {
         });
     }
 };
+globalThis.EventBus = EventBus;

@@ -17,3 +17,4 @@ const IdService = {
         return prefix + String(counter).padStart(6, "0");
     }
 };
+globalThis.IdService = IdService;

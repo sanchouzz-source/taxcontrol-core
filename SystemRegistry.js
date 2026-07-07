@@ -25,3 +25,4 @@ const SystemRegistry = {
         return issues;
     }
 };
+globalThis.SystemRegistry = SystemRegistry;

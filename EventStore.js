@@ -64,3 +64,4 @@ const EventReplay = {
         }
     }
 };
+globalThis.EventStore = EventStore;

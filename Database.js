@@ -110,3 +110,4 @@ const Database = {
         return results;
     }
 };
+globalThis.Database = Database;
