@@ -33,55 +33,59 @@ const Database = {
     // =========================
     insert(sheetName, data) {
 
-        SchemaManager.init();
-	const sheet = this.getSheetOrThrow(sheetName);
-        //const sheet = this.sheet(sheetName);
-        const headers = sheet.getDataRange().getValues()[0];
+    SchemaManager.init();
 
-        const idField = SchemaRegistry.getIdField(sheetName);
+    const sheet = this.getSheetOrThrow(sheetName);
 
-const idIndex = headers.indexOf(idField);
+    const headers = sheet.getDataRange().getValues()[0];
 
 
-if (idIndex !== -1 && data[idField]) {
+    const idField = SchemaRegistry.getIdField(sheetName);
 
-    const existing =
-        sheet.getDataRange()
-            .getValues();
+    const idIndex = headers.indexOf(idField);
 
 
-    for (let i = 1; i < existing.length; i++) {
+    if (idIndex !== -1 && data[idField]) {
 
-        if (existing[i][idIndex] === data[idField]) {
+        const existing =
+            sheet.getDataRange().getValues();
 
-            throw new Error(
-                "Duplicate ID detected: "
-                + data[idField]
-            );
+
+        for (let i = 1; i < existing.length; i++) {
+
+            if (String(existing[i][idIndex]).trim()
+===
+String(data[idField]).trim()) {
+
+                throw new Error(
+                    "Duplicate ID detected: "
+                    + data[idField]
+                );
+
+            }
 
         }
 
     }
 
-},  
+
+    const row = headers.map(h => {
+
+        if (h === "CreatedAt") return new Date();
+
+        if (h === "UpdatedAt") return new Date();
+
+        if (h === "Deleted") return false;
+
+        return data[h] ?? "";
+
+    });
 
 
+    sheet.appendRow(row);
 
-
-
-        const row = headers.map(h => {
-
-            if (h === "CreatedAt") return new Date();
-            if (h === "UpdatedAt") return new Date();
-            if (h === "Deleted") return false;
-
-            return data[h] ?? "";
-        });
-
-        sheet.appendRow(row);
-
-        return data;
-    },
+    return data;
+},
 
     // =========================
     // UPDATE
