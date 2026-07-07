@@ -123,10 +123,21 @@ sheet
 
                 const row = headers.map(h => {
 
-    let value =
-        data[h] !== undefined
-            ? data[h]
-            : values[i][headers.indexOf(h)];
+    if (h === "UpdatedAt") {
+        return new Date();
+    }
+
+
+    if (h === "Deleted") {
+        return false;
+    }
+
+
+    return data[h] !== undefined
+        ? data[h]
+        : values[i][headers.indexOf(h)];
+
+});
 
 
     if (h === "Deleted") {
