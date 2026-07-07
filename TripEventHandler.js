@@ -1,66 +1,65 @@
 const TripEventHandler = {
 
 
-    init(){
+init(){
 
-        EventBus.subscribe(
-            "TRIP_CREATED",
-            this.onCreated
-        );
-
-
-        EventBus.subscribe(
-            "TRIP_UPDATED",
-            this.onUpdated
-        );
+    EventBus.subscribe(
+        "TRIP_CREATED",
+        this.onCreated
+    );
 
 
-        EventBus.subscribe(
-            "TRIP_COMPLETED",
-            this.onCompleted
-        );
+    EventBus.subscribe(
+        "TRIP_UPDATED",
+        this.onUpdated
+    );
 
 
-        Logger.log(
-            "TripEventHandler initialized"
-        );
-
-    },
-
-
-    onCreated(trip){
-
-        Logger.log(
-            "TRIP CREATED EVENT: "
-            + trip.TripID
-        );
-
-    },
+    EventBus.subscribe(
+        "TRIP_COMPLETED",
+        this.onCompleted
+    );
 
 
-    onUpdated(trip){
+    Logger.log(
+        "TripEventHandler READY"
+    );
 
-        Logger.log(
-            "TRIP UPDATED EVENT: "
-            + trip.TripID
-        );
-
-    },
+},
 
 
-    onCompleted(trip){
 
-        Logger.log(
-            "TRIP COMPLETED EVENT: "
-            + trip.TripID
-        );
+onCreated(trip){
+
+    Logger.log(
+        "TRIP CREATED RECEIVED: "
+        + trip.TripID
+    );
+
+},
 
 
-        FinanceEngine.processTrip(
-            trip
-        );
 
-    }
+onUpdated(trip){
+
+    Logger.log(
+        "TRIP UPDATED RECEIVED: "
+        + trip.TripID
+    );
+
+},
+
+
+
+onCompleted(trip){
+
+    Logger.log(
+        "TRIP COMPLETED RECEIVED: "
+        + trip.TripID
+    );
+
+}
+
 
 };
 
