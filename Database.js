@@ -38,6 +38,37 @@ const Database = {
         //const sheet = this.sheet(sheetName);
         const headers = sheet.getDataRange().getValues()[0];
 
+        const idField = SchemaRegistry.getIdField(sheetName);
+
+const idIndex = headers.indexOf(idField);
+
+
+if (idIndex !== -1 && data[idField]) {
+
+    const existing =
+        sheet.getDataRange()
+            .getValues();
+
+
+    for (let i = 1; i < existing.length; i++) {
+
+        if (existing[i][idIndex] === data[idField]) {
+
+            throw new Error(
+                "Duplicate ID detected: "
+                + data[idField]
+            );
+
+        }
+
+    }
+
+},  
+
+
+
+
+
         const row = headers.map(h => {
 
             if (h === "CreatedAt") return new Date();
