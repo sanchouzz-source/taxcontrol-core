@@ -44,7 +44,7 @@ function safeInit(moduleName) {
             return;
         }
 
-        const module = globalThis[moduleName];
+        const module = globalThis[moduleName] || window?.[moduleName];
 
         if (!module) {
             Logger.log("❌ Module not found: " + moduleName);
