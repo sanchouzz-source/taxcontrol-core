@@ -133,5 +133,60 @@ const Database = {
 
         return results;
     }
+        // =========================
+    // FIND BY ID
+    // =========================
+    find(sheetName, id) {
+
+        SchemaManager.init();
+
+        const sheet = this.getSheetOrThrow(sheetName);
+
+        const values = sheet
+            .getDataRange()
+            .getValues();
+
+        const headers = values[0];
+
+
+        const idField =
+            SchemaRegistry.getIdField(sheetName);
+
+
+        const idIndex =
+            headers.indexOf(idField);
+
+
+        if (idIndex === -1) {
+
+            throw new Error(
+                "ID field not found: " + idField
+            );
+
+        }
+
+
+        for (let i = 1; i < values.length; i++) {
+
+            if (values[i][idIndex] === id) {
+
+                const row = {};
+
+                headers.forEach((h, index) => {
+
+                    row[h] = values[i][index];
+
+                });
+
+
+                return row;
+
+            }
+
+        }
+
+
+        return null;
+    },
 };
 globalThis.Database = Database;
