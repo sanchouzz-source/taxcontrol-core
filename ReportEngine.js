@@ -109,3 +109,4 @@ const ReportEngine = {
         return Object.values(map);
     }
 };
+globalThis.ReportEngine = ReportEngine;

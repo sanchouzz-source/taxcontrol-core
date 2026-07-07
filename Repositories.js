@@ -57,3 +57,5 @@ const ClientRepository = {
         return Database.query("Clients", {});
     }
 };
+globalThis.ClientRepository = ClientRepository;
+globalThis.TripRepository = TripRepository;

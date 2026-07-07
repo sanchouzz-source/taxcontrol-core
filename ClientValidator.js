@@ -27,3 +27,4 @@ const ClientValidator = {
         return data;
     }
 };
+globalThis.ClientValidator = ClientValidator;

@@ -103,3 +103,4 @@ const DashboardEngine = {
         }
     }
 };
+globalThis.DashboardEngine = DashboardEngine;

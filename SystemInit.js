@@ -25,3 +25,4 @@ const SystemInit = {
         Logger.log("ERP INIT COMPLETE");
     }
 };
+globalThis.SystemInit = SystemInit;
