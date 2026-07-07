@@ -151,3 +151,4 @@ const SchemaManager = {
         });
     }
 };
+globalThis.SchemaManager = SchemaManager;
