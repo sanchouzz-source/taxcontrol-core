@@ -42,3 +42,4 @@ const AuditLog = {
         return log;
     }
 };
+globalThis.AuditLog = AuditLog;
