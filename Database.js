@@ -91,7 +91,6 @@ sheet
         1,
         row.length
     )
-    .setNumberFormat("@")
     .setValues([row]);
 
     return data;
