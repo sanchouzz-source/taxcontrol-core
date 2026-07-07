@@ -18,6 +18,7 @@ const modules = [
 
     "ClientRepository",
     "TripRepository",
+    "TripValidator",
     "ClientValidator",
 
     "SystemInit"
