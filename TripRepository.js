@@ -1,23 +1,44 @@
 const TripRepository = {
 
+
+    // =========================
+    // CREATE TRIP
+    // =========================
+
     create(data) {
 
-       SecurityGuard.check("TRIP_CREATE");
+        SecurityGuard.check(
+            "TRIP_CREATE"
+        );
 
 
-data = TripValidator.validate(data);
-
-
-if (!data.TripID){
-            data.TripID = IdService.generate("TRP");
-        }
-
-        data.OrganizationID = OrganizationContext.get();
-
-        const result = Database.insert(
-            "Trips",
+        data = TripValidator.validate(
             data
         );
+
+
+        if (!data.TripID) {
+
+            data.TripID =
+                IdService.generate(
+                    "TRP"
+                );
+
+        }
+
+
+        data.OrganizationID =
+            OrganizationContext.get();
+
+
+
+        const result =
+            Database.insert(
+                "Trips",
+                data
+            );
+
+
 
         AuditLog.write(
             "CREATE",
@@ -26,18 +47,33 @@ if (!data.TripID){
             result
         );
 
+
+
         EventBus.emit(
             "TRIP_CREATED",
             result
         );
 
+
+
         return result;
+
     },
 
 
+
+    // =========================
+    // UPDATE TRIP
+    // =========================
+
     update(tripId, data) {
 
-        SecurityGuard.check("TRIP_UPDATE");
+
+        SecurityGuard.check(
+            "TRIP_UPDATE"
+        );
+
+
 
         const existing =
             Database.find(
@@ -46,12 +82,18 @@ if (!data.TripID){
             );
 
 
+
         if (!existing) {
+
             throw new Error(
-                "Trip not found"
+                "Trip not found: " + tripId
             );
+
         }
 
+
+
+        // сохраняем старую версию
 
         Versioning.save(
             "TRIP",
@@ -60,90 +102,132 @@ if (!data.TripID){
         );
 
 
-const merged = {
 
-    ...existing,
+        // объединяем старые и новые данные
 
-    ...data
+        const merged = {
 
-};
+            ...existing,
 
+            ...data
 
-data = TripValidator.validate(
-    merged
-);
-
-data.TripID = tripId;
-
-data.OrganizationID =
-    OrganizationContext.get();
-
-const updated =
-    Database.update(
-        "Trips",
-        tripId,
-        data
-    );
+        };
 
 
-AuditLog.write(
-    "UPDATE",
-    "TRIP",
-    existing,
-    updated
-);
+
+        data =
+            TripValidator.validate(
+                merged
+            );
 
 
-EventBus.emit(
-    "TRIP_UPDATED",
-    updated
-);
+
+        data.TripID =
+            tripId;
 
 
-// =========================
-// TRIP COMPLETED EVENT
-// =========================
 
-if (
-    updated.Status === "COMPLETED"
-) {
-
-    EventBus.emit(
-        "TRIP_COMPLETED",
-        updated
-    );
-
-}
+        data.OrganizationID =
+            OrganizationContext.get();
 
 
-return updated;
+
+        const updated =
+            Database.update(
+                "Trips",
+                tripId,
+                data
+            );
+
+
+
+        AuditLog.write(
+            "UPDATE",
+            "TRIP",
+            existing,
+            updated
+        );
+
+
+
+        EventBus.emit(
+            "TRIP_UPDATED",
+            updated
+        );
+
+
+
+        // =========================
+        // BUSINESS EVENT
+        // =========================
+
+        if (
+            updated.Status === "COMPLETED"
+        ) {
+
+
+            EventBus.emit(
+                "TRIP_COMPLETED",
+                updated
+            );
+
+
+        }
+
+
+
+        return updated;
+
+    },
+
+
+
+    // =========================
+    // GET BY ID
+    // =========================
 
     getById(id) {
+
 
         SecurityGuard.check(
             "TRIP_READ"
         );
+
 
         return Database.find(
             "Trips",
             id
         );
+
+
     },
 
 
+
+    // =========================
+    // LIST
+    // =========================
+
     list() {
+
 
         SecurityGuard.check(
             "TRIP_READ"
         );
 
+
         return Database.query(
             "Trips",
             {}
         );
+
+
     }
+
 
 };
 
 
-globalThis.TripRepository = TripRepository;
+
+globalThis.TripRepository =
+TripRepository;
