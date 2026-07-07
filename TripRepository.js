@@ -1,68 +1,149 @@
 const TripRepository = {
+
     create(data) {
-        SecurityGuard.check("TRIP_CREATE");
-        
-        data = TripValidator.validate(data);
-        
-        if (!data.TripID) {
+
+       SecurityGuard.check("TRIP_CREATE");
+
+
+data = TripValidator.validate(data);
+
+
+if (!data.TripID){
             data.TripID = IdService.generate("TRP");
         }
-        
+
         data.OrganizationID = OrganizationContext.get();
-        
-        const result = Database.insert("Trips", data);
-        
-        if (!result) {
-            throw new Error("Failed to create trip");
-        }
-        
-        AuditLog.write("CREATE", "TRIP", null, result);
-        EventBus.emit("TRIP_CREATED", result);
-        
+
+        const result = Database.insert(
+            "Trips",
+            data
+        );
+
+        AuditLog.write(
+            "CREATE",
+            "TRIP",
+            null,
+            result
+        );
+
+        EventBus.emit(
+            "TRIP_CREATED",
+            result
+        );
+
         return result;
     },
 
+
     update(tripId, data) {
+
         SecurityGuard.check("TRIP_UPDATE");
-        
-        const existing = Database.find("Trips", tripId);
-        
+
+        const existing =
+            Database.find(
+                "Trips",
+                tripId
+            );
+
+
         if (!existing) {
-            throw new Error("Trip not found");
+            throw new Error(
+                "Trip not found"
+            );
         }
-        
-        Versioning.save("TRIP", tripId, existing);
-        
-        const merged = { ...existing, ...data };
-        const validatedData = TripValidator.validate(merged);
-        validatedData.TripID = tripId;
-        validatedData.OrganizationID = OrganizationContext.get();
-        
-        const updated = Database.update("Trips", tripId, validatedData);
-        
-        if (!updated) {
-            throw new Error("Failed to update trip");
-        }
-        
-        AuditLog.write("UPDATE", "TRIP", existing, updated);
-        EventBus.emit("TRIP_UPDATED", updated);
-        
-        if (updated.Status === "COMPLETED") {
-            EventBus.emit("TRIP_COMPLETED", updated);
-        }
-        
-        return updated;
-    },
+
+
+        Versioning.save(
+            "TRIP",
+            tripId,
+            existing
+        );
+
+
+const merged = {
+
+    ...existing,
+
+    ...data
+
+};
+
+
+data = TripValidator.validate(
+    merged
+);
+
+data.TripID = tripId;
+
+data.OrganizationID =
+    OrganizationContext.get();
+
+const updated =
+    Database.update(
+        "Trips",
+        tripId,
+        data
+    );
+
+
+AuditLog.write(
+    "UPDATE",
+    "TRIP",
+    existing,
+    updated
+);
+
+
+EventBus.emit(
+    "TRIP_UPDATED",
+    updated
+);
+
+
+// =========================
+// TRIP COMPLETED EVENT
+// =========================
+
+if (
+    updated.Status === "COMPLETED"
+) {
+
+    EventBus.emit(
+        "TRIP_COMPLETED",
+        updated
+    );
+
+}
+
+
+return updated;
 
     getById(id) {
-        SecurityGuard.check("TRIP_READ");
-        return Database.find("Trips", id);
+
+        SecurityGuard.check(
+            "TRIP_READ"
+        );
+
+        return Database.find(
+            "Trips",
+            id
+        );
     },
 
-    list(filters = {}) {
-        SecurityGuard.check("TRIP_READ");
-        return Database.query("Trips", filters);
+
+    list() {
+
+        SecurityGuard.check(
+            "TRIP_READ"
+        );
+
+        return Database.query(
+            "Trips",
+            {}
+        );
     }
+
 };
+
 
 globalThis.TripRepository = TripRepository;
