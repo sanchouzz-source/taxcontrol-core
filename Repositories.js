@@ -58,4 +58,3 @@ const ClientRepository = {
     }
 };
 globalThis.ClientRepository = ClientRepository;
-globalThis.TripRepository = TripRepository;
