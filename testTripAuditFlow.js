@@ -11,11 +11,17 @@ TripRepository.create({
 
     ClientID:"CLI000014",
 
+    LoadingPoint:"Москва",
+
+    UnloadingPoint:"Санкт-Петербург",
+
     Cargo:"Audit Test",
 
     Revenue:50000,
 
-    ActualCost:30000
+    ActualCost:30000,
+
+    Status:"NEW"
 
 });
 
@@ -25,11 +31,12 @@ Logger.log(
 );
 
 Logger.log(
-trip.TripID
+JSON.stringify(trip)
 );
 
 
 
+const updated =
 TripRepository.update(
 
     trip.TripID,
@@ -49,58 +56,10 @@ Logger.log(
 "UPDATED:"
 );
 
+Logger.log(
+JSON.stringify(updated)
+);
 
-
-const versions =
-SpreadsheetApp
-.getActive()
-.getSheetByName("Versions")
-.getDataRange()
-.getValues();
-
-
-versions.forEach(row=>{
-
-    if(row[4] === trip.TripID){
-
-        Logger.log(
-        "VERSION FOUND:"
-        );
-
-        Logger.log(
-        JSON.stringify(row)
-        );
-
-    }
-
-});
-
-
-const audit =
-SpreadsheetApp
-.getActive()
-.getSheetByName("AuditLog")
-.getDataRange()
-.getValues();
-
-
-audit.forEach(row=>{
-
-    if(row[5]==="UPDATE"
-       &&
-       row[6]==="TRIP"){
-
-        Logger.log(
-        "AUDIT FOUND:"
-        );
-
-        Logger.log(
-        JSON.stringify(row)
-        );
-
-    }
-
-});
 
 
 Logger.log(
