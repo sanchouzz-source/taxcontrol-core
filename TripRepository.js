@@ -105,6 +105,16 @@ data.OrganizationID =
 
         return updated;
     },
+    if(
+    updated.Status === "COMPLETED"
+){
+
+    EventBus.emit(
+        "TRIP_COMPLETED",
+        updated
+    );
+
+},
 
 
     getById(id) {
