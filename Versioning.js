@@ -27,3 +27,4 @@ const Versioning = {
         return version;
     }
 };
+globalThis.Versioning = Versioning;
