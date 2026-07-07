@@ -121,11 +121,22 @@ sheet
 
                 data.UpdatedAt = new Date();
 
-                const row = headers.map(h =>
-                    data[h] !== undefined
-                        ? data[h]
-                        : values[i][headers.indexOf(h)]
-                );
+                const row = headers.map(h => {
+
+    let value =
+        data[h] !== undefined
+            ? data[h]
+            : values[i][headers.indexOf(h)];
+
+
+    if (h === "Deleted") {
+        return Boolean(value);
+    }
+
+
+    return value;
+
+});
 
                 sheet
     .getRange(
