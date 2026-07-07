@@ -120,8 +120,8 @@ sheet
             if (values[i][idIndex] === id) {
 
                 data.UpdatedAt = new Date();
-
-                const row = headers.map(h => {
+//
+const row = headers.map(h => {
 
     if (h === "UpdatedAt") {
         return new Date();
@@ -138,17 +138,7 @@ sheet
         : values[i][headers.indexOf(h)];
 
 });
-
-
-    if (h === "Deleted") {
-        return Boolean(value);
-    }
-
-
-    return value;
-
-});
-
+//
                 sheet
     .getRange(
         i + 1,
