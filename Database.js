@@ -82,7 +82,17 @@ String(data[idField]).trim()) {
     });
 
 
-    sheet.appendRow(row);
+    const nextRow = sheet.getLastRow() + 1;
+
+sheet
+    .getRange(
+        nextRow,
+        1,
+        1,
+        row.length
+    )
+    .setNumberFormat("@")
+    .setValues([row]);
 
     return data;
 },
@@ -117,7 +127,15 @@ String(data[idField]).trim()) {
                         : values[i][headers.indexOf(h)]
                 );
 
-                sheet.getRange(i + 1, 1, 1, row.length).setValues([row]);
+                sheet
+    .getRange(
+        i + 1,
+        1,
+        1,
+        row.length
+    )
+    .setNumberFormat("@")
+    .setValues([row]);
 
                 return data;
             }
