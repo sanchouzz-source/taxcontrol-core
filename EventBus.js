@@ -11,20 +11,36 @@ const EventBus = {
         this.handlers[event].push(handler);
     },
 
-    emit(event, payload) {
+   emit(event, payload) {
 
-        const list = this.handlers[event];
+    Logger.log(
+        "EVENT: " + event
+    );
 
-        if (!list || list.length === 0) return;
 
-        list.forEach(fn => {
+    const list = this.handlers[event];
 
-            try {
-                fn(payload);
-            } catch (e) {
-                Logger.log("EventBus error: " + e.message);
-            }
-        });
+    if (!list || list.length === 0) return;
+
+
+    list.forEach(fn => {
+
+        try {
+
+            fn(payload);
+
+        } catch (e) {
+
+            Logger.log(
+                "EventBus error: "
+                + e.message
+            );
+
+        }
+
+    });
+
+
     }
 };
 globalThis.EventBus = EventBus;

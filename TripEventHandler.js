@@ -1,65 +1,62 @@
 const TripEventHandler = {
 
 
-init(){
-
-    EventBus.subscribe(
-        "TRIP_CREATED",
-        this.onCreated
-    );
+    init() {
 
 
-    EventBus.subscribe(
-        "TRIP_UPDATED",
-        this.onUpdated
-    );
+        EventBus.on(
+            "TRIP_CREATED",
+            this.onCreated
+        );
 
 
-    EventBus.subscribe(
-        "TRIP_COMPLETED",
-        this.onCompleted
-    );
+        EventBus.on(
+            "TRIP_UPDATED",
+            this.onUpdated
+        );
 
 
-    Logger.log(
-        "TripEventHandler READY"
-    );
-
-},
-
+        EventBus.on(
+            "TRIP_COMPLETED",
+            this.onCompleted
+        );
 
 
-onCreated(trip){
+        Logger.log(
+            "TripEventHandler READY"
+        );
 
-    Logger.log(
-        "TRIP CREATED RECEIVED: "
-        + trip.TripID
-    );
-
-},
+    },
 
 
+    onCreated(trip) {
 
-onUpdated(trip){
+        Logger.log(
+            "TRIP CREATED RECEIVED: "
+            + trip.TripID
+        );
 
-    Logger.log(
-        "TRIP UPDATED RECEIVED: "
-        + trip.TripID
-    );
-
-},
-
+    },
 
 
-onCompleted(trip){
+    onUpdated(trip) {
 
-    Logger.log(
-        "TRIP COMPLETED RECEIVED: "
-        + trip.TripID
-    );
+        Logger.log(
+            "TRIP UPDATED RECEIVED: "
+            + trip.TripID
+        );
 
-}
+    },
 
+
+    onCompleted(trip) {
+
+        Logger.log(
+            "TRIP COMPLETED RECEIVED: "
+            + trip.TripID
+        );
+
+    }
 
 };
 
