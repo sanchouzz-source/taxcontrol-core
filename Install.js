@@ -1,10 +1,17 @@
-function installSystem() {
+const Installer = {
 
-    SchemaManager.init();
-    Registry.init();
+    install() {
 
-    EventBus.init?.(); // если есть
-    TripEventHandler.init();
-    AutomationEngine.init();
-    FinanceEngine.init(); // 🔥 ВАЖНО
-}
+        Logger.log("ERP INSTALL START");
+
+        SchemaManager.init();
+
+        Registry.init();
+
+        DefaultData.init?.();
+
+        Logger.log("ERP INSTALL COMPLETE");
+    }
+};
+
+globalThis.Installer = Installer;
