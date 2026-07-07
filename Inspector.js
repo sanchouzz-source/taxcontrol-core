@@ -2,19 +2,27 @@ const Inspector = {
 
     inspect() {
 
-        const modules = [
-            "SchemaManager",
-            "Database",
-            "IdService",
-            "EventBus",
-            "EventStore",
-            "DashboardEngine",
-            "ReportEngine",
-            "ClientRepository",
-            "TripRepository",
-            "ClientValidator",
-            "SystemInit"
-        ];
+const modules = [
+
+    "SchemaManager",
+    "Database",
+    "IdService",
+    "EventBus",
+    "EventStore",
+
+    "AuditLog",
+    "Versioning",
+
+    "DashboardEngine",
+    "ReportEngine",
+
+    "ClientRepository",
+    "TripRepository",
+    "ClientValidator",
+
+    "SystemInit"
+
+];
 
         Logger.log("========== ERP INSPECTOR ==========");
 
