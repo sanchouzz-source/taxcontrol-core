@@ -1,20 +1,47 @@
-function testClientRead() {
+function testClientFullFlow() {
 
-    Logger.log("===== CLIENT READ TEST =====");
+    Logger.log("===== CLIENT FULL FLOW =====");
 
 
-    const client =
+    const created =
+        ClientRepository.create({
+
+            Name: "Flow Test Client",
+
+            INN: "9999999999",
+
+            Phone: "+79999999999",
+
+            Email: "flow@test.local"
+
+        });
+
+
+    Logger.log(
+        "CREATED:"
+    );
+
+    Logger.log(
+        JSON.stringify(created)
+    );
+
+
+    const loaded =
         ClientRepository.getById(
-            "CLI000002"
+            created.ClientID
         );
 
 
     Logger.log(
-        JSON.stringify(client)
+        "LOADED:"
+    );
+
+    Logger.log(
+        JSON.stringify(loaded)
     );
 
 
     Logger.log(
-        "===== READ COMPLETE ====="
+        "===== FLOW COMPLETE ====="
     );
 }
