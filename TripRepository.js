@@ -2,9 +2,13 @@ const TripRepository = {
 
     create(data) {
 
-        SecurityGuard.check("TRIP_CREATE");
+       SecurityGuard.check("TRIP_CREATE");
 
-        if (!data.TripID) {
+
+data = TripValidator.validate(data);
+
+
+if (!data.TripID){
             data.TripID = IdService.generate("TRP");
         }
 
@@ -56,10 +60,25 @@ const TripRepository = {
         );
 
 
-        data.TripID = tripId;
+const merged = {
 
-        data.OrganizationID =
-            OrganizationContext.get();
+    ...existing,
+
+    ...data
+
+};
+
+
+data = TripValidator.validate(
+    merged
+);
+
+
+data.TripID = tripId;
+
+
+data.OrganizationID =
+    OrganizationContext.get();
 
 
         const updated =
