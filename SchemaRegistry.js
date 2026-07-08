@@ -6,7 +6,7 @@ const SchemaRegistry = {
         Vehicles:"VehicleID",
         Trips:"TripID",
         Payments:"PaymentID",
-        FinancialTransactions:"TransactionID"
+        FinancialTransactions:"TransactionID",
         KPIMetrics:"KPIID"
     },
 
