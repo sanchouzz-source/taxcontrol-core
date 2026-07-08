@@ -29,17 +29,34 @@ const KPIEngine = {
 
     handleProfit(data){
 
-        const trip = data.trip;
+    Logger.log(
+        "KPI EVENT RECEIVED"
+    );
 
-        const profit = data.profit;
 
+    if(!data || !data.trip){
 
-        this.createTripKPI(
-            trip,
-            profit
+        Logger.log(
+            "Invalid KPI payload"
         );
 
-    },
+        return;
+    }
+
+
+    const trip = data.trip;
+
+    const profit = Number(
+        data.profit || 0
+    );
+
+
+    this.createTripKPI(
+        trip,
+        profit
+    );
+
+},
 
 
 

@@ -4,14 +4,9 @@ function installSystem() {
         "ERP INSTALL START"
     );
 
-
     SchemaManager.init();
-
     Registry.init();
-
-
     SystemInit.init();
-
 
     Logger.log(
         "ERP INSTALL COMPLETE"
