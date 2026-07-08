@@ -119,6 +119,22 @@ const SchemaManager = {
                 "CreatedAt",
                 "UpdatedAt",
                 "Deleted"
+],
+KPIMetrics: [
+
+                "KPIID",
+                "OrganizationID",
+                "MetricType",
+                "Entity",
+                "EntityID",
+                "Period",
+                "Revenue",
+                "Cost",
+                "Profit",
+                "Margin",
+                "CreatedAt",
+                "UpdatedAt"
+
 ]
         };
     },

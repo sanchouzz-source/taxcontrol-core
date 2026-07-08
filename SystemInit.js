@@ -76,7 +76,16 @@ const SystemInit = {
             FinanceEngine.init();
 
         }
+        //
+        //KPI
+        //
+        if(
+            typeof KPIEngine !== "undefined"
+        ){
 
+            KPIEngine.init();
+
+        }
 
 
         // =========================
