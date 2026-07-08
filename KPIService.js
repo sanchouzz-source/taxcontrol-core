@@ -1,14 +1,24 @@
-console.log("KPIService");
 const KPIService = {
 
 
-    createTripProfitKPI(
-        trip,
-        transaction
-    ) {
+    createProfitKPI(trip, transaction, profit) {
+
+
+        const margin =
+            transaction.Revenue > 0
+            ? profit / transaction.Revenue
+            : 0;
 
 
         const kpi = {
+
+
+            KPIID:
+                IdService.generate("KPI"),
+
+
+            OrganizationID:
+                OrganizationContext.get(),
 
 
             MetricType:
@@ -24,7 +34,11 @@ const KPIService = {
 
 
             Period:
-                new Date(),
+                Utilities.formatDate(
+                    new Date(),
+                    Session.getScriptTimeZone(),
+                    "yyyy-MM"
+                ),
 
 
             Revenue:
@@ -36,19 +50,32 @@ const KPIService = {
 
 
             Profit:
-                transaction.Profit,
+                profit,
 
 
             Margin:
-                transaction.Profit /
-                transaction.Revenue
+                margin
 
         };
 
 
-        return KPIRepository.create(
-            kpi
+        const result =
+            KPIRepository.create(kpi);
+
+
+        Logger.log(
+            "📊 KPI CREATED: "
+            + result.KPIID
         );
+
+
+        EventBus.emit(
+            "KPI_CREATED",
+            result
+        );
+
+
+        return result;
 
     }
 
