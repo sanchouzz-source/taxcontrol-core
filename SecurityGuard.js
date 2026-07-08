@@ -1,3 +1,4 @@
+console.log("SecurityGuard");
 const SecurityGuard = {
 
     check(action) {

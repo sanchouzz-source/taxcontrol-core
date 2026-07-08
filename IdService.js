@@ -1,3 +1,4 @@
+console.log("IdService");
 const IdService = {
 
     generate(prefix) {

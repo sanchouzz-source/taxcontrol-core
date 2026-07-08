@@ -1,3 +1,4 @@
+console.log("ClientRepository");
 const ClientRepository = {
 
     create(data) {

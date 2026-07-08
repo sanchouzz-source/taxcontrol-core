@@ -1,3 +1,4 @@
+console.log("SchemaManager");
 const SchemaManager = {
 
     schemaVersion: "0.1",

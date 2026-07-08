@@ -1,3 +1,4 @@
+console.log("KPIService");
 const KPIService = {
 
 

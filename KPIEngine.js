@@ -1,3 +1,4 @@
+console.log("KPIEngine");
 const KPIEngine = {
 
     initialized:false,

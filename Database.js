@@ -1,3 +1,4 @@
+console.log("Database");
 const Database = {
 
 

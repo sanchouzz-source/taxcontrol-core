@@ -1,3 +1,4 @@
+console.log("FinanceEngine");
 const FinanceEngine = {
 
     initialized:false,

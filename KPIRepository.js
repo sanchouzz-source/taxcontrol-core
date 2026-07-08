@@ -1,3 +1,4 @@
+console.log("KPIRepository");
 const KPIRepository = {
 
 
