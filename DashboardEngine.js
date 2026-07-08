@@ -4,16 +4,13 @@ console.log("DashboardEngine");
 const DashboardEngine = {
 
 
-    sheetName:"Dashboard",
-
-
     initialized:false,
 
 
+    sheetName:
+        "Dashboard",
 
-    // =========================
-    // INIT EVENTS
-    // =========================
+
 
     init(){
 
@@ -25,49 +22,7 @@ const DashboardEngine = {
         }
 
 
-
-        if(
-            typeof EventBus !== "undefined"
-        ){
-
-
-            EventBus.on(
-                "TRIP_COMPLETED",
-                ()=>{
-
-                    Logger.log(
-                        "Dashboard refresh: TRIP_COMPLETED"
-                    );
-
-
-                    this.render(true);
-
-                }
-            );
-
-
-
-            EventBus.on(
-                "KPI_CREATED",
-                ()=>{
-
-                    Logger.log(
-                        "Dashboard refresh: KPI_CREATED"
-                    );
-
-
-                    this.render(true);
-
-                }
-            );
-
-
-        }
-
-
-
         this.initialized=true;
-
 
 
         Logger.log(
@@ -79,14 +34,10 @@ const DashboardEngine = {
 
 
 
-    // =========================
-    // MAIN RENDER
-    // =========================
-
-    render(safe=false){
+    render(){
 
 
-        try {
+        try{
 
 
             const ss =
@@ -104,33 +55,48 @@ const DashboardEngine = {
 
             if(!sheet){
 
+
                 sheet =
                     ss.insertSheet(
                         this.sheetName
                     );
 
+
             }
 
 
 
-            // сохраняем форматирование
-            sheet.clearContents();
+            sheet.clear();
 
 
 
-            this._writeHeader(sheet);
+            this.writeTitle(sheet);
 
 
-            this._writeClientsKPI(sheet);
+
+            const data =
+                this.getDashboardData();
 
 
-            this._writeTripsKPI(sheet);
+
+            this.writeSummary(
+                sheet,
+                data
+            );
 
 
-            this._writeManagerKPI(sheet);
+
+            this.writeTrips(
+                sheet,
+                data
+            );
 
 
-            this._writeFinanceKPI(sheet);
+
+            this.writeFinance(
+                sheet,
+                data
+            );
 
 
 
@@ -140,27 +106,22 @@ const DashboardEngine = {
 
 
 
+            return data;
+
+
+
         }
         catch(e){
 
 
-            if(safe){
+            Logger.log(
+                "Dashboard ERROR: "
+                +
+                e.message
+            );
 
 
-                Logger.log(
-                    "Dashboard SAFE ERROR: "
-                    +
-                    e.message
-                );
-
-
-                return;
-
-
-            }
-
-
-            throw e;
+            return null;
 
 
         }
@@ -170,298 +131,238 @@ const DashboardEngine = {
 
 
 
-    // =========================
-    // HEADER
-    // =========================
-
-    _writeHeader(sheet){
 
 
-        sheet
-        .getRange(1,1)
-        .setValue(
-            "ERP DASHBOARD"
-        );
+    getDashboardData(){
 
 
+        let data={
 
-        sheet
-        .getRange(1,1,1,4)
-        .setFontSize(16)
-        .setFontWeight("bold");
+            clients:{},
+            trips:{},
+            finance:{},
+            kpi:{}
 
-
-    },
+        };
 
 
 
-    // =========================
-    // CLIENT KPI
-    // =========================
-
-    _writeClientsKPI(sheet){
+        // ======================
+        // SERVICE LAYER
+        // ======================
 
 
-        const kpi =
-            ReportEngine.clientsKPI();
+        if(
+            typeof DashboardService !== "undefined"
+        ){
+
+            data =
+                DashboardService.getData();
 
 
-
-        sheet
-        .getRange(3,1)
-        .setValue(
-            "Clients KPI"
-        );
+        }
 
 
 
-        sheet
-        .getRange(4,1,3,2)
-        .setValues([
-
-            [
-                "Total",
-                kpi.total
-            ],
-
-            [
-                "Active",
-                kpi.active
-            ],
-
-            [
-                "Deleted",
-                kpi.deleted
-            ]
-
-        ]);
+        return data;
 
 
     },
 
 
 
-    // =========================
-    // TRIPS KPI
-    // =========================
-
-    _writeTripsKPI(sheet){
 
 
-        const kpi =
-            ReportEngine.tripsKPI();
-
+    writeTitle(sheet){
 
 
         sheet
-        .getRange(8,1)
+        .getRange(
+            1,
+            1
+        )
         .setValue(
-            "Trips KPI"
+            "TAXCONTROL ERP DASHBOARD"
+        );
+
+
+        sheet
+        .getRange(
+            1,
+            1,
+            1,
+            5
+        )
+        .setFontWeight(
+            "bold"
+        );
+
+
+    },
+
+
+
+
+
+    writeSummary(sheet,data){
+
+
+        sheet
+        .getRange(
+            3,
+            1
+        )
+        .setValue(
+            "SYSTEM SUMMARY"
         );
 
 
 
-        sheet
-        .getRange(9,1,4,2)
-        .setValues([
+        const rows=[
 
 
             [
-                "Total Trips",
-                kpi.totalTrips
+                "Clients",
+                data.clients.total || 0
+            ],
+
+
+            [
+                "Trips",
+                data.trips.total || 0
             ],
 
 
             [
                 "Revenue",
-                kpi.revenue
+                data.finance.revenue || 0
             ],
 
 
             [
-                "Cost",
-                kpi.cost
-            ],
-
-
-            [
-                "Margin",
-                kpi.margin
+                "Profit",
+                data.finance.profit || 0
             ]
 
 
-        ]);
-
-
-    },
-
-
-
-    // =========================
-    // MANAGER KPI
-    // =========================
-
-    _writeManagerKPI(sheet){
-
-
-        const data =
-            ReportEngine.managerKPI();
-
-
-
-        sheet
-        .getRange(14,1)
-        .setValue(
-            "Manager KPI"
-        );
-
-
-
-        const headers =
-        [
-            "ManagerID",
-            "Trips",
-            "Revenue",
-            "Cost",
-            "Margin"
         ];
 
 
 
         sheet
         .getRange(
-            15,
+            4,
             1,
-            1,
-            headers.length
+            rows.length,
+            2
         )
-        .setValues([
-            headers
-        ])
-        .setFontWeight(
-            "bold"
-        );
+        .setValues(rows);
 
-
-
-        const rows =
-            data.map(m=>[
-
-                m.ManagerID,
-                m.Trips,
-                m.Revenue,
-                m.Cost,
-                m.Margin
-
-            ]);
-
-
-
-        if(rows.length){
-
-
-            sheet
-            .getRange(
-                16,
-                1,
-                rows.length,
-                headers.length
-            )
-            .setValues(rows);
-
-
-        }
 
 
     },
 
 
 
-    // =========================
-    // FINANCE KPI
-    // =========================
-
-    _writeFinanceKPI(sheet){
-
-
-        if(
-            typeof KPIRepository === "undefined"
-        ){
-
-            return;
-
-        }
 
 
 
-        const data =
-            KPIRepository.list();
-
-
-
-        let revenue=0;
-        let cost=0;
-        let profit=0;
-
-
-
-        data.forEach(k=>{
-
-
-            revenue +=
-                Number(k.Revenue || 0);
-
-
-            cost +=
-                Number(k.Cost || 0);
-
-
-            profit +=
-                Number(k.Profit || 0);
-
-
-        });
-
+    writeTrips(sheet,data){
 
 
         sheet
-        .getRange(22,1)
+        .getRange(
+            10,
+            1
+        )
         .setValue(
-            "Finance KPI"
+            "TRIPS KPI"
         );
 
 
 
         sheet
-        .getRange(23,1,4,2)
+        .getRange(
+            11,
+            1,
+            4,
+            2
+        )
         .setValues([
 
 
             [
+                "Total",
+                data.trips.total || 0
+            ],
+
+
+            [
                 "Revenue",
-                revenue
+                data.trips.revenue || 0
             ],
 
 
             [
                 "Cost",
-                cost
-            ],
-
-
-            [
-                "Profit",
-                profit
+                data.trips.cost || 0
             ],
 
 
             [
                 "Margin",
-                revenue
-                ?
-                profit/revenue
-                :
-                0
+                data.trips.margin || 0
+            ]
+
+
+        ]);
+
+
+    },
+
+
+
+
+
+    writeFinance(sheet,data){
+
+
+        sheet
+        .getRange(
+            17,
+            1
+        )
+        .setValue(
+            "FINANCE KPI"
+        );
+
+
+
+        sheet
+        .getRange(
+            18,
+            1,
+            3,
+            2
+        )
+        .setValues([
+
+
+            [
+                "Revenue",
+                data.finance.revenue || 0
+            ],
+
+
+            [
+                "Cost",
+                data.finance.cost || 0
+            ],
+
+
+            [
+                "Profit",
+                data.finance.profit || 0
             ]
 
 
@@ -471,9 +372,10 @@ const DashboardEngine = {
     }
 
 
+
 };
 
 
 
 globalThis.DashboardEngine =
-DashboardEngine;
+    DashboardEngine;

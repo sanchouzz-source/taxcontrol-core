@@ -1,7 +1,22 @@
 const SystemInit = {
 
 
-    init() {
+    initialized:false,
+
+
+    init(){
+
+
+        if(this.initialized){
+
+            Logger.log(
+                "SYSTEM ALREADY INITIALIZED"
+            );
+
+            return;
+
+        }
+
 
 
         Logger.log(
@@ -14,9 +29,9 @@ const SystemInit = {
         // SAFE CORE
         // =========================
 
-        if (
+        if(
             typeof SafeCore !== "undefined"
-        ) {
+        ){
 
             SafeCore.init();
 
@@ -28,9 +43,9 @@ const SystemInit = {
         // SCHEMA
         // =========================
 
-        if (
+        if(
             typeof SchemaManager !== "undefined"
-        ) {
+        ){
 
             SchemaManager.init();
 
@@ -42,9 +57,9 @@ const SystemInit = {
         // EVENT SUBSCRIPTIONS
         // =========================
 
-        if (
+        if(
             typeof EventSubscriptions !== "undefined"
-        ) {
+        ){
 
             EventSubscriptions.initEventSubscriptions();
 
@@ -53,13 +68,12 @@ const SystemInit = {
 
 
         // =========================
-        // TRIP EVENTS
+        // TRIPS
         // =========================
 
-        if (
+        if(
             typeof TripEventHandler !== "undefined"
-        ) {
-
+        ){
 
             Logger.log(
                 "FOUND TripEventHandler"
@@ -81,9 +95,9 @@ const SystemInit = {
         // FINANCE
         // =========================
 
-        if (
+        if(
             typeof FinanceEngine !== "undefined"
-        ) {
+        ){
 
             FinanceEngine.init();
 
@@ -95,9 +109,9 @@ const SystemInit = {
         // KPI
         // =========================
 
-        if (
+        if(
             typeof KPIEngine !== "undefined"
-        ) {
+        ){
 
             KPIEngine.init();
 
@@ -109,9 +123,9 @@ const SystemInit = {
         // AUTOMATION
         // =========================
 
-        if (
+        if(
             typeof AutomationEngine !== "undefined"
-        ) {
+        ){
 
             AutomationEngine.init();
 
@@ -123,18 +137,17 @@ const SystemInit = {
         // DASHBOARD
         // =========================
 
-        if (
+        if(
             typeof DashboardEngine !== "undefined"
-        ) {
-
+        ){
 
             DashboardEngine.init();
 
-
-            DashboardEngine.render(true);
-
-
         }
+
+
+
+        this.initialized=true;
 
 
 
