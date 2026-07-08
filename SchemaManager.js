@@ -102,7 +102,7 @@ const SchemaManager = {
                 "CreatedAt",
                 "UpdatedAt",
                 "Deleted"
-            ]
+            ],
             FinancialTransactions: [
 
     "TransactionID",
