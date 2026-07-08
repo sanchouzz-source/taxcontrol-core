@@ -115,7 +115,6 @@ FinanceEngine.calculateTripProfit = function(trip) {
     // - запись в Finance table
     // - обновление KPI
     // - бонусы менеджерам
-};
 //клиентская инансовая карточка
 FinanceEngine.initClientFinance = function(client) {
 
