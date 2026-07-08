@@ -11,10 +11,37 @@ const KPIEngine = {
         }
 
 
-        EventBus.on(
-            "TRIP_PROFIT_CALCULATED",
-            this.handleProfit.bind(this)
+       EventBus.on(
+    "TRIP_PROFIT_CALCULATED",
+    (payload)=>{
+
+
+        Logger.log(
+            "KPI EVENT RECEIVED:"
+            + JSON.stringify(payload)
         );
+
+
+        if(!payload || !payload.transaction){
+
+            Logger.log(
+                "Invalid KPI payload"
+            );
+
+            return;
+
+        }
+
+
+        KPIService.createProfitKPI(
+            payload.trip,
+            payload.transaction,
+            payload.profit
+        );
+
+
+    }
+);
 
 
         this.initialized=true;
