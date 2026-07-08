@@ -101,10 +101,29 @@ const FinanceEngine = {
 
 
 
-        Database.insert(
-            "FinancialTransactions",
-            transaction
-        );
+        try {
+
+    Database.insert(
+        "FinancialTransactions",
+        transaction
+    );
+
+
+    Logger.log(
+        "💰 Finance transaction created: "
+        + transaction.TransactionID
+    );
+
+
+}
+catch(e){
+
+    Logger.log(
+        "FINANCE ERROR: "
+        + e.message
+    );
+
+};
 
 
 
