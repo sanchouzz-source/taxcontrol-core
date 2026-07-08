@@ -1,17 +1,20 @@
-const Installer = {
+function installSystem() {
 
-    install() {
+    Logger.log(
+        "ERP INSTALL START"
+    );
 
-        Logger.log("ERP INSTALL START");
 
-        SchemaManager.init();
+    SchemaManager.init();
 
-        Registry.init();
+    Registry.init();
 
-        DefaultData.init?.();
 
-        Logger.log("ERP INSTALL COMPLETE");
-    }
-};
+    SystemInit.init();
 
-globalThis.Installer = Installer;
+
+    Logger.log(
+        "ERP INSTALL COMPLETE"
+    );
+
+}

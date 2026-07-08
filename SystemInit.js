@@ -2,31 +2,113 @@ const SystemInit = {
 
     init() {
 
-        Logger.log("ERP BOOT START");
+        Logger.log("ERP INIT START");
 
 
-        SafeCore.init();
+        // =========================
+        // SAFE CORE
+        // =========================
 
+        if (typeof SafeCore !== "undefined") {
 
-        Registry.load();
+            SafeCore.init();
 
-
-        if (typeof EventBus !== "undefined") {
-            EventBus.init();
         }
 
 
-        ModuleLoader.init();
+
+        // =========================
+        // SCHEMA
+        // =========================
+
+        if (typeof SchemaManager !== "undefined") {
+
+            SchemaManager.init();
+
+        }
 
 
-        ServiceContainer.start();
+
+        // =========================
+        // EVENT BUS
+        // =========================
+
+        if (
+            typeof EventSubscriptions !== "undefined"
+        ) {
+
+            EventSubscriptions.initEventSubscriptions();
+
+        }
 
 
-        DashboardEngine.render(true);
+
+        // =========================
+        // DOMAIN EVENTS
+        // =========================
+
+        if (
+            typeof TripEventHandler !== "undefined"
+        ) {
+
+            TripEventHandler.init();
+
+            Logger.log(
+                "TripEventHandler initialized"
+            );
+
+        }
 
 
-        Logger.log("ERP BOOT COMPLETE");
+
+        // =========================
+        // FINANCE
+        // =========================
+
+        if (
+            typeof FinanceEngine !== "undefined"
+        ) {
+
+            FinanceEngine.init();
+
+        }
+
+
+
+        // =========================
+        // AUTOMATION
+        // =========================
+
+        if (
+            typeof AutomationEngine !== "undefined"
+        ) {
+
+            AutomationEngine.init();
+
+        }
+
+
+
+        // =========================
+        // DASHBOARD
+        // =========================
+
+        if (
+            typeof DashboardEngine !== "undefined"
+        ) {
+
+            DashboardEngine.render(true);
+
+        }
+
+
+
+        Logger.log(
+            "ERP INIT COMPLETE"
+        );
+
     }
+
 };
 
 
