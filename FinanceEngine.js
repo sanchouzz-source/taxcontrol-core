@@ -109,11 +109,6 @@ const FinanceEngine = {
     );
 
 
-    Logger.log(
-        "💰 Finance transaction created: "
-        + transaction.TransactionID
-    );
-
 
 }
 catch(e){
@@ -127,10 +122,14 @@ catch(e){
 
 
 
-        EventBus.emit(
-            "TRIP_PROFIT_CALCULATED",
-            transaction
-        );
+EventBus.emit(
+    "TRIP_PROFIT_CALCULATED",
+    {
+        trip: trip,
+        transaction: transaction,
+        profit: profit
+    }
+);
 
 
 

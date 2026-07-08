@@ -27,28 +27,53 @@ const KPIEngine = {
 
 
 
-    handleProfit(data){
+handleProfit(data){
+
 
     Logger.log(
-        "KPI EVENT RECEIVED"
+        "KPI EVENT RECEIVED:"
+        +
+        JSON.stringify(data)
     );
 
 
-    if(!data || !data.trip){
+    let trip;
+    let profit;
 
-        Logger.log(
-            "Invalid KPI payload"
-        );
 
-        return;
+
+    // новый формат
+    if(data.trip){
+
+        trip = data.trip;
+        profit = Number(data.profit || 0);
+
     }
 
 
-    const trip = data.trip;
+    // защита от старого формата
+    else if(data.TripID){
 
-    const profit = Number(
-        data.profit || 0
-    );
+        trip = data;
+
+        profit =
+            Number(data.Revenue || 0)
+            -
+            Number(data.ActualCost || 0);
+
+    }
+
+
+    else {
+
+        Logger.log(
+            "UNKNOWN KPI PAYLOAD"
+        );
+
+        return;
+
+    }
+
 
 
     this.createTripKPI(
