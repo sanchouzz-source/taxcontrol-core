@@ -127,14 +127,13 @@ KPIMetrics: [
                 "MetricType",
                 "Entity",
                 "EntityID",
-                "Period",
                 "Revenue",
                 "Cost",
                 "Profit",
                 "Margin",
                 "CreatedAt",
-                "UpdatedAt"
-
+                "UpdatedAt",
+                "Deleted"
 ]
         };
     },
