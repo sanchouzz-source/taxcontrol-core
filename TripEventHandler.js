@@ -1,7 +1,22 @@
 const TripEventHandler = {
 
 
-    init() {
+    initialized:false,
+
+
+    init(){
+
+
+        if(this.initialized){
+
+            Logger.log(
+                "TripEventHandler already initialized"
+            );
+
+            return;
+
+        }
+
 
 
         EventBus.on(
@@ -22,44 +37,57 @@ const TripEventHandler = {
         );
 
 
+
+        this.initialized = true;
+
+
         Logger.log(
             "TripEventHandler READY"
         );
 
+
+        Logger.log(
+            JSON.stringify(EventBus.handlers)
+        );
+
     },
 
 
-    onCreated(trip) {
+
+    onCreated(trip){
 
         Logger.log(
-            "TRIP CREATED RECEIVED: "
+            "HANDLER CREATED: "
             + trip.TripID
         );
 
     },
 
 
-    onUpdated(trip) {
+
+    onUpdated(trip){
 
         Logger.log(
-            "TRIP UPDATED RECEIVED: "
+            "HANDLER UPDATED: "
             + trip.TripID
         );
 
     },
 
 
-    onCompleted(trip) {
+
+    onCompleted(trip){
 
         Logger.log(
-            "TRIP COMPLETED RECEIVED: "
+            "HANDLER COMPLETED: "
             + trip.TripID
         );
+
 
     }
 
 };
 
 
-globalThis.TripEventHandler =
-TripEventHandler;
+
+globalThis.TripEventHandler = TripEventHandler;
