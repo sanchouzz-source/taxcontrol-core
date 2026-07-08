@@ -21,7 +21,9 @@ const modules = [
     "TripValidator",
     "ClientValidator",
 
-    "SystemInit"
+    "SystemInit",
+    "KPIRepository",
+    "KPIService"
 
 ];
 
