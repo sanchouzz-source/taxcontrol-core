@@ -40,7 +40,7 @@ const SystemInit = {
             EventSubscriptions.initEventSubscriptions();
 
         }
-
+        
 
 
         // =========================
@@ -50,6 +50,10 @@ const SystemInit = {
         if (
             typeof TripEventHandler !== "undefined"
         ) {
+             Logger.log(
+        "FOUND TripEventHandler"
+    );
+
 
             TripEventHandler.init();
 
