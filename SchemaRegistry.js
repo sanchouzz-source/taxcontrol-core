@@ -1,9 +1,12 @@
 const SchemaRegistry = {
 
     map: {
-        Clients: "ClientID",
-        Trips: "TripID",
-        Organizations: "OrganizationID"
+        Organizations:"OrganizationID",
+        Clients:"ClientID",
+        Vehicles:"VehicleID",
+        Trips:"TripID",
+        Payments:"PaymentID",
+        FinancialTransactions:"TransactionID"
     },
 
     getIdField(entity) {

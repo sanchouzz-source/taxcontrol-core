@@ -105,24 +105,20 @@ const SchemaManager = {
             ],
             FinancialTransactions: [
 
-    "TransactionID",
+                "TransactionID",
+                "OrganizationID",
 
-    "OrganizationID",
+                "Type",
+                "Entity",
+                "EntityID",
 
-    "Type",
+                "Revenue",
+                "Cost",
+                "Profit",
 
-    "Entity",
-
-    "EntityID",
-
-    "Revenue",
-
-    "Cost",
-
-    "Profit",
-
-    "CreatedAt"
-
+                "CreatedAt",
+                "UpdatedAt",
+                "Deleted"
 ]
         };
     },
