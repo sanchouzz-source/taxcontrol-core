@@ -5,47 +5,41 @@ const KPIRepository = {
     create(data) {
 
 
-        SecurityGuard.check(
-            "KPI_CREATE"
+    SecurityGuard.check(
+        "KPI_CREATE"
+    );
+
+
+    if (!data.KPIID) {
+
+        data.KPIID =
+            IdService.generate("KPI");
+
+    }
+
+
+    data.OrganizationID =
+        OrganizationContext.get();
+
+
+    const result =
+        Database.insert(
+            "KPIMetrics",
+            data
         );
 
 
-        if (!data.KPIID) {
-
-            data.KPIID =
-                IdService.generate("KPI");
-
-        }
-
-
-        data.OrganizationID =
-            OrganizationContext.get();
+    AuditLog.write(
+        "CREATE",
+        "KPI",
+        null,
+        result
+    );
 
 
-        const result =
-            Database.insert(
-                "KPIMetrics",
-                data
-            );
+    return result;
 
-
-        AuditLog.write(
-            "CREATE",
-            "KPI",
-            null,
-            result
-        );
-
-
-        EventBus.emit(
-            "KPI_CREATED",
-            result
-        );
-
-
-        return result;
-
-    },
+},
 
 
     getById(id) {
