@@ -103,6 +103,27 @@ const SchemaManager = {
                 "UpdatedAt",
                 "Deleted"
             ]
+            FinancialTransactions: [
+
+    "TransactionID",
+
+    "OrganizationID",
+
+    "Type",
+
+    "Entity",
+
+    "EntityID",
+
+    "Revenue",
+
+    "Cost",
+
+    "Profit",
+
+    "CreatedAt"
+
+]
         };
     },
 
