@@ -1,15 +1,22 @@
 const SystemInit = {
 
+
     init() {
 
-        Logger.log("ERP INIT START");
+
+        Logger.log(
+            "ERP INIT START"
+        );
+
 
 
         // =========================
         // SAFE CORE
         // =========================
 
-        if (typeof SafeCore !== "undefined") {
+        if (
+            typeof SafeCore !== "undefined"
+        ) {
 
             SafeCore.init();
 
@@ -21,7 +28,9 @@ const SystemInit = {
         // SCHEMA
         // =========================
 
-        if (typeof SchemaManager !== "undefined") {
+        if (
+            typeof SchemaManager !== "undefined"
+        ) {
 
             SchemaManager.init();
 
@@ -30,7 +39,7 @@ const SystemInit = {
 
 
         // =========================
-        // EVENT BUS
+        // EVENT SUBSCRIPTIONS
         // =========================
 
         if (
@@ -40,22 +49,25 @@ const SystemInit = {
             EventSubscriptions.initEventSubscriptions();
 
         }
-        
+
 
 
         // =========================
-        // DOMAIN EVENTS
+        // TRIP EVENTS
         // =========================
 
         if (
             typeof TripEventHandler !== "undefined"
         ) {
-             Logger.log(
-        "FOUND TripEventHandler"
-    );
+
+
+            Logger.log(
+                "FOUND TripEventHandler"
+            );
 
 
             TripEventHandler.init();
+
 
             Logger.log(
                 "TripEventHandler initialized"
@@ -76,16 +88,21 @@ const SystemInit = {
             FinanceEngine.init();
 
         }
-        //
-        //KPI
-        //
-        if(
+
+
+
+        // =========================
+        // KPI
+        // =========================
+
+        if (
             typeof KPIEngine !== "undefined"
-        ){
+        ) {
 
             KPIEngine.init();
 
         }
+
 
 
         // =========================
@@ -110,7 +127,12 @@ const SystemInit = {
             typeof DashboardEngine !== "undefined"
         ) {
 
+
+            DashboardEngine.init();
+
+
             DashboardEngine.render(true);
+
 
         }
 
@@ -120,7 +142,9 @@ const SystemInit = {
             "ERP INIT COMPLETE"
         );
 
+
     }
+
 
 };
 
