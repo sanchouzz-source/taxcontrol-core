@@ -7,6 +7,8 @@ function installSystem() {
     SchemaManager.init();
     Registry.init();
     SystemInit.init();
+    KPIRepository;
+    KPIService;
 
     Logger.log(
         "ERP INSTALL COMPLETE"

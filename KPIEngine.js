@@ -155,10 +155,10 @@ handleProfit(data){
 
 
 
-        Database.insert(
-            "KPIMetrics",
-            kpi
-        );
+        KPIService.createTripProfitKPI(
+    trip,
+    transaction
+);
 
 
 

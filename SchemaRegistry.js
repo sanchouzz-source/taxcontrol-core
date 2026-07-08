@@ -8,6 +8,7 @@ const SchemaRegistry = {
         Payments:"PaymentID",
         FinancialTransactions:"TransactionID",
         KPIMetrics:"KPIID"
+        
     },
 
     getIdField(entity) {

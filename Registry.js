@@ -60,3 +60,10 @@ Registry.generate = function(entity) {
 
     return id;
 };
+check(
+ "KPIRepository"
+);
+
+check(
+ "KPIService"
+);
