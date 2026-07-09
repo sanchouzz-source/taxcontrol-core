@@ -2,7 +2,26 @@ console.log("FinanceEngine");
 const FinanceEngine = {
 
     initialized:false,
+    health(){
 
+        return {
+
+            status:
+                this.initialized
+                ?
+                "OK"
+                :
+                "WARNING",
+
+            initialized:
+                this.initialized,
+
+            module:
+                "FinanceEngine"
+
+        };
+
+    },
 
     init() {
 

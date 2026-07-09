@@ -23,6 +23,10 @@ health(){
             "KPIEngine",
 
 
+        version:
+            "0.1",
+
+
         initialized:
             this.initialized,
 

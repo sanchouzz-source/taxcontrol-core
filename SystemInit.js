@@ -265,7 +265,28 @@ const SystemInit = {
         );
 
 
+    },
+        health(){
+
+        return {
+
+            status:
+                this.initialized
+                ?
+                "OK"
+                :
+                "WARNING",
+
+            initialized:
+                this.initialized,
+
+            module:
+                "SystemInit"
+
+        };
+
     }
+
 
 
 };
