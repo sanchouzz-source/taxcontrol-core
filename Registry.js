@@ -59,4 +59,42 @@ Registry.generate = function(entity) {
     }
 
     return id;
+    Registry.health = function(){
+
+    const ss =
+        SpreadsheetApp.getActiveSpreadsheet();
+
+
+    const sheet =
+        ss.getSheetByName(
+            this.countersSheet
+        );
+
+
+    return {
+
+        status:
+            sheet
+            ?
+            "OK"
+            :
+            "ERROR",
+
+
+        sheet:
+            this.countersSheet,
+
+
+        prefixes:
+            Object.keys(
+                this.prefixes
+            ),
+
+
+        timestamp:
+            new Date()
+
+    };
+
+};
 };
