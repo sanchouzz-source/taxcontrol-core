@@ -5,7 +5,36 @@ const KPIEngine = {
 
     initialized:false,
 
+health(){
 
+
+    return {
+
+
+        status:
+            this.initialized
+            ?
+            "OK"
+            :
+            "WARNING",
+
+
+        module:
+            "KPIEngine",
+
+
+        initialized:
+            this.initialized,
+
+
+        timestamp:
+            new Date()
+
+
+    };
+
+
+},
     init(){
 
         if(this.initialized){

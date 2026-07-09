@@ -103,6 +103,18 @@ const EventBus = {
 
 
 };
+const EventBus = {
 
+handlers:{},
+
+on(){
+
+},
+
+emit(){
+
+}
+
+};
 
 globalThis.EventBus=EventBus;

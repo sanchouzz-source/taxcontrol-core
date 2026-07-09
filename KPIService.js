@@ -1,6 +1,23 @@
 const KPIService = {
 
 
+    health(){
+
+
+        return {
+
+
+            status:"OK",
+
+            module:"KPIService",
+
+            timestamp:
+                new Date()
+
+        };
+
+
+    },
     createProfitKPI(trip, transaction, profit) {
 
 

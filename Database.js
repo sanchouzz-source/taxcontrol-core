@@ -254,4 +254,60 @@ const row = headers.map(h => {
         return null;
     },
 };
+health(){
+
+
+    try{
+
+
+        const ss =
+            SpreadsheetApp.getActiveSpreadsheet();
+
+
+        return {
+
+
+            status:
+                ss
+                ?
+                "OK"
+                :
+                "ERROR",
+
+
+            module:
+                "Database",
+
+
+            spreadsheet:
+                ss.getName(),
+
+
+            timestamp:
+                new Date()
+
+
+        };
+
+
+    }
+    catch(e){
+
+
+        return {
+
+
+            status:"ERROR",
+            module:"Database",
+            message:e.message,
+            timestamp:new Date()
+
+
+        };
+
+
+    }
+
+
+}
 globalThis.Database = Database;

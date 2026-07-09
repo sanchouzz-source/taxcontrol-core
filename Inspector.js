@@ -25,7 +25,11 @@ this.section(
 "EventStore",
 "SecurityGuard",
 "AuditLog",
-"Versioning"
+"Versioning",
+"HealthService",
+"KPIEngine",
+"KPIService",
+"DashboardService"
 ]
 );
 
