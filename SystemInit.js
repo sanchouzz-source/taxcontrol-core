@@ -1,94 +1,76 @@
 const SystemInit = {
 
-    initialized: false,
 
-    init() {
+initialized:false,
 
-        if (this.initialized) {
 
-            Logger.log("SYSTEM ALREADY INITIALIZED");
-            return;
+init(){
 
-        }
 
-        Logger.log("ERP INIT START");
+if(this.initialized){
 
-        // =========================
-        // SAFE CORE
-        // =========================
+Logger.log(
+"SYSTEM ALREADY INITIALIZED"
+);
 
-        if (typeof SafeCore !== "undefined") {
-            SafeCore.init();
-        }
+return;
 
-        // =========================
-        // DATABASE SCHEMA
-        // =========================
+}
 
-        if (typeof SchemaManager !== "undefined") {
-            SchemaManager.init();
-        }
 
-        // =========================
-        // EVENT SUBSCRIPTIONS
-        // =========================
 
-        if (typeof EventSubscriptions !== "undefined") {
-            EventSubscriptions.initEventSubscriptions();
-        }
+Logger.log(
+"ERP INIT START"
+);
 
-        // =========================
-        // DOMAIN EVENTS
-        // =========================
 
-        if (typeof TripEventHandler !== "undefined") {
 
-            Logger.log("FOUND TripEventHandler");
+if(typeof SchemaManager !== "undefined"){
 
-            TripEventHandler.init();
+SchemaManager.init();
 
-            Logger.log("TripEventHandler initialized");
+}
 
-        }
 
-        // =========================
-        // FINANCE
-        // =========================
 
-        if (typeof FinanceEngine !== "undefined") {
-            FinanceEngine.init();
-        }
+if(typeof Registry !== "undefined"){
 
-        // =========================
-        // KPI
-        // =========================
+Registry.init();
 
-        if (typeof KPIEngine !== "undefined") {
-            KPIEngine.init();
-        }
+}
 
-        // =========================
-        // AUTOMATION
-        // =========================
 
-        if (typeof AutomationEngine !== "undefined") {
-            AutomationEngine.init();
-        }
 
-        // =========================
-        // DASHBOARD
-        // =========================
+if(typeof ModuleLoader !== "undefined"){
 
-        if (typeof DashboardEngine !== "undefined") {
-            DashboardEngine.init();
-        }
 
-        this.initialized = true;
+ModuleLoader.loadCore();
 
-        Logger.log("ERP INIT COMPLETE");
 
-    }
+ModuleLoader.initAll();
+
+
+}
+
+
+
+this.initialized=true;
+
+
+
+Logger.log(
+"ERP INIT COMPLETE"
+);
+
+
+
+}
+
+
 
 };
 
-globalThis.SystemInit = SystemInit;
+
+
+globalThis.SystemInit =
+SystemInit;
