@@ -232,6 +232,51 @@ Registry.health = function(){
 
 };
 
+Registry.health = function(){
 
+
+    const ss =
+        SpreadsheetApp.getActiveSpreadsheet();
+
+
+    const sheet =
+        ss.getSheetByName(
+            this.countersSheet
+        );
+
+
+    return {
+
+
+        status:
+            sheet
+            ?
+            "OK"
+            :
+            "ERROR",
+
+
+        module:
+            "Registry",
+
+
+        sheet:
+            this.countersSheet,
+
+
+        entities:
+            Object.keys(
+                this.prefixes
+            ),
+
+
+        timestamp:
+            new Date()
+
+
+    };
+
+
+};
 
 globalThis.Registry = Registry;
