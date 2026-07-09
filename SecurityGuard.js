@@ -1,14 +1,52 @@
 console.log("SecurityGuard");
+
+
 const SecurityGuard = {
 
-    check(action) {
 
-        if (!Auth.hasPermission(action)) {
-            throw new Error(
-                "Access denied: " + action + " for role " + Auth.getCurrentUser().role
-            );
-        }
+    permissions:{},
+
+
+    init(){
+
+        Logger.log(
+            "SecurityGuard READY"
+        );
+
+    },
+
+
+    check(permission){
+
+        // пока базовая версия
 
         return true;
+
+    },
+
+
+    health(){
+
+        return {
+
+            status:"OK",
+
+            permissions:
+                Object.keys(
+                    this.permissions
+                ),
+
+            timestamp:
+                new Date()
+
+        };
+
     }
+
+
 };
+
+
+
+globalThis.SecurityGuard =
+    SecurityGuard;

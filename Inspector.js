@@ -4,208 +4,129 @@ console.log("Inspector");
 const Inspector = {
 
 
-    coreModules: [
+inspect(){
 
-        // SYSTEM
-        "SystemInit",
-        "SchemaManager",
-        "Database",
-        "Registry",
-        "IdService",
 
-        // EVENT SYSTEM
-        "EventBus",
-        "EventStore",
+Logger.log(
+"========== ERP INSPECTOR =========="
+);
 
-        // SECURITY
-        "SecurityGuard",
-        "AuditLog",
-        "Versioning"
 
-    ],
 
+this.section(
+"CORE",
+[
+"SystemInit",
+"SchemaManager",
+"Database",
+"Registry",
+"IdService",
+"EventBus",
+"EventStore",
+"SecurityGuard",
+"AuditLog",
+"Versioning"
+]
+);
 
 
-    businessModules: [
 
-        // DOMAIN
-        "TripRepository",
-        "ClientRepository",
+this.section(
+"BUSINESS MODULES",
+[
+"TripRepository",
+"ClientRepository",
 
-        "TripValidator",
-        "ClientValidator",
+"TripValidator",
+"ClientValidator",
 
-        // FINANCE
-        "FinanceEngine",
+"FinanceEngine",
 
-        // KPI
-        "KPIEngine",
-        "KPIRepository",
-        "KPIService",
+"KPIEngine",
+"KPIRepository",
+"KPIService",
 
-        // DASHBOARD
-        "DashboardEngine",
-        "DashboardService",
-        "ReportEngine"
+"DashboardEngine",
+"DashboardService",
 
-    ],
+"ReportEngine"
+]
+);
 
 
 
-    inspect(){
+this.section(
+"MODULE SYSTEM",
+[
+"ModuleRegistry",
+"ModuleLoader"
+]
+);
 
 
-        Logger.log(
-            "========== ERP INSPECTOR =========="
-        );
 
+Logger.log(
+"==================================="
+);
 
-        Logger.log(
-            "----- CORE -----"
-        );
 
+},
 
-        this.checkList(
-            this.coreModules
-        );
 
 
+section(title,list){
 
-        Logger.log(
-            "----- BUSINESS MODULES -----"
-        );
 
+Logger.log(
+"----- "
++ title
++" -----"
+);
 
-        this.checkList(
-            this.businessModules
-        );
 
 
+list.forEach(name=>{
 
-        Logger.log(
-            "----- MODULE REGISTRY -----"
-        );
 
+if(
+typeof globalThis[name]
+==="undefined"
+){
 
-        this.checkModuleRegistry();
+Logger.log(
+"❌ "
++name+
+" NOT FOUND"
+);
 
 
+}
+else{
 
-        Logger.log(
-            "==================================="
-        );
 
+Logger.log(
+"✅ "
++name+
+" OK"
+);
 
-    },
 
+}
 
 
+});
 
-    checkList(list){
 
+}
 
-        list.forEach(name=>{
-
-
-            if(
-                typeof globalThis[name]
-                ===
-                "undefined"
-            ){
-
-                Logger.log(
-                    "❌ "
-                    +
-                    name
-                    +
-                    " NOT FOUND"
-                );
-
-            }
-            else{
-
-                Logger.log(
-                    "✅ "
-                    +
-                    name
-                    +
-                    " OK"
-                );
-
-            }
-
-
-        });
-
-
-    },
-
-
-
-
-    checkModuleRegistry(){
-
-
-        if(
-            typeof ModuleRegistry
-            ===
-            "undefined"
-        ){
-
-            Logger.log(
-                "❌ ModuleRegistry NOT FOUND"
-            );
-
-            return;
-
-        }
-
-
-
-        if(
-            !ModuleRegistry.modules
-        ){
-
-            Logger.log(
-                "⚠ ModuleRegistry EMPTY"
-            );
-
-            return;
-
-        }
-
-
-
-        Object.keys(
-            ModuleRegistry.modules
-        )
-        .forEach(name=>{
-
-
-            Logger.log(
-                "📦 MODULE REGISTERED: "
-                +
-                name
-            );
-
-
-        });
-
-
-    }
 
 
 };
 
 
 
-
-globalThis.Inspector = Inspector;
-
-
-
 function inspectSystem(){
 
-    Inspector.inspect();
+Inspector.inspect();
 
 }
