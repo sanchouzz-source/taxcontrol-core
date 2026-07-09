@@ -1,30 +1,11 @@
-function testDashboardFlow(){
+function testDashboard() {
 
+    Logger.log("===== DASHBOARD TEST =====");
 
-Logger.log(
-"===== DASHBOARD TEST ====="
-);
+    installSystem();
 
+    DashboardEngine.refresh();
 
-
-installSystem();
-
-
-
-const result =
-DashboardEngine.render();
-
-
-
-Logger.log(
-JSON.stringify(result)
-);
-
-
-
-Logger.log(
-"===== DASHBOARD COMPLETE ====="
-);
-
+    Logger.log("===== DASHBOARD COMPLETE =====");
 
 }

@@ -3,6 +3,16 @@ console.log("DashboardService");
 
 const DashboardService = {
 
+    getData(){
+
+        return {
+            overview: this.getOverview(),
+            clients: ReportEngine.clientsKPI(),
+            trips: ReportEngine.tripsKPI(),
+            managers: ReportEngine.managerKPI()
+        };
+
+    },
 
     getOverview(){
 
@@ -86,5 +96,6 @@ const DashboardService = {
 };
 
 
-globalThis.DashboardService =
-DashboardService;
+
+
+globalThis.DashboardService = DashboardService;

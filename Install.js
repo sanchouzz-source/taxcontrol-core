@@ -1,17 +1,13 @@
 function installSystem() {
 
-    Logger.log(
-        "ERP INSTALL START"
-    );
+    Logger.log("ERP INSTALL START");
 
     SchemaManager.init();
-    Registry.init();
-    SystemInit.init();
-    KPIRepository;
-    KPIService;
 
-    Logger.log(
-        "ERP INSTALL COMPLETE"
-    );
+    Registry.init();
+
+    SystemInit.init();
+
+    Logger.log("ERP INSTALL COMPLETE");
 
 }

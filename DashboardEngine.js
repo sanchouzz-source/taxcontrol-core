@@ -1,381 +1,101 @@
 console.log("DashboardEngine");
 
-
 const DashboardEngine = {
 
+    initialized: false,
 
-    initialized:false,
+    init() {
 
-
-    sheetName:
-        "Dashboard",
-
-
-
-    init(){
-
-
-        if(this.initialized){
-
+        if (this.initialized) {
             return;
-
         }
 
+        this.initialized = true;
 
-        this.initialized=true;
-
-
-        Logger.log(
-            "DashboardEngine READY"
-        );
-
+        Logger.log("DashboardEngine READY");
 
     },
 
+    refresh() {
 
-
-    render(){
-
-
-        try{
-
-
-            const ss =
-                SpreadsheetApp
-                .getActiveSpreadsheet();
-
-
-
-            let sheet =
-                ss.getSheetByName(
-                    this.sheetName
-                );
-
-
-
-            if(!sheet){
-
-
-                sheet =
-                    ss.insertSheet(
-                        this.sheetName
-                    );
-
-
-            }
-
-
-
-            sheet.clear();
-
-
-
-            this.writeTitle(sheet);
-
-
+        try {
 
             const data =
-                this.getDashboardData();
+                DashboardService.getOverview();
 
+            this.render(data);
 
-
-            this.writeSummary(
-                sheet,
-                data
-            );
-
-
-
-            this.writeTrips(
-                sheet,
-                data
-            );
-
-
-
-            this.writeFinance(
-                sheet,
-                data
-            );
-
-
-
-            Logger.log(
-                "Dashboard rendered"
-            );
-
-
-
-            return data;
-
-
-
-        }
-        catch(e){
-
+        } catch (e) {
 
             Logger.log(
                 "Dashboard ERROR: "
-                +
-                e.message
+                + e.message
             );
 
+        }
 
-            return null;
+    },
 
+    render(data) {
+
+        const ss =
+            SpreadsheetApp.getActiveSpreadsheet();
+
+        let sheet =
+            ss.getSheetByName("Dashboard");
+
+        if (!sheet) {
+
+            sheet =
+                ss.insertSheet("Dashboard");
 
         }
 
+        sheet.clear();
 
-    },
+        sheet.getRange("A1")
+            .setValue("ERP DASHBOARD");
 
+        sheet.getRange("A3")
+            .setValue("Trips");
 
+        sheet.getRange("B3")
+            .setValue(data.Trips);
 
+        sheet.getRange("A4")
+            .setValue("Revenue");
 
+        sheet.getRange("B4")
+            .setValue(data.Revenue);
 
-    getDashboardData(){
+        sheet.getRange("A5")
+            .setValue("Cost");
 
+        sheet.getRange("B5")
+            .setValue(data.Cost);
 
-        let data={
+        sheet.getRange("A6")
+            .setValue("Profit");
 
-            clients:{},
-            trips:{},
-            finance:{},
-            kpi:{}
+        sheet.getRange("B6")
+            .setValue(data.Profit);
 
-        };
+        sheet.getRange("A7")
+            .setValue("Margin");
 
+        sheet.getRange("B7")
+            .setValue(data.Margin);
 
+        sheet.getRange("A8")
+            .setValue("KPI");
 
-        // ======================
-        // SERVICE LAYER
-        // ======================
+        sheet.getRange("B8")
+            .setValue(data.KPI);
 
-
-        if(
-            typeof DashboardService !== "undefined"
-        ){
-
-            data =
-                DashboardService.getData();
-
-
-        }
-
-
-
-        return data;
-
-
-    },
-
-
-
-
-
-    writeTitle(sheet){
-
-
-        sheet
-        .getRange(
-            1,
-            1
-        )
-        .setValue(
-            "TAXCONTROL ERP DASHBOARD"
-        );
-
-
-        sheet
-        .getRange(
-            1,
-            1,
-            1,
-            5
-        )
-        .setFontWeight(
-            "bold"
-        );
-
-
-    },
-
-
-
-
-
-    writeSummary(sheet,data){
-
-
-        sheet
-        .getRange(
-            3,
-            1
-        )
-        .setValue(
-            "SYSTEM SUMMARY"
-        );
-
-
-
-        const rows=[
-
-
-            [
-                "Clients",
-                data.clients.total || 0
-            ],
-
-
-            [
-                "Trips",
-                data.trips.total || 0
-            ],
-
-
-            [
-                "Revenue",
-                data.finance.revenue || 0
-            ],
-
-
-            [
-                "Profit",
-                data.finance.profit || 0
-            ]
-
-
-        ];
-
-
-
-        sheet
-        .getRange(
-            4,
-            1,
-            rows.length,
-            2
-        )
-        .setValues(rows);
-
-
-
-    },
-
-
-
-
-
-
-    writeTrips(sheet,data){
-
-
-        sheet
-        .getRange(
-            10,
-            1
-        )
-        .setValue(
-            "TRIPS KPI"
-        );
-
-
-
-        sheet
-        .getRange(
-            11,
-            1,
-            4,
-            2
-        )
-        .setValues([
-
-
-            [
-                "Total",
-                data.trips.total || 0
-            ],
-
-
-            [
-                "Revenue",
-                data.trips.revenue || 0
-            ],
-
-
-            [
-                "Cost",
-                data.trips.cost || 0
-            ],
-
-
-            [
-                "Margin",
-                data.trips.margin || 0
-            ]
-
-
-        ]);
-
-
-    },
-
-
-
-
-
-    writeFinance(sheet,data){
-
-
-        sheet
-        .getRange(
-            17,
-            1
-        )
-        .setValue(
-            "FINANCE KPI"
-        );
-
-
-
-        sheet
-        .getRange(
-            18,
-            1,
-            3,
-            2
-        )
-        .setValues([
-
-
-            [
-                "Revenue",
-                data.finance.revenue || 0
-            ],
-
-
-            [
-                "Cost",
-                data.finance.cost || 0
-            ],
-
-
-            [
-                "Profit",
-                data.finance.profit || 0
-            ]
-
-
-        ]);
-
+        Logger.log("Dashboard rendered");
 
     }
 
-
-
 };
 
-
-
-globalThis.DashboardEngine =
-    DashboardEngine;
+globalThis.DashboardEngine = DashboardEngine;
