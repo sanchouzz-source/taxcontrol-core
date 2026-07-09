@@ -1,8 +1,15 @@
+console.log("EventBus");
+
+
 const EventBus = {
 
 
     handlers:{},
 
+
+    // =====================
+    // SUBSCRIBE
+    // =====================
 
     on(event, handler){
 
@@ -14,7 +21,7 @@ const EventBus = {
         }
 
 
-        // защита от дублей
+
         if(
             this.handlers[event]
             .includes(handler)
@@ -30,11 +37,18 @@ const EventBus = {
         }
 
 
-        this.handlers[event].push(handler);
+
+        this.handlers[event]
+        .push(handler);
 
 
     },
 
+
+
+    // =====================
+    // EMIT
+    // =====================
 
     emit(event,payload){
 
@@ -45,8 +59,10 @@ const EventBus = {
         );
 
 
+
         const list =
             this.handlers[event];
+
 
 
         if(
@@ -64,10 +80,12 @@ const EventBus = {
         }
 
 
+
         Logger.log(
             "HANDLERS: "
             + list.length
         );
+
 
 
         list.forEach(fn=>{
@@ -75,16 +93,20 @@ const EventBus = {
 
             try{
 
+
                 fn(payload);
+
 
 
             }
             catch(e){
 
+
                 Logger.log(
                     "EventBus error: "
                     + e.message
                 );
+
 
             }
 
@@ -92,29 +114,70 @@ const EventBus = {
         });
 
 
+
     },
 
 
+
+    // =====================
+    // CLEAR
+    // =====================
+
     clear(){
 
+
         this.handlers={};
+
+
+    },
+
+
+
+    // =====================
+    // HEALTH
+    // =====================
+
+    health(){
+
+
+        return {
+
+
+            status:"OK",
+
+
+            module:"EventBus",
+
+
+            events:
+                Object.keys(
+                    this.handlers
+                ),
+
+
+            handlersCount:
+                Object.values(
+                    this.handlers
+                )
+                .reduce(
+                    (sum,list)=>
+                    sum + list.length,
+                    0
+                ),
+
+
+            timestamp:
+                new Date()
+
+
+        };
+
 
     }
 
 
 };
-const EventBus = {
 
-handlers:{},
 
-on(){
 
-},
-
-emit(){
-
-}
-
-};
-
-globalThis.EventBus=EventBus;
+globalThis.EventBus = EventBus;
