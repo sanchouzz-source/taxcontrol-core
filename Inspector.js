@@ -4,125 +4,67 @@ console.log("Inspector");
 const Inspector = {
 
 
-inspect(){
+    inspect(){
 
 
-Logger.log(
-"========== ERP INSPECTOR =========="
-);
+        Logger.log(
+            "========== ERP HEALTH =========="
+        );
 
 
-
-this.section(
-"CORE",
-[
-"SystemInit",
-"SchemaManager",
-"Database",
-"Registry",
-"IdService",
-"EventBus",
-"EventStore",
-"SecurityGuard",
-"AuditLog",
-"Versioning",
-"HealthService",
-"KPIEngine",
-"KPIService",
-"DashboardService"
-]
-);
+        const report =
+            HealthService.checkAll();
 
 
 
-this.section(
-"BUSINESS MODULES",
-[
-"TripRepository",
-"ClientRepository",
-
-"TripValidator",
-"ClientValidator",
-
-"FinanceEngine",
-
-"KPIEngine",
-"KPIRepository",
-"KPIService",
-
-"DashboardEngine",
-"DashboardService",
-
-"ReportEngine"
-]
-);
+        Object.keys(report)
+        .forEach(name=>{
 
 
-
-this.section(
-"MODULE SYSTEM",
-[
-"ModuleRegistry",
-"ModuleLoader"
-]
-);
+            const item =
+                report[name];
 
 
-
-Logger.log(
-"==================================="
-);
+            if(item.status==="OK"){
 
 
-},
+                Logger.log(
+                    "✅ "
+                    + name
+                    + " OK"
+                );
+
+
+            }
+            else{
+
+
+                Logger.log(
+                    "⚠️ "
+                    + name
+                    + " "
+                    + item.status
+                    + " "
+                    + item.message
+                );
+
+
+            }
+
+
+        });
 
 
 
-section(title,list){
+        Logger.log(
+            "================================"
+        );
 
 
-Logger.log(
-"----- "
-+ title
-+" -----"
-);
+        return report;
 
 
-
-list.forEach(name=>{
-
-
-if(
-typeof globalThis[name]
-==="undefined"
-){
-
-Logger.log(
-"❌ "
-+name+
-" NOT FOUND"
-);
-
-
-}
-else{
-
-
-Logger.log(
-"✅ "
-+name+
-" OK"
-);
-
-
-}
-
-
-});
-
-
-}
-
+    }
 
 
 };
@@ -131,6 +73,10 @@ Logger.log(
 
 function inspectSystem(){
 
-Inspector.inspect();
+    return Inspector.inspect();
 
 }
+
+
+globalThis.Inspector =
+Inspector;

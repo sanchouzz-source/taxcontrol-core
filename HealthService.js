@@ -12,12 +12,19 @@ const HealthService = {
 
             if (!module) {
 
+
                 return {
 
                     status:"ERROR",
-                    module:moduleName,
-                    message:"MODULE NOT FOUND",
-                    timestamp:new Date()
+
+                    module:
+                        moduleName,
+
+                    message:
+                        "MODULE NOT FOUND",
+
+                    timestamp:
+                        new Date()
 
                 };
 
@@ -25,10 +32,30 @@ const HealthService = {
 
 
 
-            if (typeof module.health === "function") {
+            if (
+                typeof module.health === "function"
+            ) {
 
 
-                return module.health();
+                const result =
+                    module.health();
+
+
+                return {
+
+                    status:
+                        result.status || "OK",
+
+                    module:
+                        moduleName,
+
+                    details:
+                        result,
+
+                    timestamp:
+                        new Date()
+
+                };
 
 
             }
@@ -39,31 +66,124 @@ const HealthService = {
 
 
                 status:"WARNING",
-                module:moduleName,
-                message:"health() not implemented",
-                timestamp:new Date()
+
+                module:
+                    moduleName,
+
+
+                message:
+                    "health() not implemented",
+
+
+                timestamp:
+                    new Date()
 
 
             };
 
 
 
-        } catch(e){
+        }
+        catch(e){
 
 
             return {
 
 
                 status:"ERROR",
-                module:moduleName,
-                message:e.message,
-                timestamp:new Date()
+
+                module:
+                    moduleName,
+
+
+                message:
+                    e.message,
+
+
+                timestamp:
+                    new Date()
 
 
             };
 
 
         }
+
+
+    },
+
+
+
+    checkAll(){
+
+
+        const modules = {
+
+
+            SystemInit:
+                SystemInit,
+
+
+            Database:
+                Database,
+
+
+            EventBus:
+                EventBus,
+
+
+            Registry:
+                Registry,
+
+
+            SchemaManager:
+                SchemaManager,
+
+
+            ModuleRegistry:
+                ModuleRegistry,
+
+
+            ModuleLoader:
+                ModuleLoader,
+
+
+            FinanceEngine:
+                FinanceEngine,
+
+
+            KPIEngine:
+                KPIEngine,
+
+
+            DashboardEngine:
+                DashboardEngine
+
+
+        };
+
+
+
+        const result = {};
+
+
+
+        Object.keys(modules)
+        .forEach(name=>{
+
+
+            result[name] =
+                this.check(
+                    name,
+                    modules[name]
+                );
+
+
+        });
+
+
+
+        return result;
 
 
     }
@@ -73,4 +193,5 @@ const HealthService = {
 
 
 
-globalThis.HealthService = HealthService;
+globalThis.HealthService =
+HealthService;

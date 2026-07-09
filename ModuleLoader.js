@@ -69,9 +69,19 @@ const ModuleLoader = {
         });
 
 
-    }
+    },
 
+health(){
 
+    return {
+
+        status:"OK",
+
+        module:"ModuleLoader"
+
+    };
+
+}
 };
 
 

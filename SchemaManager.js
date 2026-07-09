@@ -182,6 +182,17 @@ KPIMetrics: [
                 }
             });
         });
-    }
+    },
+    health(){
+
+    return {
+
+        status:"OK",
+
+        module:"SchemaManager"
+
+    };
+
+}
 };
 globalThis.SchemaManager = SchemaManager;
