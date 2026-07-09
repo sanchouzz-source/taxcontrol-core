@@ -201,15 +201,14 @@ const row = headers.map(h => {
         // =========================
     // FIND BY ID
     // =========================
-    find(sheetName, id) {
+        find(sheetName, id) {
 
         SchemaManager.init();
 
         const sheet = this.getSheetOrThrow(sheetName);
 
-        const values = sheet
-            .getDataRange()
-            .getValues();
+        const values =
+            sheet.getDataRange().getValues();
 
         const headers = values[0];
 
@@ -233,13 +232,17 @@ const row = headers.map(h => {
 
         for (let i = 1; i < values.length; i++) {
 
+
             if (values[i][idIndex] === id) {
+
 
                 const row = {};
 
-                headers.forEach((h, index) => {
 
-                    row[h] = values[i][index];
+                headers.forEach((h,index)=>{
+
+                    row[h] =
+                        values[i][index];
 
                 });
 
@@ -252,62 +255,81 @@ const row = headers.map(h => {
 
 
         return null;
+
     },
+
+
+    // =========================
+    // HEALTH CHECK
+    // =========================
+
+    health(){
+
+
+        try{
+
+
+            const ss =
+                SpreadsheetApp
+                .getActiveSpreadsheet();
+
+
+
+            return {
+
+
+                status:
+                    ss
+                    ?
+                    "OK"
+                    :
+                    "ERROR",
+
+
+                module:
+                    "Database",
+
+
+                spreadsheet:
+                    ss.getName(),
+
+
+                timestamp:
+                    new Date()
+
+
+            };
+
+
+        }
+        catch(e){
+
+
+            return {
+
+
+                status:"ERROR",
+
+                module:"Database",
+
+                message:
+                    e.message,
+
+
+                timestamp:
+                    new Date()
+
+
+            };
+
+
+        }
+
+
+    }
+
+
 };
-health(){
 
 
-    try{
-
-
-        const ss =
-            SpreadsheetApp.getActiveSpreadsheet();
-
-
-        return {
-
-
-            status:
-                ss
-                ?
-                "OK"
-                :
-                "ERROR",
-
-
-            module:
-                "Database",
-
-
-            spreadsheet:
-                ss.getName(),
-
-
-            timestamp:
-                new Date()
-
-
-        };
-
-
-    }
-    catch(e){
-
-
-        return {
-
-
-            status:"ERROR",
-            module:"Database",
-            message:e.message,
-            timestamp:new Date()
-
-
-        };
-
-
-    }
-
-
-}
 globalThis.Database = Database;
