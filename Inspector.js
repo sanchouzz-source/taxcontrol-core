@@ -1,52 +1,211 @@
+console.log("Inspector");
+
+
 const Inspector = {
 
-    inspect() {
 
-const modules = [
+    coreModules: [
 
-    "SchemaManager",
-    "Database",
-    "IdService",
-    "EventBus",
-    "EventStore",
+        // SYSTEM
+        "SystemInit",
+        "SchemaManager",
+        "Database",
+        "Registry",
+        "IdService",
 
-    "AuditLog",
-    "Versioning",
+        // EVENT SYSTEM
+        "EventBus",
+        "EventStore",
 
-    "DashboardEngine",
-    "ReportEngine",
+        // SECURITY
+        "SecurityGuard",
+        "AuditLog",
+        "Versioning"
 
-    "ClientRepository",
-    "TripRepository",
-    "TripValidator",
-    "ClientValidator",
+    ],
 
-    "SystemInit",
-    "KPIRepository",
-    "KPIService"
 
-];
 
-        Logger.log("========== ERP INSPECTOR ==========");
+    businessModules: [
 
-        modules.forEach(name => {
+        // DOMAIN
+        "TripRepository",
+        "ClientRepository",
 
-            if (typeof globalThis[name] === "undefined") {
+        "TripValidator",
+        "ClientValidator",
 
-                Logger.log("❌ " + name + " NOT FOUND");
+        // FINANCE
+        "FinanceEngine",
 
-            } else {
+        // KPI
+        "KPIEngine",
+        "KPIRepository",
+        "KPIService",
 
-                Logger.log("✅ " + name + " OK");
+        // DASHBOARD
+        "DashboardEngine",
+        "DashboardService",
+        "ReportEngine"
+
+    ],
+
+
+
+    inspect(){
+
+
+        Logger.log(
+            "========== ERP INSPECTOR =========="
+        );
+
+
+        Logger.log(
+            "----- CORE -----"
+        );
+
+
+        this.checkList(
+            this.coreModules
+        );
+
+
+
+        Logger.log(
+            "----- BUSINESS MODULES -----"
+        );
+
+
+        this.checkList(
+            this.businessModules
+        );
+
+
+
+        Logger.log(
+            "----- MODULE REGISTRY -----"
+        );
+
+
+        this.checkModuleRegistry();
+
+
+
+        Logger.log(
+            "==================================="
+        );
+
+
+    },
+
+
+
+
+    checkList(list){
+
+
+        list.forEach(name=>{
+
+
+            if(
+                typeof globalThis[name]
+                ===
+                "undefined"
+            ){
+
+                Logger.log(
+                    "❌ "
+                    +
+                    name
+                    +
+                    " NOT FOUND"
+                );
+
+            }
+            else{
+
+                Logger.log(
+                    "✅ "
+                    +
+                    name
+                    +
+                    " OK"
+                );
 
             }
 
+
         });
 
-        Logger.log("===================================");
+
+    },
+
+
+
+
+    checkModuleRegistry(){
+
+
+        if(
+            typeof ModuleRegistry
+            ===
+            "undefined"
+        ){
+
+            Logger.log(
+                "❌ ModuleRegistry NOT FOUND"
+            );
+
+            return;
+
+        }
+
+
+
+        if(
+            !ModuleRegistry.modules
+        ){
+
+            Logger.log(
+                "⚠ ModuleRegistry EMPTY"
+            );
+
+            return;
+
+        }
+
+
+
+        Object.keys(
+            ModuleRegistry.modules
+        )
+        .forEach(name=>{
+
+
+            Logger.log(
+                "📦 MODULE REGISTERED: "
+                +
+                name
+            );
+
+
+        });
+
+
     }
 
+
 };
-function inspectSystem() {
+
+
+
+
+globalThis.Inspector = Inspector;
+
+
+
+function inspectSystem(){
+
     Inspector.inspect();
+
 }
