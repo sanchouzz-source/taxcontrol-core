@@ -40,13 +40,17 @@ const Inspector = {
 
 
                 Logger.log(
-                    "⚠️ "
-                    + name
-                    + " "
-                    + item.status
-                    + " "
-                    + item.message
-                );
+    "⚠️ "
+    + name
+    + " "
+    + item.status
+    + " "
+    + (
+        item.message
+        ||
+        JSON.stringify(item)
+    )
+);
 
 
             }
