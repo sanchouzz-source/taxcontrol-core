@@ -1,0 +1,4496 @@
+ROJECT:
+TaxControl ERP v0.1
+
+STATUS:
+Pre-Alpha / Architecture Prototype
+
+CURRENT STATE:
+✅ SystemInit
+✅ Database
+✅ Registry
+✅ IdService
+✅ EventBus
+✅ EventStore
+✅ ModuleRegistry
+✅ ModuleLoader
+✅ HealthService
+✅ Inspector
+✅ FinanceEngine
+✅ KPIEngine
+✅ DashboardEngine
+
+LAST SUCCESS TEST:
+FULL SYSTEM HEALTH TEST
+
+
+
+
+PROJECT EXPORT REPORT
+===========================================
+Path: e:\google\git\texcontrol\taxcontrol-core
+Date: 10.07.2026, 11:30:20
+===========================================
+
+######### File: .clasp.json #########
+{
+  "scriptId": "1WrUgzF9DAsg8_0PHkHqXK5ec7_ej4qeRDk9g6WXRLlcESDrUHrLNiGzC",
+  "rootDir": ".",
+  "scriptExtensions": [".js", ".gs"],
+  "htmlExtensions": [".html"],
+  "jsonExtensions": [".json"]
+}
+
+######### File: appsscript.json #########
+{
+  "timeZone": "Europe/Moscow",
+  "dependencies": {
+  },
+  "exceptionLogging": "STACKDRIVER",
+  "runtimeVersion": "V8"
+}
+
+######### File: ARCHITECTURE.md #########
+
+
+######### File: AuditLog.js #########
+const AuditLog = {
+
+    write(action, entity, before, after) {
+
+        const props = PropertiesService.getScriptProperties();
+
+        const user = {
+            userId: props.getProperty("CURRENT_USER") || "SYSTEM",
+            role: props.getProperty("CURRENT_ROLE") || "SYSTEM"
+        };
+
+        const org = props.getProperty("CURRENT_ORG") || "UNKNOWN";
+
+        const log = {
+            id: Utilities.getUuid(),
+            timestamp: new Date(),
+            organizationId: org,
+            userId: user.userId,
+            role: user.role,
+            action: action,
+            entity: entity,
+            before: before || null,
+            after: after || null
+        };
+
+        const sheet = SpreadsheetApp.getActive()
+            .getSheetByName("AuditLog") 
+            || SpreadsheetApp.getActive().insertSheet("AuditLog");
+
+        sheet.appendRow([
+            log.id,
+            log.timestamp,
+            log.organizationId,
+            log.userId,
+            log.role,
+            log.action,
+            log.entity,
+            JSON.stringify(log.before),
+            JSON.stringify(log.after)
+        ]);
+
+        return log;
+    }
+};
+globalThis.AuditLog = AuditLog;
+
+######### File: Auth.js #########
+const Auth = {
+
+    roles: {
+        ADMIN: "ADMIN",
+        MANAGER: "MANAGER",
+        ACCOUNTANT: "ACCOUNTANT"
+    },
+
+    permissions: {
+
+        ADMIN: ["*"],
+
+        MANAGER: [
+            "CLIENT_CREATE",
+            "CLIENT_READ",
+            "TRIP_CREATE",
+            "TRIP_READ"
+        ],
+
+        ACCOUNTANT: [
+            "TRIP_READ",
+            "FINANCE_READ"
+        ]
+    },
+
+    getCurrentUser() {
+
+        const props = PropertiesService.getScriptProperties();
+
+        return {
+            userId: props.getProperty("CURRENT_USER") || "SYSTEM",
+            role: props.getProperty("CURRENT_ROLE") || "ADMIN"
+        };
+    }
+};
+Auth.hasPermission = function(action) {
+
+    const user = this.getCurrentUser();
+    const rolePermissions = this.permissions[user.role];
+
+    if (!rolePermissions) {
+        return false;
+    }
+
+    return rolePermissions.includes("*") ||
+           rolePermissions.includes(action);
+};
+
+######### File: AutomationEngine.js #########
+//ядро автоматизации
+const AutomationEngine = {
+
+    init() {
+
+        // 🧩 CLIENT CREATED
+        EventBus.on("CLIENT_CREATED", (client) => {
+
+            this.handleNewClient(client);
+        });
+
+        // 🧩 TRIP CREATED
+        EventBus.on("TRIP_CREATED", (trip) => {
+
+            this.handleNewTrip(trip);
+        });
+
+        // 🧩 TRIP COMPLETED
+        EventBus.on("TRIP_COMPLETED", (trip) => {
+
+            this.handleTripCompleted(trip);
+        });
+    }
+};
+//логика клиентов
+AutomationEngine.handleNewClient = function(client) {
+
+    Logger.log("📊 CRM update for client: " + client.Name);
+
+    // сюда позже добавим:
+    // - CRM scoring
+    // - уведомления менеджеру
+    // - аналитика
+};
+//логика рейсов
+AutomationEngine.handleNewTrip = function(trip) {
+
+    Logger.log("🚚 New trip registered: " + trip.TripID);
+
+    // бизнес-логика:
+    // - резерв машины
+    // - проверка водителя
+    // - расчёт предварительной маржи
+};
+//завершение рейса
+AutomationEngine.handleTripCompleted = function(trip) {
+
+    Logger.log("💰 Trip completed: " + trip.TripID);
+
+    // 🔥 здесь начинается деньги
+
+    const revenue = Number(trip.Revenue || 0);
+    const cost = Number(trip.ActualCost || 0);
+
+    const profit = revenue - cost;
+
+    Logger.log("Profit: " + profit);
+
+    // сюда позже добавим:
+    // - финансы
+    // - KPI
+    // - бонусы менеджерам
+};
+
+######### File: AutoRepairEngine.js #########
+function myFunction() {
+  
+}
+
+
+######### File: Bootstrap.js #########
+function initSystem() {
+
+    SystemInit.init();
+
+}
+
+######### File: CHANGELOG.md #########
+# Changelog
+
+Все заметные изменения в этом проекте документируются в этом файле.
+
+Формат основан на [Keep a Changelog](https://keepachangelog.com/ru/1.0.0/),
+и проект придерживается [семантического версионирования](https://semver.org/lang/ru/).
+
+## [Unreleased]
+
+### Добавлено
+- Возможность экспорта данных в CSV.
+- Автоматическое определение кодировки файла.
+
+### Изменено
+- Улучшена производительность парсинга больших файлов.
+- Обновлена зависимость `express` до версии 4.18.2.
+
+### Устарело
+- Метод `getLegacyData()` будет удалён в следующей мажорной версии. Используйте `getData()`.
+
+### Удалено
+- Поддержка Node.js версий младше 14.
+
+### Исправлено
+- Ошибка валидации email-адресов с кириллическими доменами.
+- Утечка памяти при частых вызовах `parse()`.
+
+### Безопасность
+- Устранена уязвимость прототипного загрязнения (Prototype Pollution) в `merge()`.
+
+## [1.0.1] - 2025-01-15
+
+### Исправлено
+- Некорректное чтение файлов в кодировке Windows-1251.
+
+## [1.0.0] - 2025-01-01
+
+### Добавлено
+- Первый публичный релиз.
+- Основные функции: парсинг, валидация, экспорт.
+
+[Unreleased]: https://github.com/owner/repo/compare/v1.0.1...HEAD
+[1.0.1]: https://github.com/owner/repo/compare/v1.0.0...v1.0.1
+[1.0.0]: https://github.com/owner/repo/releases/tag/v1.0.0
+
+######### File: checkDuplicateClients.js #########
+function checkDuplicateClients(){
+
+    const clients =
+        Database.query("Clients",{});
+
+
+    const map = {};
+
+
+    clients.forEach(c=>{
+
+        if(map[c.ClientID]){
+            Logger.log(
+              "DUPLICATE: " + c.ClientID
+            );
+        }
+
+        map[c.ClientID]=true;
+
+    });
+
+}
+
+######### File: ClientValidator.js #########
+const ClientValidator = {
+
+    validate(data) {
+
+        if (!data) {
+            throw new Error("ClientValidator: empty data");
+        }
+
+        if (!data.Name || data.Name.trim() === "") {
+            throw new Error("Name is required");
+        }
+
+        if (!data.INN) {
+            throw new Error("INN is required");
+        }
+
+        // 🧠 FIX: always enforce ClientID
+        if (!data.ClientID || data.ClientID === "") {
+            data.ClientID = IdService.generate("CLI");
+        }
+
+        if (!data.OrganizationID) {
+            data.OrganizationID =
+                PropertiesService.getScriptProperties().getProperty("CURRENT_ORG");
+        }
+
+        return data;
+    }
+};
+globalThis.ClientValidator = ClientValidator;
+
+######### File: CODE_OF_CONDUCT.md #########
+# Contributor Code of Conduct
+
+As contributors and maintainers of this project, and in the interest of fostering an open
+and welcoming community, we pledge to respect all people who contribute through reporting
+issues, posting feature requests, updating documentation, submitting pull requests or
+patches, and other activities.
+
+We are committed to making participation in this project a harassment-free experience for
+everyone, regardless of level of experience, gender, gender identity and expression,
+sexual orientation, disability, personal appearance, body size, race, ethnicity, age,
+religion, or nationality.
+
+Examples of unacceptable behavior by participants include:
+
+* The use of sexualized language or imagery
+* Personal attacks
+* Trolling or insulting/derogatory comments
+* Public or private harassment
+* Publishing other's private information, such as physical or electronic addresses,
+  without explicit permission
+* Other unethical or unprofessional conduct
+
+Project maintainers have the right and responsibility to remove, edit, or reject comments,
+commits, code, wiki edits, issues, and other contributions that are not aligned to this
+Code of Conduct, or to ban temporarily or permanently any contributor for other behaviors
+that they deem inappropriate, threatening, offensive, or harmful.
+
+By adopting this Code of Conduct, project maintainers commit themselves to fairly and
+consistently applying these principles to every aspect of managing this project. Project
+maintainers who do not follow or enforce the Code of Conduct may be permanently removed
+from the project team.
+
+This Code of Conduct applies both within project spaces and in public spaces when an
+individual is representing the project or its community.
+
+Instances of abusive, harassing, or otherwise unacceptable behavior may be reported by
+contacting a project maintainer at code-of-conduct@spring.io . All complaints will
+be reviewed and investigated and will result in a response that is deemed necessary and
+appropriate to the circumstances. Maintainers are obligated to maintain confidentiality
+with regard to the reporter of an incident.
+
+This Code of Conduct is adapted from the
+[Contributor Covenant](https://contributor-covenant.org), version 1.3.0, available at
+[contributor-covenant.org/version/1/3/0/](https://contributor-covenant.org/version/1/3/0/)
+
+######### File: CODE_STYLE.md #########
+
+
+######### File: Contributing.md #########
+# Вклад в проект
+
+Спасибо, что решили помочь! 🎉  
+Здесь описаны правила и рекомендации, чтобы совместная работа была комфортной и продуктивной.
+
+## Как сообщить об ошибке
+
+- Проверьте [список открытых issues](https://github.com/owner/repo/issues) — возможно, проблема уже описана.
+- Если нет, создайте новый issue, используя шаблон **Bug report**.
+- Опишите:
+  - версию Node.js (`node -v`) и npm;
+  - операционную систему;
+  - минимальные шаги для воспроизведения;
+  - ожидаемое и фактическое поведение.
+
+## Предложение новой функции
+
+- Откройте issue с шаблоном **Feature request**.
+- Опишите, какую проблему решает ваша идея, и предложите возможное решение.
+- Будьте готовы обсудить альтернативы и доработать предложение.
+
+## Настройка окружения для разработки
+
+```bash
+# Клонируйте репозиторий
+git clone https://github.com/owner/repo.git
+cd repo
+
+# Установите зависимости
+npm ci
+
+# Запустите тесты, чтобы убедиться, что всё работает
+npm test
+
+
+######### File: DashboardEngine.js #########
+console.log("DashboardEngine");
+
+const DashboardEngine = {
+
+    initialized: false,
+health(){
+
+
+    return {
+
+
+        status:
+            this.initialized
+            ?
+            "OK"
+            :
+            "WARNING",
+
+
+        module:
+            "DashboardEngine",
+
+
+        version:
+            "0.1",
+
+
+        initialized:
+            this.initialized,
+
+
+        timestamp:
+            new Date()
+
+
+    };
+
+
+},
+    init() {
+
+        if (this.initialized) {
+            return;
+        }
+
+        this.initialized = true;
+
+        Logger.log("DashboardEngine READY");
+
+    },
+
+    refresh() {
+
+        try {
+
+            const data =
+                DashboardService.getOverview();
+
+            this.render(data);
+
+        } catch (e) {
+
+            Logger.log(
+                "Dashboard ERROR: "
+                + e.message
+            );
+
+        }
+
+    },
+
+    render(data) {
+
+        const ss =
+            SpreadsheetApp.getActiveSpreadsheet();
+
+        let sheet =
+            ss.getSheetByName("Dashboard");
+
+        if (!sheet) {
+
+            sheet =
+                ss.insertSheet("Dashboard");
+
+        }
+
+        sheet.clear();
+
+        sheet.getRange("A1")
+            .setValue("ERP DASHBOARD");
+
+        sheet.getRange("A3")
+            .setValue("Trips");
+
+        sheet.getRange("B3")
+            .setValue(data.Trips);
+
+        sheet.getRange("A4")
+            .setValue("Revenue");
+
+        sheet.getRange("B4")
+            .setValue(data.Revenue);
+
+        sheet.getRange("A5")
+            .setValue("Cost");
+
+        sheet.getRange("B5")
+            .setValue(data.Cost);
+
+        sheet.getRange("A6")
+            .setValue("Profit");
+
+        sheet.getRange("B6")
+            .setValue(data.Profit);
+
+        sheet.getRange("A7")
+            .setValue("Margin");
+
+        sheet.getRange("B7")
+            .setValue(data.Margin);
+
+        sheet.getRange("A8")
+            .setValue("KPI");
+
+        sheet.getRange("B8")
+            .setValue(data.KPI);
+
+        Logger.log("Dashboard rendered");
+
+    }
+
+};
+
+globalThis.DashboardEngine = DashboardEngine;
+
+######### File: DashboardService.js #########
+console.log("DashboardService");
+
+
+const DashboardService = {
+
+    getData(){
+
+        return {
+            overview: this.getOverview(),
+            clients: ReportEngine.clientsKPI(),
+            trips: ReportEngine.tripsKPI(),
+            managers: ReportEngine.managerKPI()
+        };
+
+    },
+
+    getOverview(){
+
+
+        const trips =
+            TripRepository.list();
+
+
+        const kpis =
+            KPIRepository.list();
+
+
+
+        let revenue = 0;
+        let cost = 0;
+        let profit = 0;
+
+
+
+        trips.forEach(trip=>{
+
+
+            revenue +=
+                Number(trip.Revenue || 0);
+
+
+            cost +=
+                Number(trip.ActualCost || 0);
+
+
+        });
+
+
+
+        profit =
+            revenue - cost;
+
+
+
+        const margin =
+            revenue === 0
+            ?
+            0
+            :
+            profit / revenue;
+
+
+
+        return {
+
+
+            Trips:
+                trips.length,
+
+
+            Revenue:
+                revenue,
+
+
+            Cost:
+                cost,
+
+
+            Profit:
+                profit,
+
+
+            Margin:
+                margin,
+
+
+            KPI:
+                kpis.length
+
+
+        };
+
+
+    }
+
+};
+
+
+
+
+globalThis.DashboardService = DashboardService;
+
+######### File: Database.js #########
+console.log("Database");
+const Database = {
+
+
+    sheet(name) {
+
+        return SpreadsheetApp
+            .getActiveSpreadsheet()
+            .getSheetByName(name);
+
+    },
+
+
+    getSheetOrThrow(name) {
+
+        const sheet = this.sheet(name);
+
+
+        if (!sheet) {
+
+            throw new Error(
+                "Sheet not found: " + name
+            );
+
+        }
+
+
+        return sheet;
+
+    },
+
+    // =========================
+    // INSERT
+    // =========================
+    insert(sheetName, data) {
+
+    SchemaManager.init();
+
+    const sheet = this.getSheetOrThrow(sheetName);
+
+    const headers = sheet.getDataRange().getValues()[0];
+
+
+    const idField = SchemaRegistry.getIdField(sheetName);
+
+    const idIndex = headers.indexOf(idField);
+
+
+    if (idIndex !== -1 && data[idField]) {
+
+        const existing =
+            sheet.getDataRange().getValues();
+
+
+        for (let i = 1; i < existing.length; i++) {
+
+            if (String(existing[i][idIndex]).trim()
+===
+String(data[idField]).trim()) {
+
+                throw new Error(
+                    "Duplicate ID detected: "
+                    + data[idField]
+                );
+
+            }
+
+        }
+
+    }
+
+
+    const row = headers.map(h => {
+
+        if (h === "CreatedAt") return new Date();
+
+        if (h === "UpdatedAt") return new Date();
+
+        if (h === "Deleted") return false;
+
+        return data[h] ?? "";
+
+    });
+
+
+    const nextRow = sheet.getLastRow() + 1;
+
+sheet
+    .getRange(
+        nextRow,
+        1,
+        1,
+        row.length
+    )
+    .setValues([row]);
+
+    return data;
+},
+
+    // =========================
+    // UPDATE
+    // =========================
+    update(sheetName, id, data) {
+
+        SchemaManager.init();
+        const sheet = this.getSheetOrThrow(sheetName);    
+        //const sheet = this.sheet(sheetName);
+        const values = sheet.getDataRange().getValues();
+        const headers = values[0];
+
+        const idField = SchemaRegistry.getIdField(sheetName);
+        const idIndex = headers.indexOf(idField);
+
+        if (idIndex === -1) {
+            throw new Error("ID field not found: " + idField);
+        }
+
+        for (let i = 1; i < values.length; i++) {
+
+            if (values[i][idIndex] === id) {
+
+                data.UpdatedAt = new Date();
+//
+const row = headers.map(h => {
+
+    if (h === "UpdatedAt") {
+        return new Date();
+    }
+
+
+    if (h === "Deleted") {
+        return false;
+    }
+
+
+    return data[h] !== undefined
+        ? data[h]
+        : values[i][headers.indexOf(h)];
+
+});
+//
+                sheet
+    .getRange(
+        i + 1,
+        1,
+        1,
+        row.length
+    )
+    .setNumberFormat("@")
+    .setValues([row]);
+
+                return data;
+            }
+        }
+
+        throw new Error("Record not found: " + id);
+    },
+
+    // =========================
+    // QUERY
+    // =========================
+    query(sheetName, filters = {}) {
+
+        SchemaManager.init();
+        const sheet = this.getSheetOrThrow(sheetName);
+        //const sheet = this.sheet(sheetName);
+        const values = sheet.getDataRange().getValues();
+        const headers = values[0];
+
+        const org =
+            PropertiesService.getScriptProperties().getProperty("CURRENT_ORG");
+
+        const results = [];
+
+        for (let i = 1; i < values.length; i++) {
+
+            const row = {};
+
+            headers.forEach((h, idx) => {
+                row[h] = values[i][idx];
+            });
+
+            if (row.OrganizationID && row.OrganizationID !== org) {
+                continue;
+            }
+
+            let ok = true;
+
+            for (const k in filters) {
+                if (row[k] != filters[k]) {
+                    ok = false;
+                    break;
+                }
+            }
+
+            if (ok) results.push(row);
+        }
+
+        return results;
+    },
+        // =========================
+    // FIND BY ID
+    // =========================
+        find(sheetName, id) {
+
+        SchemaManager.init();
+
+        const sheet = this.getSheetOrThrow(sheetName);
+
+        const values =
+            sheet.getDataRange().getValues();
+
+        const headers = values[0];
+
+
+        const idField =
+            SchemaRegistry.getIdField(sheetName);
+
+
+        const idIndex =
+            headers.indexOf(idField);
+
+
+        if (idIndex === -1) {
+
+            throw new Error(
+                "ID field not found: " + idField
+            );
+
+        }
+
+
+        for (let i = 1; i < values.length; i++) {
+
+
+            if (values[i][idIndex] === id) {
+
+
+                const row = {};
+
+
+                headers.forEach((h,index)=>{
+
+                    row[h] =
+                        values[i][index];
+
+                });
+
+
+                return row;
+
+            }
+
+        }
+
+
+        return null;
+
+    },
+
+
+    // =========================
+    // HEALTH CHECK
+    // =========================
+
+    health(){
+
+
+        try{
+
+
+            const ss =
+                SpreadsheetApp
+                .getActiveSpreadsheet();
+
+
+
+            return {
+
+
+                status:
+                    ss
+                    ?
+                    "OK"
+                    :
+                    "ERROR",
+
+
+                module:
+                    "Database",
+
+
+                spreadsheet:
+                    ss.getName(),
+
+
+                timestamp:
+                    new Date()
+
+
+            };
+
+
+        }
+        catch(e){
+
+
+            return {
+
+
+                status:"ERROR",
+
+                module:"Database",
+
+                message:
+                    e.message,
+
+
+                timestamp:
+                    new Date()
+
+
+            };
+
+
+        }
+
+
+    }
+
+
+};
+
+
+globalThis.Database = Database;
+
+######### File: docs\Architecture.md #########
+
+
+
+######### File: docs\README.md #########
+
+
+
+######### File: DuplicateDetector.js #########
+const DuplicateDetector = {
+
+    run() {
+
+        Logger.log("===== DUPLICATE DETECTOR START =====");
+
+        const issues = [];
+
+        const targets = [
+            "EventBus",
+            "Database",
+            "IdService",
+            "SchemaManager",
+            "EventStore"
+        ];
+
+        targets.forEach(name => {
+
+            const count = this.countDeclarations(name);
+
+            if (count > 1) {
+                issues.push(name + " is DECLARED " + count + " times");
+            }
+        });
+
+        const missing = SystemRegistry.checkGlobals();
+        issues.push(...missing);
+
+        if (issues.length === 0) {
+            Logger.log("OK - NO ISSUES FOUND");
+        } else {
+            issues.forEach(i => Logger.log("ISSUE: " + i));
+        }
+
+        Logger.log("===== DETECTOR END =====");
+
+        return issues;
+    },
+
+    // ⚠️ ограниченный, но рабочий способ
+    countDeclarations(name) {
+
+        const scripts = Object.keys(globalThis);
+
+        let count = 0;
+
+        scripts.forEach(key => {
+            if (key === name) count++;
+        });
+
+        return count;
+    }
+};
+
+######### File: EventBus.js #########
+console.log("EventBus");
+
+
+const EventBus = {
+
+
+    handlers:{},
+
+
+    // =====================
+    // SUBSCRIBE
+    // =====================
+
+    on(event, handler){
+
+
+        if(!this.handlers[event]){
+
+            this.handlers[event]=[];
+
+        }
+
+
+
+        if(
+            this.handlers[event]
+            .includes(handler)
+        ){
+
+            Logger.log(
+                "Duplicate handler ignored: "
+                + event
+            );
+
+            return;
+
+        }
+
+
+
+        this.handlers[event]
+        .push(handler);
+
+
+    },
+
+
+
+    // =====================
+    // EMIT
+    // =====================
+
+    emit(event,payload){
+
+
+        Logger.log(
+            "EVENT: "
+            + event
+        );
+
+
+
+        const list =
+            this.handlers[event];
+
+
+
+        if(
+            !list ||
+            list.length===0
+        ){
+
+            Logger.log(
+                "No handlers for: "
+                + event
+            );
+
+            return;
+
+        }
+
+
+
+        Logger.log(
+            "HANDLERS: "
+            + list.length
+        );
+
+
+
+        list.forEach(fn=>{
+
+
+            try{
+
+
+                fn(payload);
+
+
+
+            }
+            catch(e){
+
+
+                Logger.log(
+                    "EventBus error: "
+                    + e.message
+                );
+
+
+            }
+
+
+        });
+
+
+
+    },
+
+
+
+    // =====================
+    // CLEAR
+    // =====================
+
+    clear(){
+
+
+        this.handlers={};
+
+
+    },
+
+
+
+    // =====================
+    // HEALTH
+    // =====================
+
+    health(){
+
+
+        return {
+
+
+            status:"OK",
+
+
+            module:"EventBus",
+
+
+            events:
+                Object.keys(
+                    this.handlers
+                ),
+
+
+            handlersCount:
+                Object.values(
+                    this.handlers
+                )
+                .reduce(
+                    (sum,list)=>
+                    sum + list.length,
+                    0
+                ),
+
+
+            timestamp:
+                new Date()
+
+
+        };
+
+
+    }
+
+
+};
+
+
+
+globalThis.EventBus = EventBus;
+
+######### File: EventStore.js #########
+const EventStore = {
+
+    log(eventType, payload) {
+
+        const sheet = SpreadsheetApp
+            .getActiveSpreadsheet()
+            .getSheetByName("EventLog");
+
+        const event = {
+            EventID: IdService.generate("EVT"),
+            EventType: eventType,
+            Payload: JSON.stringify(payload || {}),
+            CreatedAt: new Date(),
+            OrganizationID:
+                PropertiesService.getScriptProperties().getProperty("CURRENT_ORG")
+        };
+
+        const row = [
+            event.EventID,
+            event.EventType,
+            event.Payload,
+            event.CreatedAt,
+            event.OrganizationID
+        ];
+
+        sheet.appendRow(row);
+
+        return event;
+    }
+};
+
+const EventReplay = {
+
+    replay() {
+
+        const sheet = SpreadsheetApp
+            .getActiveSpreadsheet()
+            .getSheetByName("EventLog");
+
+        const values = sheet.getDataRange().getValues();
+        const headers = values[0];
+
+        for (let i = 1; i < values.length; i++) {
+
+            const row = {};
+
+            headers.forEach((h, idx) => {
+                row[h] = values[i][idx];
+            });
+
+            const payload = JSON.parse(row.Payload || "{}");
+
+            const handlers = EventBus.handlers[row.EventType];
+
+            if (!handlers) continue;
+
+            handlers.forEach(fn => {
+                try {
+                    fn(payload);
+                } catch (e) {
+                    Logger.log("Replay error: " + e.message);
+                }
+            });
+        }
+    }
+};
+globalThis.EventStore = EventStore;
+
+######### File: EventSubscriptions.js #########
+function initEventSubscriptions() {
+
+    // 📊 любой клиент → обновляем dashboard
+    EventBus.on("CLIENT_CREATED", function () {
+        DashboardEngine.render(true);
+    });
+
+    EventBus.on("CLIENT_UPDATED", function () {
+        DashboardEngine.render(true);
+    });
+
+    // 🚚 любые поездки → обновляем KPI
+    EventBus.on("TRIP_CREATED", function () {
+        DashboardEngine.render(true);
+    });
+
+    EventBus.on("TRIP_UPDATED", function () {
+        DashboardEngine.render(true);
+    });
+}
+
+######### File: FinanceEngine.js #########
+console.log("FinanceEngine");
+const FinanceEngine = {
+
+    initialized:false,
+    health(){
+
+        return {
+
+            status:
+                this.initialized
+                ?
+                "OK"
+                :
+                "WARNING",
+
+            initialized:
+                this.initialized,
+
+            module:
+                "FinanceEngine"
+
+        };
+
+    },
+
+    init() {
+
+        if(this.initialized){
+            return;
+        }
+
+
+        EventBus.on(
+            "TRIP_COMPLETED",
+            (trip)=>{
+
+                this.calculateTripProfit(trip);
+
+            }
+        );
+
+
+        EventBus.on(
+            "CLIENT_CREATED",
+            (client)=>{
+
+                this.initClientFinance(client);
+
+            }
+        );
+
+
+        this.initialized=true;
+
+
+        Logger.log(
+            "FinanceEngine READY"
+        );
+
+    },
+
+
+    calculateTripProfit(trip) {
+
+
+        const revenue =
+            Number(trip.Revenue || 0);
+
+
+        const cost =
+            Number(trip.ActualCost || 0);
+
+
+        const profit =
+            revenue - cost;
+
+
+
+        Logger.log(
+            "💰 Trip Profit: "
+            + profit
+        );
+
+
+
+        const transaction = {
+
+
+            TransactionID:
+                IdService.generate("FIN"),
+
+
+            OrganizationID:
+                OrganizationContext.get(),
+
+
+            Type:
+                "TRIP_PROFIT",
+
+
+            Entity:
+                "TRIP",
+
+
+            EntityID:
+                trip.TripID,
+
+
+            Revenue:
+                revenue,
+
+
+            Cost:
+                cost,
+
+
+            Profit:
+                profit
+
+        };
+
+
+
+        try {
+
+    Database.insert(
+        "FinancialTransactions",
+        transaction
+    );
+
+
+
+}
+catch(e){
+
+    Logger.log(
+        "FINANCE ERROR: "
+        + e.message
+    );
+
+};
+
+
+
+EventBus.emit(
+    "TRIP_PROFIT_CALCULATED",
+    {
+        trip: trip,
+        transaction: transaction,
+        profit: profit
+    }
+);
+
+
+
+        Logger.log(
+            "Finance transaction created: "
+            + transaction.TransactionID
+        );
+
+
+        return transaction;
+
+    },
+
+
+    initClientFinance(client){
+
+
+        Logger.log(
+            "📊 Finance profile created: "
+            + client.Name
+        );
+
+
+    }
+
+};
+
+
+globalThis.FinanceEngine = FinanceEngine;
+
+######### File: HealthService.js #########
+console.log("HealthService");
+
+
+const HealthService = {
+
+
+    check(moduleName, module) {
+
+
+        try {
+
+
+            if (!module) {
+
+
+                return {
+
+                    status:"ERROR",
+
+                    module:
+                        moduleName,
+
+                    message:
+                        "MODULE NOT FOUND",
+
+                    timestamp:
+                        new Date()
+
+                };
+
+            }
+
+
+
+            if (
+                typeof module.health === "function"
+            ) {
+
+
+                const result =
+                    module.health();
+
+
+                return {
+
+                    status:
+                        result.status || "OK",
+
+                    module:
+                        moduleName,
+
+                    details:
+                        result,
+
+                    timestamp:
+                        new Date()
+
+                };
+
+
+            }
+
+
+
+            return {
+
+
+                status:"WARNING",
+
+                module:
+                    moduleName,
+
+
+                message:
+                    "health() not implemented",
+
+
+                timestamp:
+                    new Date()
+
+
+            };
+
+
+
+        }
+        catch(e){
+
+
+            return {
+
+
+                status:"ERROR",
+
+                module:
+                    moduleName,
+
+
+                message:
+                    e.message,
+
+
+                timestamp:
+                    new Date()
+
+
+            };
+
+
+        }
+
+
+    },
+
+
+
+    checkAll(){
+
+
+        const modules = {
+
+
+            SystemInit:
+                SystemInit,
+
+
+            Database:
+                Database,
+
+
+            EventBus:
+                EventBus,
+
+
+            Registry:
+                Registry,
+
+
+            SchemaManager:
+                SchemaManager,
+
+
+            ModuleRegistry:
+                ModuleRegistry,
+
+
+            ModuleLoader:
+                ModuleLoader,
+
+
+            FinanceEngine:
+                FinanceEngine,
+
+
+            KPIEngine:
+                KPIEngine,
+
+
+            DashboardEngine:
+                DashboardEngine
+
+
+        };
+
+
+
+        const result = {};
+
+
+
+        Object.keys(modules)
+        .forEach(name=>{
+
+
+            result[name] =
+                this.check(
+                    name,
+                    modules[name]
+                );
+
+
+        });
+
+
+
+        return result;
+
+
+    }
+
+
+};
+
+
+
+globalThis.HealthService =
+HealthService;
+
+######### File: HistoryService.js #########
+const HistoryService = {
+
+    get(entity, entityId) {
+
+        const sheet = SpreadsheetApp.getActive()
+            .getSheetByName("Versions");
+
+        if (!sheet) return [];
+
+        const data = sheet.getDataRange().getValues();
+
+        return data
+            .filter(r => r[3] === entity && r[4] === entityId)
+            .map(r => ({
+                id: r[0],
+                timestamp: r[1],
+                snapshot: JSON.parse(r[5])
+            }));
+    }
+};
+
+######### File: IdService.js #########
+console.log("IdService");
+const IdService = {
+
+    generate(prefix) {
+
+        if (!prefix) {
+            throw new Error("IdService: prefix is required");
+        }
+
+        const props = PropertiesService.getScriptProperties();
+
+        let counter = Number(props.getProperty(prefix + "_SEQ") || 0);
+
+        counter++;
+
+        props.setProperty(prefix + "_SEQ", counter);
+
+        return prefix + String(counter).padStart(6, "0");
+    }
+};
+globalThis.IdService = IdService;
+
+######### File: Inspector.js #########
+console.log("Inspector");
+
+
+const Inspector = {
+
+
+    inspect(){
+
+
+        Logger.log(
+            "========== ERP HEALTH =========="
+        );
+
+
+        const report =
+            HealthService.checkAll();
+
+
+
+        Object.keys(report)
+        .forEach(name=>{
+
+
+            const item =
+                report[name];
+
+
+            if(item.status==="OK"){
+
+
+                Logger.log(
+                    "✅ "
+                    + name
+                    + " OK"
+                );
+
+
+            }
+            else{
+
+
+                Logger.log(
+    "⚠️ "
+    + name
+    + " "
+    + item.status
+    + " "
+    + (
+        item.message
+        ||
+        JSON.stringify(item)
+    )
+);
+
+
+            }
+
+
+        });
+
+
+
+        Logger.log(
+            "================================"
+        );
+
+
+        return report;
+
+
+    }
+
+
+};
+
+
+
+function inspectSystem(){
+
+    return Inspector.inspect();
+
+}
+
+
+globalThis.Inspector =
+Inspector;
+
+######### File: Install.js #########
+function installSystem() {
+
+    Logger.log("ERP INSTALL START");
+
+    SchemaManager.init();
+
+    Registry.init();
+
+    SystemInit.init();
+
+    Logger.log("ERP INSTALL COMPLETE");
+
+}
+
+######### File: Kod.js #########
+function onOpen() {
+  startERP();
+}
+
+######### File: KPIEngine.js #########
+console.log("KPIEngine");
+
+
+const KPIEngine = {
+
+    initialized:false,
+
+health(){
+
+
+    return {
+
+
+        status:
+            this.initialized
+            ?
+            "OK"
+            :
+            "WARNING",
+
+
+        module:
+            "KPIEngine",
+
+
+        version:
+            "0.1",
+
+
+        initialized:
+            this.initialized,
+
+
+        timestamp:
+            new Date()
+
+
+    };
+
+
+},
+    init(){
+
+        if(this.initialized){
+            return;
+        }
+
+
+        EventBus.on(
+            "TRIP_PROFIT_CALCULATED",
+            (payload)=>{
+
+
+                Logger.log(
+                    "KPI EVENT RECEIVED:"
+                    +
+                    JSON.stringify(payload)
+                );
+
+
+                if(
+                    !payload ||
+                    !payload.transaction ||
+                    !payload.trip
+                ){
+
+                    Logger.log(
+                        "Invalid KPI payload"
+                    );
+
+                    return;
+
+                }
+
+
+                KPIService.createProfitKPI(
+                    payload.trip,
+                    payload.transaction,
+                    payload.profit
+                );
+
+
+            }
+        );
+
+
+        this.initialized=true;
+
+
+        Logger.log(
+            "KPIEngine READY"
+        );
+
+    }
+
+};
+
+
+globalThis.KPIEngine = KPIEngine;
+
+######### File: KPIRepository.js #########
+console.log("KPIRepository");
+const KPIRepository = {
+
+
+    create(data) {
+
+
+    SecurityGuard.check(
+        "KPI_CREATE"
+    );
+
+
+    if (!data.KPIID) {
+
+        data.KPIID =
+            IdService.generate("KPI");
+
+    }
+
+
+    data.OrganizationID =
+        OrganizationContext.get();
+
+
+    const result =
+        Database.insert(
+            "KPIMetrics",
+            data
+        );
+
+
+    AuditLog.write(
+        "CREATE",
+        "KPI",
+        null,
+        result
+    );
+
+
+    return result;
+
+},
+
+
+    getById(id) {
+
+
+        SecurityGuard.check(
+            "KPI_READ"
+        );
+
+
+        return Database.find(
+            "KPIMetrics",
+            id
+        );
+
+    },
+
+
+    list(filters = {}) {
+
+
+        SecurityGuard.check(
+            "KPI_READ"
+        );
+
+
+        return Database.query(
+            "KPIMetrics",
+            filters
+        );
+
+    },
+
+
+    update(id, data) {
+
+
+        SecurityGuard.check(
+            "KPI_UPDATE"
+        );
+
+
+        const existing =
+            Database.find(
+                "KPIMetrics",
+                id
+            );
+
+
+        if (!existing) {
+
+            throw new Error(
+                "KPI not found"
+            );
+
+        }
+
+
+        Versioning.save(
+            "KPI",
+            id,
+            existing
+        );
+
+
+        const merged = {
+
+            ...existing,
+
+            ...data
+
+        };
+
+
+        const updated =
+            Database.update(
+                "KPIMetrics",
+                id,
+                merged
+            );
+
+
+        AuditLog.write(
+            "UPDATE",
+            "KPI",
+            existing,
+            updated
+        );
+
+
+        EventBus.emit(
+            "KPI_UPDATED",
+            updated
+        );
+
+
+        return updated;
+
+    }
+
+
+};
+
+
+globalThis.KPIRepository = KPIRepository;
+
+######### File: KPIService.js #########
+const KPIService = {
+
+
+    health(){
+
+
+        return {
+
+
+            status:"OK",
+
+            module:"KPIService",
+
+            timestamp:
+                new Date()
+
+        };
+
+
+    },
+    createProfitKPI(trip, transaction, profit) {
+
+
+        const margin =
+            transaction.Revenue > 0
+            ? profit / transaction.Revenue
+            : 0;
+
+
+        const kpi = {
+
+
+            KPIID:
+                IdService.generate("KPI"),
+
+
+            OrganizationID:
+                OrganizationContext.get(),
+
+
+            MetricType:
+                "TRIP_PROFIT",
+
+
+            Entity:
+                "TRIP",
+
+
+            EntityID:
+                trip.TripID,
+
+
+            Period:
+                Utilities.formatDate(
+                    new Date(),
+                    Session.getScriptTimeZone(),
+                    "yyyy-MM"
+                ),
+
+
+            Revenue:
+                transaction.Revenue,
+
+
+            Cost:
+                transaction.Cost,
+
+
+            Profit:
+                profit,
+
+
+            Margin:
+                margin
+
+        };
+
+
+        const result =
+            KPIRepository.create(kpi);
+
+
+        Logger.log(
+            "📊 KPI CREATED: "
+            + result.KPIID
+        );
+
+
+        EventBus.emit(
+            "KPI_CREATED",
+            result
+        );
+
+
+        return result;
+
+    }
+
+};
+
+
+globalThis.KPIService = KPIService;
+
+######### File: main.js #########
+function myFunction() {
+
+    startERP();
+
+}
+
+######### File: ModuleLoader.js #########
+console.log("ModuleLoader");
+
+
+const ModuleLoader = {
+
+
+    loadCore(){
+
+
+        const modules=[
+
+
+            "TripEventHandler",
+
+
+            "FinanceEngine",
+
+
+            "KPIEngine",
+
+
+            "DashboardEngine"
+
+
+        ];
+
+
+
+        modules.forEach(name=>{
+
+
+            const module =
+                globalThis[name];
+
+
+            if(module){
+
+
+                Registry.register(
+                    name,
+                    module
+                );
+
+
+            }
+
+
+        });
+
+
+    },
+
+
+
+    initAll(){
+
+
+        Object.keys(
+            Registry.modules
+        )
+        .forEach(name=>{
+
+
+            Registry.initialize(
+                name
+            );
+
+
+        });
+
+
+    },
+
+health(){
+
+    return {
+
+        status:"OK",
+
+        module:"ModuleLoader"
+
+    };
+
+}
+};
+
+
+
+globalThis.ModuleLoader =
+ModuleLoader;
+
+######### File: ModuleRegistry.js #########
+console.log("ModuleRegistry");
+
+
+const ModuleRegistry = {
+
+
+    modules:{},
+
+
+
+    register(name, instance){
+
+
+        this.modules[name]={
+
+            instance:instance,
+
+            status:"REGISTERED"
+
+        };
+
+
+        Logger.log(
+            "MODULE REGISTERED: "
+            + name
+        );
+
+
+    },
+
+
+
+    init(name){
+
+
+        const module =
+            this.modules[name];
+
+
+        if(!module){
+
+            Logger.log(
+                "MODULE NOT FOUND: "
+                + name
+            );
+
+            return;
+
+        }
+
+
+
+        if(
+            typeof module.instance.init === "function"
+        ){
+
+            module.instance.init();
+
+        }
+
+
+
+        module.status="READY";
+
+
+        Logger.log(
+            name
+            +
+            " READY"
+        );
+
+
+    },
+
+
+
+    initAll(){
+
+
+        Object.keys(
+            this.modules
+        )
+        .forEach(name=>{
+
+
+            this.init(name);
+
+
+        });
+
+
+    },
+
+
+
+    health(){
+
+
+        return Object.keys(
+            this.modules
+        )
+        .map(name=>({
+
+            Module:name,
+
+            Status:
+            this.modules[name].status
+
+        }));
+
+
+    }
+
+
+};
+
+
+
+globalThis.ModuleRegistry =
+ModuleRegistry;
+
+######### File: OrganizationContext.js #########
+const OrganizationContext = {
+
+    get() {
+
+        const org = PropertiesService.getScriptProperties()
+            .getProperty("CURRENT_ORG");
+
+        if (!org) {
+            throw new Error("Organization context is not set");
+        }
+
+        return org;
+    },
+
+    require(data) {
+
+        if (!data || typeof data !== "object") {
+            throw new Error("Invalid data object");
+        }
+
+        const org = this.get();
+
+        if (!data.OrganizationID) {
+            data.OrganizationID = org;
+        }
+
+        if (data.OrganizationID !== org) {
+            throw new Error("Cross-organization data access blocked");
+        }
+
+        return data;
+    }
+};
+
+######### File: README.md #########
+TaxControl ERP Core
+
+О проекте
+
+TaxControl ERP Core — ядро платформы TaxControl ERP.
+
+Проект предназначен для построения модульной ERP-системы для управления транспортными и производственными компаниями.
+
+---
+
+Основные возможности
+
+- Core Engine
+- Database Layer
+- Repository Layer
+- Event Bus
+- Service Container
+- Security
+- Audit
+- Utilities
+
+---
+
+Архитектура
+
+UI (Google Sheets / Android / Web)
+
+↓
+
+Services
+
+↓
+
+Business Logic
+
+↓
+
+Repository
+
+↓
+
+Database
+
+---
+
+Статус проекта
+
+Версия: 0.1 Foundation
+
+Статус: В разработке
+
+---
+
+Лицензия
+
+Будет определена перед первым публичным релизом.
+
+
+######### File: refresh.js #########
+function refreshDashboard() {
+
+    DashboardEngine.refresh();
+
+}
+
+######### File: refreshDashboard.js #########
+function onOpen() {
+    startERP();
+}
+function onOpen() {
+
+    SpreadsheetApp.getUi()
+        .createMenu("ERP SYSTEM")
+        .addItem("Initialize System", "initSystem")
+        .addItem("Refresh Dashboard", "refreshDashboard")
+        .addItem("System Health Check", "systemHealthCheck")
+        .addItem("Detect Duplicates", "runDuplicateCheck")
+        .addItem("Inspect System", "inspectSystem")
+        .addToUi();
+}
+
+
+######### File: Registry.js #########
+const Registry = {
+
+    prefixes: {
+
+        Organization: "ORG",
+        Client: "CLI",
+        Employee: "EMP",
+        Vehicle: "VEH",
+        Driver: "DRV",
+        Trip: "TRP",
+        Payment: "PAY",
+        Document: "DOC"
+
+    },
+
+
+    countersSheet: "_IDRegistry",
+
+
+    init() {
+
+        this.ensureSheet();
+
+    },
+
+
+    ensureSheet() {
+
+        const ss =
+            SpreadsheetApp.getActiveSpreadsheet();
+
+
+        let sheet =
+            ss.getSheetByName(
+                this.countersSheet
+            );
+
+
+        if (!sheet) {
+
+            sheet =
+                ss.insertSheet(
+                    this.countersSheet
+                );
+
+
+            sheet.appendRow(
+                [
+                    "Entity",
+                    "LastNumber"
+                ]
+            );
+
+        }
+
+    }
+
+};
+
+
+
+// =========================
+// ID GENERATOR
+// =========================
+
+Registry.generate = function(entity) {
+
+
+    const ss =
+        SpreadsheetApp.getActiveSpreadsheet();
+
+
+    const sheet =
+        ss.getSheetByName(
+            this.countersSheet
+        );
+
+
+    if (!sheet) {
+
+        throw new Error(
+            "Registry not initialized"
+        );
+
+    }
+
+
+
+    const data =
+        sheet
+        .getDataRange()
+        .getValues();
+
+
+
+    let rowIndex = -1;
+
+    let lastNumber = 0;
+
+
+
+    for(
+        let i = 1;
+        i < data.length;
+        i++
+    ){
+
+        if(
+            data[i][0] === entity
+        ){
+
+            rowIndex = i;
+
+            lastNumber =
+                Number(data[i][1]);
+
+            break;
+
+        }
+
+    }
+
+
+
+    lastNumber++;
+
+
+
+    const prefix =
+        this.prefixes[entity];
+
+
+
+    if(!prefix){
+
+        throw new Error(
+            "Unknown Registry entity: "
+            + entity
+        );
+
+    }
+
+
+
+    const id =
+        prefix
+        +
+        String(lastNumber)
+        .padStart(6,"0");
+
+
+
+    if(rowIndex === -1){
+
+        sheet.appendRow(
+            [
+                entity,
+                lastNumber
+            ]
+        );
+
+    }
+    else {
+
+        sheet
+        .getRange(
+            rowIndex + 1,
+            2
+        )
+        .setValue(
+            lastNumber
+        );
+
+    }
+
+
+
+    return id;
+
+};
+
+
+
+// =========================
+// HEALTH CHECK
+// =========================
+
+Registry.health = function(){
+
+
+    const ss =
+        SpreadsheetApp.getActiveSpreadsheet();
+
+
+
+    const sheet =
+        ss.getSheetByName(
+            this.countersSheet
+        );
+
+
+
+    return {
+
+
+        status:
+            sheet
+            ?
+            "OK"
+            :
+            "ERROR",
+
+
+
+        sheet:
+            this.countersSheet,
+
+
+
+        prefixes:
+            Object.keys(
+                this.prefixes
+            ),
+
+
+
+        timestamp:
+            new Date()
+
+    };
+
+
+};
+
+Registry.health = function(){
+
+
+    const ss =
+        SpreadsheetApp.getActiveSpreadsheet();
+
+
+    const sheet =
+        ss.getSheetByName(
+            this.countersSheet
+        );
+
+
+    return {
+
+
+        status:
+            sheet
+            ?
+            "OK"
+            :
+            "ERROR",
+
+
+        module:
+            "Registry",
+
+
+        sheet:
+            this.countersSheet,
+
+
+        entities:
+            Object.keys(
+                this.prefixes
+            ),
+
+
+        timestamp:
+            new Date()
+
+
+    };
+
+
+};
+
+globalThis.Registry = Registry;
+
+######### File: ReportEngine.js #########
+const ReportEngine = {
+
+    // =========================
+    // KPI: Clients
+    // =========================
+    clientsKPI() {
+
+        const clients = Database.query("Clients", {});
+
+        const valid = clients.filter(c =>
+            c.ClientID && !String(c.ClientID).includes("undefined")
+        );
+
+        return {
+            total: valid.length,
+            active: valid.filter(c => c.Status === "ACTIVE").length,
+            deleted: valid.filter(c => c.Deleted === true).length
+        };
+    },
+
+
+    // =========================
+    // KPI: Trips financials
+    // =========================
+    tripsKPI() {
+
+        const trips = Database.query("Trips", {});
+
+        let revenue = 0;
+        let cost = 0;
+
+        trips.forEach(t => {
+            revenue += Number(t.Revenue || 0);
+            cost += Number(t.ActualCost || 0);
+        });
+
+        return {
+            totalTrips: trips.length,
+            revenue,
+            cost,
+            margin: revenue - cost
+        };
+    },
+
+
+    // =========================
+    // KPI: Client profitability
+    // =========================
+    clientProfitability() {
+
+        const clients = Database.query("Clients", {});
+        const trips = Database.query("Trips", {});
+
+        return clients.map(c => {
+
+            const clientTrips = trips.filter(t => t.ClientID === c.ClientID);
+
+            let revenue = 0;
+            let cost = 0;
+
+            clientTrips.forEach(t => {
+                revenue += Number(t.Revenue || 0);
+                cost += Number(t.ActualCost || 0);
+            });
+
+            return {
+                ClientID: c.ClientID,
+                Name: c.Name,
+                Trips: clientTrips.length,
+                Revenue: revenue,
+                Cost: cost,
+                Margin: revenue - cost
+            };
+        });
+    },
+
+
+    // =========================
+    // KPI: Manager performance (ВОССТАНОВЛЕН)
+    // =========================
+    managerKPI() {
+
+        const trips = Database.query("Trips", {});
+
+        const map = {};
+
+        trips.forEach(t => {
+
+            const managerId = t.ManagerID || "UNKNOWN";
+
+            if (!map[managerId]) {
+
+                map[managerId] = {
+                    ManagerID: managerId,
+                    Trips: 0,
+                    Revenue: 0,
+                    Cost: 0,
+                    Margin: 0
+                };
+            }
+
+            map[managerId].Trips += 1;
+            map[managerId].Revenue += Number(t.Revenue || 0);
+            map[managerId].Cost += Number(t.ActualCost || 0);
+            map[managerId].Margin =
+                map[managerId].Revenue - map[managerId].Cost;
+        });
+
+        return Object.values(map);
+    }
+};
+globalThis.ReportEngine = ReportEngine;
+
+######### File: Repositories.js #########
+console.log("ClientRepository");
+const ClientRepository = {
+
+    create(data) {
+
+        SecurityGuard.check("CLIENT_CREATE");
+
+        data = ClientValidator.validate(data);
+
+        if (!data.ClientID) {
+            data.ClientID = IdService.generate("CLI");
+        }
+
+        data.OrganizationID = OrganizationContext.get();
+
+        const result = Database.insert("Clients", data);
+
+        AuditLog.write("CREATE", "CLIENT", null, result);
+
+        EventBus.emit("CLIENT_CREATED", result);
+
+        return result;
+    },
+
+    update(clientId, data) {
+
+        SecurityGuard.check("CLIENT_UPDATE");
+
+        const existing = Database.find("Clients", clientId);
+
+        if (!existing) {
+            throw new Error("Client not found");
+        }
+
+      Versioning.save(
+    "CLIENT",
+    clientId,
+    existing
+);
+
+
+// объединяем старые и новые данные
+
+const merged = {
+
+    ...existing,
+
+    ...data
+
+};
+
+
+data = ClientValidator.validate(
+    merged
+);
+
+
+data.OrganizationID =
+    OrganizationContext.get();
+
+
+data.ClientID =
+    clientId;
+
+        const updated = Database.update("Clients", clientId, data);
+
+        AuditLog.write("UPDATE", "CLIENT", existing, updated);
+
+        EventBus.emit("CLIENT_UPDATED", updated);
+
+        return updated;
+    },
+
+    getById(id) {
+        SecurityGuard.check("CLIENT_READ");
+        return Database.find("Clients", id);
+    },
+
+    list() {
+        SecurityGuard.check("CLIENT_READ");
+        return Database.query("Clients", {});
+    }
+};
+globalThis.ClientRepository = ClientRepository;
+
+######### File: ROADMAP.md #########
+
+
+######### File: runDuplicateCheck.js #########
+function runDuplicateCheck() {
+    DuplicateDetector.run();
+}
+
+######### File: SafeCore.js #########
+const SafeCore = {
+
+    state: {
+        mode: "FULL" // FULL | SAFE
+    },
+
+    init() {
+
+        const issues = DuplicateDetector.run();
+
+        if (issues && issues.length > 0) {
+
+            this.state.mode = "SAFE";
+
+            Logger.log("⚠ SYSTEM STARTED IN SAFE MODE");
+
+            this.activateSafeMode();
+
+        } else {
+
+            this.state.mode = "FULL";
+
+            Logger.log("✅ SYSTEM STARTED IN FULL MODE");
+        }
+    },
+
+    activateSafeMode() {
+
+        // 🧠 создаём fallback EventBus если сломан
+        if (typeof EventBus === "undefined") {
+
+            globalThis.EventBus = {
+
+                handlers: {},
+
+                on(event, fn) {
+                    Logger.log("SAFE MODE: event registered " + event);
+                },
+
+                emit(event, payload) {
+                    Logger.log("SAFE MODE: event ignored " + event);
+                }
+            };
+        }
+
+        // 🧠 создаём fallback Database если сломан
+        if (typeof Database === "undefined") {
+
+            globalThis.Database = {
+
+                insert() {
+                    Logger.log("SAFE MODE: insert blocked");
+                },
+
+                query() {
+                    return [];
+                }
+            };
+        }
+    }
+};
+
+######### File: SchemaManager.js #########
+console.log("SchemaManager");
+const SchemaManager = {
+
+    schemaVersion: "0.1",
+    initialized: false,
+
+    init() {
+
+        const schema = this.getSchema();
+
+        this.createSheets(schema);
+        this.syncSheets(schema);
+
+        this.initialized = true;
+    },
+
+    getSchema() {
+        return {
+            EventLog: [
+    "EventID",
+    "EventType",
+    "Payload",
+    "CreatedAt",
+    "OrganizationID"
+],
+            Organizations: [
+                "OrganizationID",
+                "ShortName",
+                "FullName",
+                "INN",
+                "KPP",
+                "OGRN",
+                "TaxSystem",
+                "Status",
+                "CreatedAt",
+                "UpdatedAt",
+                "Deleted"
+            ],
+
+            Clients: [
+                "ClientID",
+                "OrganizationID",
+                "Name",
+                "INN",
+                "Phone",
+                "Email",
+                "Address",
+                "ManagerID",
+                "Rating",
+                "Status",
+                "CreatedAt",
+                "UpdatedAt",
+                "Deleted"
+            ],
+
+            Vehicles: [
+                "VehicleID",
+                "OrganizationID",
+                "PlateNumber",
+                "Brand",
+                "Model",
+                "VIN",
+                "DriverID",
+                "Status",
+                "CreatedAt",
+                "UpdatedAt",
+                "Deleted"
+            ],
+
+            Trips: [
+                "TripID",
+                "OrganizationID",
+                "ClientID",
+                "VehicleID",
+                "DriverID",
+                "ManagerID",
+                "LoadingPoint",
+                "UnloadingPoint",
+                "Distance",
+                "Cargo",
+                "Revenue",
+                "PlannedCost",
+                "ActualCost",
+                "Margin",
+                "Expedition",
+                "CarrierID",
+                "MailTrack",
+                "Status",
+                "CreatedAt",
+                "UpdatedAt",
+                "Deleted"
+            ],
+
+            Payments: [
+                "PaymentID",
+                "OrganizationID",
+                "InvoiceID",
+                "TripID",
+                "Amount",
+                "PaymentDate",
+                "PaymentMethod",
+                "Type",
+                "CreatedAt",
+                "UpdatedAt",
+                "Deleted"
+            ],
+            FinancialTransactions: [
+
+                "TransactionID",
+                "OrganizationID",
+
+                "Type",
+                "Entity",
+                "EntityID",
+
+                "Revenue",
+                "Cost",
+                "Profit",
+
+                "CreatedAt",
+                "UpdatedAt",
+                "Deleted"
+],
+KPIMetrics: [
+
+                "KPIID",
+                "OrganizationID",
+                "MetricType",
+                "Entity",
+                "EntityID",
+                "Revenue",
+                "Cost",
+                "Profit",
+                "Margin",
+                "CreatedAt",
+                "UpdatedAt",
+                "Deleted"
+]
+        };
+    },
+
+    createSheets(schema) {
+
+        const ss = SpreadsheetApp.getActiveSpreadsheet();
+
+        Object.keys(schema).forEach(sheetName => {
+
+            let sheet = ss.getSheetByName(sheetName);
+
+            if (!sheet) {
+
+                sheet = ss.insertSheet(sheetName);
+
+                sheet.getRange(1, 1, 1, schema[sheetName].length)
+                    .setValues([schema[sheetName]]);
+
+                Logger.log("Created sheet: " + sheetName);
+            }
+        });
+    },
+
+    syncSheets(schema) {
+
+        const ss = SpreadsheetApp.getActiveSpreadsheet();
+
+        Object.keys(schema).forEach(sheetName => {
+
+            const sheet = ss.getSheetByName(sheetName);
+            if (!sheet) return;
+
+            const headers = sheet
+                .getRange(1, 1, 1, sheet.getLastColumn())
+                .getValues()[0];
+
+            const required = schema[sheetName];
+
+            required.forEach(col => {
+
+                if (headers.indexOf(col) === -1) {
+                    sheet.getRange(1, headers.length + 1).setValue(col);
+                    headers.push(col);
+                }
+            });
+        });
+    },
+    health(){
+
+    return {
+
+        status:"OK",
+
+        module:"SchemaManager"
+
+    };
+
+}
+};
+globalThis.SchemaManager = SchemaManager;
+
+######### File: SchemaRegistry.js #########
+const SchemaRegistry = {
+
+    map: {
+        Organizations:"OrganizationID",
+        Clients:"ClientID",
+        Vehicles:"VehicleID",
+        Trips:"TripID",
+        Payments:"PaymentID",
+        FinancialTransactions:"TransactionID",
+        KPIMetrics:"KPIID"
+        
+    },
+
+    getIdField(entity) {
+
+        const field = this.map[entity];
+
+        if (!field) {
+            throw new Error("No schema mapping for: " + entity);
+        }
+
+        return field;
+    }
+};
+
+######### File: SECURITY.md #########
+# Security Policy
+
+## Сообщение о проблемах
+Если вы нашли уязвимость, пожалуйста, не создавайте публичный issue.
+Напишите на [sanchouzz@gmail.com] или воспользуйтесь приватной формой в GitHub Security Advisories.
+
+######### File: SecurityGuard.js #########
+console.log("SecurityGuard");
+
+
+const SecurityGuard = {
+
+
+    permissions:{},
+
+
+    init(){
+
+        Logger.log(
+            "SecurityGuard READY"
+        );
+
+    },
+
+
+    check(permission){
+
+        // пока базовая версия
+
+        return true;
+
+    },
+
+
+    health(){
+
+        return {
+
+            status:"OK",
+
+            permissions:
+                Object.keys(
+                    this.permissions
+                ),
+
+            timestamp:
+                new Date()
+
+        };
+
+    }
+
+
+};
+
+
+
+globalThis.SecurityGuard =
+    SecurityGuard;
+
+######### File: Session.js #########
+function setUser(userId, role) {
+
+    PropertiesService.getScriptProperties()
+        .setProperty("CURRENT_USER", userId);
+
+    PropertiesService.getScriptProperties()
+        .setProperty("CURRENT_ROLE", role);
+}
+
+######### File: Settings.js #########
+const Settings = {
+
+    setCurrentOrganization(orgId) {
+
+        if (!orgId) {
+            throw new Error("OrganizationID cannot be empty");
+        }
+
+        PropertiesService.getScriptProperties()
+            .setProperty("CURRENT_ORG", orgId);
+    },
+
+    getCurrentOrganization() {
+
+        const org = PropertiesService.getScriptProperties()
+            .getProperty("CURRENT_ORG");
+
+        if (!org) {
+            throw new Error("Current organization is not set");
+        }
+
+        return org;
+    }
+};
+
+######### File: settings.json #########
+{
+  "extensions": {
+    ".txt": true,
+    ".js": true,
+    ".ts": true,
+    ".jsx": true,
+    ".tsx": true,
+    ".json": true,
+    ".css": true,
+    ".scss": true,
+    ".html": true,
+    ".xml": true,
+    ".md": true,
+    ".py": true,
+    ".java": true,
+    ".cpp": true,
+    ".h": true,
+    ".c": true,
+    ".cs": true,
+    ".php": true,
+    ".rb": true,
+    ".go": true,
+    ".rs": true,
+    ".sql": true,
+    ".yaml": true,
+    ".yml": true,
+    ".sh": true,
+    ".bat": true,
+    ".ps1": true,
+    ".gradle": true,
+    ".properties": true,
+    ".ini": true,
+    ".cfg": true,
+    ".conf": true,
+    ".vue": true,
+    ".svelte": true
+  },
+  "ignorePatterns": [
+    "node_modules",
+    "build",
+    "dist",
+    "out",
+    "bin",
+    ".git",
+    ".vscode",
+    ".idea",
+    ".gradle",
+    "gradle",
+    "generated",
+    "logs",
+    "crash-reports",
+    ".metadata",
+    ".settings",
+    "eclipse"
+  ],
+  "ignoreFiles": [
+    "package-lock.json",
+    "gradlew",
+    "gradlew.bat",
+    "gradle-wrapper.jar",
+    "gradle-wrapper.properties",
+    ".DS_Store",
+    "Thumbs.db",
+    ".project",
+    ".classpath",
+    ".factorypath",
+    "CREDITS.txt",
+    "LICENSE.txt",
+    "README.txt",
+    "changelog.txt"
+  ],
+  "ignoreExtensions": [
+    ".iml",
+    ".ipr",
+    ".iws",
+    ".class",
+    ".jar",
+    ".log",
+    ".bak",
+    ".svg",
+    ".png",
+    ".jpg",
+    ".jpeg",
+    ".gif",
+    ".ico",
+    ".mp3",
+    ".wav",
+    ".ogg",
+    ".mp4",
+    ".avi",
+    ".mov",
+    ".exe",
+    ".dll",
+    ".so",
+    ".dylib",
+    ".zip",
+    ".rar",
+    ".7z",
+    ".tar",
+    ".gz"
+  ]
+}
+
+######### File: src\audit\README.md #########
+
+
+
+######### File: src\core\README.md #########
+
+
+
+######### File: src\database\README.md #########
+
+
+
+######### File: src\reposytory\README.md #########
+
+
+
+######### File: src\security\READMY.md #########
+
+
+
+######### File: src\services\README.md #########
+
+
+
+######### File: src\utils\README.md #########
+
+
+
+######### File: SystemBootstrap.js #########
+/**
+ * 🧠 SINGLE BOOT SEQUENCE
+ * защита от двойного запуска системы
+ */
+
+globalThis.__ERP_STATE__ = globalThis.__ERP_STATE__ || {
+    started: false,
+    modules: {}
+};
+
+function startERP() {
+
+    // 🛑 защита от повторного запуска
+    if (globalThis.__ERP_STATE__.started) {
+        Logger.log("⚠ ERP already started - skip boot");
+        return;
+    }
+
+    globalThis.__ERP_STATE__.started = true;
+
+    Logger.log("🚀 ERP BOOT START");
+
+    // CORE INIT (в строгом порядке)
+    safeInit("SchemaManager");
+    safeInit("IdService");
+    safeInit("Database");
+
+    // EVENT LAYER
+    safeInit("EventBus");
+    safeInit("EventStore");
+
+    // SYSTEM
+    safeInit("SystemRegistry");
+
+    Logger.log("✅ ERP BOOT COMPLETE");
+}
+function safeInit(moduleName) {
+
+    try {
+
+        // если уже создан — не пересоздаём
+        if (globalThis.__ERP_STATE__.modules[moduleName]) {
+            Logger.log("⏭ Skip already loaded: " + moduleName);
+            return;
+        }
+
+        const module = globalThis[moduleName] || window?.[moduleName];
+
+        if (!module) {
+            Logger.log("❌ Module not found: " + moduleName);
+            return;
+        }
+
+        if (typeof module.init === "function") {
+            module.init();
+        }
+
+        globalThis.__ERP_STATE__.modules[moduleName] = true;
+
+        Logger.log("✔ Loaded: " + moduleName);
+
+    } catch (e) {
+        Logger.log("💥 Error loading " + moduleName + ": " + e.message);
+    }
+}
+
+######### File: SystemHealthCheck.js #########
+function systemHealthCheck() {
+
+    const report = {
+        EventBus: typeof EventBus !== "undefined",
+        Database: typeof Database !== "undefined",
+        IdService: typeof IdService !== "undefined",
+        SchemaManager: typeof SchemaManager !== "undefined",
+        EventStore: typeof EventStore !== "undefined",
+        DashboardEngine: typeof DashboardEngine !== "undefined"
+    };
+
+    Logger.log("===== ERP SYSTEM HEALTH CHECK =====");
+
+    for (const key in report) {
+
+        if (report[key]) {
+            Logger.log("OK  - " + key);
+        } else {
+            Logger.log("FAIL - " + key + " (MISSING)");
+        }
+    }
+
+    Logger.log("===================================");
+}
+
+######### File: SystemInit.js #########
+console.log("SystemInit");
+
+
+const SystemInit = {
+
+
+    initialized:false,
+
+
+    init(){
+
+
+        if(this.initialized){
+
+            Logger.log(
+                "SYSTEM ALREADY INITIALIZED"
+            );
+
+            return;
+
+        }
+
+
+
+        Logger.log(
+            "ERP INIT START"
+        );
+
+
+
+        // =========================
+        // SAFE CORE
+        // =========================
+
+        if(
+            typeof SafeCore !== "undefined"
+        ){
+
+            SafeCore.init();
+
+        }
+
+
+
+        // =========================
+        // DATABASE SCHEMA
+        // =========================
+
+        if(
+            typeof SchemaManager !== "undefined"
+        ){
+
+            SchemaManager.init();
+
+        }
+
+
+
+        // =========================
+        // ID REGISTRY
+        // =========================
+
+        if(
+            typeof Registry !== "undefined"
+        ){
+
+            Registry.init();
+
+        }
+
+
+
+        // =========================
+        // EVENT BUS SUBSCRIPTIONS
+        // =========================
+
+        if(
+            typeof EventSubscriptions !== "undefined"
+        ){
+
+            EventSubscriptions
+                .initEventSubscriptions();
+
+
+            Logger.log(
+                "EventSubscriptions READY"
+            );
+
+        }
+        else{
+
+            Logger.log(
+                "EventSubscriptions NOT FOUND"
+            );
+
+        }
+
+
+
+
+        // =========================
+        // MODULE REGISTRY
+        // =========================
+
+        if(
+            typeof ModuleRegistry !== "undefined"
+        ){
+
+
+            if(
+                typeof TripEventHandler !== "undefined"
+            ){
+
+                ModuleRegistry.register(
+                    "TripEventHandler",
+                    TripEventHandler
+                );
+
+            }
+
+
+
+            if(
+                typeof FinanceEngine !== "undefined"
+            ){
+
+                ModuleRegistry.register(
+                    "FinanceEngine",
+                    FinanceEngine
+                );
+
+            }
+
+
+
+            if(
+                typeof KPIEngine !== "undefined"
+            ){
+
+                ModuleRegistry.register(
+                    "KPIEngine",
+                    KPIEngine
+                );
+
+            }
+
+
+
+            if(
+                typeof DashboardEngine !== "undefined"
+            ){
+
+                ModuleRegistry.register(
+                    "DashboardEngine",
+                    DashboardEngine
+                );
+
+            }
+
+
+        }
+
+
+
+        // =========================
+        // TRIP EVENTS
+        // =========================
+
+
+        if(
+            typeof TripEventHandler !== "undefined"
+        ){
+
+            Logger.log(
+                "FOUND TripEventHandler"
+            );
+
+
+            TripEventHandler.init();
+
+
+            Logger.log(
+                "TripEventHandler initialized"
+            );
+
+        }
+
+
+
+
+        // =========================
+        // FINANCE
+        // =========================
+
+
+        if(
+            typeof FinanceEngine !== "undefined"
+        ){
+
+            FinanceEngine.init();
+
+        }
+
+
+
+
+        // =========================
+        // KPI
+        // =========================
+
+
+        if(
+            typeof KPIEngine !== "undefined"
+        ){
+
+            KPIEngine.init();
+
+        }
+
+
+
+
+        // =========================
+        // AUTOMATION
+        // =========================
+
+
+        if(
+            typeof AutomationEngine !== "undefined"
+        ){
+
+            AutomationEngine.init();
+
+        }
+
+
+
+
+        // =========================
+        // DASHBOARD
+        // =========================
+
+
+        if(
+            typeof DashboardEngine !== "undefined"
+        ){
+
+            DashboardEngine.init();
+
+        }
+
+
+
+
+        // =========================
+        // COMPLETE
+        // =========================
+
+
+        this.initialized=true;
+
+
+        Logger.log(
+            "ERP INIT COMPLETE"
+        );
+
+
+    },
+        health(){
+
+        return {
+
+            status:
+                this.initialized
+                ?
+                "OK"
+                :
+                "WARNING",
+
+            initialized:
+                this.initialized,
+
+            module:
+                "SystemInit"
+
+        };
+
+    }
+
+
+
+};
+
+
+
+globalThis.SystemInit =
+SystemInit;
+
+######### File: SystemRegistry.js #########
+const SystemRegistry = {
+
+    requiredGlobals: [
+        "EventBus",
+        "Database",
+        "IdService",
+        "SchemaManager",
+        "EventStore",
+        "DashboardEngine"
+    ],
+
+    checkGlobals() {
+
+        const issues = [];
+
+        this.requiredGlobals.forEach(name => {
+
+            const exists = typeof globalThis[name] !== "undefined";
+
+            if (!exists) {
+                issues.push("MISSING: " + name);
+            }
+        });
+
+        return issues;
+    }
+};
+globalThis.SystemRegistry = SystemRegistry;
+
+######### File: testDashboard.js #########
+function testDashboard() {
+
+    Logger.log("===== DASHBOARD TEST =====");
+
+    installSystem();
+
+    DashboardEngine.refresh();
+
+    Logger.log("===== DASHBOARD COMPLETE =====");
+
+}
+
+######### File: testDashboardFlow.js #########
+function testDashboard() {
+
+    Logger.log("===== DASHBOARD TEST =====");
+
+    installSystem();
+
+    DashboardEngine.refresh();
+
+    Logger.log("===== DASHBOARD COMPLETE =====");
+
+}
+
+######### File: testregistry.js #########
+function testRegistry(){
+
+
+Logger.log(
+"===== REGISTRY TEST ====="
+);
+
+
+
+SystemInit.init();
+
+
+
+Logger.log(
+JSON.stringify(
+Registry.health()
+)
+);
+
+
+
+Logger.log(
+"===== REGISTRY COMPLETE ====="
+);
+
+
+
+}
+
+######### File: tests\README.md #########
+
+
+
+######### File: TestSystemHealth.js #########
+function testFullSystemHealth(){
+
+
+    Logger.log(
+        "===== FULL SYSTEM HEALTH TEST ====="
+    );
+
+
+    SystemInit.init();
+
+
+    Inspector.inspect();
+
+
+    Logger.log(
+        "===== TEST COMPLETE ====="
+    );
+
+
+}
+
+######### File: TripEventHandler.js #########
+const TripEventHandler = {
+
+
+    initialized:false,
+
+
+    init(){
+
+
+        if(this.initialized){
+            return;
+        }
+
+
+        EventBus.on(
+            "TRIP_CREATED",
+            function(trip){
+
+                Logger.log(
+                    "HANDLER CREATED: "
+                    + trip.TripID
+                );
+
+            }
+        );
+
+
+
+        EventBus.on(
+            "TRIP_UPDATED",
+            function(trip){
+
+                Logger.log(
+                    "HANDLER UPDATED: "
+                    + trip.TripID
+                );
+
+            }
+        );
+
+
+
+        EventBus.on(
+            "TRIP_COMPLETED",
+            function(trip){
+
+                Logger.log(
+                    "HANDLER COMPLETED: "
+                    + trip.TripID
+                );
+
+
+            }
+        );
+
+
+        this.initialized=true;
+
+
+        Logger.log(
+            "TripEventHandler READY"
+        );
+
+
+        Logger.log(
+            JSON.stringify(
+                Object.keys(EventBus.handlers)
+            )
+        );
+
+    }
+
+};
+
+
+globalThis.TripEventHandler =
+    TripEventHandler;
+
+######### File: TripRepository.js #########
+console.log("TripRepository");
+const TripRepository = {
+
+
+    // =========================
+    // CREATE TRIP
+    // =========================
+
+    create(data) {
+
+        SecurityGuard.check(
+            "TRIP_CREATE"
+        );
+
+
+        data = TripValidator.validate(
+            data
+        );
+
+
+        if (!data.TripID) {
+
+            data.TripID =
+                IdService.generate(
+                    "TRP"
+                );
+
+        }
+
+
+        data.OrganizationID =
+            OrganizationContext.get();
+
+
+
+        const result =
+            Database.insert(
+                "Trips",
+                data
+            );
+
+
+
+        AuditLog.write(
+            "CREATE",
+            "TRIP",
+            null,
+            result
+        );
+
+
+
+        EventBus.emit(
+            "TRIP_CREATED",
+            result
+        );
+
+
+
+        return result;
+
+    },
+
+
+
+    // =========================
+    // UPDATE TRIP
+    // =========================
+
+    update(tripId, data) {
+
+
+        SecurityGuard.check(
+            "TRIP_UPDATE"
+        );
+
+
+
+        const existing =
+            Database.find(
+                "Trips",
+                tripId
+            );
+
+
+
+        if (!existing) {
+
+            throw new Error(
+                "Trip not found: " + tripId
+            );
+
+        }
+
+
+
+        // сохраняем старую версию
+
+        Versioning.save(
+            "TRIP",
+            tripId,
+            existing
+        );
+
+
+
+        // объединяем старые и новые данные
+
+        const merged = {
+
+            ...existing,
+
+            ...data
+
+        };
+
+
+
+        data =
+            TripValidator.validate(
+                merged
+            );
+
+
+
+        data.TripID =
+            tripId;
+
+
+
+        data.OrganizationID =
+            OrganizationContext.get();
+
+
+
+        const updated =
+            Database.update(
+                "Trips",
+                tripId,
+                data
+            );
+
+
+
+        AuditLog.write(
+            "UPDATE",
+            "TRIP",
+            existing,
+            updated
+        );
+
+
+
+        EventBus.emit(
+            "TRIP_UPDATED",
+            updated
+        );
+
+
+
+        // =========================
+        // BUSINESS EVENT
+        // =========================
+
+        if (
+            updated.Status === "COMPLETED"
+        ) {
+
+
+            EventBus.emit(
+                "TRIP_COMPLETED",
+                updated
+            );
+
+
+        }
+
+
+
+        return updated;
+
+    },
+
+
+
+    // =========================
+    // GET BY ID
+    // =========================
+
+    getById(id) {
+
+
+        SecurityGuard.check(
+            "TRIP_READ"
+        );
+
+
+        return Database.find(
+            "Trips",
+            id
+        );
+
+
+    },
+
+
+
+    // =========================
+    // LIST
+    // =========================
+
+    list() {
+
+
+        SecurityGuard.check(
+            "TRIP_READ"
+        );
+
+
+        return Database.query(
+            "Trips",
+            {}
+        );
+
+
+    }
+
+
+};
+
+
+
+globalThis.TripRepository =
+TripRepository;
+
+######### File: TripValidator.js #########
+const TripValidator = {
+
+
+    validate(data) {
+
+
+        if (!data.ClientID) {
+
+            throw new Error(
+                "ClientID is required"
+            );
+
+        }
+
+
+        if (!data.LoadingPoint) {
+
+            throw new Error(
+                "LoadingPoint is required"
+            );
+
+        }
+
+
+        if (!data.UnloadingPoint) {
+
+            throw new Error(
+                "UnloadingPoint is required"
+            );
+
+        }
+
+
+        if (!data.Status) {
+
+            data.Status = "NEW";
+
+        }
+
+
+        if (!data.Revenue) {
+
+            data.Revenue = 0;
+
+        }
+
+
+        if (!data.PlannedCost) {
+
+            data.PlannedCost = 0;
+
+        }
+
+
+        if (!data.ActualCost) {
+
+            data.ActualCost = 0;
+
+        }
+
+
+        data.Margin =
+            Number(data.Revenue)
+            -
+            Number(data.ActualCost);
+
+
+        return data;
+
+    }
+
+};
+
+
+globalThis.TripValidator = TripValidator;
+
+######### File: Versioning.js #########
+const Versioning = {
+
+    save(entity, id, data) {
+
+        const sheet = SpreadsheetApp.getActive()
+            .getSheetByName("Versions")
+            || SpreadsheetApp.getActive().insertSheet("Versions");
+
+        const version = {
+            id: Utilities.getUuid(),
+            timestamp: new Date(),
+            organizationId: PropertiesService.getScriptProperties().getProperty("CURRENT_ORG"),
+            entity: entity,
+            entityId: id,
+            snapshot: JSON.stringify(data)
+        };
+
+        sheet.appendRow([
+            version.id,
+            version.timestamp,
+            version.organizationId,
+            version.entity,
+            version.entityId,
+            version.snapshot
+        ]);
+
+        return version;
+    }
+};
+globalThis.Versioning = Versioning;
+
