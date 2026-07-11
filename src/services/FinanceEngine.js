@@ -7,7 +7,7 @@ const FinanceEngine = {
         status: "OK" | "ERROR",
         module: "...",
         version: "0.1",
-        dependencies: { ... },
+        dependencies: {},
         timestamp: new Date()
     };
 },
