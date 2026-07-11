@@ -1,16 +1,50 @@
+console.log("Menu");
+
+
 function onOpen() {
+
 
     startERP();
 
-    SpreadsheetApp.getUi()
+
+    SpreadsheetApp
+        .getUi()
         .createMenu("ERP SYSTEM")
-        .addItem("Initialize System", "initSystem")
+
+        .addItem(
+            "Initialize System",
+            "initSystem"
+        )
+
         .addSeparator()
-        .addItem("Refresh Dashboard", "refreshDashboard")
+
+        .addItem(
+            "Refresh Dashboard",
+            "refreshDashboard"
+        )
+
         .addSeparator()
-        .addItem("System Health Check", "systemHealthCheck")
-        .addItem("Inspect System", "inspectSystem")
-        .addItem("Detect Duplicates", "runDuplicateCheck")
+
+        .addItem(
+            "System Health Check",
+            "systemHealthCheck"
+        )
+
+        .addItem(
+            "Inspect System",
+            "inspectSystem"
+        )
+
+        .addItem(
+            "Detect Duplicates",
+            "runDuplicateCheck"
+        )
+
         .addToUi();
+
+
+    Logger.log(
+        "ERP MENU READY"
+    );
 
 }
