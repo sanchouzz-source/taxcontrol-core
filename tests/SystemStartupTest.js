@@ -1,50 +1,64 @@
 console.log("SystemStartupTest");
 
 
-function testFullHealth(){
+const SystemStartupTest = {
 
 
-    Logger.log(
-        "===== FULL SYSTEM HEALTH TEST ====="
-    );
+    fullHealth(){
 
 
-    Logger.log(
-        "STEP 1: INIT"
-    );
+        Logger.log(
+            "===== FULL SYSTEM HEALTH TEST ====="
+        );
 
 
-    SystemInit.init();
+        Logger.log(
+            "STEP 1: INIT"
+        );
 
 
-
-    Logger.log(
-        "STEP 2: INSPECTOR START"
-    );
-
-
-    const report =
-        Inspector.inspect();
+        SystemInit.init();
 
 
 
-    Logger.log(
-        "STEP 3: REPORT CREATED"
-    );
+        Logger.log(
+            "STEP 2: INSPECTOR START"
+        );
 
 
-    Logger.log(
-        JSON.stringify(
-            report,
-            null,
-            2
-        )
-    );
+        const report =
+            Inspector.inspect();
 
 
 
-    Logger.log(
-        "===== TEST COMPLETE ====="
-    );
+        Logger.log(
+            "STEP 3: REPORT CREATED"
+        );
 
-}
+
+        Logger.log(
+            JSON.stringify(
+                report,
+                null,
+                2
+            )
+        );
+
+
+        Logger.log(
+            "===== TEST COMPLETE ====="
+        );
+
+
+        return report;
+
+
+    }
+
+
+};
+
+
+
+globalThis.SystemStartupTest =
+    SystemStartupTest;
