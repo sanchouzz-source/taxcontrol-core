@@ -9,20 +9,29 @@ function testFullHealth(){
     );
 
 
-    // 1. Запуск ERP
+    Logger.log(
+        "STEP 1: INIT"
+    );
+
 
     SystemInit.init();
 
 
 
-    // 2. Проверка состояния
+    Logger.log(
+        "STEP 2: INSPECTOR START"
+    );
+
 
     const report =
         Inspector.inspect();
 
 
 
-    // 3. Вывод полного JSON
+    Logger.log(
+        "STEP 3: REPORT CREATED"
+    );
+
 
     Logger.log(
         JSON.stringify(
@@ -37,6 +46,5 @@ function testFullHealth(){
     Logger.log(
         "===== TEST COMPLETE ====="
     );
-
 
 }
