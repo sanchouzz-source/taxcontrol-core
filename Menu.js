@@ -1,50 +1,64 @@
 console.log("Menu");
 
 
-function onOpen() {
+const Menu = {
 
 
-    startERP();
+create(){
 
 
-    SpreadsheetApp
-        .getUi()
-        .createMenu("ERP SYSTEM")
-
-        .addItem(
-            "Initialize System",
-            "initSystem"
-        )
-
-        .addSeparator()
-
-        .addItem(
-            "Refresh Dashboard",
-            "refreshDashboard"
-        )
-
-        .addSeparator()
-
-        .addItem(
-            "System Health Check",
-            "systemHealthCheck"
-        )
-
-        .addItem(
-            "Inspect System",
-            "inspectSystem"
-        )
-
-        .addItem(
-            "Detect Duplicates",
-            "runDuplicateCheck"
-        )
-
-        .addToUi();
+SpreadsheetApp
+.getUi()
+.createMenu("ERP SYSTEM")
 
 
-    Logger.log(
-        "ERP MENU READY"
-    );
+.addItem(
+"Initialize System",
+"erpInit"
+)
+
+
+.addItem(
+"Health Check",
+"erpHealth"
+)
+
+
+.addItem(
+"Startup Test",
+"erpTest"
+)
+
+
+.addToUi();
+
 
 }
+
+
+};
+
+
+function erpInit(){
+
+    Bootstrap.init();
+
+}
+
+
+function erpHealth(){
+
+    CoreFunctions.health();
+
+}
+
+
+function erpTest(){
+
+    CoreFunctions.startupTest();
+
+}
+
+
+globalThis.Menu =
+Menu;

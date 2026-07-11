@@ -1,18 +1,28 @@
 console.log("Bootstrap");
 
 
-function initSystem() {
-
-    SystemInit.init();
-
-}
+const Bootstrap = {
 
 
+    init(){
 
-function startERP() {
+        Logger.log(
+            "BOOTSTRAP START"
+        );
 
 
-    SystemInit.init();
+        SystemInit.init();
 
 
-}
+        Logger.log(
+            "BOOTSTRAP COMPLETE"
+        );
+
+    }
+
+
+};
+
+
+globalThis.Bootstrap =
+Bootstrap;
