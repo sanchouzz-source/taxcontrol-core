@@ -8,7 +8,11 @@ health() {
         status: "OK" | "ERROR",
         module: "...",
         version: "0.1",
-        dependencies: { ... },
+       dependencies: {
+    DashboardService: typeof DashboardService !== 'undefined',
+    SpreadsheetApp: typeof SpreadsheetApp !== 'undefined',
+    Logger: typeof Logger !== 'undefined'
+},
         timestamp: new Date()
     };
 },
