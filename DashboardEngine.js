@@ -3,15 +3,26 @@ console.log("DashboardEngine");
 const DashboardEngine = {
 
     initialized: false,
-health() {
-    return {
-        status: "OK" | "ERROR",
-        module: "...",
-        version: "0.1",
-       dependencies: {
-    DashboardService: typeof DashboardService !== 'undefined',
-    SpreadsheetApp: typeof SpreadsheetApp !== 'undefined',
-    Logger: typeof Logger !== 'undefined'
+health(){
+
+return HealthContract.create(
+    "DashboardEngine",
+    this.initialized
+    ?
+    "OK"
+    :
+    "WARNING",
+    {
+        initialized:
+        this.initialized,
+
+        dependencies:{
+            EventBus:true,
+            Database:true
+        }
+    }
+);
+
 },
         timestamp: new Date()
     };

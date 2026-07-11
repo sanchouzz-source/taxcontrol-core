@@ -2,14 +2,26 @@ console.log("FinanceEngine");
 const FinanceEngine = {
 
     initialized:false,
-   health() {
-    return {
-        status: "OK" | "ERROR",
-        module: "...",
-        version: "0.1",
-        dependencies: {},
-        timestamp: new Date()
-    };
+   health(){
+
+return HealthContract.create(
+    "FinanceEngine",
+    this.initialized
+    ?
+    "OK"
+    :
+    "WARNING",
+    {
+        initialized:
+        this.initialized,
+
+        dependencies:{
+            EventBus:true,
+            Database:true
+        }
+    }
+);
+
 },
 
     init() {
