@@ -1,23 +1,24 @@
 console.log("SystemStartupTest");
 
 
-function testStartup(){
+function testFullHealth(){
+
 
     Logger.log(
-        "===== STARTUP TEST ====="
+        "===== FULL SYSTEM HEALTH TEST ====="
     );
 
 
     SystemInit.init();
 
 
-    const health =
-        HealthService.checkAll();
+    const report =
+        Inspector.inspect();
 
 
     Logger.log(
         JSON.stringify(
-            health,
+            report,
             null,
             2
         )
@@ -25,7 +26,8 @@ function testStartup(){
 
 
     Logger.log(
-        "===== TEST END ====="
+        "===== TEST COMPLETE ====="
     );
+
 
 }
