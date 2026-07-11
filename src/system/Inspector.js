@@ -1,86 +1,111 @@
 console.log("Inspector");
 
-
 const Inspector = {
 
+    inspect() {
 
-    inspect(){
+        Logger.log("========== ERP HEALTH ==========");
 
+        const report = HealthService.checkAll();
 
-        Logger.log(
-            "========== ERP HEALTH =========="
-        );
+        let ok = 0;
+        let warning = 0;
+        let error = 0;
 
+        Object.entries(report).forEach(([name, item]) => {
 
-        const report =
-            HealthService.checkAll();
+            switch (item.status) {
 
+                case "OK":
 
+                    ok++;
 
-        Object.keys(report)
-        .forEach(name=>{
+                    Logger.log(
+                        "✅ " +
+                        name +
+                        " OK"
+                    );
 
+                    break;
 
-            const item =
-                report[name];
+                case "WARNING":
 
+                    warning++;
 
-            if(item.status==="OK"){
+                    Logger.log(
+                        "⚠️ " +
+                        name +
+                        " WARNING " +
+                        (
+                            item.message ||
+                            JSON.stringify(item)
+                        )
+                    );
 
+                    break;
 
-                Logger.log(
-                    "✅ "
-                    + name
-                    + " OK"
-                );
+                default:
 
+                    error++;
+
+                    Logger.log(
+                        "❌ " +
+                        name +
+                        " ERROR " +
+                        (
+                            item.message ||
+                            JSON.stringify(item)
+                        )
+                    );
 
             }
-            else{
-
-
-                Logger.log(
-    "⚠️ "
-    + name
-    + " "
-    + item.status
-    + " "
-    + (
-        item.message
-        ||
-        JSON.stringify(item)
-    )
-);
-
-
-            }
-
 
         });
 
-
+        Logger.log("--------------------------------");
 
         Logger.log(
-            "================================"
+            "OK: " + ok +
+            " | WARNING: " + warning +
+            " | ERROR: " + error
         );
 
+        Logger.log("================================");
 
-        return report;
+        return {
+            ok,
+            warning,
+            error,
+            report
+        };
 
+    },
+
+    summary() {
+
+        const result = this.inspect();
+
+        return {
+            status:
+                result.error > 0
+                    ? "ERROR"
+                    : result.warning > 0
+                        ? "WARNING"
+                        : "OK",
+
+            ok: result.ok,
+            warning: result.warning,
+            error: result.error
+        };
 
     }
 
-
 };
 
-
-
-function inspectSystem(){
+function inspectSystem() {
 
     return Inspector.inspect();
 
 }
 
-
-globalThis.Inspector =
-Inspector;
+globalThis.Inspector = Inspector;
