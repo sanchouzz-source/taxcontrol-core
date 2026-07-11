@@ -1,111 +1,115 @@
 console.log("Inspector");
 
+
 const Inspector = {
 
-    inspect() {
 
-        Logger.log("========== ERP HEALTH ==========");
+    health(){
 
-        const report = HealthService.checkAll();
 
-        let ok = 0;
-        let warning = 0;
-        let error = 0;
+        return HealthContract.create(
 
-        Object.entries(report).forEach(([name, item]) => {
+            "Inspector",
 
-            switch (item.status) {
+            "OK",
 
-                case "OK":
+            {
 
-                    ok++;
+                dependencies:{
 
-                    Logger.log(
-                        "✅ " +
-                        name +
-                        " OK"
-                    );
+                    HealthService:true,
+                    Logger:true
 
-                    break;
-
-                case "WARNING":
-
-                    warning++;
-
-                    Logger.log(
-                        "⚠️ " +
-                        name +
-                        " WARNING " +
-                        (
-                            item.message ||
-                            JSON.stringify(item)
-                        )
-                    );
-
-                    break;
-
-                default:
-
-                    error++;
-
-                    Logger.log(
-                        "❌ " +
-                        name +
-                        " ERROR " +
-                        (
-                            item.message ||
-                            JSON.stringify(item)
-                        )
-                    );
+                }
 
             }
 
-        });
-
-        Logger.log("--------------------------------");
-
-        Logger.log(
-            "OK: " + ok +
-            " | WARNING: " + warning +
-            " | ERROR: " + error
         );
 
-        Logger.log("================================");
-
-        return {
-            ok,
-            warning,
-            error,
-            report
-        };
 
     },
 
-    summary() {
 
-        const result = this.inspect();
 
-        return {
-            status:
-                result.error > 0
-                    ? "ERROR"
-                    : result.warning > 0
-                        ? "WARNING"
-                        : "OK",
+    inspect(){
 
-            ok: result.ok,
-            warning: result.warning,
-            error: result.error
-        };
+
+        Logger.log(
+            "========== ERP HEALTH =========="
+        );
+
+
+        const report =
+            HealthService.checkAll();
+
+
+
+        Object.keys(report)
+        .forEach(name=>{
+
+
+            const item =
+                report[name];
+
+
+            if(item.status==="OK"){
+
+
+                Logger.log(
+                    "✅ "
+                    + name
+                    + " OK"
+                );
+
+
+            }
+            else{
+
+
+                Logger.log(
+
+                    "⚠️ "
+                    + name
+                    + " "
+                    + item.status
+                    + " "
+                    + (
+                        item.message
+                        ||
+                        JSON.stringify(item)
+                    )
+
+                );
+
+
+            }
+
+
+        });
+
+
+
+        Logger.log(
+            "================================"
+        );
+
+
+        return report;
+
 
     }
 
+
 };
 
-function inspectSystem() {
+
+
+function inspectSystem(){
 
     return Inspector.inspect();
 
 }
 
-globalThis.Inspector = Inspector;
+
+globalThis.Inspector =
+Inspector;
