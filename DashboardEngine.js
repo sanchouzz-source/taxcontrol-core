@@ -3,39 +3,14 @@ console.log("DashboardEngine");
 const DashboardEngine = {
 
     initialized: false,
-health(){
-
-
+health() {
     return {
-
-
-        status:
-            this.initialized
-            ?
-            "OK"
-            :
-            "WARNING",
-
-
-        module:
-            "DashboardEngine",
-
-
-        version:
-            "0.1",
-
-
-        initialized:
-            this.initialized,
-
-
-        timestamp:
-            new Date()
-
-
+        status: "OK" | "ERROR",
+        module: "...",
+        version: "0.1",
+        dependencies: { ... },
+        timestamp: new Date()
     };
-
-
 },
     init() {
 

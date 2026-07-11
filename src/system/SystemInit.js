@@ -266,27 +266,15 @@ const SystemInit = {
 
 
     },
-        health(){
-
-        return {
-
-            status:
-                this.initialized
-                ?
-                "OK"
-                :
-                "WARNING",
-
-            initialized:
-                this.initialized,
-
-            module:
-                "SystemInit"
-
-        };
-
-    }
-
+       health() {
+    return {
+        status: "OK" | "ERROR",
+        module: "...",
+        version: "0.1",
+        dependencies: { ... },
+        timestamp: new Date()
+    };
+}
 
 
 };
