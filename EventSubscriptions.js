@@ -16,20 +16,40 @@ const EventSubscriptions = {
 
         }
 
+        Logger.log(
+            "Registering EventSubscriptions..."
+        );
+
+        // ==========================
+        // CLIENTS
+        // ==========================
+
         EventBus.on("CLIENT_CREATED", () => {
+
             DashboardEngine.refresh();
+
         });
 
         EventBus.on("CLIENT_UPDATED", () => {
+
             DashboardEngine.refresh();
+
         });
 
+        // ==========================
+        // TRIPS
+        // ==========================
+
         EventBus.on("TRIP_CREATED", () => {
+
             DashboardEngine.refresh();
+
         });
 
         EventBus.on("TRIP_UPDATED", () => {
+
             DashboardEngine.refresh();
+
         });
 
         this.initialized = true;
@@ -44,9 +64,16 @@ const EventSubscriptions = {
 
         return HealthContract.create(
             "EventSubscriptions",
-            this.initialized ? "OK" : "WARNING",
+            this.initialized
+                ? "OK"
+                : "WARNING",
             {
-                initialized: this.initialized
+                initialized: this.initialized,
+                subscriptions: 4,
+                dependencies: {
+                    EventBus: true,
+                    DashboardEngine: true
+                }
             }
         );
 
@@ -54,4 +81,5 @@ const EventSubscriptions = {
 
 };
 
-globalThis.EventSubscriptions = EventSubscriptions;
+globalThis.EventSubscriptions =
+    EventSubscriptions;

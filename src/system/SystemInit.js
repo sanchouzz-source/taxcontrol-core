@@ -227,7 +227,9 @@ const SystemInit = {
         // EVENT BUS SUBSCRIPTIONS
         // =========================
 
-if (typeof EventSubscriptions !== "undefined") {
+if (
+    typeof EventSubscriptions !== "undefined"
+) {
 
     EventSubscriptions.initEventSubscriptions();
 
