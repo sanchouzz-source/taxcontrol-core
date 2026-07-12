@@ -1,75 +1,270 @@
 console.log("Inspector");
 
+
+
 const Inspector = {
 
-    inspect() {
 
-        Logger.log("========== ERP HEALTH ==========");
 
-        const report = {};
+health(){
 
-        try {
 
-            Object.assign(
-                report,
-                HealthService.checkAll()
-            );
+    return HealthContract.create(
 
-        } catch (e) {
 
-            Logger.log(
-                "HEALTH ERROR: " + e.message
-            );
+        "Inspector",
 
-            report.HealthService = {
-                status: "ERROR",
-                message: e.message
-            };
 
-        }
+        "OK",
 
-        Object.entries(report).forEach(([name,item])=>{
 
-            const ok =
-                item.status === "OK";
+        {
 
-            Logger.log(
-                (ok ? "✅ " : "❌ ")
-                + name
-                + " "
-                + item.status
-            );
 
-        });
+            dependencies:{
 
-        Logger.log("==============================");
 
-        return report;
+                HealthService:true,
 
-    },
 
-    health(){
+                Logger:true
 
-        return HealthContract.create(
-
-            "Inspector",
-
-            "OK",
-
-            {
-
-                dependencies:{
-
-                    HealthService:true
-
-                }
 
             }
 
-        );
 
-    }
+        }
+
+
+    );
+
+
+},
+
+
+
+
+
+
+inspect(){
+
+
+
+    Logger.log(
+
+        "========== ERP HEALTH =========="
+
+    );
+
+
+
+
+    const report = {};
+
+
+
+
+
+    const services = [
+
+        "SystemInit",
+
+        "Database",
+
+        "EventBus",
+
+        "Registry",
+
+        "SchemaManager",
+
+        "ModuleRegistry",
+
+        "ModuleLoader",
+
+        "FinanceEngine",
+
+        "KPIEngine",
+
+        "DashboardEngine"
+
+    ];
+
+
+
+
+
+
+    services.forEach(name=>{
+
+
+        try{
+
+
+            const module =
+            globalThis[name];
+
+
+
+            if(
+
+                module
+                &&
+                typeof module.health==="function"
+
+            ){
+
+
+
+                report[name]=
+                module.health();
+
+
+
+            }
+
+            else{
+
+
+
+                report[name]={
+
+
+                    status:"WARNING",
+
+
+                    module:name,
+
+
+                    message:
+                    "Health method missing"
+
+
+                };
+
+
+            }
+
+
+
+        }
+
+
+        catch(error){
+
+
+            report[name]={
+
+
+                status:"FAILED",
+
+
+                module:name,
+
+
+                message:
+                error.message
+
+
+            };
+
+
+        }
+
+
+
+    });
+
+
+
+
+
+
+    Object.keys(report)
+
+    .forEach(name=>{
+
+
+        const item =
+        report[name];
+
+
+
+        if(item.status==="OK"){
+
+
+            Logger.log(
+
+                "✅ "
+                +
+                name
+                +
+                " OK"
+
+            );
+
+
+        }
+
+        else{
+
+
+            Logger.log(
+
+                "⚠️ "
+                +
+                name
+                +
+                " "
+                +
+                JSON.stringify(item)
+
+            );
+
+
+        }
+
+
+    });
+
+
+
+
+
+
+    Logger.log(
+
+        "================================"
+
+    );
+
+
+
+    return report;
+
+
+
+}
+
+
+
 
 };
 
-globalThis.Inspector = Inspector;
+
+
+
+
+function inspectSystem(){
+
+
+    return Inspector.inspect();
+
+
+}
+
+
+
+
+
+globalThis.Inspector =
+Inspector;

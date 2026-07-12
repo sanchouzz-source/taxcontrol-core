@@ -1,53 +1,259 @@
 console.log("ModuleLoader");
 
+
+
 const ModuleLoader = {
 
-    coreModules: [
+
+
+    version:"0.1",
+
+
+
+    loaded:[],
+
+
+
+    coreModules:[
+
 
         "TripEventHandler",
+
+
         "FinanceEngine",
+
+
         "KPIEngine",
+
+
         "DashboardEngine"
+
 
     ],
 
-    loadCore() {
 
-        this.coreModules.forEach(name => {
 
-            const module = globalThis[name];
 
-            if (!module) {
 
-                Logger.log("MODULE NOT FOUND: " + name);
-                return;
+
+
+    loadCore(){
+
+
+
+        Logger.log(
+
+            "MODULE LOADER START"
+
+        );
+
+
+
+
+
+        this.coreModules
+        .forEach(name=>{
+
+
+
+
+
+            try{
+
+
+
+                const module =
+                globalThis[name];
+
+
+
+
+
+
+                if(!module){
+
+
+
+                    Logger.log(
+
+                        "MODULE NOT FOUND: "
+                        +
+                        name
+
+                    );
+
+
+
+                    return;
+
+
+                }
+
+
+
+
+
+
+                const registered =
+
+                ModuleRegistry.register(
+
+                    name,
+
+                    module
+
+                );
+
+
+
+
+
+
+
+
+                if(registered){
+
+
+
+                    this.loaded.push(name);
+
+
+
+                }
+
+
+
+
 
             }
 
-            ModuleRegistry.register(name, module);
+
+
+            catch(error){
+
+
+
+                Logger.log(
+
+                    "MODULE LOAD ERROR: "
+                    +
+                    name
+                    +
+                    " "
+                    +
+                    error.message
+
+                );
+
+
+            }
+
+
+
+
 
         });
 
+
+
+
+
+
+
+        Logger.log(
+
+            "MODULE LOADER COMPLETE"
+
+        );
+
+
+
+        return this.loaded;
+
+
+
     },
 
-    initAll() {
 
-        ModuleRegistry.initAll();
+
+
+
+
+
+
+
+    getLoaded(){
+
+
+
+        return this.loaded;
+
+
 
     },
 
-    health() {
+
+
+
+
+
+
+
+
+    health(){
+
+
 
         return HealthContract.create(
+
+
+
             "ModuleLoader",
+
+
+
             "OK",
+
+
+
+
             {
-                loaded: ModuleRegistry.list()
+
+
+                version:
+                this.version,
+
+
+
+                details:{
+
+
+                    loaded:
+                    this.loaded
+
+
+
+                }
+
+
+
             }
+
+
+
         );
+
+
 
     }
 
+
+
 };
 
-globalThis.ModuleLoader = ModuleLoader;
+
+
+
+
+globalThis.ModuleLoader =
+ModuleLoader;

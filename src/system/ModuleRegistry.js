@@ -1,90 +1,289 @@
 console.log("ModuleRegistry");
 
+
 const ModuleRegistry = {
 
-    modules: {},
 
-    register(name, instance) {
+    modules:{},
 
-        if (this.modules[name]) {
 
-            Logger.log("MODULE ALREADY REGISTERED: " + name);
-            return;
+    register(name, instance){
+
+
+        if(!name || !instance){
+
+            Logger.log(
+                "MODULE REGISTER FAILED: INVALID DATA"
+            );
+
+            return false;
 
         }
 
-        this.modules[name] = {
 
-            instance,
-            status: "REGISTERED"
+
+        if(this.modules[name]){
+
+
+            Logger.log(
+                "MODULE ALREADY REGISTERED: "
+                + name
+            );
+
+
+            return false;
+
+        }
+
+
+
+        this.modules[name]={
+
+
+            instance:instance,
+
+
+            status:"REGISTERED",
+
+
+            registeredAt:
+            new Date().toISOString(),
+
+
+            error:null
+
 
         };
 
-        Logger.log("MODULE REGISTERED: " + name);
+
+
+        Logger.log(
+
+            "MODULE REGISTERED: "
+            + name
+
+        );
+
+
+        return true;
+
 
     },
 
-    init(name) {
 
-        const module = this.modules[name];
 
-        if (!module) {
 
-            Logger.log("MODULE NOT FOUND: " + name);
-            return;
+    init(name){
+
+
+        const module =
+            this.modules[name];
+
+
+
+        if(!module){
+
+
+            Logger.log(
+
+                "MODULE NOT FOUND: "
+                + name
+
+            );
+
+
+            return false;
 
         }
 
-        if (module.status === "READY") {
-            return;
+
+
+
+        if(module.status==="READY"){
+
+
+            Logger.log(
+
+                name
+                +
+                " ALREADY READY"
+
+            );
+
+
+            return true;
+
         }
 
-        if (typeof module.instance.init === "function") {
 
-            module.instance.init();
+
+
+
+        try{
+
+
+            module.status="INITIALIZING";
+
+
+
+            if(
+
+                typeof module.instance.init
+                ===
+                "function"
+
+            ){
+
+
+                module.instance.init();
+
+
+            }
+
+
+
+            module.status="READY";
+
+
+
+            Logger.log(
+
+                name
+                +
+                " READY"
+
+            );
+
+
+            return true;
+
+
 
         }
 
-        module.status = "READY";
+        catch(error){
 
-        Logger.log(name + " READY");
+
+
+            module.status="FAILED";
+
+
+            module.error =
+            error.message;
+
+
+
+            Logger.log(
+
+                "MODULE FAILED: "
+                +
+                name
+                +
+                " "
+                +
+                error.message
+
+            );
+
+
+
+            return false;
+
+
+        }
+
 
     },
 
-    initAll() {
 
-        Object.keys(this.modules)
-            .forEach(name => this.init(name));
+
+
+
+    initAll(){
+
+
+
+        Object.keys(
+
+            this.modules
+
+        )
+        .forEach(name=>{
+
+
+            this.init(name);
+
+
+        });
+
 
     },
 
-    get(name) {
 
-        return this.modules[name]?.instance;
+
+
+
+    get(name){
+
+
+        return this.modules[name] || null;
+
 
     },
 
-    list() {
 
-        return Object.keys(this.modules);
 
-    },
 
-    health() {
 
-        return HealthContract.create(
-            "ModuleRegistry",
-            "OK",
-            Object.keys(this.modules).map(name => ({
+    health(){
 
-                Module: name,
-                Status: this.modules[name].status
+
+
+        return {
+
+
+            status:"OK",
+
+
+            module:"ModuleRegistry",
+
+
+            version:"0.1",
+
+
+            details:
+
+
+            Object.keys(this.modules)
+            .map(name=>({
+
+
+                Module:name,
+
+
+                Status:
+                this.modules[name].status,
+
+
+                Error:
+                this.modules[name].error
+
 
             }))
-        );
+
+
+
+        };
+
 
     }
 
+
+
 };
 
-globalThis.ModuleRegistry = ModuleRegistry;
+
+
+
+globalThis.ModuleRegistry =
+ModuleRegistry;

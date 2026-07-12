@@ -1,39 +1,58 @@
 console.log("SystemInit");
 
 
+
 const SystemInit = {
 
 
-    initialized:false,
+
+initialized:false,
 
 
-    init(){
 
 
-        if(this.initialized){
 
-            Logger.log(
-                "SYSTEM ALREADY INITIALIZED"
-            );
+init(){
 
-            return;
 
-        }
 
+    if(this.initialized){
 
 
         Logger.log(
-            "ERP INIT START"
+
+            "SYSTEM ALREADY INITIALIZED"
+
         );
 
 
+        return;
 
-        // =========================
-        // SAFE CORE
-        // =========================
+
+    }
+
+
+
+
+
+    Logger.log(
+
+        "ERP INIT START"
+
+    );
+
+
+
+
+
+    try{
+
+
+
+
 
         if(
-            typeof SafeCore !== "undefined"
+            typeof SafeCore!=="undefined"
         ){
 
             SafeCore.init();
@@ -42,12 +61,10 @@ const SystemInit = {
 
 
 
-        // =========================
-        // DATABASE SCHEMA
-        // =========================
+
 
         if(
-            typeof SchemaManager !== "undefined"
+            typeof SchemaManager!=="undefined"
         ){
 
             SchemaManager.init();
@@ -56,12 +73,10 @@ const SystemInit = {
 
 
 
-        // =========================
-        // ID REGISTRY
-        // =========================
+
 
         if(
-            typeof Registry !== "undefined"
+            typeof Registry!=="undefined"
         ){
 
             Registry.init();
@@ -71,208 +86,167 @@ const SystemInit = {
 
 
 
-        // =========================
-        // MODULE REGISTRY
-        // =========================
+
 
         if(
-            typeof ModuleRegistry !== "undefined"
+            typeof ModuleLoader!=="undefined"
         ){
 
 
-            if(
-                typeof TripEventHandler !== "undefined"
-            ){
-
-                ModuleRegistry.register(
-                    "TripEventHandler",
-                    TripEventHandler
-                );
-
-            }
-
-
-
-            if(
-                typeof FinanceEngine !== "undefined"
-            ){
-
-                ModuleRegistry.register(
-                    "FinanceEngine",
-                    FinanceEngine
-                );
-
-            }
-
-
-
-            if(
-                typeof KPIEngine !== "undefined"
-            ){
-
-                ModuleRegistry.register(
-                    "KPIEngine",
-                    KPIEngine
-                );
-
-            }
-
-
-
-            if(
-                typeof DashboardEngine !== "undefined"
-            ){
-
-                ModuleRegistry.register(
-                    "DashboardEngine",
-                    DashboardEngine
-                );
-
-            }
+            ModuleLoader.loadCore();
 
 
         }
 
 
 
-        // =========================
-        // TRIP EVENTS
-        // =========================
+
 
 
         if(
-            typeof TripEventHandler !== "undefined"
+            typeof ModuleRegistry!=="undefined"
         ){
 
-            Logger.log(
-                "FOUND TripEventHandler"
-            );
+
+            ModuleRegistry.initAll();
 
 
-            TripEventHandler.init();
+        }
+
+
+
+
+
+
+        if(
+            typeof EventSubscriptions!=="undefined"
+        ){
+
+
+            EventSubscriptions
+            .initEventSubscriptions();
+
 
 
             Logger.log(
-                "TripEventHandler initialized"
+
+                "EventSubscriptions READY"
+
             );
 
-        }
-
-
-
-
-        // =========================
-        // FINANCE
-        // =========================
-
-
-        if(
-            typeof FinanceEngine !== "undefined"
-        ){
-
-            FinanceEngine.init();
 
         }
 
 
 
-
-        // =========================
-        // KPI
-        // =========================
-
-
-        if(
-            typeof KPIEngine !== "undefined"
-        ){
-
-            KPIEngine.init();
-
-        }
-
-
-
-
-        // =========================
-        // AUTOMATION
-        // =========================
-
-
-        if(
-            typeof AutomationEngine !== "undefined"
-        ){
-
-            AutomationEngine.init();
-
-        }
-
-
-
-
-        // =========================
-        // DASHBOARD
-        // =========================
-
-
-        if(
-            typeof DashboardEngine !== "undefined"
-        ){
-
-            DashboardEngine.init();
-
-        }
-
-
-        // =========================
-        // EVENT BUS SUBSCRIPTIONS
-        // =========================
-
-if (typeof EventSubscriptions !== "undefined") {
-
-    EventSubscriptions.init();
-
-}
-
-
-
-        // =========================
-        // COMPLETE
-        // =========================
 
 
         this.initialized=true;
 
 
+
+
         Logger.log(
+
             "ERP INIT COMPLETE"
+
         );
 
 
-    },
-       health(){
+
+
+
+    }
+
+    catch(error){
+
+
+
+        Logger.log(
+
+            "SYSTEM INIT FAILED: "
+            +
+            error.message
+
+        );
+
+
+        throw error;
+
+
+    }
+
+
+
+},
+
+
+
+
+
+
+health(){
+
+
 
 return HealthContract.create(
+
+
     "SystemInit",
+
+
     this.initialized
+
     ?
+
     "OK"
+
     :
+
     "WARNING",
+
+
+
     {
+
+
         initialized:
         this.initialized,
 
+
+
         dependencies:{
-            EventBus:true,
-            Database:true
+
+
+            EventBus:
+            typeof EventBus!=="undefined",
+
+
+
+            Database:
+            typeof Database!=="undefined"
+
+
+
         }
+
+
     }
+
+
+
 );
+
+
 
 }
 
 
+
+
 };
+
+
 
 
 
