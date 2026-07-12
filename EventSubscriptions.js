@@ -2,49 +2,51 @@ console.log("EventSubscriptions");
 
 const EventSubscriptions = {
 
-    initialized:false,
+    initialized: false,
 
-    init(){
+    initEventSubscriptions() {
 
-        if(this.initialized){
+        if (this.initialized) {
+
+            Logger.log(
+                "EventSubscriptions ALREADY INITIALIZED"
+            );
+
             return;
+
         }
 
-        // Клиенты
-
-        EventBus.on("CLIENT_CREATED", function () {
+        EventBus.on("CLIENT_CREATED", () => {
             DashboardEngine.refresh();
         });
 
-        EventBus.on("CLIENT_UPDATED", function () {
+        EventBus.on("CLIENT_UPDATED", () => {
             DashboardEngine.refresh();
         });
 
-        // Поездки
-
-        EventBus.on("TRIP_CREATED", function () {
+        EventBus.on("TRIP_CREATED", () => {
             DashboardEngine.refresh();
         });
 
-        EventBus.on("TRIP_UPDATED", function () {
+        EventBus.on("TRIP_UPDATED", () => {
             DashboardEngine.refresh();
         });
 
         this.initialized = true;
 
-        Logger.log("EventSubscriptions READY");
+        Logger.log(
+            "EventSubscriptions READY"
+        );
+
     },
 
-    health(){
+    health() {
 
         return HealthContract.create(
             "EventSubscriptions",
             this.initialized ? "OK" : "WARNING",
             {
-                initialized:this.initialized,
-                dependencies:{
-                    EventBus:true
-                }
+                initialized: this.initialized
             }
         );
 
