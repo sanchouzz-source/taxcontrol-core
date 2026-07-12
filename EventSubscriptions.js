@@ -1,20 +1,55 @@
-function initEventSubscriptions() {
+console.log("EventSubscriptions");
 
-    // 📊 любой клиент → обновляем dashboard
-    EventBus.on("CLIENT_CREATED", function () {
-        DashboardEngine.render(true);
-    });
+const EventSubscriptions = {
 
-    EventBus.on("CLIENT_UPDATED", function () {
-        DashboardEngine.render(true);
-    });
+    initialized:false,
 
-    // 🚚 любые поездки → обновляем KPI
-    EventBus.on("TRIP_CREATED", function () {
-        DashboardEngine.render(true);
-    });
+    init(){
 
-    EventBus.on("TRIP_UPDATED", function () {
-        DashboardEngine.render(true);
-    });
-}
+        if(this.initialized){
+            return;
+        }
+
+        // Клиенты
+
+        EventBus.on("CLIENT_CREATED", function () {
+            DashboardEngine.refresh();
+        });
+
+        EventBus.on("CLIENT_UPDATED", function () {
+            DashboardEngine.refresh();
+        });
+
+        // Поездки
+
+        EventBus.on("TRIP_CREATED", function () {
+            DashboardEngine.refresh();
+        });
+
+        EventBus.on("TRIP_UPDATED", function () {
+            DashboardEngine.refresh();
+        });
+
+        this.initialized = true;
+
+        Logger.log("EventSubscriptions READY");
+    },
+
+    health(){
+
+        return HealthContract.create(
+            "EventSubscriptions",
+            this.initialized ? "OK" : "WARNING",
+            {
+                initialized:this.initialized,
+                dependencies:{
+                    EventBus:true
+                }
+            }
+        );
+
+    }
+
+};
+
+globalThis.EventSubscriptions = EventSubscriptions;

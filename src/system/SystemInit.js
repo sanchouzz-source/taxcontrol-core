@@ -70,33 +70,6 @@ const SystemInit = {
 
 
 
-        // =========================
-        // EVENT BUS SUBSCRIPTIONS
-        // =========================
-
-        if(
-            typeof EventSubscriptions !== "undefined"
-        ){
-
-            EventSubscriptions
-                .initEventSubscriptions();
-
-
-            Logger.log(
-                "EventSubscriptions READY"
-            );
-
-        }
-        else{
-
-            Logger.log(
-                "EventSubscriptions NOT FOUND"
-            );
-
-        }
-
-
-
 
         // =========================
         // MODULE REGISTRY
@@ -248,6 +221,32 @@ const SystemInit = {
             DashboardEngine.init();
 
         }
+
+
+        // =========================
+        // EVENT BUS SUBSCRIPTIONS
+        // =========================
+
+        if(
+            typeof EventSubscriptions !== "undefined"
+        ){
+
+            EventSubscriptions.init();
+
+
+            Logger.log(
+                "EventSubscriptions READY"
+            );
+
+        }
+        else{
+
+            Logger.log(
+                "EventSubscriptions NOT FOUND"
+            );
+
+        }
+
 
 
 
