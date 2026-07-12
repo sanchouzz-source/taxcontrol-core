@@ -4,7 +4,11 @@ console.log("ModuleRegistry");
 const ModuleRegistry = {
 
 
+    version:"0.1.1",
+
+
     modules:{},
+
 
 
     register(name, instance){
@@ -12,9 +16,12 @@ const ModuleRegistry = {
 
         if(!name || !instance){
 
+
             Logger.log(
-                "MODULE REGISTER FAILED: INVALID DATA"
+                "MODULE REGISTER FAILED: "
+                + name
             );
+
 
             return false;
 
@@ -26,14 +33,17 @@ const ModuleRegistry = {
 
 
             Logger.log(
+
                 "MODULE ALREADY REGISTERED: "
                 + name
+
             );
 
 
             return false;
 
         }
+
 
 
 
@@ -46,11 +56,11 @@ const ModuleRegistry = {
             status:"REGISTERED",
 
 
-            registeredAt:
-            new Date().toISOString(),
+            error:null,
 
 
-            error:null
+            initialized:false
+
 
 
         };
@@ -65,6 +75,7 @@ const ModuleRegistry = {
         );
 
 
+
         return true;
 
 
@@ -73,11 +84,15 @@ const ModuleRegistry = {
 
 
 
+
+
     init(name){
+
 
 
         const module =
             this.modules[name];
+
 
 
 
@@ -92,26 +107,29 @@ const ModuleRegistry = {
             );
 
 
-            return false;
+            return;
+
 
         }
 
 
 
 
-        if(module.status==="READY"){
+
+        if(module.initialized){
 
 
             Logger.log(
 
                 name
                 +
-                " ALREADY READY"
+                " ALREADY INITIALIZED"
 
             );
 
 
-            return true;
+            return;
+
 
         }
 
@@ -119,10 +137,8 @@ const ModuleRegistry = {
 
 
 
+
         try{
-
-
-            module.status="INITIALIZING";
 
 
 
@@ -135,14 +151,25 @@ const ModuleRegistry = {
             ){
 
 
+
                 module.instance.init();
+
 
 
             }
 
 
 
+
+
             module.status="READY";
+
+
+            module.initialized=true;
+
+
+            module.error=null;
+
 
 
 
@@ -155,45 +182,40 @@ const ModuleRegistry = {
             );
 
 
-            return true;
-
-
 
         }
+
 
         catch(error){
 
 
 
-            module.status="FAILED";
+            module.status="ERROR";
 
 
             module.error =
-            error.message;
+                error.message;
 
 
 
             Logger.log(
 
-                "MODULE FAILED: "
-                +
                 name
                 +
-                " "
+                " ERROR: "
                 +
                 error.message
 
             );
 
 
-
-            return false;
-
-
         }
 
 
+
     },
+
+
 
 
 
@@ -204,9 +226,7 @@ const ModuleRegistry = {
 
 
         Object.keys(
-
             this.modules
-
         )
         .forEach(name=>{
 
@@ -217,7 +237,12 @@ const ModuleRegistry = {
         });
 
 
+
     },
+
+
+
+
 
 
 
@@ -226,10 +251,12 @@ const ModuleRegistry = {
     get(name){
 
 
-        return this.modules[name] || null;
-
+        return this.modules[name];
 
     },
+
+
+
 
 
 
@@ -239,44 +266,55 @@ const ModuleRegistry = {
 
 
 
-        return {
+        return HealthContract.create(
 
 
-            status:"OK",
+            "ModuleRegistry",
 
 
-            module:"ModuleRegistry",
+            "OK",
 
 
-            version:"0.1",
+            {
 
 
-            details:
+                version:this.version,
 
 
-            Object.keys(this.modules)
-            .map(name=>({
+                modules:
 
-
-                Module:name,
-
-
-                Status:
-                this.modules[name].status,
-
-
-                Error:
-                this.modules[name].error
-
-
-            }))
+                    Object.keys(
+                        this.modules
+                    )
+                    .map(name=>({
 
 
 
-        };
+                        Module:name,
+
+
+                        Status:
+                        this.modules[name].status,
+
+
+                        Error:
+                        this.modules[name].error
+
+
+
+                    }))
+
+
+
+            }
+
+
+
+        );
 
 
     }
+
 
 
 

@@ -6,32 +6,14 @@ const ModuleLoader = {
 
 
 
-    version:"0.1",
+    version:"0.1.1",
 
 
 
     loaded:[],
 
 
-
-    coreModules:[
-
-
-        "TripEventHandler",
-
-
-        "FinanceEngine",
-
-
-        "KPIEngine",
-
-
-        "DashboardEngine"
-
-
-    ],
-
-
+    initialized:false,
 
 
 
@@ -42,59 +24,53 @@ const ModuleLoader = {
 
 
         Logger.log(
-
             "MODULE LOADER START"
-
         );
 
 
 
 
 
-        this.coreModules
-        .forEach(name=>{
+
+        const modules=[
+
+
+
+            "TripEventHandler",
+
+
+            "FinanceEngine",
+
+
+            "KPIEngine",
+
+
+            "DashboardEngine"
+
+
+
+        ];
 
 
 
 
 
-            try{
+
+
+        modules.forEach(name=>{
 
 
 
-                const module =
+            const module =
                 globalThis[name];
 
 
 
 
 
-
-                if(!module){
-
+            if(module){
 
 
-                    Logger.log(
-
-                        "MODULE NOT FOUND: "
-                        +
-                        name
-
-                    );
-
-
-
-                    return;
-
-
-                }
-
-
-
-
-
-
-                const registered =
 
                 ModuleRegistry.register(
 
@@ -106,42 +82,21 @@ const ModuleLoader = {
 
 
 
-
-
-
-
-
-                if(registered){
-
-
-
-                    this.loaded.push(name);
-
-
-
-                }
-
-
+                this.loaded.push(name);
 
 
 
             }
 
-
-
-            catch(error){
+            else{
 
 
 
                 Logger.log(
 
-                    "MODULE LOAD ERROR: "
+                    "MODULE NOT FOUND: "
                     +
                     name
-                    +
-                    " "
-                    +
-                    error.message
 
                 );
 
@@ -150,10 +105,7 @@ const ModuleLoader = {
 
 
 
-
-
         });
-
 
 
 
@@ -168,9 +120,6 @@ const ModuleLoader = {
 
 
 
-        return this.loaded;
-
-
 
     },
 
@@ -182,11 +131,38 @@ const ModuleLoader = {
 
 
 
-    getLoaded(){
+    initAll(){
 
 
 
-        return this.loaded;
+        if(this.initialized){
+
+
+
+            Logger.log(
+
+                "MODULES ALREADY INITIALIZED"
+
+            );
+
+
+            return;
+
+
+        }
+
+
+
+
+
+
+        ModuleRegistry.initAll();
+
+
+
+
+        this.initialized=true;
+
 
 
 
@@ -207,38 +183,26 @@ const ModuleLoader = {
         return HealthContract.create(
 
 
-
             "ModuleLoader",
-
 
 
             "OK",
 
 
-
-
             {
 
 
-                version:
-                this.version,
+                version:this.version,
 
 
-
-                details:{
-
-
-                    loaded:
-                    this.loaded
+                loaded:this.loaded,
 
 
-
-                }
+                initialized:this.initialized
 
 
 
             }
-
 
 
         );
@@ -249,8 +213,8 @@ const ModuleLoader = {
 
 
 
-};
 
+};
 
 
 

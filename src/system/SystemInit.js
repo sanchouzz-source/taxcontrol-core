@@ -6,81 +6,116 @@ const SystemInit = {
 
 
 
-initialized:false,
+    version:"0.1.1",
+
+
+
+    initialized:false,
 
 
 
 
 
-init(){
+
+    init(){
 
 
 
-    if(this.initialized){
+
+
+        if(this.initialized){
+
+
+
+            Logger.log(
+
+                "SYSTEM ALREADY INITIALIZED"
+
+            );
+
+
+            return;
+
+
+        }
+
+
+
+
 
 
         Logger.log(
 
-            "SYSTEM ALREADY INITIALIZED"
+            "ERP INIT START"
 
         );
 
 
-        return;
-
-
-    }
 
 
 
 
 
-    Logger.log(
-
-        "ERP INIT START"
-
-    );
 
 
-
-
-
-    try{
-
-
-
+        // =========================
+        // SAFE CORE
+        // =========================
 
 
         if(
-            typeof SafeCore!=="undefined"
+            typeof SafeCore !== "undefined"
         ){
+
 
             SafeCore.init();
 
+
         }
 
 
 
 
 
+
+
+
+
+        // =========================
+        // DATABASE
+        // =========================
+
+
         if(
-            typeof SchemaManager!=="undefined"
+            typeof SchemaManager !== "undefined"
         ){
+
 
             SchemaManager.init();
 
+
         }
 
 
 
 
 
+
+
+
+        // =========================
+        // ID REGISTRY
+        // =========================
+
+
         if(
-            typeof Registry!=="undefined"
+            typeof Registry !== "undefined"
         ){
+
 
             Registry.init();
 
+
         }
 
 
@@ -88,14 +123,46 @@ init(){
 
 
 
+
+
+
+
+
+        // =========================
+        // MODULE LOADER
+        // =========================
+
+
         if(
-            typeof ModuleLoader!=="undefined"
+
+            typeof ModuleLoader
+            !==
+            "undefined"
+
         ){
+
 
 
             ModuleLoader.loadCore();
 
 
+            ModuleLoader.initAll();
+
+
+
+        }
+
+        else{
+
+
+
+            Logger.log(
+
+                "ModuleLoader NOT FOUND"
+
+            );
+
+
         }
 
 
@@ -103,24 +170,22 @@ init(){
 
 
 
-        if(
-            typeof ModuleRegistry!=="undefined"
-        ){
-
-
-            ModuleRegistry.initAll();
-
-
-        }
 
 
 
-
+        // =========================
+        // EVENT SUBSCRIPTIONS
+        // =========================
 
 
         if(
-            typeof EventSubscriptions!=="undefined"
+
+            typeof EventSubscriptions
+            !==
+            "undefined"
+
         ){
+
 
 
             EventSubscriptions
@@ -141,7 +206,13 @@ init(){
 
 
 
+
+
+
+
         this.initialized=true;
+
+
 
 
 
@@ -156,95 +227,88 @@ init(){
 
 
 
-    }
-
-    catch(error){
+    },
 
 
 
-        Logger.log(
 
-            "SYSTEM INIT FAILED: "
-            +
-            error.message
+
+
+
+
+
+    health(){
+
+
+
+        return HealthContract.create(
+
+
+            "SystemInit",
+
+
+            this.initialized
+            ?
+            "OK"
+            :
+            "WARNING",
+
+
+
+            {
+
+
+                version:this.version,
+
+
+                initialized:
+                this.initialized,
+
+
+
+                dependencies:{
+
+
+
+                    Database:
+                    typeof Database
+                    !==
+                    "undefined",
+
+
+
+                    EventBus:
+                    typeof EventBus
+                    !==
+                    "undefined",
+
+
+
+                    ModuleLoader:
+                    typeof ModuleLoader
+                    !==
+                    "undefined"
+
+
+
+                }
+
+
+
+            }
+
 
         );
 
 
-        throw error;
-
 
     }
-
-
-
-},
-
-
-
-
-
-
-health(){
-
-
-
-return HealthContract.create(
-
-
-    "SystemInit",
-
-
-    this.initialized
-
-    ?
-
-    "OK"
-
-    :
-
-    "WARNING",
-
-
-
-    {
-
-
-        initialized:
-        this.initialized,
-
-
-
-        dependencies:{
-
-
-            EventBus:
-            typeof EventBus!=="undefined",
-
-
-
-            Database:
-            typeof Database!=="undefined"
-
-
-
-        }
-
-
-    }
-
-
-
-);
-
-
-
-}
 
 
 
 
 };
+
 
 
 
