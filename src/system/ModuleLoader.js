@@ -1,90 +1,53 @@
 console.log("ModuleLoader");
 
-
 const ModuleLoader = {
 
+    coreModules: [
 
-    loadCore(){
+        "TripEventHandler",
+        "FinanceEngine",
+        "KPIEngine",
+        "DashboardEngine"
 
+    ],
 
-        const modules=[
+    loadCore() {
 
+        this.coreModules.forEach(name => {
 
-            "TripEventHandler",
+            const module = globalThis[name];
 
+            if (!module) {
 
-            "FinanceEngine",
-
-
-            "KPIEngine",
-
-
-            "DashboardEngine"
-
-
-        ];
-
-
-
-        modules.forEach(name=>{
-
-
-            const module =
-                globalThis[name];
-
-
-            if(module){
-
-
-                Registry.register(
-                    name,
-                    module
-                );
-
+                Logger.log("MODULE NOT FOUND: " + name);
+                return;
 
             }
 
+            ModuleRegistry.register(name, module);
 
         });
 
+    },
+
+    initAll() {
+
+        ModuleRegistry.initAll();
 
     },
 
+    health() {
 
+        return HealthContract.create(
+            "ModuleLoader",
+            "OK",
+            {
+                loaded: ModuleRegistry.list()
+            }
+        );
 
-    initAll(){
+    }
 
-
-        Object.keys(
-            Registry.modules
-        )
-        .forEach(name=>{
-
-
-            Registry.initialize(
-                name
-            );
-
-
-        });
-
-
-    },
-
-health(){
-
-    return {
-
-        status:"OK",
-
-        module:"ModuleLoader"
-
-    };
-
-}
 };
 
-
-
-globalThis.ModuleLoader =
-ModuleLoader;
+globalThis.ModuleLoader = ModuleLoader;

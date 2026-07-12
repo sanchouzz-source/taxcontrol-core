@@ -1,11 +1,54 @@
 console.log("Inspector");
 
-
 const Inspector = {
 
+    inspect() {
+
+        Logger.log("========== ERP HEALTH ==========");
+
+        const report = {};
+
+        try {
+
+            Object.assign(
+                report,
+                HealthService.checkAll()
+            );
+
+        } catch (e) {
+
+            Logger.log(
+                "HEALTH ERROR: " + e.message
+            );
+
+            report.HealthService = {
+                status: "ERROR",
+                message: e.message
+            };
+
+        }
+
+        Object.entries(report).forEach(([name,item])=>{
+
+            const ok =
+                item.status === "OK";
+
+            Logger.log(
+                (ok ? "✅ " : "❌ ")
+                + name
+                + " "
+                + item.status
+            );
+
+        });
+
+        Logger.log("==============================");
+
+        return report;
+
+    },
 
     health(){
-
 
         return HealthContract.create(
 
@@ -17,8 +60,7 @@ const Inspector = {
 
                 dependencies:{
 
-                    HealthService:true,
-                    Logger:true
+                    HealthService:true
 
                 }
 
@@ -26,90 +68,8 @@ const Inspector = {
 
         );
 
-
-    },
-
-
-
-    inspect(){
-
-
-        Logger.log(
-            "========== ERP HEALTH =========="
-        );
-
-
-        const report =
-            HealthService.checkAll();
-
-
-
-        Object.keys(report)
-        .forEach(name=>{
-
-
-            const item =
-                report[name];
-
-
-            if(item.status==="OK"){
-
-
-                Logger.log(
-                    "✅ "
-                    + name
-                    + " OK"
-                );
-
-
-            }
-            else{
-
-
-                Logger.log(
-
-                    "⚠️ "
-                    + name
-                    + " "
-                    + item.status
-                    + " "
-                    + (
-                        item.message
-                        ||
-                        JSON.stringify(item)
-                    )
-
-                );
-
-
-            }
-
-
-        });
-
-
-
-        Logger.log(
-            "================================"
-        );
-
-
-        return report;
-
-
     }
-
 
 };
 
-
-
-function inspectSystem(){
-
-    return Inspector.inspect();
-
-}
-
-
-globalThis.Inspector =
-Inspector;
+globalThis.Inspector = Inspector;

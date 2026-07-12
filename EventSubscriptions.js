@@ -4,36 +4,26 @@ const EventSubscriptions = {
 
     initialized: false,
 
-    initEventSubscriptions() {
+    init() {
 
         if (this.initialized) {
-
-            Logger.log(
-                "EventSubscriptions ALREADY INITIALIZED"
-            );
-
             return;
-
         }
 
-        Logger.log(
-            "Registering EventSubscriptions..."
-        );
+        if (typeof EventBus === "undefined") {
+            throw new Error("EventBus not found");
+        }
 
         // ==========================
         // CLIENTS
         // ==========================
 
         EventBus.on("CLIENT_CREATED", () => {
-
-            DashboardEngine.refresh();
-
+            DashboardEngine.render(true);
         });
 
         EventBus.on("CLIENT_UPDATED", () => {
-
-            DashboardEngine.refresh();
-
+            DashboardEngine.render(true);
         });
 
         // ==========================
@@ -41,39 +31,25 @@ const EventSubscriptions = {
         // ==========================
 
         EventBus.on("TRIP_CREATED", () => {
-
-            DashboardEngine.refresh();
-
+            DashboardEngine.render(true);
         });
 
         EventBus.on("TRIP_UPDATED", () => {
-
-            DashboardEngine.refresh();
-
+            DashboardEngine.render(true);
         });
 
         this.initialized = true;
 
-        Logger.log(
-            "EventSubscriptions READY"
-        );
-
+        Logger.log("EventSubscriptions READY");
     },
 
     health() {
 
         return HealthContract.create(
             "EventSubscriptions",
-            this.initialized
-                ? "OK"
-                : "WARNING",
+            this.initialized ? "OK" : "WARNING",
             {
-                initialized: this.initialized,
-                subscriptions: 4,
-                dependencies: {
-                    EventBus: true,
-                    DashboardEngine: true
-                }
+                initialized: this.initialized
             }
         );
 
@@ -81,5 +57,4 @@ const EventSubscriptions = {
 
 };
 
-globalThis.EventSubscriptions =
-    EventSubscriptions;
+globalThis.EventSubscriptions = EventSubscriptions;

@@ -1,120 +1,90 @@
 console.log("ModuleRegistry");
 
-
 const ModuleRegistry = {
 
+    modules: {},
 
-    modules:{},
+    register(name, instance) {
 
+        if (this.modules[name]) {
 
-
-    register(name, instance){
-
-
-        this.modules[name]={
-
-            instance:instance,
-
-            status:"REGISTERED"
-
-        };
-
-
-        Logger.log(
-            "MODULE REGISTERED: "
-            + name
-        );
-
-
-    },
-
-
-
-    init(name){
-
-
-        const module =
-            this.modules[name];
-
-
-        if(!module){
-
-            Logger.log(
-                "MODULE NOT FOUND: "
-                + name
-            );
-
+            Logger.log("MODULE ALREADY REGISTERED: " + name);
             return;
 
         }
 
+        this.modules[name] = {
 
+            instance,
+            status: "REGISTERED"
 
-        if(
-            typeof module.instance.init === "function"
-        ){
+        };
+
+        Logger.log("MODULE REGISTERED: " + name);
+
+    },
+
+    init(name) {
+
+        const module = this.modules[name];
+
+        if (!module) {
+
+            Logger.log("MODULE NOT FOUND: " + name);
+            return;
+
+        }
+
+        if (module.status === "READY") {
+            return;
+        }
+
+        if (typeof module.instance.init === "function") {
 
             module.instance.init();
 
         }
 
+        module.status = "READY";
 
+        Logger.log(name + " READY");
 
-        module.status="READY";
+    },
 
+    initAll() {
 
-        Logger.log(
-            name
-            +
-            " READY"
+        Object.keys(this.modules)
+            .forEach(name => this.init(name));
+
+    },
+
+    get(name) {
+
+        return this.modules[name]?.instance;
+
+    },
+
+    list() {
+
+        return Object.keys(this.modules);
+
+    },
+
+    health() {
+
+        return HealthContract.create(
+            "ModuleRegistry",
+            "OK",
+            Object.keys(this.modules).map(name => ({
+
+                Module: name,
+                Status: this.modules[name].status
+
+            }))
         );
-
-
-    },
-
-
-
-    initAll(){
-
-
-        Object.keys(
-            this.modules
-        )
-        .forEach(name=>{
-
-
-            this.init(name);
-
-
-        });
-
-
-    },
-
-
-
-    health(){
-
-
-        return Object.keys(
-            this.modules
-        )
-        .map(name=>({
-
-            Module:name,
-
-            Status:
-            this.modules[name].status
-
-        }));
-
 
     }
 
-
 };
 
-
-
-globalThis.ModuleRegistry =
-ModuleRegistry;
+globalThis.ModuleRegistry = ModuleRegistry;
