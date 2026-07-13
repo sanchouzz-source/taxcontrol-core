@@ -4,20 +4,36 @@ console.log("ModuleRegistry");
 const ModuleRegistry = {
 
 
-    version:"0.1.1",
+    version:"0.2.0",
 
 
     modules:{},
 
 
 
+    order:[
+
+        "TripEventHandler",
+
+        "FinanceEngine",
+
+        "KPIEngine",
+
+        "DashboardEngine"
+
+    ],
+
+
+
+
     register(name, instance){
+
 
 
         if(!name || !instance){
 
 
-            Logger.log(
+            Logger.error(
                 "MODULE REGISTER FAILED: "
                 + name
             );
@@ -25,14 +41,16 @@ const ModuleRegistry = {
 
             return false;
 
+
         }
+
 
 
 
         if(this.modules[name]){
 
 
-            Logger.log(
+            Logger.warn(
 
                 "MODULE ALREADY REGISTERED: "
                 + name
@@ -41,6 +59,7 @@ const ModuleRegistry = {
 
 
             return false;
+
 
         }
 
@@ -56,10 +75,13 @@ const ModuleRegistry = {
             status:"REGISTERED",
 
 
+            initialized:false,
+
+
             error:null,
 
 
-            initialized:false
+            startedAt:null
 
 
 
@@ -67,10 +89,13 @@ const ModuleRegistry = {
 
 
 
+
+
         Logger.log(
 
             "MODULE REGISTERED: "
-            + name
+            +
+            name
 
         );
 
@@ -86,6 +111,7 @@ const ModuleRegistry = {
 
 
 
+
     init(name){
 
 
@@ -95,19 +121,19 @@ const ModuleRegistry = {
 
 
 
-
         if(!module){
 
 
-            Logger.log(
+            Logger.error(
 
                 "MODULE NOT FOUND: "
-                + name
+                +
+                name
 
             );
 
 
-            return;
+            return false;
 
 
         }
@@ -119,20 +145,21 @@ const ModuleRegistry = {
         if(module.initialized){
 
 
+
             Logger.log(
 
                 name
                 +
-                " ALREADY INITIALIZED"
+                " ALREADY READY"
 
             );
 
 
-            return;
+
+            return true;
 
 
         }
-
 
 
 
@@ -142,12 +169,22 @@ const ModuleRegistry = {
 
 
 
-            if(
+            Logger.log(
 
+                "START MODULE: "
+                +
+                name
+
+            );
+
+
+
+
+
+            if(
                 typeof module.instance.init
                 ===
                 "function"
-
             ){
 
 
@@ -161,15 +198,15 @@ const ModuleRegistry = {
 
 
 
-
             module.status="READY";
 
 
             module.initialized=true;
 
 
-            module.error=null;
-
+            module.startedAt=
+                new Date()
+                .toISOString();
 
 
 
@@ -183,7 +220,12 @@ const ModuleRegistry = {
 
 
 
+            return true;
+
+
+
         }
+
 
 
         catch(error){
@@ -193,20 +235,24 @@ const ModuleRegistry = {
             module.status="ERROR";
 
 
-            module.error =
+            module.error=
                 error.message;
 
 
 
-            Logger.log(
+            Logger.error(
 
                 name
                 +
-                " ERROR: "
+                " FAILED: "
                 +
                 error.message
 
             );
+
+
+
+            return false;
 
 
         }
@@ -225,17 +271,32 @@ const ModuleRegistry = {
 
 
 
-        Object.keys(
-            this.modules
-        )
-        .forEach(name=>{
+        Logger.log(
+            "MODULE REGISTRY INIT START"
+        );
 
 
-            this.init(name);
+
+        this.order.forEach(name=>{
+
+
+            if(this.modules[name]){
+
+
+                this.init(name);
+
+
+            }
 
 
         });
 
+
+
+
+        Logger.log(
+            "MODULE REGISTRY INIT COMPLETE"
+        );
 
 
     },
@@ -247,11 +308,28 @@ const ModuleRegistry = {
 
 
 
-
     get(name){
 
 
-        return this.modules[name];
+        return (
+            this.modules[name]
+            ||
+            null
+        );
+
+
+    },
+
+
+
+
+
+
+    getModules(){
+
+
+        return this.modules;
+
 
     },
 
@@ -266,13 +344,56 @@ const ModuleRegistry = {
 
 
 
+        const list =
+
+            Object.keys(
+                this.modules
+            )
+            .map(name=>({
+
+
+                Module:name,
+
+
+                Status:
+                this.modules[name].status,
+
+
+                Error:
+                this.modules[name].error
+
+
+
+            }));
+
+
+
+
+
+        const hasError =
+
+            list.some(
+                m =>
+                m.Status==="ERROR"
+            );
+
+
+
+
+
+
         return HealthContract.create(
 
 
             "ModuleRegistry",
 
 
+            hasError
+            ?
+            "WARNING"
+            :
             "OK",
+
 
 
             {
@@ -281,44 +402,49 @@ const ModuleRegistry = {
                 version:this.version,
 
 
-                modules:
-
-                    Object.keys(
-                        this.modules
-                    )
-                    .map(name=>({
-
-
-
-                        Module:name,
-
-
-                        Status:
-                        this.modules[name].status,
-
-
-                        Error:
-                        this.modules[name].error
-
-
-
-                    }))
+                modules:list
 
 
 
             }
 
 
+        );
+
+
+
+    },
+
+
+
+
+
+
+
+
+
+    reset(){
+
+
+
+        this.modules={};
+
+
+
+        Logger.log(
+
+            "MODULE REGISTRY RESET"
 
         );
+
 
 
     }
 
 
 
-
 };
+
 
 
 

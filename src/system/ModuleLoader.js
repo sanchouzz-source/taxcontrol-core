@@ -5,15 +5,35 @@ console.log("ModuleLoader");
 const ModuleLoader = {
 
 
-
-    version:"0.1.1",
+    version:"0.2.0",
 
 
 
     loaded:[],
 
 
-    initialized:false,
+    loadedMap:{},
+
+
+
+
+    modules:[
+
+
+        "TripEventHandler",
+
+
+        "FinanceEngine",
+
+
+        "KPIEngine",
+
+
+        "DashboardEngine"
+
+
+    ],
+
 
 
 
@@ -31,33 +51,29 @@ const ModuleLoader = {
 
 
 
-
-        const modules=[
-
-
-
-            "TripEventHandler",
-
-
-            "FinanceEngine",
-
-
-            "KPIEngine",
-
-
-            "DashboardEngine"
+        this.modules.forEach(name=>{
 
 
 
-        ];
+            if(this.loadedMap[name]){
+
+
+                Logger.log(
+
+                    "MODULE ALREADY LOADED: "
+                    +
+                    name
+
+                );
+
+
+                return;
+
+
+            }
 
 
 
-
-
-
-
-        modules.forEach(name=>{
 
 
 
@@ -68,9 +84,32 @@ const ModuleLoader = {
 
 
 
-            if(module){
+
+            if(!module){
 
 
+
+                Logger.warn(
+
+                    "MODULE NOT FOUND: "
+                    +
+                    name
+
+                );
+
+
+                return;
+
+
+            }
+
+
+
+
+
+
+
+            const registered =
 
                 ModuleRegistry.register(
 
@@ -82,23 +121,29 @@ const ModuleLoader = {
 
 
 
+
+
+
+
+            if(registered){
+
+
+
                 this.loaded.push(name);
 
 
-
-            }
-
-            else{
+                this.loadedMap[name]=true;
 
 
 
                 Logger.log(
 
-                    "MODULE NOT FOUND: "
+                    "LOADED: "
                     +
                     name
 
                 );
+
 
 
             }
@@ -121,49 +166,7 @@ const ModuleLoader = {
 
 
 
-    },
-
-
-
-
-
-
-
-
-
-    initAll(){
-
-
-
-        if(this.initialized){
-
-
-
-            Logger.log(
-
-                "MODULES ALREADY INITIALIZED"
-
-            );
-
-
-            return;
-
-
-        }
-
-
-
-
-
-
-        ModuleRegistry.initAll();
-
-
-
-
-        this.initialized=true;
-
-
+        return this.loaded;
 
 
     },
@@ -183,10 +186,13 @@ const ModuleLoader = {
         return HealthContract.create(
 
 
+
             "ModuleLoader",
 
 
+
             "OK",
+
 
 
             {
@@ -198,11 +204,13 @@ const ModuleLoader = {
                 loaded:this.loaded,
 
 
-                initialized:this.initialized
+                count:
+                this.loaded.length
 
 
 
             }
+
 
 
         );
@@ -214,6 +222,8 @@ const ModuleLoader = {
 
 
 
+
+
 };
 
 
@@ -221,3 +231,9 @@ const ModuleLoader = {
 
 globalThis.ModuleLoader =
 ModuleLoader;
+
+
+
+Logger.log(
+"ModuleLoader READY"
+);

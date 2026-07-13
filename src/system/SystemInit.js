@@ -1,11 +1,10 @@
 console.log("SystemInit");
 
 
-
 const SystemInit = {
 
 
-    version:"0.2.0",
+    version:"0.2.1",
 
 
     initialized:false,
@@ -17,8 +16,8 @@ const SystemInit = {
 
         if(this.initialized){
 
-            Logger.warn(
-                "System already initialized"
+            Logger.log(
+                "SYSTEM ALREADY INITIALIZED"
             );
 
             return;
@@ -28,42 +27,47 @@ const SystemInit = {
 
 
         Logger.log(
-            "ERP INIT START"
+            "🚀 SYSTEM INIT START"
         );
 
 
 
-        // 1. Database
-
-        this.initDatabase();
+        try{
 
 
-
-        // 2. EventBus
-
-        this.initEventBus();
+            this.initCore();
 
 
+            this.initModules();
 
-        // 3. Modules
 
-        this.initModules();
+            this.initEvents();
 
 
 
-        // 4. Events
-
-        this.initEvents();
+            this.initialized=true;
 
 
 
-        this.initialized=true;
+            Logger.log(
+                "✅ SYSTEM INIT COMPLETE"
+            );
 
 
+        }
+        catch(error){
 
-        Logger.log(
-            "ERP INIT COMPLETE"
-        );
+
+            Logger.error(
+                "SYSTEM INIT FAILED "
+                +
+                error.message
+            );
+
+
+            throw error;
+
+        }
 
 
     },
@@ -71,47 +75,16 @@ const SystemInit = {
 
 
 
-    initDatabase(){
+    initCore(){
 
 
-        if(
-            typeof Database==="undefined"
-        ){
+        Logger.log(
+            "CORE SERVICES INIT"
+        );
 
-            throw new Error(
-                "Database missing"
-            );
-
-        }
 
 
         Database.init?.();
-
-
-
-        Logger.log(
-            "Database READY"
-        );
-
-
-    },
-
-
-
-
-    initEventBus(){
-
-
-        if(
-            typeof EventBus==="undefined"
-        ){
-
-            throw new Error(
-                "EventBus missing"
-            );
-
-        }
-
 
 
         EventBus.init?.();
@@ -119,7 +92,7 @@ const SystemInit = {
 
 
         Logger.log(
-            "EventBus READY"
+            "CORE SERVICES READY"
         );
 
 
@@ -132,6 +105,11 @@ const SystemInit = {
     initModules(){
 
 
+        Logger.log(
+            "MODULE INITIALIZATION START"
+        );
+
+
 
         ModuleLoader.loadCore();
 
@@ -139,6 +117,11 @@ const SystemInit = {
 
         ModuleRegistry.initAll();
 
+
+
+        Logger.log(
+            "MODULE INITIALIZATION COMPLETE"
+        );
 
 
     },
@@ -150,15 +133,15 @@ const SystemInit = {
     initEvents(){
 
 
-
         if(
-            EventSubscriptions
+            typeof EventSubscriptions !== "undefined"
         ){
+
 
             EventSubscriptions.init();
 
-        }
 
+        }
 
 
     },
@@ -181,10 +164,8 @@ const SystemInit = {
             "NOT_READY",
 
 
-
             module:
             "SystemInit",
-
 
 
             version:
@@ -209,12 +190,10 @@ const SystemInit = {
             }
 
 
-
         };
 
 
     }
-
 
 
 };
@@ -223,6 +202,7 @@ const SystemInit = {
 
 globalThis.SystemInit =
 SystemInit;
+
 
 
 Logger.log(
