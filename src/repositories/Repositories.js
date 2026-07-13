@@ -229,7 +229,80 @@ return Database.query(
 
 },
 
+restore(clientId) {
 
+    SecurityGuard.check("CLIENT_UPDATE");
+
+
+    const existing =
+        Database.find(
+            "Clients",
+            clientId
+        );
+
+
+    if(!existing){
+
+        throw new Error(
+            "Client not found"
+        );
+
+    }
+
+
+
+    if(
+        existing.Deleted !== true &&
+        existing.Deleted !== "true"
+    ){
+
+        return existing;
+
+    }
+
+
+
+    Versioning.save(
+        "CLIENT",
+        clientId,
+        existing
+    );
+
+
+
+    const restored =
+    Database.update(
+        "Clients",
+        clientId,
+        {
+
+            Deleted:false
+
+        }
+    );
+
+
+
+    AuditLog.write(
+        "RESTORE",
+        "CLIENT",
+        existing,
+        restored
+    );
+
+
+
+    EventBus.emit(
+        "CLIENT_RESTORED",
+        restored
+    );
+
+
+
+    return restored;
+
+
+},
 
 
 

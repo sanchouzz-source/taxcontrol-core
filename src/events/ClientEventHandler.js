@@ -27,7 +27,20 @@ Logger.log(
 "ClientEventHandler READY"
 );
 
+EventBus.on(
+"CLIENT_RESTORED",
+(client)=>{
 
+
+Logger.log(
+"CLIENT RESTORED "
++
+client.ClientID
+);
+
+
+}
+);
 },
 
 
