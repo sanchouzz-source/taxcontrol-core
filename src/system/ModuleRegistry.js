@@ -163,7 +163,21 @@ this.init(name);
 
 
 },
+reset(){
 
+
+this.modules={};
+
+
+Logger.log(
+"MODULE REGISTRY RESET COMPLETE"
+);
+
+
+return true;
+
+
+},
 
 
 
