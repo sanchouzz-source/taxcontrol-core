@@ -9,6 +9,7 @@ version:"0.3.0",
 
 
 loaded:false,
+loadedModules:[]
 
 
 
@@ -88,6 +89,11 @@ Logger.log(
 
 this.loaded=true;
 
+this.loadedModules=
+Object.keys(
+ModuleRegistry.modules
+);
+
 
 Logger.log(
 "MODULE LOADER COMPLETE"
@@ -119,7 +125,8 @@ health(){
 return {
 
 
-status:this.loaded
+status:
+this.loaded
 ?
 "OK"
 :
@@ -129,8 +136,10 @@ status:this.loaded
 module:"ModuleLoader",
 
 
-version:this.version
+version:this.version,
 
+
+loaded:this.loadedModules || []
 
 
 };

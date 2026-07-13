@@ -1,133 +1,82 @@
 console.log("Bootstrap");
 
-if(!globalThis.Bootstrap){
 
 const Bootstrap = {
 
 
+version:"0.4.0",
 
-    version:"0.2.0",
 
+started:false,
 
 
-    started:false,
 
+start(){
 
 
+if(this.started){
 
+Logger.log(
+"BOOT ALREADY STARTED"
+);
 
-    start(){
+return;
 
+}
 
 
-        if(this.started){
 
+Logger.log(
+"🚀 ERP BOOT START"
+);
 
-            Logger.log(
-                "BOOTSTRAP ALREADY STARTED"
-            );
 
 
-            return;
+SystemInit.init();
 
 
-        }
 
+this.started=true;
 
 
 
+Logger.log(
+"✅ ERP BOOT COMPLETE"
+);
 
-        Logger.log(
-            "🚀 ERP BOOT START"
-        );
 
 
+},
 
 
 
-        try{
 
 
+health(){
 
-            SystemInit.init();
 
+return {
 
 
-            this.started=true;
+status:
+this.started
+?
+"OK"
+:
+"NOT_READY",
 
 
+module:"Bootstrap",
 
-            Logger.log(
-                "✅ ERP BOOT COMPLETE"
-            );
 
+version:this.version
 
 
-        }
 
+};
 
-        catch(error){
 
-
-
-            Logger.error(
-
-                "BOOT FAILED: "
-                +
-                error.message
-
-            );
-
-
-            throw error;
-
-
-        }
-
-
-
-    },
-
-
-
-
-
-
-    health(){
-
-
-
-        return HealthContract.create(
-
-
-            "Bootstrap",
-
-
-            this.started
-            ?
-            "OK"
-            :
-            "NOT_READY",
-
-
-
-            {
-
-
-                version:this.version,
-
-
-                started:this.started
-
-
-
-            }
-
-
-        );
-
-
-    }
+}
 
 
 
@@ -135,13 +84,5 @@ const Bootstrap = {
 
 
 
-
-
 globalThis.Bootstrap =
 Bootstrap;
-
-}
-
-Logger.log(
-"Bootstrap READY"
-);

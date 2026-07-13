@@ -1,4 +1,8 @@
+console.log("SystemStartupTest");
+
+
 const SystemStartupTest={
+
 
 
 fullHealth(){
@@ -6,12 +10,24 @@ fullHealth(){
 
 
 Logger.log(
-"===== ERP HEALTH TEST ====="
+"===== FULL SYSTEM HEALTH TEST ====="
 );
 
 
 
-SystemInit.init();
+Logger.log(
+"STEP 1: BOOT"
+);
+
+
+
+Bootstrap.start();
+
+
+
+Logger.log(
+"STEP 2: INSPECTOR"
+);
 
 
 
@@ -30,6 +46,12 @@ null,
 
 
 
+Logger.log(
+"===== TEST COMPLETE ====="
+);
+
+
+
 return report;
 
 
@@ -42,5 +64,5 @@ return report;
 
 
 
-globalThis.SystemStartupTest=
+globalThis.SystemStartupTest =
 SystemStartupTest;
