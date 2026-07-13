@@ -3,12 +3,9 @@ const SystemInit={
 
 version:"0.5.0",
 
-
 initialized:false,
 
-
 init(){
-
 
 if(this.initialized){
 
@@ -26,12 +23,10 @@ Logger.log(
 );
 
 SchemaManager.init();
-
+Database.init();
 ModuleLoader.loadCore();
 
-
 ModuleLoader.initAll();
-
 
 
 this.initialized=true;
