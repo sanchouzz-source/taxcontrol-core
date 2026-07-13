@@ -34,7 +34,7 @@ const ModuleLoader = {
 
             "DashboardEngine",
             "ClientEventHandler"
-
+            "AuditEventHandler"
 
         ];
 
