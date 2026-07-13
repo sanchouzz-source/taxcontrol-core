@@ -1,4 +1,4 @@
-DataRepairconsole.log("DataRepair");
+console.log("DataRepair");
 
 
 const DataRepair = {
