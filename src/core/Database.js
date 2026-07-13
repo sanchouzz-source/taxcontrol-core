@@ -4,48 +4,54 @@ console.log("Database");
 const Database = {
 
 
-version:"0.5.0",
+version:"0.5.1",
 
 initialized:false,
 
 
 
+// =========================
+// INIT
+// =========================
+
 init(){
 
 
-if(this.initialized){
+    if(this.initialized){
 
-return;
+        return;
 
-}
-
-
-SchemaManager.init();
+    }
 
 
-this.initialized=true;
+    SchemaManager.init();
 
 
-Logger.log(
-"Database READY"
-);
+    this.initialized=true;
+
+
+    Logger.log(
+        "Database READY"
+    );
 
 
 },
 
 
 
+// =========================
+// SHEET
+// =========================
 
 sheet(name){
 
 
-return SpreadsheetApp
-.getActiveSpreadsheet()
-.getSheetByName(name);
+    return SpreadsheetApp
+        .getActiveSpreadsheet()
+        .getSheetByName(name);
 
 
 },
-
 
 
 
@@ -53,22 +59,25 @@ return SpreadsheetApp
 getSheetOrThrow(name){
 
 
-const sheet=this.sheet(name);
+    const sheet =
+        this.sheet(name);
 
 
 
-if(!sheet){
+    if(!sheet){
 
 
-throw new Error(
-"Sheet not found: "+name
-);
+        throw new Error(
+            "Sheet not found: "
+            +
+            name
+        );
 
 
-}
+    }
 
 
-return sheet;
+    return sheet;
 
 
 },
@@ -77,106 +86,183 @@ return sheet;
 
 
 
+// =========================
+// INSERT
+// =========================
 
 insert(sheetName,data){
 
 
-
-this.init();
-
-
-
-const sheet =
-this.getSheetOrThrow(sheetName);
+    this.init();
 
 
 
-const headers =
-sheet
-.getRange(
-1,
-1,
-1,
-sheet.getLastColumn()
-)
-.getValues()[0];
+    const sheet =
+        this.getSheetOrThrow(
+            sheetName
+        );
+
+
+
+    const headers =
+        sheet
+        .getRange(
+            1,
+            1,
+            1,
+            sheet.getLastColumn()
+        )
+        .getValues()[0];
+
+
+
+    const idField =
+        SchemaRegistry
+        .getIdField(
+            sheetName
+        );
 
 
 
 
+    // генерация ID
 
-const row = headers.map(h => {
-
-
-    if (h === "CreatedAt") {
-        return new Date();
-    }
-
-
-    if (h === "UpdatedAt") {
-        return new Date();
-    }
+    if(
+        idField &&
+        !data[idField]
+    ){
 
 
-    if (h === "Deleted") {
-        return false;
-    }
-
-
-
-    if (
-        h === idField &&
-        !data[h]
-    ) {
-
-        data[h] =
+        data[idField] =
             IdService.generate(
                 sheetName
             );
 
+
     }
 
 
 
-    return data[h] ?? "";
+
+    // защита от дублей
+
+    if(
+        idField &&
+        data[idField]
+    ){
 
 
-});
-
-
-
-
-const nextRow =
-sheet.getLastRow()+1;
-
-
-
-
-sheet
-.getRange(
-nextRow,
-1,
-1,
-row.length
-)
-.setValues([row]);
+        const existing =
+            this.find(
+                sheetName,
+                data[idField]
+            );
 
 
 
-
-Logger.log(
-"INSERT "
-+
-sheetName
-+
-" ROW "
-+
-nextRow
-);
+        if(existing){
 
 
+            throw new Error(
 
-return data;
+                "Duplicate ID detected: "
+                +
+                data[idField]
+
+            );
+
+
+        }
+
+
+    }
+
+
+
+
+
+
+    const row =
+        headers.map(h=>{
+
+
+            if(
+                h==="CreatedAt"
+            ){
+
+                return new Date();
+
+            }
+
+
+
+            if(
+                h==="UpdatedAt"
+            ){
+
+                return new Date();
+
+            }
+
+
+
+            if(
+                h==="Deleted"
+            ){
+
+                return false;
+
+            }
+
+
+
+
+            return data[h] ?? "";
+
+
+        });
+
+
+
+
+
+
+    const nextRow =
+        sheet.getLastRow()+1;
+
+
+
+    sheet
+    .getRange(
+        nextRow,
+        1,
+        1,
+        row.length
+    )
+    .setValues(
+        [row]
+    );
+
+
+
+
+
+    Logger.log(
+
+        "INSERT "
+        +
+        sheetName
+        +
+        " ROW "
+        +
+        nextRow
+
+    );
+
+
+
+
+    return data;
 
 
 },
@@ -185,83 +271,111 @@ return data;
 
 
 
+
+// =========================
+// FIND
+// =========================
 
 find(sheetName,id){
 
 
-this.init();
+    this.init();
 
 
 
-const sheet =
-this.getSheetOrThrow(sheetName);
+    const sheet =
+        this.getSheetOrThrow(
+            sheetName
+        );
 
 
 
-const values =
-sheet
-.getDataRange()
-.getValues();
+    const values =
+        sheet
+        .getDataRange()
+        .getValues();
 
 
 
-const headers =
-values[0];
+    const headers =
+        values[0];
 
 
 
-const idField =
-SchemaRegistry.getIdField(sheetName);
+    const idField =
+        SchemaRegistry
+        .getIdField(
+            sheetName
+        );
 
 
 
-const index =
-headers.indexOf(idField);
+    const index =
+        headers.indexOf(
+            idField
+        );
+
+
+
+    if(index===-1){
+
+        throw new Error(
+            "ID field not found: "
+            +
+            idField
+        );
+
+    }
 
 
 
 
-for(
-let i=1;
-i<values.length;
-i++
-){
+    for(
+        let i=1;
+        i<values.length;
+        i++
+    ){
 
 
-if(
-String(values[i][index])
-===
-String(id)
-){
+        if(
+
+            String(values[i][index])
+            .trim()
+
+            ===
+
+            String(id)
+            .trim()
+
+        ){
 
 
-
-let result={};
-
-
-
-headers.forEach((h,j)=>{
-
-
-result[h]=values[i][j];
-
-
-});
+            let result={};
 
 
 
-return result;
+            headers.forEach(
+                (h,j)=>{
+
+                    result[h]=
+                        values[i][j];
+
+                }
+            );
 
 
-}
+
+            return result;
+
+
+        }
+
+
+    }
 
 
 
-}
-
-
-
-return null;
+    return null;
 
 
 },
@@ -271,61 +385,111 @@ return null;
 
 
 
-
+// =========================
+// QUERY
+// =========================
 
 query(sheetName,filters={}){
 
 
-this.init();
-
-
-const sheet =
-this.getSheetOrThrow(sheetName);
+    this.init();
 
 
 
-const data =
-sheet
-.getDataRange()
-.getValues();
+    const sheet =
+        this.getSheetOrThrow(
+            sheetName
+        );
 
 
 
-const headers=data[0];
+    const data =
+        sheet
+        .getDataRange()
+        .getValues();
 
 
 
-return data
-.slice(1)
-.map(row=>{
+    const headers =
+        data[0];
 
 
-let obj={};
+
+    const currentOrg =
+        PropertiesService
+        .getScriptProperties()
+        .getProperty(
+            "CURRENT_ORG"
+        );
 
 
-headers.forEach((h,i)=>{
-
-obj[h]=row[i];
-
-});
 
 
-return obj;
+    return data
+    .slice(1)
+    .map(row=>{
 
 
-})
-.filter(obj=>{
+        let obj={};
 
 
-return Object.keys(filters)
-.every(
-k=>
-obj[k]==filters[k]
-);
+
+        headers.forEach(
+            (h,i)=>{
+
+                obj[h]=row[i];
+
+            }
+        );
 
 
-});
 
+        return obj;
+
+
+    })
+
+
+
+    .filter(obj=>{
+
+
+        if(
+
+            obj.OrganizationID
+
+            &&
+
+            currentOrg
+
+            &&
+
+            obj.OrganizationID
+            !==
+            currentOrg
+
+        ){
+
+            return false;
+
+        }
+
+
+
+
+        return Object.keys(filters)
+        .every(
+
+            k=>
+
+            obj[k]
+            ==
+            filters[k]
+
+        );
+
+
+    });
 
 
 },
@@ -335,41 +499,184 @@ obj[k]==filters[k]
 
 
 
+// =========================
+// UPDATE
+// =========================
+
+update(sheetName,id,data){
+
+
+    this.init();
+
+
+
+    const sheet =
+        this.getSheetOrThrow(
+            sheetName
+        );
+
+
+
+    const values =
+        sheet
+        .getDataRange()
+        .getValues();
+
+
+
+    const headers =
+        values[0];
+
+
+
+    const idField =
+        SchemaRegistry
+        .getIdField(
+            sheetName
+        );
+
+
+
+    const idIndex =
+        headers.indexOf(
+            idField
+        );
+
+
+
+    for(
+        let i=1;
+        i<values.length;
+        i++
+    ){
+
+
+        if(
+
+            String(values[i][idIndex])
+            .trim()
+
+            ===
+
+            String(id)
+            .trim()
+
+        ){
+
+
+
+            const row =
+            headers.map(h=>{
+
+
+                if(
+                    h==="UpdatedAt"
+                ){
+
+                    return new Date();
+
+                }
+
+
+
+                if(
+                    data[h]!==undefined
+                ){
+
+                    return data[h];
+
+                }
+
+
+
+                return values[i]
+                [
+                    headers.indexOf(h)
+                ];
+
+
+            });
+
+
+
+
+            sheet
+            .getRange(
+                i+1,
+                1,
+                1,
+                row.length
+            )
+            .setValues(
+                [row]
+            );
+
+
+
+
+            return data;
+
+
+        }
+
+
+    }
+
+
+
+    throw new Error(
+        "Record not found: "
+        +
+        id
+    );
+
+
+},
+
+
+
+
+
+
+// =========================
+// HEALTH
+// =========================
 
 health(){
 
 
-
-return HealthContract.create(
-
-"Database",
+    return HealthContract.create(
 
 
-this.initialized
-?
-"OK"
-:
-"WARNING",
+        "Database",
 
 
-{
+        this.initialized
+        ?
+        "OK"
+        :
+        "WARNING",
 
-version:this.version,
 
-spreadsheet:
-SpreadsheetApp
-.getActiveSpreadsheet()
-.getName()
+        {
+
+
+            version:this.version,
+
+
+            spreadsheet:
+            SpreadsheetApp
+            .getActiveSpreadsheet()
+            .getName()
+
+
+        }
+
+
+    );
+
 
 }
-
-
-);
-
-
-}
-
-
 
 
 
