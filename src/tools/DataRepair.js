@@ -1,85 +1,255 @@
-console.log("DataRepair");
+DataRepairconsole.log("DataRepair");
 
 
 const DataRepair = {
 
 
-fixClients(){
+version:"0.1.0",
 
 
-const sheet =
-Database.getSheetOrThrow("Clients");
+scan(sheetName){
 
 
-const values =
-sheet.getDataRange().getValues();
+    const sheet =
+        Database.getSheetOrThrow(sheetName);
 
 
-const headers =
-values[0];
+    const values =
+        sheet.getDataRange()
+        .getValues();
 
 
-const idIndex =
-headers.indexOf("ClientID");
+    const headers =
+        values[0];
 
 
-let fixed=0;
+    const report = {
 
+        sheet:sheetName,
 
-for(let i=1;i<values.length;i++){
+        rows:
+            values.length-1,
 
+        emptyIDs:[],
 
-let id =
-values[i][idIndex];
+        undefinedIDs:[],
 
+        duplicates:[]
 
-if(
-!id ||
-id.startsWith("undefined")
-){
-
-
-const newId =
-IdService.generate(
-"CLI"
-);
+    };
 
 
 
-sheet
-.getRange(
-i+1,
-idIndex+1
-)
-.setValue(newId);
+    const idField =
+        SchemaRegistry.getIdField(sheetName);
 
 
 
-fixed++;
+    const idIndex =
+        headers.indexOf(idField);
 
 
-Logger.log(
-"FIX CLIENT ROW "
-+i+
-" => "
-+newId
-);
 
+    const ids = {};
+
+
+
+    for(
+        let i=1;
+        i<values.length;
+        i++
+    ){
+
+
+        const id =
+            values[i][idIndex];
+
+
+
+        if(!id){
+
+            report.emptyIDs.push(
+                i+1
+            );
+
+        }
+
+
+
+        if(
+            String(id)
+            .includes("undefined")
+        ){
+
+            report.undefinedIDs.push(
+                {
+                    row:i+1,
+                    id:id
+                }
+            );
+
+        }
+
+
+
+        if(id){
+
+
+            if(ids[id]){
+
+
+                report.duplicates.push({
+
+                    id:id,
+
+                    rows:[
+                        ids[id],
+                        i+1
+                    ]
+
+                });
+
+
+            }
+            else{
+
+
+                ids[id]=i+1;
+
+
+            }
+
+
+        }
+
+
+
+    }
+
+
+
+    return report;
+
+
+},
+
+
+
+
+
+repairUndefinedIDs(sheetName){
+
+
+    const sheet =
+        Database.getSheetOrThrow(sheetName);
+
+
+
+    const values =
+        sheet.getDataRange()
+        .getValues();
+
+
+
+    const headers =
+        values[0];
+
+
+
+    const idField =
+        SchemaRegistry.getIdField(sheetName);
+
+
+
+    const idIndex =
+        headers.indexOf(idField);
+
+
+
+    let fixed=0;
+
+
+
+    for(
+        let i=1;
+        i<values.length;
+        i++
+    ){
+
+
+        const id =
+            values[i][idIndex];
+
+
+
+        if(
+            String(id)
+            .includes("undefined")
+            ||
+            !id
+        ){
+
+
+            const newID =
+                IdService.generate(
+                    sheetName
+                );
+
+
+
+            sheet
+            .getRange(
+                i+1,
+                idIndex+1
+            )
+            .setValue(
+                newID
+            );
+
+
+
+            fixed++;
+
+
+        }
+
+
+    }
+
+
+
+    return {
+
+        sheet:sheetName,
+
+        repaired:fixed
+
+    };
+
+
+},
+
+
+
+
+
+
+health(){
+
+
+return HealthContract.create(
+
+"DataRepair",
+
+"OK",
+
+{
+
+version:this.version
 
 }
 
-
-}
-
-
-
-return {
-
-status:"OK",
-
-fixed:fixed
-
-};
+);
 
 
 }
