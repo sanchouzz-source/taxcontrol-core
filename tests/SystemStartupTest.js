@@ -58,7 +58,13 @@ return report;
 
 
 
+}
+
+
+
+
 };
+
 function testDataRepair(){
 
 
@@ -78,12 +84,6 @@ null,
 
 
 }
-
-
-
-};
-
-
 
 globalThis.SystemStartupTest =
 SystemStartupTest;
