@@ -4,47 +4,85 @@ console.log("Menu");
 function onOpen(){
 
 
-    SpreadsheetApp
-    .getUi()
+    const ui =
+        SpreadsheetApp
+        .getUi();
 
-    .createMenu(
-        "TaxControl ERP"
+
+
+    ui.createMenu(
+        "🚀 TaxControl ERP"
     )
+
 
     .addItem(
-        "🚀 Запустить ERP",
-        "startERP"
+        "▶ Запустить ERP",
+        "erpStart"
     )
+
 
     .addItem(
         "❤️ Проверка системы",
-        "healthERP"
+        "erpHealth"
     )
+
+
+    .addSeparator()
+
+
+
+    .addSubMenu(
+
+        ui.createMenu(
+            "👥 Клиенты"
+        )
+
+        .addItem(
+            "Добавить клиента",
+            "createClientUI"
+        )
+
+        .addItem(
+            "Обновить клиентов",
+            "refreshClients"
+        )
+
+
+    )
+
+
+    .addSubMenu(
+
+        ui.createMenu(
+            "📊 Dashboard"
+        )
+
+        .addItem(
+            "Обновить Dashboard",
+            "refreshDashboard"
+        )
+
+
+    )
+
+
+    .addSeparator()
+
+
+
+    .addItem(
+        "🛠 Data Repair",
+        "repairDatabase"
+    )
+
 
     .addToUi();
 
 
-}
 
-
-
-
-function startERP(){
-
-
-    Bootstrap.start();
-
-
-}
-
-
-
-
-
-function healthERP(){
-
-
-    return Inspector.inspect();
+    Logger.log(
+        "ERP MENU CREATED"
+    );
 
 
 }
