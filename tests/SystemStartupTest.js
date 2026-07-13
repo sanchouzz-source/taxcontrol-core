@@ -1,64 +1,46 @@
-console.log("SystemStartupTest");
+const SystemStartupTest={
 
 
-const SystemStartupTest = {
-
-
-    fullHealth(){
-
-
-        Logger.log(
-            "===== FULL SYSTEM HEALTH TEST ====="
-        );
-
-
-        Logger.log(
-            "STEP 1: INIT"
-        );
-
-
-        SystemInit.init();
+fullHealth(){
 
 
 
-        Logger.log(
-            "STEP 2: INSPECTOR START"
-        );
-
-
-        const report =
-            Inspector.inspect();
+Logger.log(
+"===== ERP HEALTH TEST ====="
+);
 
 
 
-        Logger.log(
-            "STEP 3: REPORT CREATED"
-        );
+SystemInit.init();
 
 
-        Logger.log(
-            JSON.stringify(
-                report,
-                null,
-                2
-            )
-        );
+
+const report =
+Inspector.inspect();
 
 
-        Logger.log(
-            "===== TEST COMPLETE ====="
-        );
+
+Logger.log(
+JSON.stringify(
+report,
+null,
+2
+)
+);
 
 
-        return report;
+
+return report;
 
 
-    }
+
+}
+
 
 
 };
 
 
 
-globalThis.SystemStartupTest =
-    SystemStartupTest;
+globalThis.SystemStartupTest=
+SystemStartupTest;

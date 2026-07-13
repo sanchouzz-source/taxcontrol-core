@@ -1,21 +1,19 @@
 console.log("ModuleLoader");
 
 
-if(!globalThis.ModuleLoader){
-
-
 
 const ModuleLoader={
 
 
-
-version:"0.2.1",
-
-
-loaded:[],
+version:"0.3.0",
 
 
-loadCore(){
+loaded:false,
+
+
+
+
+load(){
 
 
 
@@ -28,10 +26,15 @@ Logger.log(
 const modules=[
 
 
+
 "TripEventHandler",
+
 "FinanceEngine",
+
 "KPIEngine",
+
 "DashboardEngine"
+
 
 
 ];
@@ -39,11 +42,10 @@ const modules=[
 
 
 
-
 modules.forEach(name=>{
 
 
-let module=
+const module=
 globalThis[name];
 
 
@@ -51,15 +53,10 @@ globalThis[name];
 if(module){
 
 
-
 ModuleRegistry.register(
 name,
 module
 );
-
-
-
-this.loaded.push(name);
 
 
 
@@ -71,14 +68,14 @@ Logger.log(
 
 
 }
+
 else{
 
 
-Logger.warn(
+Logger.log(
 "NOT FOUND "
 +name
 );
-
 
 
 }
@@ -89,6 +86,7 @@ Logger.warn(
 
 
 
+this.loaded=true;
 
 
 Logger.log(
@@ -103,12 +101,10 @@ Logger.log(
 
 
 
-
 init(){
 
 
 ModuleRegistry.initAll();
-
 
 
 },
@@ -117,35 +113,27 @@ ModuleRegistry.initAll();
 
 
 
-
-
 health(){
 
 
-return HealthContract.create(
+return {
 
 
-"ModuleLoader",
+status:this.loaded
+?
+"OK"
+:
+"NOT_READY",
 
 
-"OK",
+module:"ModuleLoader",
 
 
-{
-
-
-version:this.version,
-
-
-loaded:this.loaded
+version:this.version
 
 
 
-}
-
-
-);
-
+};
 
 
 }
@@ -156,9 +144,5 @@ loaded:this.loaded
 
 
 
-
 globalThis.ModuleLoader=
 ModuleLoader;
-
-
-}

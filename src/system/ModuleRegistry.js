@@ -1,36 +1,22 @@
 console.log("ModuleRegistry");
 
 
-if(!globalThis.ModuleRegistry){
-
-
 const ModuleRegistry = {
 
 
-version:"0.2.1",
+version:"0.3.0",
 
 
 modules:{},
 
 
-order:[
 
-"TripEventHandler",
-"FinanceEngine",
-"KPIEngine",
-"DashboardEngine"
-
-],
+register(name,module){
 
 
+if(!name || !module){
 
-
-register(name, instance){
-
-
-if(!name || !instance){
-
-Logger.error(
+Logger.log(
 "MODULE REGISTER FAILED "
 +name
 );
@@ -41,26 +27,12 @@ return false;
 
 
 
-
-if(this.modules[name]){
-
-
-Logger.warn(
-"MODULE EXISTS "
-+name
-);
-
-return true;
-
-}
-
-
-
-
 this.modules[name]={
 
 
-instance:instance,
+name:name,
+
+instance:module,
 
 status:"REGISTERED",
 
@@ -76,7 +48,7 @@ startedAt:null
 
 
 Logger.log(
-"REGISTERED: "
+"MODULE REGISTERED: "
 +name
 );
 
@@ -89,10 +61,7 @@ return true;
 
 
 
-
-
 init(name){
-
 
 
 const item=this.modules[name];
@@ -100,16 +69,14 @@ const item=this.modules[name];
 
 if(!item){
 
-Logger.error(
-"MISSING MODULE "
+Logger.log(
+"MODULE NOT FOUND "
 +name
 );
 
 return false;
 
 }
-
-
 
 
 
@@ -121,18 +88,7 @@ return true;
 
 
 
-
-
 try{
-
-
-Logger.log(
-"INITIALIZING "
-+name
-);
-
-
-
 
 
 if(
@@ -145,22 +101,19 @@ item.instance.init();
 
 
 
-
-
 item.initialized=true;
 
 item.status="READY";
 
 item.startedAt=
-new Date().toISOString();
-
+new Date()
+.toISOString();
 
 
 
 Logger.log(
 name+" READY"
 );
-
 
 
 return true;
@@ -172,16 +125,13 @@ return true;
 catch(e){
 
 
-
 item.status="ERROR";
 
 item.error=e.message;
 
 
-Logger.error(
-name+
-" ERROR "+
-e.message
+Logger.log(
+name+" ERROR "+e.message
 );
 
 
@@ -198,33 +148,18 @@ return false;
 
 
 
-
-
-
 initAll(){
 
 
-
-Logger.log(
-"MODULE INIT START"
-);
-
-
-
-this.order.forEach(name=>{
-
+Object.keys(this.modules)
+.forEach(
+name=>{
 
 this.init(name);
 
+}
 
-});
-
-
-
-Logger.log(
-"MODULE INIT COMPLETE"
 );
-
 
 
 },
@@ -233,35 +168,29 @@ Logger.log(
 
 
 
-
-
 health(){
 
 
-
-return HealthContract.create(
-
-
-"ModuleRegistry",
+return {
 
 
-"OK",
+status:"OK",
 
-
-{
-
+module:"ModuleRegistry",
 
 version:this.version,
 
 
-modules:Object.keys(this.modules)
+modules:
+
+Object.keys(this.modules)
 .map(name=>{
 
 
 let m=this.modules[name];
 
 
-return{
+return {
 
 
 Module:name,
@@ -279,29 +208,11 @@ Error:m.error
 })
 
 
-}
+};
 
-
-
-);
-
-
-
-},
-
-
-
-
-
-
-get(name){
-
-
-return this.modules[name]||null;
 
 
 }
-
 
 
 
@@ -309,9 +220,5 @@ return this.modules[name]||null;
 
 
 
-globalThis.ModuleRegistry=
+globalThis.ModuleRegistry =
 ModuleRegistry;
-
-
-
-}

@@ -1,18 +1,16 @@
 console.log("SystemInit");
 
 
-if(!globalThis.SystemInit){
-
-
 
 const SystemInit={
 
 
 
-version:"0.3.0",
+version:"0.4.0",
 
 
 initialized:false,
+
 
 
 
@@ -23,11 +21,35 @@ init(){
 
 if(this.initialized){
 
+
 Logger.log(
 "SYSTEM ALREADY INITIALIZED"
 );
 
+
 return;
+
+
+}
+
+
+
+Logger.log(
+"ERP SYSTEM INIT START"
+);
+
+
+
+
+
+// базовые сервисы
+
+
+if(
+typeof Database!=="undefined"
+){
+
+Database.init?.();
 
 }
 
@@ -35,16 +57,26 @@ return;
 
 
 
-Logger.log(
-"ERP INIT START"
-);
+if(
+typeof EventBus!=="undefined"
+){
+
+EventBus.init?.();
+
+}
 
 
 
 
 
-ModuleLoader.loadCore();
+// загрузка модулей
 
+
+ModuleLoader.load();
+
+
+
+// запуск модулей
 
 
 ModuleLoader.init();
@@ -57,9 +89,8 @@ this.initialized=true;
 
 
 
-
 Logger.log(
-"ERP INIT COMPLETE"
+"ERP SYSTEM READY"
 );
 
 
@@ -72,16 +103,14 @@ Logger.log(
 
 
 
+
 health(){
 
 
-
-return HealthContract.create(
-
-
-"SystemInit",
+return {
 
 
+status:
 this.initialized
 ?
 "OK"
@@ -89,8 +118,7 @@ this.initialized
 "NOT_READY",
 
 
-
-{
+module:"SystemInit",
 
 
 version:this.version,
@@ -103,26 +131,21 @@ dependencies:{
 
 
 Database:
-!!globalThis.Database,
+typeof Database!=="undefined",
 
 
 EventBus:
-!!globalThis.EventBus,
+typeof EventBus!=="undefined",
 
 
 ModuleLoader:
-!!globalThis.ModuleLoader
-
-
-
-}
+typeof ModuleLoader!=="undefined"
 
 
 }
 
 
-
-);
+};
 
 
 
@@ -134,10 +157,5 @@ ModuleLoader:
 
 
 
-
 globalThis.SystemInit=
 SystemInit;
-
-
-
-}
