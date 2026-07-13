@@ -1,26 +1,36 @@
 console.log("Bootstrap");
 
 
-const Bootstrap = {
+const Bootstrap={
 
 
-version:"0.4.0",
+version:"0.5.0",
 
-
-started:false,
 
 
 
 start(){
 
 
-if(this.started){
+const props =
+PropertiesService
+.getScriptProperties();
+
+
+
+if(
+props.getProperty("ERP_STARTED")
+==="true"
+){
+
 
 Logger.log(
-"BOOT ALREADY STARTED"
+"ERP ALREADY STARTED"
 );
 
+
 return;
+
 
 }
 
@@ -36,7 +46,10 @@ SystemInit.init();
 
 
 
-this.started=true;
+props.setProperty(
+"ERP_STARTED",
+"true"
+);
 
 
 
@@ -52,37 +65,29 @@ Logger.log(
 
 
 
-health(){
+reset(){
 
 
-return {
+PropertiesService
+.getScriptProperties()
+.deleteProperty(
+"ERP_STARTED"
+);
 
 
-status:
-this.started
-?
-"OK"
-:
-"NOT_READY",
+Logger.log(
+"BOOT RESET"
+);
 
-
-module:"Bootstrap",
-
-
-version:this.version
-
-
-
-};
 
 
 }
 
 
 
+
 };
 
 
-
-globalThis.Bootstrap =
+globalThis.Bootstrap=
 Bootstrap;
