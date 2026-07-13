@@ -4,6 +4,8 @@ console.log("EventBus");
 const EventBus = {
 
 
+    version:"0.2.0",
+
     handlers:{},
 
 
@@ -21,7 +23,6 @@ const EventBus = {
         }
 
 
-
         if(
             this.handlers[event]
             .includes(handler)
@@ -32,15 +33,37 @@ const EventBus = {
                 + event
             );
 
-            return;
+            return false;
 
         }
-
 
 
         this.handlers[event]
         .push(handler);
 
+
+        Logger.log(
+            "SUBSCRIBED: "
+            + event
+        );
+
+
+        return true;
+
+    },
+
+
+
+    // =====================
+    // COMPATIBILITY ALIAS
+    // =====================
+
+    subscribe(event,handler){
+
+        return this.on(
+            event,
+            handler
+        );
 
     },
 
@@ -93,12 +116,10 @@ const EventBus = {
 
             try{
 
-
                 fn(payload);
 
-
-
             }
+
             catch(e){
 
 
@@ -125,9 +146,7 @@ const EventBus = {
 
     clear(){
 
-
         this.handlers={};
-
 
     },
 
@@ -145,29 +164,31 @@ const EventBus = {
 
             status:"OK",
 
-
             module:"EventBus",
+
+            version:this.version,
 
 
             events:
-                Object.keys(
-                    this.handlers
-                ),
+            Object.keys(
+                this.handlers
+            ),
 
 
             handlersCount:
-                Object.values(
-                    this.handlers
-                )
-                .reduce(
-                    (sum,list)=>
-                    sum + list.length,
-                    0
-                ),
+
+            Object.values(
+                this.handlers
+            )
+            .reduce(
+                (sum,list)=>
+                sum+list.length,
+                0
+            ),
 
 
             timestamp:
-                new Date()
+            new Date()
 
 
         };
@@ -180,4 +201,5 @@ const EventBus = {
 
 
 
-globalThis.EventBus = EventBus;
+globalThis.EventBus =
+EventBus;
