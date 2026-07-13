@@ -11,7 +11,7 @@ function erpTest(){
     return Bootstrap.start();
 
 
-},
+};
 const CoreFunctions = {
 
 
