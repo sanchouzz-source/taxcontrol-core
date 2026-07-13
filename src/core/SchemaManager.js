@@ -9,54 +9,51 @@ const SchemaManager = {
     initialized:false,
 
 
-    init(){
+init(){
 
 
-        if(this.initialized){
+if(this.initialized){
 
+Logger.log(
+"SchemaManager ALREADY READY"
+);
 
-            Logger.log(
-                "SchemaManager ALREADY READY"
-            );
+return;
 
-
-            return;
-
-
-        }
+}
 
 
 
-        try{
-
-
-            const schema =
-                this.getSchema();
-
-
-
-            this.createSheets(
-                schema
-            );
-
-
-            this.syncSheets(
-                schema
-            );
+Logger.log(
+"SCHEMA INIT START"
+);
 
 
 
-            this.initialized=true;
+const schema =
+this.getSchema();
 
 
 
-            Logger.log(
-                "SchemaManager READY"
-            );
+this.createSheets(schema);
 
 
-        }
 
+this.syncSheets(schema);
+
+
+
+this.initialized=true;
+
+
+
+Logger.log(
+"SchemaManager READY"
+);
+
+
+
+}
 
         catch(error){
 

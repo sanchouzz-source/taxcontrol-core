@@ -25,7 +25,7 @@ Logger.log(
 "ERP SYSTEM INIT START"
 );
 
-
+SchemaManager.init();
 
 ModuleLoader.loadCore();
 
