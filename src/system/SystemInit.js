@@ -5,208 +5,55 @@ console.log("SystemInit");
 const SystemInit = {
 
 
-
-    version:"0.1.1",
-
+    version:"0.2.0",
 
 
     initialized:false,
 
 
 
-
-
-
     init(){
-
-
-
 
 
         if(this.initialized){
 
-
-
-            Logger.log(
-
-                "SYSTEM ALREADY INITIALIZED"
-
+            Logger.warn(
+                "System already initialized"
             );
-
 
             return;
 
-
         }
-
-
-
 
 
 
         Logger.log(
-
             "ERP INIT START"
-
         );
 
 
 
+        // 1. Database
 
+        this.initDatabase();
 
 
 
+        // 2. EventBus
 
+        this.initEventBus();
 
-        // =========================
-        // SAFE CORE
-        // =========================
 
 
-        if(
-            typeof SafeCore !== "undefined"
-        ){
+        // 3. Modules
 
+        this.initModules();
 
-            SafeCore.init();
 
 
-        }
+        // 4. Events
 
-
-
-
-
-
-
-
-
-        // =========================
-        // DATABASE
-        // =========================
-
-
-        if(
-            typeof SchemaManager !== "undefined"
-        ){
-
-
-            SchemaManager.init();
-
-
-        }
-
-
-
-
-
-
-
-
-        // =========================
-        // ID REGISTRY
-        // =========================
-
-
-        if(
-            typeof Registry !== "undefined"
-        ){
-
-
-            Registry.init();
-
-
-        }
-
-
-
-
-
-
-
-
-
-
-
-        // =========================
-        // MODULE LOADER
-        // =========================
-
-
-        if(
-
-            typeof ModuleLoader
-            !==
-            "undefined"
-
-        ){
-
-
-
-            ModuleLoader.loadCore();
-
-
-            ModuleLoader.initAll();
-
-
-
-        }
-
-        else{
-
-
-
-            Logger.log(
-
-                "ModuleLoader NOT FOUND"
-
-            );
-
-
-        }
-
-
-
-
-
-
-
-
-
-        // =========================
-        // EVENT SUBSCRIPTIONS
-        // =========================
-
-
-        if(
-
-            typeof EventSubscriptions
-            !==
-            "undefined"
-
-        ){
-
-
-
-            EventSubscriptions
-            .initEventSubscriptions();
-
-
-
-            Logger.log(
-
-                "EventSubscriptions READY"
-
-            );
-
-
-        }
-
-
-
-
-
-
+        this.initEvents();
 
 
 
@@ -214,16 +61,83 @@ const SystemInit = {
 
 
 
+        Logger.log(
+            "ERP INIT COMPLETE"
+        );
+
+
+    },
+
+
+
+
+    initDatabase(){
+
+
+        if(
+            typeof Database==="undefined"
+        ){
+
+            throw new Error(
+                "Database missing"
+            );
+
+        }
+
+
+        Database.init?.();
 
 
 
         Logger.log(
-
-            "ERP INIT COMPLETE"
-
+            "Database READY"
         );
 
 
+    },
+
+
+
+
+    initEventBus(){
+
+
+        if(
+            typeof EventBus==="undefined"
+        ){
+
+            throw new Error(
+                "EventBus missing"
+            );
+
+        }
+
+
+
+        EventBus.init?.();
+
+
+
+        Logger.log(
+            "EventBus READY"
+        );
+
+
+    },
+
+
+
+
+
+    initModules(){
+
+
+
+        ModuleLoader.loadCore();
+
+
+
+        ModuleRegistry.initAll();
 
 
 
@@ -233,6 +147,22 @@ const SystemInit = {
 
 
 
+    initEvents(){
+
+
+
+        if(
+            EventSubscriptions
+        ){
+
+            EventSubscriptions.init();
+
+        }
+
+
+
+    },
+
 
 
 
@@ -240,70 +170,50 @@ const SystemInit = {
     health(){
 
 
-
-        return HealthContract.create(
-
-
-            "SystemInit",
+        return {
 
 
+            status:
             this.initialized
             ?
             "OK"
             :
-            "WARNING",
+            "NOT_READY",
 
 
 
-            {
-
-
-                version:this.version,
-
-
-                initialized:
-                this.initialized,
+            module:
+            "SystemInit",
 
 
 
-                dependencies:{
+            version:
+            this.version,
 
 
-
-                    Database:
-                    typeof Database
-                    !==
-                    "undefined",
+            dependencies:{
 
 
-
-                    EventBus:
-                    typeof EventBus
-                    !==
-                    "undefined",
+                Database:
+                !!Database,
 
 
-
-                    ModuleLoader:
-                    typeof ModuleLoader
-                    !==
-                    "undefined"
+                EventBus:
+                !!EventBus,
 
 
-
-                }
-
+                ModuleLoader:
+                !!ModuleLoader
 
 
             }
 
 
-        );
 
+        };
 
 
     }
-
 
 
 
@@ -311,8 +221,10 @@ const SystemInit = {
 
 
 
-
-
-
 globalThis.SystemInit =
 SystemInit;
+
+
+Logger.log(
+"SystemInit READY"
+);

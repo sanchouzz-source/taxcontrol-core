@@ -53,9 +53,11 @@ function erpHealth(){
 }
 
 
-function erpTest(){
+function startERP(){
 
-    CoreFunctions.startupTest();
+
+    Bootstrap.start();
+
 
 }
 
