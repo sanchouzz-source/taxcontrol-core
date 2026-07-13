@@ -342,82 +342,78 @@ init(){
 
     createSheets(schema){
 
-sheet
-.getRange(
-1,
-1,
-sheet.getMaxRows(),
-sheet.getMaxColumns()
-)
-.setNumberFormat("@");
 
-        const ss =
-            SpreadsheetApp
-            .getActiveSpreadsheet();
+    const ss =
+        SpreadsheetApp
+        .getActiveSpreadsheet();
 
 
 
-
-        Object.keys(schema)
-        .forEach(sheetName=>{
-
+    Object.keys(schema)
+    .forEach(sheetName=>{
 
 
-            let sheet =
-                ss.getSheetByName(
+        let sheet =
+            ss.getSheetByName(
+                sheetName
+            );
+
+
+
+        if(!sheet){
+
+
+            sheet =
+                ss.insertSheet(
                     sheetName
                 );
 
 
 
-
-            if(!sheet){
-
-
-
-                sheet =
-                    ss.insertSheet(
-                        sheetName
-                    );
-
-
-
-                sheet
-                .getRange(
-                    1,
-                    1,
-                    1,
-                    schema[sheetName].length
-                )
-                .setValues(
-                    [
-                        schema[sheetName]
-                    ]
-                );
+            sheet
+            .getRange(
+                1,
+                1,
+                1,
+                schema[sheetName].length
+            )
+            .setValues(
+                [
+                    schema[sheetName]
+                ]
+            );
 
 
 
-                Logger.log(
-
-                    "Created sheet: "
-                    +
-                    sheetName
-
-                );
+            Logger.log(
+                "Created sheet: "
+                +
+                sheetName
+            );
 
 
-
-            }
+        }
 
 
 
-        });
+        // форматируем существующий лист
+        // после получения объекта sheet
+
+        sheet
+        .getRange(
+            1,
+            1,
+            sheet.getMaxRows(),
+            sheet.getMaxColumns()
+        )
+        .setNumberFormat("@");
 
 
 
-    },
+    });
 
 
+},
 
 
 
