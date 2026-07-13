@@ -50,13 +50,10 @@ data
 
 
 
-AuditLog.write(
-"CREATE",
-"CLIENT",
-null,
-result
+EventBus.emit(
+"CLIENT_CREATED",
+client
 );
-
 
 
 EventBus.emit(
