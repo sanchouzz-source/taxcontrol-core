@@ -1,24 +1,47 @@
+console.log("SchemaRegistry");
+
+
 const SchemaRegistry = {
 
-    map: {
-        Organizations:"OrganizationID",
-        Clients:"ClientID",
-        Vehicles:"VehicleID",
-        Trips:"TripID",
-        Payments:"PaymentID",
-        FinancialTransactions:"TransactionID",
-        KPIMetrics:"KPIID"
-        
-    },
 
-    getIdField(entity) {
+getIdField(sheet){
 
-        const field = this.map[entity];
 
-        if (!field) {
-            throw new Error("No schema mapping for: " + entity);
-        }
+const map={
 
-        return field;
-    }
+
+EventLog:"EventID",
+
+AuditLog:"AuditID",
+
+Organizations:"OrganizationID",
+
+Clients:"ClientID",
+
+Vehicles:"VehicleID",
+
+Trips:"TripID",
+
+Payments:"PaymentID",
+
+FinancialTransactions:"TransactionID",
+
+KPIMetrics:"KPIID"
+
+
 };
+
+
+return map[sheet];
+
+
+}
+
+
+
+};
+
+
+
+globalThis.SchemaRegistry =
+SchemaRegistry;

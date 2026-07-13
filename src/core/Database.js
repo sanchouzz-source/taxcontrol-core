@@ -1,335 +1,696 @@
 console.log("Database");
+
+
 const Database = {
 
 
-    sheet(name) {
+    version:"0.4.0",
+
+    initialized:false,
+
+
+    // =========================
+    // INIT
+    // =========================
+
+    init(){
+
+
+        if(this.initialized){
+
+            Logger.log(
+                "Database ALREADY READY"
+            );
+
+            return;
+
+        }
+
+
+
+        SchemaManager.init();
+
+
+
+        this.initialized=true;
+
+
+
+        Logger.log(
+            "Database READY"
+        );
+
+
+    },
+
+
+
+    // =========================
+    // GET SHEET
+    // =========================
+
+
+    sheet(name){
+
 
         return SpreadsheetApp
             .getActiveSpreadsheet()
             .getSheetByName(name);
 
+
     },
 
 
-    getSheetOrThrow(name) {
-
-        const sheet = this.sheet(name);
 
 
-        if (!sheet) {
+    getSheetOrThrow(name){
+
+
+        const sheet =
+            this.sheet(name);
+
+
+
+        if(!sheet){
+
 
             throw new Error(
-                "Sheet not found: " + name
+                "Sheet not found: "
+                +
+                name
             );
+
 
         }
 
 
         return sheet;
 
+
     },
+
+
+
+
 
     // =========================
     // INSERT
     // =========================
-    insert(sheetName, data) {
-
-    SchemaManager.init();
-
-    const sheet = this.getSheetOrThrow(sheetName);
-
-    const headers = sheet.getDataRange().getValues()[0];
 
 
-    const idField = SchemaRegistry.getIdField(sheetName);
-
-    const idIndex = headers.indexOf(idField);
+    insert(sheetName,data){
 
 
-    if (idIndex !== -1 && data[idField]) {
 
-        const existing =
-            sheet.getDataRange().getValues();
+        this.init();
 
 
-        for (let i = 1; i < existing.length; i++) {
 
-            if (String(existing[i][idIndex]).trim()
-===
-String(data[idField]).trim()) {
+        const sheet =
+            this.getSheetOrThrow(
+                sheetName
+            );
 
-                throw new Error(
-                    "Duplicate ID detected: "
-                    + data[idField]
+
+
+        const values =
+            sheet
+            .getDataRange()
+            .getValues();
+
+
+
+        const headers =
+            values[0];
+
+
+
+        const idField =
+            SchemaRegistry
+            .getIdField(
+                sheetName
+            );
+
+
+
+
+        if(
+            idField
+            &&
+            data[idField]
+        ){
+
+
+
+            const idIndex =
+                headers.indexOf(
+                    idField
                 );
+
+
+
+            for(
+                let i=1;
+                i<values.length;
+                i++
+            ){
+
+
+                if(
+                    String(values[i][idIndex])
+                    ===
+                    String(data[idField])
+                ){
+
+
+                    throw new Error(
+                        "Duplicate ID: "
+                        +
+                        data[idField]
+                    );
+
+
+                }
+
 
             }
 
+
         }
 
-    }
 
 
-    const row = headers.map(h => {
-
-        if (h === "CreatedAt") return new Date();
-
-        if (h === "UpdatedAt") return new Date();
-
-        if (h === "Deleted") return false;
-
-        return data[h] ?? "";
-
-    });
 
 
-    const nextRow = sheet.getLastRow() + 1;
 
-sheet
-    .getRange(
-        nextRow,
-        1,
-        1,
-        row.length
-    )
-    .setValues([row]);
+        const now =
+            new Date();
 
-    return data;
-},
+
+
+
+        const row =
+            headers.map(header=>{
+
+
+                if(
+                    header==="CreatedAt"
+                ){
+
+                    return now;
+
+                }
+
+
+                if(
+                    header==="UpdatedAt"
+                ){
+
+                    return now;
+
+                }
+
+
+                if(
+                    header==="Deleted"
+                ){
+
+                    return false;
+
+                }
+
+
+
+                return data[header] ?? "";
+
+
+
+            });
+
+
+
+
+
+
+        const rowNumber =
+            sheet.getLastRow()+1;
+
+
+
+        sheet
+        .getRange(
+            rowNumber,
+            1,
+            1,
+            row.length
+        )
+        .setValues(
+            [
+                row
+            ]
+        );
+
+
+
+
+        Logger.log(
+
+            "INSERT "
+            +
+            sheetName
+            +
+            " ROW "
+            +
+            rowNumber
+
+        );
+
+
+
+
+        return {
+
+            ...data,
+
+            rowNumber:rowNumber
+
+        };
+
+
+
+    },
+
+
+
+
+
+    // =========================
+    // FIND ALL
+    // =========================
+
+
+    query(sheetName,filters={}){
+
+
+        this.init();
+
+
+
+        const sheet =
+            this.getSheetOrThrow(
+                sheetName
+            );
+
+
+
+        const data =
+            sheet
+            .getDataRange()
+            .getValues();
+
+
+
+        const headers =
+            data[0];
+
+
+
+        const result=[];
+
+
+
+        for(
+            let i=1;
+            i<data.length;
+            i++
+        ){
+
+
+
+            const row={};
+
+
+
+            headers.forEach(
+                (h,index)=>{
+
+
+                    row[h]=
+                    data[i][index];
+
+
+                }
+            );
+
+
+
+
+            let match=true;
+
+
+
+            Object.keys(filters)
+            .forEach(key=>{
+
+
+                if(
+                    row[key]
+                    !=
+                    filters[key]
+                ){
+
+                    match=false;
+
+                }
+
+
+            });
+
+
+
+
+
+            if(match){
+
+
+                result.push(row);
+
+
+            }
+
+
+
+        }
+
+
+
+        return result;
+
+
+    },
+
+
+
+
+
+    // =========================
+    // FIND BY ID
+    // =========================
+
+
+    find(sheetName,id){
+
+
+
+        this.init();
+
+
+
+        const idField =
+            SchemaRegistry
+            .getIdField(
+                sheetName
+            );
+
+
+
+        const records =
+            this.query(
+                sheetName,
+                {
+                    [idField]:id
+                }
+            );
+
+
+
+        return records.length
+        ?
+        records[0]
+        :
+        null;
+
+
+
+    },
+
+
+
+
 
     // =========================
     // UPDATE
     // =========================
-    update(sheetName, id, data) {
-
-        SchemaManager.init();
-        const sheet = this.getSheetOrThrow(sheetName);    
-        //const sheet = this.sheet(sheetName);
-        const values = sheet.getDataRange().getValues();
-        const headers = values[0];
-
-        const idField = SchemaRegistry.getIdField(sheetName);
-        const idIndex = headers.indexOf(idField);
-
-        if (idIndex === -1) {
-            throw new Error("ID field not found: " + idField);
-        }
-
-        for (let i = 1; i < values.length; i++) {
-
-            if (values[i][idIndex] === id) {
-
-                data.UpdatedAt = new Date();
-//
-const row = headers.map(h => {
-
-    if (h === "UpdatedAt") {
-        return new Date();
-    }
 
 
-    if (h === "Deleted") {
-        return false;
-    }
+    update(sheetName,id,data){
 
 
-    return data[h] !== undefined
-        ? data[h]
-        : values[i][headers.indexOf(h)];
 
-});
-//
-                sheet
-    .getRange(
-        i + 1,
-        1,
-        1,
-        row.length
-    )
-    .setNumberFormat("@")
-    .setValues([row]);
+        this.init();
 
-                return data;
-            }
-        }
 
-        throw new Error("Record not found: " + id);
-    },
 
-    // =========================
-    // QUERY
-    // =========================
-    query(sheetName, filters = {}) {
+        const sheet =
+            this.getSheetOrThrow(
+                sheetName
+            );
 
-        SchemaManager.init();
-        const sheet = this.getSheetOrThrow(sheetName);
-        //const sheet = this.sheet(sheetName);
-        const values = sheet.getDataRange().getValues();
-        const headers = values[0];
 
-        const org =
-            PropertiesService.getScriptProperties().getProperty("CURRENT_ORG");
-
-        const results = [];
-
-        for (let i = 1; i < values.length; i++) {
-
-            const row = {};
-
-            headers.forEach((h, idx) => {
-                row[h] = values[i][idx];
-            });
-
-            if (row.OrganizationID && row.OrganizationID !== org) {
-                continue;
-            }
-
-            let ok = true;
-
-            for (const k in filters) {
-                if (row[k] != filters[k]) {
-                    ok = false;
-                    break;
-                }
-            }
-
-            if (ok) results.push(row);
-        }
-
-        return results;
-    },
-        // =========================
-    // FIND BY ID
-    // =========================
-        find(sheetName, id) {
-
-        SchemaManager.init();
-
-        const sheet = this.getSheetOrThrow(sheetName);
 
         const values =
-            sheet.getDataRange().getValues();
+            sheet
+            .getDataRange()
+            .getValues();
 
-        const headers = values[0];
+
+
+        const headers =
+            values[0];
+
 
 
         const idField =
-            SchemaRegistry.getIdField(sheetName);
+            SchemaRegistry
+            .getIdField(
+                sheetName
+            );
+
 
 
         const idIndex =
-            headers.indexOf(idField);
-
-
-        if (idIndex === -1) {
-
-            throw new Error(
-                "ID field not found: " + idField
+            headers.indexOf(
+                idField
             );
 
-        }
 
 
-        for (let i = 1; i < values.length; i++) {
+
+        for(
+            let i=1;
+            i<values.length;
+            i++
+        ){
 
 
-            if (values[i][idIndex] === id) {
+
+            if(
+                String(values[i][idIndex])
+                ===
+                String(id)
+            ){
 
 
-                const row = {};
+
+                const row =
+                headers.map(header=>{
 
 
-                headers.forEach((h,index)=>{
+                    if(
+                        header==="UpdatedAt"
+                    ){
 
-                    row[h] =
-                        values[i][index];
+                        return new Date();
+
+                    }
+
+
+                    if(
+                        data[header]
+                        !==
+                        undefined
+                    ){
+
+                        return data[header];
+
+                    }
+
+
+                    return values[i]
+                    [
+                        headers.indexOf(header)
+                    ];
+
+
 
                 });
 
 
-                return row;
+
+
+
+                sheet
+                .getRange(
+                    i+1,
+                    1,
+                    1,
+                    row.length
+                )
+                .setValues(
+                    [
+                        row
+                    ]
+                );
+
+
+
+
+                return true;
+
 
             }
+
 
         }
 
 
-        return null;
+
+        throw new Error(
+            "Record not found "
+            +
+            id
+        );
+
 
     },
 
 
+
+
+
+
     // =========================
-    // HEALTH CHECK
+    // DELETE SOFT
     // =========================
 
+
+    remove(sheetName,id){
+
+
+
+        this.update(
+
+            sheetName,
+
+            id,
+
+            {
+                Deleted:true
+            }
+
+        );
+
+
+
+        Logger.log(
+
+            "SOFT DELETE "
+            +
+            sheetName
+            +
+            " "
+            +
+            id
+
+        );
+
+
+    },
+
+
+
+
+
+
+    // =========================
+    // HEALTH
+    // =========================
+
+
     health(){
+
 
 
         try{
 
 
             const ss =
-                SpreadsheetApp
-                .getActiveSpreadsheet();
+            SpreadsheetApp
+            .getActiveSpreadsheet();
 
 
 
-            return {
 
+            return HealthContract.create(
 
-                status:
-                    ss
-                    ?
-                    "OK"
-                    :
-                    "ERROR",
+                "Database",
 
+                "OK",
 
-                module:
-                    "Database",
+                {
 
+                    version:this.version,
 
-                spreadsheet:
-                    ss.getName(),
+                    spreadsheet:
+                    ss.getName()
 
+                }
 
-                timestamp:
-                    new Date()
+            );
 
-
-            };
 
 
         }
         catch(e){
 
 
-            return {
+            return HealthContract.create(
 
+                "Database",
 
-                status:"ERROR",
+                "ERROR",
 
-                module:"Database",
+                {
 
-                message:
-                    e.message,
+                    error:e.message
 
+                }
 
-                timestamp:
-                    new Date()
-
-
-            };
+            );
 
 
         }
 
 
+
     }
+
 
 
 };
 
 
-globalThis.Database = Database;
+
+
+globalThis.Database =
+Database;
