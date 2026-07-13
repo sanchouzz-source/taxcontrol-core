@@ -105,29 +105,43 @@ sheet.getLastColumn()
 
 
 
-const row =
-headers.map(h=>{
+const row = headers.map(h => {
 
 
-if(h==="CreatedAt")
-return new Date();
+    if (h === "CreatedAt") {
+        return new Date();
+    }
 
 
-if(h==="UpdatedAt")
-return new Date();
+    if (h === "UpdatedAt") {
+        return new Date();
+    }
+
+
+    if (h === "Deleted") {
+        return false;
+    }
 
 
 
-if(h==="Deleted")
-return false;
+    if (
+        h === idField &&
+        !data[h]
+    ) {
+
+        data[h] =
+            IdService.generate(
+                sheetName
+            );
+
+    }
 
 
 
-return data[h] ?? "";
+    return data[h] ?? "";
 
 
 });
-
 
 
 
