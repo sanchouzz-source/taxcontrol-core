@@ -1,84 +1,363 @@
 console.log("ClientRepository");
+
+
 const ClientRepository = {
 
-    create(data) {
 
-        SecurityGuard.check("CLIENT_CREATE");
+version:"0.2.0",
 
-        data = ClientValidator.validate(data);
 
-        if (!data.ClientID) {
-            data.ClientID = IdService.generate("CLI");
-        }
 
-        data.OrganizationID = OrganizationContext.get();
+create(data){
 
-        const result = Database.insert("Clients", data);
 
-        AuditLog.write("CREATE", "CLIENT", null, result);
-
-        EventBus.emit("CLIENT_CREATED", result);
-
-        return result;
-    },
-
-    update(clientId, data) {
-
-        SecurityGuard.check("CLIENT_UPDATE");
-
-        const existing = Database.find("Clients", clientId);
-
-        if (!existing) {
-            throw new Error("Client not found");
-        }
-
-      Versioning.save(
-    "CLIENT",
-    clientId,
-    existing
+SecurityGuard.check(
+"CLIENT_CREATE"
 );
 
 
-// объединяем старые и новые данные
 
-const merged = {
-
-    ...existing,
-
-    ...data
-
-};
-
-
-data = ClientValidator.validate(
-    merged
+data =
+ClientValidator.validate(
+data
 );
 
 
-data.OrganizationID =
-    OrganizationContext.get();
+
+if(!data.ClientID){
 
 
 data.ClientID =
-    clientId;
+IdService.generate(
+"Clients"
+);
 
-        const updated = Database.update("Clients", clientId, data);
 
-        AuditLog.write("UPDATE", "CLIENT", existing, updated);
+}
 
-        EventBus.emit("CLIENT_UPDATED", updated);
 
-        return updated;
-    },
 
-    getById(id) {
-        SecurityGuard.check("CLIENT_READ");
-        return Database.find("Clients", id);
-    },
+data.OrganizationID =
+OrganizationContext.get();
 
-    list() {
-        SecurityGuard.check("CLIENT_READ");
-        return Database.query("Clients", {});
-    }
+
+
+const result =
+Database.insert(
+"Clients",
+data
+);
+
+
+
+AuditLog.write(
+"CREATE",
+"CLIENT",
+null,
+result
+);
+
+
+
+EventBus.emit(
+"CLIENT_CREATED",
+result
+);
+
+
+
+return result;
+
+
+},
+
+
+
+
+
+update(clientId,data){
+
+
+SecurityGuard.check(
+"CLIENT_UPDATE"
+);
+
+
+
+const existing =
+Database.find(
+"Clients",
+clientId
+);
+
+
+
+if(!existing){
+
+
+throw new Error(
+"Client not found: "
++
+clientId
+);
+
+
+}
+
+
+
+
+Versioning.save(
+"CLIENT",
+clientId,
+existing
+);
+
+
+
+
+const merged = {
+
+
+...existing,
+
+...data
+
+
 };
-globalThis.ClientRepository = ClientRepository;
+
+
+
+
+
+const validated =
+ClientValidator.validate(
+merged
+);
+
+
+
+
+validated.OrganizationID =
+OrganizationContext.get();
+
+
+
+validated.ClientID =
+clientId;
+
+
+
+
+
+const updated =
+Database.update(
+"Clients",
+clientId,
+validated
+);
+
+
+
+
+
+AuditLog.write(
+"UPDATE",
+"CLIENT",
+existing,
+updated
+);
+
+
+
+
+
+EventBus.emit(
+"CLIENT_UPDATED",
+updated
+);
+
+
+
+
+return updated;
+
+
+},
+
+
+
+
+
+
+getById(id){
+
+
+SecurityGuard.check(
+"CLIENT_READ"
+);
+
+
+
+return Database.find(
+"Clients",
+id
+);
+
+
+},
+
+
+
+
+
+
+list(){
+
+
+SecurityGuard.check(
+"CLIENT_READ"
+);
+
+
+
+return Database.query(
+"Clients",
+{Deleted:false}
+);
+
+
+},
+
+
+
+
+
+
+delete(clientId){
+
+
+SecurityGuard.check(
+"CLIENT_DELETE"
+);
+
+
+
+const existing =
+Database.find(
+"Clients",
+clientId
+);
+
+
+
+if(!existing){
+
+
+throw new Error(
+"Client not found: "
++
+clientId
+);
+
+
+}
+
+
+
+
+
+Versioning.save(
+"CLIENT",
+clientId,
+existing
+);
+
+
+
+
+
+const deleted =
+Database.update(
+"Clients",
+clientId,
+{
+
+Deleted:true
+
+}
+
+);
+
+
+
+
+
+AuditLog.write(
+"DELETE",
+"CLIENT",
+existing,
+deleted
+);
+
+
+
+
+
+EventBus.emit(
+"CLIENT_DELETED",
+deleted
+);
+
+
+
+return deleted;
+
+
+},
+
+
+
+
+
+
+health(){
+
+
+return HealthContract.create(
+
+"ClientRepository",
+
+"OK",
+
+{
+
+version:this.version,
+
+dependencies:{
+
+Database:!!Database,
+
+EventBus:!!EventBus,
+
+SecurityGuard:!!SecurityGuard
+
+}
+
+}
+
+);
+
+
+}
+
+
+
+
+
+};
+
+
+
+globalThis.ClientRepository =
+ClientRepository;

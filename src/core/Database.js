@@ -4,7 +4,7 @@ console.log("Database");
 const Database = {
 
 
-version:"0.5.1",
+version:"0.5.2",
 
 initialized:false,
 
@@ -115,13 +115,14 @@ sheet.getLastColumn()
 
 
 const idField =
-SchemaRegistry.getIdField(sheetName);
+SchemaRegistry.getIdField(
+sheetName
+);
 
 
 
 const row =
 headers.map(h=>{
-
 
 
 if(h==="CreatedAt"){
@@ -169,8 +170,8 @@ sheetName
 return data[h] ?? "";
 
 
-
 });
+
 
 
 
@@ -178,7 +179,6 @@ return data[h] ?? "";
 
 const nextRow =
 sheet.getLastRow()+1;
-
 
 
 
@@ -211,7 +211,6 @@ nextRow
 
 
 
-
 return data;
 
 
@@ -236,7 +235,9 @@ this.init();
 
 
 const sheet =
-this.getSheetOrThrow(sheetName);
+this.getSheetOrThrow(
+sheetName
+);
 
 
 
@@ -254,12 +255,16 @@ values[0];
 
 const idField =
 SchemaRegistry
-.getIdField(sheetName);
+.getIdField(
+sheetName
+);
 
 
 
 const index =
-headers.indexOf(idField);
+headers.indexOf(
+idField
+);
 
 
 
@@ -274,6 +279,7 @@ idField
 );
 
 }
+
 
 
 
@@ -293,7 +299,6 @@ String(id)
 ){
 
 
-
 const obj={};
 
 
@@ -304,6 +309,7 @@ headers.forEach(
 obj[h]=values[i][j];
 
 }
+
 );
 
 
@@ -315,6 +321,215 @@ return obj;
 
 
 }
+
+
+
+
+return null;
+
+
+},
+
+
+
+
+
+
+
+// =========================
+// UPDATE
+// =========================
+
+
+update(sheetName,id,data){
+
+
+this.init();
+
+
+
+const sheet =
+this.getSheetOrThrow(
+sheetName
+);
+
+
+
+const range =
+sheet.getDataRange();
+
+
+
+const values =
+range.getValues();
+
+
+
+const headers =
+values[0];
+
+
+
+const idField =
+SchemaRegistry
+.getIdField(
+sheetName
+);
+
+
+
+const idIndex =
+headers.indexOf(
+idField
+);
+
+
+
+
+
+if(idIndex===-1){
+
+
+throw new Error(
+"ID FIELD NOT FOUND "
++
+idField
+);
+
+
+}
+
+
+
+
+
+
+for(
+let i=1;
+i<values.length;
+i++
+){
+
+
+
+if(
+String(values[i][idIndex])
+===
+String(id)
+){
+
+
+
+const row =
+values[i];
+
+
+
+headers.forEach(
+(h,index)=>{
+
+
+
+if(
+data[h] !== undefined
+){
+
+
+row[index]=
+data[h];
+
+
+}
+
+
+
+});
+
+
+
+
+
+if(
+headers.includes(
+"UpdatedAt"
+)
+){
+
+
+row[
+headers.indexOf(
+"UpdatedAt"
+)
+]
+=
+new Date();
+
+
+}
+
+
+
+
+
+
+sheet
+.getRange(
+i+1,
+1,
+1,
+headers.length
+)
+.setValues(
+[row]
+);
+
+
+
+
+
+
+const result={};
+
+
+
+headers.forEach(
+(h,j)=>{
+
+result[h]=row[j];
+
+}
+
+);
+
+
+
+
+
+Logger.log(
+
+"UPDATE "
++
+sheetName
++
+" ROW "
++
+(i+1)
+
+);
+
+
+
+
+
+return result;
+
+
+}
+
+
+
+}
+
 
 
 
@@ -343,7 +558,9 @@ this.init();
 
 
 const sheet =
-this.getSheetOrThrow(sheetName);
+this.getSheetOrThrow(
+sheetName
+);
 
 
 
@@ -369,6 +586,7 @@ PropertiesService
 
 
 
+
 return values
 .slice(1)
 .map(row=>{
@@ -381,10 +599,11 @@ const obj={};
 headers.forEach(
 (h,i)=>{
 
+
 obj[h]=row[i];
 
-}
-);
+
+});
 
 
 
@@ -413,9 +632,11 @@ return false;
 return Object.keys(filters)
 .every(
 k=>
+
 String(obj[k])
 ===
 String(filters[k])
+
 );
 
 
