@@ -1,182 +1,374 @@
 console.log("FinanceEngine");
+
+
 const FinanceEngine = {
 
+
+    version:"0.2.0",
+
+
     initialized:false,
-   health(){
 
-return HealthContract.create(
-    "FinanceEngine",
-    this.initialized
-    ?
-    "OK"
-    :
-    "WARNING",
-    {
-        initialized:
-        this.initialized,
 
-        dependencies:{
-            EventBus:true,
-            Database:true
-        }
-    }
-);
+    health(){
 
-},
 
-    init() {
+        return HealthContract.create(
+
+            "FinanceEngine",
+
+            this.initialized
+            ?
+            "OK"
+            :
+            "WARNING",
+
+            {
+
+                version:this.version,
+
+                initialized:this.initialized,
+
+
+                dependencies:{
+
+                    EventBus:
+                    !!globalThis.EventBus,
+
+
+                    Database:
+                    !!globalThis.Database
+
+
+                }
+
+
+            }
+
+        );
+
+
+    },
+
+
+
+
+    init(){
+
 
         if(this.initialized){
+
+
+            Logger.log(
+                "FinanceEngine already initialized"
+            );
+
+
             return;
+
+
         }
+
+
+
+
+        if(!EventBus){
+
+
+            throw new Error(
+                "EventBus missing"
+            );
+
+
+        }
+
+
+
 
 
         EventBus.on(
+
             "TRIP_COMPLETED",
-            (trip)=>{
+
+            trip=>{
+
 
                 this.calculateTripProfit(trip);
 
+
             }
+
+
         );
+
+
+
 
 
         EventBus.on(
+
             "CLIENT_CREATED",
-            (client)=>{
+
+            client=>{
+
 
                 this.initClientFinance(client);
 
+
             }
+
+
         );
 
 
+
+
+
+
         this.initialized=true;
+
 
 
         Logger.log(
             "FinanceEngine READY"
         );
 
+
     },
 
 
-    calculateTripProfit(trip) {
+
+
+
+
+
+    calculateTripProfit(trip){
+
+
+
+        if(!trip){
+
+
+            Logger.error(
+                "EMPTY TRIP"
+            );
+
+
+            return null;
+
+
+        }
+
+
+
 
 
         const revenue =
-            Number(trip.Revenue || 0);
+
+            Number(
+                trip.Revenue || 0
+            );
+
+
 
 
         const cost =
-            Number(trip.ActualCost || 0);
+
+            Number(
+                trip.ActualCost || 0
+            );
+
+
+
 
 
         const profit =
+
             revenue - cost;
 
 
 
-        Logger.log(
-            "💰 Trip Profit: "
-            + profit
-        );
 
 
 
-        const transaction = {
+        const transaction={
+
 
 
             TransactionID:
-                IdService.generate("FIN"),
+
+                IdService.generate(
+                    "FIN"
+                ),
+
 
 
             OrganizationID:
-                OrganizationContext.get(),
+
+                this.getOrganizationID(),
+
 
 
             Type:
+
                 "TRIP_PROFIT",
 
 
+
             Entity:
+
                 "TRIP",
 
 
+
             EntityID:
+
                 trip.TripID,
 
 
+
             Revenue:
+
                 revenue,
 
 
+
             Cost:
+
                 cost,
 
 
+
             Profit:
-                profit
+
+                profit,
+
+
+            CreatedAt:
+
+                new Date()
+                .toISOString()
+
+
 
         };
 
 
 
-        try {
-
-    Database.insert(
-        "FinancialTransactions",
-        transaction
-    );
 
 
 
-}
-catch(e){
+        Database.insert(
 
-    Logger.log(
-        "FINANCE ERROR: "
-        + e.message
-    );
+            "FinancialTransactions",
 
-};
+            transaction
+
+        );
 
 
 
-EventBus.emit(
-    "TRIP_PROFIT_CALCULATED",
-    {
-        trip: trip,
-        transaction: transaction,
-        profit: profit
-    }
-);
+
+
+
+
+        EventBus.emit(
+
+            "TRIP_PROFIT_CALCULATED",
+
+            {
+
+                transaction,
+
+                profit
+
+
+            }
+
+
+        );
+
+
+
+
 
 
 
         Logger.log(
-            "Finance transaction created: "
-            + transaction.TransactionID
+
+            "FINANCE CREATED: "
+            +
+            transaction.TransactionID
+
         );
+
 
 
         return transaction;
 
+
     },
+
+
+
+
+
+
+
+
+    getOrganizationID(){
+
+
+
+        if(
+            globalThis.OrganizationContext
+        ){
+
+
+            return OrganizationContext.get();
+
+
+        }
+
+
+
+
+
+        return "DEFAULT";
+
+
+    },
+
+
+
+
+
+
+
 
 
     initClientFinance(client){
 
 
+
         Logger.log(
-            "📊 Finance profile created: "
-            + client.Name
+
+            "Finance profile created: "
+            +
+            client.Name
+
         );
+
 
 
     }
 
+
+
 };
 
 
-globalThis.FinanceEngine = FinanceEngine;
+
+
+globalThis.FinanceEngine =
+FinanceEngine;

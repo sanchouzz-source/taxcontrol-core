@@ -34,7 +34,7 @@ name:name,
 
 instance:module,
 
-status:"REGISTERED",
+status:"LOADED",
 
 initialized:false,
 

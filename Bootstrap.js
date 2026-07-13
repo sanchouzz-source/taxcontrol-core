@@ -1,93 +1,32 @@
-console.log("Bootstrap");
-
-
-const Bootstrap={
+const Bootstrap = {
 
 
 version:"0.5.0",
 
 
-
-
 start(){
 
-
-const props =
-PropertiesService
-.getScriptProperties();
-
-
-
-if(
-props.getProperty("ERP_STARTED")
-==="true"
-){
-
-
-Logger.log(
-"ERP ALREADY STARTED"
-);
-
-
-return;
-
-
-}
-
-
-
-Logger.log(
-"🚀 ERP BOOT START"
-);
-
+Logger.log("🚀 ERP BOOT START");
 
 
 SystemInit.init();
 
 
-
-props.setProperty(
-"ERP_STARTED",
-"true"
-);
-
-
-
-Logger.log(
-"✅ ERP BOOT COMPLETE"
-);
-
+Logger.log("✅ ERP BOOT COMPLETE");
 
 
 },
 
 
 
+health(){
 
-
-reset(){
-
-
-PropertiesService
-.getScriptProperties()
-.deleteProperty(
-"ERP_STARTED"
-);
-
-
-Logger.log(
-"BOOT RESET"
-);
-
-
+return Inspector.inspect();
 
 }
-
-
 
 
 };
 
 
-globalThis.Bootstrap=
-Bootstrap;
+globalThis.Bootstrap = Bootstrap;
