@@ -9,14 +9,12 @@ version:"0.3.0",
 
 
 loaded:false,
-loadedModules:[]
+loadedModules:[],
 
 
 
 
 load(){
-
-
 
 Logger.log(
 "MODULE LOADER START"
