@@ -1,189 +1,132 @@
 console.log("SystemInit");
 
 
-const SystemInit = {
+if(!globalThis.SystemInit){
 
 
-    version:"0.2.1",
 
+const SystemInit={
 
-    initialized:false,
 
 
+version:"0.3.0",
 
-    init(){
 
+initialized:false,
 
-        if(this.initialized){
 
 
-            Logger.log(
-                "SYSTEM ALREADY INITIALIZED"
-            );
 
+init(){
 
-            return;
 
 
-        }
+if(this.initialized){
 
+Logger.log(
+"SYSTEM ALREADY INITIALIZED"
+);
 
+return;
 
+}
 
-        Logger.log(
-            "🚀 SYSTEM INIT START"
-        );
 
 
 
-        try{
 
+Logger.log(
+"ERP INIT START"
+);
 
-            // 1. Базовые сервисы
 
 
-            if(Database){
 
-                Database.init?.();
 
-            }
+ModuleLoader.loadCore();
 
 
 
-            if(EventBus){
+ModuleLoader.init();
 
-                EventBus.init?.();
 
-            }
 
 
 
+this.initialized=true;
 
-            // 2. Загрузка модулей
 
 
-            ModuleLoader.loadCore();
 
+Logger.log(
+"ERP INIT COMPLETE"
+);
 
 
 
+},
 
-            // 3. Запуск модулей
 
 
-            ModuleRegistry.initAll();
 
 
 
 
+health(){
 
-            // 4. Подписки событий
 
 
-            if(EventSubscriptions){
+return HealthContract.create(
 
-                EventSubscriptions.initEventSubscriptions();
 
-            }
+"SystemInit",
 
 
+this.initialized
+?
+"OK"
+:
+"NOT_READY",
 
 
 
+{
 
-            this.initialized=true;
 
+version:this.version,
 
 
+initialized:this.initialized,
 
-            Logger.log(
-                "✅ SYSTEM INIT COMPLETE"
-            );
 
+dependencies:{
 
 
-        }
+Database:
+!!globalThis.Database,
 
 
-        catch(error){
+EventBus:
+!!globalThis.EventBus,
 
 
-            Logger.error(
-                "SYSTEM INIT FAILED: "
-                +
-                error.message
-            );
+ModuleLoader:
+!!globalThis.ModuleLoader
 
 
-            throw error;
 
+}
 
-        }
 
+}
 
 
-    },
 
+);
 
 
 
-
-
-    health(){
-
-
-
-        return HealthContract.create(
-
-
-            "SystemInit",
-
-
-            this.initialized
-            ?
-            "OK"
-            :
-            "NOT_READY",
-
-
-            {
-
-
-                version:this.version,
-
-
-                initialized:this.initialized,
-
-
-                dependencies:{
-
-
-                    Database:
-                    !!globalThis.Database,
-
-
-                    EventBus:
-                    !!globalThis.EventBus,
-
-
-                    ModuleLoader:
-                    !!globalThis.ModuleLoader
-
-
-
-                }
-
-
-            }
-
-
-
-        );
-
-
-
-    }
-
+}
 
 
 
@@ -191,10 +134,10 @@ const SystemInit = {
 
 
 
-globalThis.SystemInit =
+
+globalThis.SystemInit=
 SystemInit;
 
 
-Logger.log(
-"SystemInit READY"
-);
+
+}

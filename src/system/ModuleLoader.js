@@ -1,229 +1,154 @@
 console.log("ModuleLoader");
 
+
 if(!globalThis.ModuleLoader){
 
 
-const ModuleLoader = {
 
+const ModuleLoader={
 
 
 
-    version:"0.2.0",
+version:"0.2.1",
 
 
+loaded:[],
 
-    loaded:[],
 
+loadCore(){
 
-    loadedMap:{},
 
 
+Logger.log(
+"MODULE LOADER START"
+);
 
 
-    modules:[
 
+const modules=[
 
-        "TripEventHandler",
 
+"TripEventHandler",
+"FinanceEngine",
+"KPIEngine",
+"DashboardEngine"
 
-        "FinanceEngine",
 
+];
 
-        "KPIEngine",
 
 
-        "DashboardEngine"
 
 
-    ],
+modules.forEach(name=>{
 
 
+let module=
+globalThis[name];
 
 
 
+if(module){
 
-    loadCore(){
 
 
+ModuleRegistry.register(
+name,
+module
+);
 
-        Logger.log(
-            "MODULE LOADER START"
-        );
 
 
+this.loaded.push(name);
 
 
 
-        this.modules.forEach(name=>{
+Logger.log(
+"LOADED "
++name
+);
 
 
 
-            if(this.loadedMap[name]){
+}
+else{
 
 
-                Logger.log(
+Logger.warn(
+"NOT FOUND "
++name
+);
 
-                    "MODULE ALREADY LOADED: "
-                    +
-                    name
 
-                );
 
+}
 
-                return;
 
 
-            }
+});
 
 
 
 
 
+Logger.log(
+"MODULE LOADER COMPLETE"
+);
 
-            const module =
-                globalThis[name];
 
 
+},
 
 
 
 
-            if(!module){
 
 
+init(){
 
-                Logger.warn(
 
-                    "MODULE NOT FOUND: "
-                    +
-                    name
+ModuleRegistry.initAll();
 
-                );
 
 
-                return;
+},
 
 
-            }
 
 
 
 
 
+health(){
 
 
-            const registered =
+return HealthContract.create(
 
-                ModuleRegistry.register(
 
-                    name,
+"ModuleLoader",
 
-                    module
 
-                );
+"OK",
 
 
+{
 
 
+version:this.version,
 
 
+loaded:this.loaded
 
-            if(registered){
 
 
+}
 
-                this.loaded.push(name);
 
+);
 
-                this.loadedMap[name]=true;
 
 
-
-                Logger.log(
-
-                    "LOADED: "
-                    +
-                    name
-
-                );
-
-
-
-            }
-
-
-
-        });
-
-
-
-
-
-
-        Logger.log(
-
-            "MODULE LOADER COMPLETE"
-
-        );
-
-
-
-
-        return this.loaded;
-
-
-    },
-
-
-
-
-
-
-
-
-
-    health(){
-
-
-
-        return HealthContract.create(
-
-
-
-            "ModuleLoader",
-
-
-
-            "OK",
-
-
-
-            {
-
-
-                version:this.version,
-
-
-                loaded:this.loaded,
-
-
-                count:
-                this.loaded.length
-
-
-
-            }
-
-
-
-        );
-
-
-
-    }
-
-
-
+}
 
 
 
@@ -232,16 +157,8 @@ const ModuleLoader = {
 
 
 
-globalThis.ModuleLoader =
+globalThis.ModuleLoader=
 ModuleLoader;
 
 
 }
-
-
-
-
-
-Logger.log(
-"ModuleLoader READY"
-);
