@@ -1,155 +1,211 @@
 console.log("ModuleLoader");
 
 
+const ModuleLoader = {
 
-const ModuleLoader={
 
+    version:"0.4.0",
 
-version:"0.3.0",
 
+    loaded:[],
 
-loaded:false,
-loadedModules:[],
 
+    initialized:false,
 
 
 
-load(){
+    loadCore(){
 
-Logger.log(
-"MODULE LOADER START"
-);
 
+        Logger.log(
+            "MODULE LOADER START"
+        );
 
 
-const modules=[
 
+        const modules=[
 
 
-"TripEventHandler",
+            "TripEventHandler",
 
-"FinanceEngine",
+            "FinanceEngine",
 
-"KPIEngine",
+            "KPIEngine",
 
-"DashboardEngine"
+            "DashboardEngine"
 
 
+        ];
 
-];
 
 
+        modules.forEach(name=>{
 
 
-modules.forEach(name=>{
+            const module =
+                globalThis[name];
 
 
-const module=
-globalThis[name];
 
+            if(module){
 
 
-if(module){
+                const registered =
+                    ModuleRegistry.register(
+                        name,
+                        module
+                    );
 
 
-ModuleRegistry.register(
-name,
-module
-);
 
+                if(registered){
 
 
-Logger.log(
-"LOADED "
-+name
-);
+                    this.loaded.push(
+                        name
+                    );
 
 
 
-}
+                    Logger.log(
 
-else{
+                        "LOADED "
+                        +
+                        name
 
+                    );
 
-Logger.log(
-"NOT FOUND "
-+name
-);
 
+                }
 
-}
 
+            }
 
+            else{
 
-});
 
+                Logger.warn(
 
+                    "MODULE NOT FOUND: "
+                    +
+                    name
 
-this.loaded=true;
+                );
 
-this.loadedModules=
-Object.keys(
-ModuleRegistry.modules
-);
 
+            }
 
-Logger.log(
-"MODULE LOADER COMPLETE"
-);
 
 
+        });
 
-},
 
 
+        Logger.log(
 
+            "MODULE LOADER COMPLETE"
 
+        );
 
-init(){
 
 
-ModuleRegistry.initAll();
+    },
 
 
-},
 
 
 
 
+    initAll(){
 
-health(){
 
 
-return {
+        if(this.initialized){
 
 
-status:
-this.loaded
-?
-"OK"
-:
-"NOT_READY",
+            Logger.log(
 
+                "MODULES ALREADY INITIALIZED"
 
-module:"ModuleLoader",
+            );
 
 
-version:this.version,
+            return;
 
 
-loaded:this.loadedModules || []
+        }
+
+
+
+
+        ModuleRegistry.initAll();
+
+
+
+        this.initialized=true;
+
+
+
+        Logger.log(
+
+            "MODULE LOADER READY"
+
+        );
+
+
+
+    },
+
+
+
+
+
+
+    health(){
+
+
+
+        return HealthContract.create(
+
+
+            "ModuleLoader",
+
+
+            this.initialized
+            ?
+            "OK"
+            :
+            "WARNING",
+
+
+
+            {
+
+                version:this.version,
+
+
+                loaded:this.loaded,
+
+
+                initialized:
+                    this.initialized
+
+
+            }
+
+
+        );
+
+
+
+    }
+
 
 
 };
 
 
-}
 
 
-
-};
-
-
-
-globalThis.ModuleLoader=
+globalThis.ModuleLoader =
 ModuleLoader;
