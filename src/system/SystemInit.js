@@ -16,13 +16,17 @@ const SystemInit = {
 
         if(this.initialized){
 
+
             Logger.log(
                 "SYSTEM ALREADY INITIALIZED"
             );
 
+
             return;
 
+
         }
+
 
 
 
@@ -35,17 +39,60 @@ const SystemInit = {
         try{
 
 
-            this.initCore();
+            // 1. Базовые сервисы
 
 
-            this.initModules();
+            if(Database){
+
+                Database.init?.();
+
+            }
 
 
-            this.initEvents();
+
+            if(EventBus){
+
+                EventBus.init?.();
+
+            }
+
+
+
+
+            // 2. Загрузка модулей
+
+
+            ModuleLoader.loadCore();
+
+
+
+
+
+            // 3. Запуск модулей
+
+
+            ModuleRegistry.initAll();
+
+
+
+
+
+            // 4. Подписки событий
+
+
+            if(EventSubscriptions){
+
+                EventSubscriptions.initEventSubscriptions();
+
+            }
+
+
+
 
 
 
             this.initialized=true;
+
 
 
 
@@ -54,12 +101,15 @@ const SystemInit = {
             );
 
 
+
         }
+
+
         catch(error){
 
 
             Logger.error(
-                "SYSTEM INIT FAILED "
+                "SYSTEM INIT FAILED: "
                 +
                 error.message
             );
@@ -67,84 +117,13 @@ const SystemInit = {
 
             throw error;
 
-        }
-
-
-    },
-
-
-
-
-    initCore(){
-
-
-        Logger.log(
-            "CORE SERVICES INIT"
-        );
-
-
-
-        Database.init?.();
-
-
-        EventBus.init?.();
-
-
-
-        Logger.log(
-            "CORE SERVICES READY"
-        );
-
-
-    },
-
-
-
-
-
-    initModules(){
-
-
-        Logger.log(
-            "MODULE INITIALIZATION START"
-        );
-
-
-
-        ModuleLoader.loadCore();
-
-
-
-        ModuleRegistry.initAll();
-
-
-
-        Logger.log(
-            "MODULE INITIALIZATION COMPLETE"
-        );
-
-
-    },
-
-
-
-
-
-    initEvents(){
-
-
-        if(
-            typeof EventSubscriptions !== "undefined"
-        ){
-
-
-            EventSubscriptions.init();
-
 
         }
 
 
+
     },
+
 
 
 
@@ -153,10 +132,13 @@ const SystemInit = {
     health(){
 
 
-        return {
+
+        return HealthContract.create(
 
 
-            status:
+            "SystemInit",
+
+
             this.initialized
             ?
             "OK"
@@ -164,36 +146,45 @@ const SystemInit = {
             "NOT_READY",
 
 
-            module:
-            "SystemInit",
+            {
 
 
-            version:
-            this.version,
+                version:this.version,
 
 
-            dependencies:{
+                initialized:this.initialized,
 
 
-                Database:
-                !!Database,
+                dependencies:{
 
 
-                EventBus:
-                !!EventBus,
+                    Database:
+                    !!globalThis.Database,
 
 
-                ModuleLoader:
-                !!ModuleLoader
+                    EventBus:
+                    !!globalThis.EventBus,
+
+
+                    ModuleLoader:
+                    !!globalThis.ModuleLoader
+
+
+
+                }
 
 
             }
 
 
-        };
+
+        );
+
 
 
     }
+
+
 
 
 };
@@ -202,7 +193,6 @@ const SystemInit = {
 
 globalThis.SystemInit =
 SystemInit;
-
 
 
 Logger.log(

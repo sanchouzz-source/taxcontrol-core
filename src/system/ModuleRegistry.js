@@ -1,6 +1,9 @@
 console.log("ModuleRegistry");
 
 
+if(!globalThis.ModuleRegistry){
+
+
 const ModuleRegistry = {
 
 
@@ -446,8 +449,8 @@ const ModuleRegistry = {
 };
 
 
-
-
-
 globalThis.ModuleRegistry =
 ModuleRegistry;
+
+
+}

@@ -1,38 +1,52 @@
 console.log("Bootstrap");
 
+if(!globalThis.Bootstrap){
 
 const Bootstrap = {
 
 
+
     version:"0.2.0",
+
 
 
     started:false,
 
 
 
+
+
     start(){
+
 
 
         if(this.started){
 
+
             Logger.log(
-                "ERP ALREADY STARTED"
+                "BOOTSTRAP ALREADY STARTED"
             );
 
+
             return;
+
 
         }
 
 
 
+
+
         Logger.log(
-            "========== TAXCONTROL ERP BOOTSTRAP =========="
+            "🚀 ERP BOOT START"
         );
 
 
 
+
+
         try{
+
 
 
             SystemInit.init();
@@ -44,23 +58,29 @@ const Bootstrap = {
 
 
             Logger.log(
-                "✅ ERP STARTED SUCCESSFULLY"
+                "✅ ERP BOOT COMPLETE"
             );
 
 
 
         }
+
+
         catch(error){
 
 
+
             Logger.error(
-                "BOOTSTRAP FAILED: "
+
+                "BOOT FAILED: "
                 +
                 error.message
+
             );
 
 
             throw error;
+
 
         }
 
@@ -70,41 +90,58 @@ const Bootstrap = {
 
 
 
+
+
+
     health(){
 
 
-        return {
 
-            status:
-            this.started
-            ?
-            "READY"
-            :
-            "STOPPED",
+        return HealthContract.create(
 
 
-            module:
             "Bootstrap",
 
 
-            version:
-            this.version
+            this.started
+            ?
+            "OK"
+            :
+            "NOT_READY",
 
-        };
+
+
+            {
+
+
+                version:this.version,
+
+
+                started:this.started
+
+
+
+            }
+
+
+        );
 
 
     }
+
 
 
 };
 
 
 
+
+
 globalThis.Bootstrap =
 Bootstrap;
 
-
+}
 
 Logger.log(
-    "Bootstrap READY"
+"Bootstrap READY"
 );

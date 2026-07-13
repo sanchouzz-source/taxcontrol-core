@@ -1,8 +1,11 @@
 console.log("ModuleLoader");
 
+if(!globalThis.ModuleLoader){
 
 
 const ModuleLoader = {
+
+
 
 
     version:"0.2.0",
@@ -231,6 +234,11 @@ const ModuleLoader = {
 
 globalThis.ModuleLoader =
 ModuleLoader;
+
+
+}
+
+
 
 
 
