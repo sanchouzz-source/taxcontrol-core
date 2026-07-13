@@ -345,7 +345,14 @@ init(){
 
     createSheets(schema){
 
-
+sheet
+.getRange(
+1,
+1,
+sheet.getMaxRows(),
+sheet.getMaxColumns()
+)
+.setNumberFormat("@");
 
         const ss =
             SpreadsheetApp

@@ -43,7 +43,9 @@ null,
 2
 )
 );
-
+Logger.log(
+DataRepair.fixClients()
+);
 
 
 Logger.log(
