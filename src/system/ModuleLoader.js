@@ -32,7 +32,8 @@ const ModuleLoader = {
 
             "KPIEngine",
 
-            "DashboardEngine"
+            "DashboardEngine",
+            "ClientEventHandler"
 
 
         ];
