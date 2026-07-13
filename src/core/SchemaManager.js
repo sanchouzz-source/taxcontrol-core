@@ -59,23 +59,20 @@ init(){
     }
 
 
-    catch(error){
+  catch(error){
 
 
-        Logger.error(
-            "SchemaManager ERROR: "
-            +
-            error.message
-        );
+    Logger.log(
+        "SchemaManager ERROR: "
+        +
+        error.message
+    );
 
 
-        this.initialized=false;
+    throw error;
 
 
-        throw error;
-
-
-    }
+}
 
 
 

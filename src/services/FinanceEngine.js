@@ -149,7 +149,7 @@ const FinanceEngine = {
         if(!trip){
 
 
-            Logger.error(
+            Logger.log(
                 "EMPTY TRIP"
             );
 
