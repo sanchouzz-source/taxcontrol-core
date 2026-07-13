@@ -4,7 +4,7 @@ console.log("Database");
 const Database = {
 
 
-version:"0.5.2",
+version:"0.5.3",
 
 initialized:false,
 
@@ -337,6 +337,28 @@ return null;
 
 
 // =========================
+// EXISTS
+// =========================
+
+
+exists(sheetName,id){
+
+
+return this.find(
+sheetName,
+id
+)!==null;
+
+
+},
+
+
+
+
+
+
+
+// =========================
 // UPDATE
 // =========================
 
@@ -616,6 +638,20 @@ return obj;
 
 
 
+// скрываем удаленные записи
+
+if(
+obj.Deleted===true ||
+obj.Deleted==="true"
+){
+
+return false;
+
+}
+
+
+
+
 if(
 obj.OrganizationID &&
 currentOrg &&
@@ -643,6 +679,166 @@ String(filters[k])
 
 });
 
+
+
+},
+
+
+
+
+
+
+
+// =========================
+// COUNT
+// =========================
+
+
+count(sheetName,filters={}){
+
+
+return this.query(
+sheetName,
+filters
+)
+.length;
+
+
+},
+
+
+
+
+
+
+
+// =========================
+// SOFT DELETE
+// =========================
+
+
+softDelete(sheetName,id){
+
+
+this.init();
+
+
+
+const sheet =
+this.getSheetOrThrow(
+sheetName
+);
+
+
+
+const values =
+sheet
+.getDataRange()
+.getValues();
+
+
+
+const headers =
+values[0];
+
+
+
+const idField =
+SchemaRegistry
+.getIdField(
+sheetName
+);
+
+
+
+const idIndex =
+headers.indexOf(
+idField
+);
+
+
+
+const deletedIndex =
+headers.indexOf(
+"Deleted"
+);
+
+
+
+const updatedIndex =
+headers.indexOf(
+"UpdatedAt"
+);
+
+
+
+
+
+for(
+let i=1;
+i<values.length;
+i++
+){
+
+
+
+if(
+String(values[i][idIndex])
+===
+String(id)
+){
+
+
+
+sheet
+.getRange(
+i+1,
+deletedIndex+1
+)
+.setValue(true);
+
+
+
+if(updatedIndex!==-1){
+
+
+sheet
+.getRange(
+i+1,
+updatedIndex+1
+)
+.setValue(
+new Date()
+);
+
+
+}
+
+
+
+Logger.log(
+"SOFT DELETE "
++
+sheetName
++
+" "
++
+id
+);
+
+
+
+return true;
+
+
+}
+
+
+}
+
+
+
+return false;
 
 
 },
