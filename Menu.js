@@ -1,56 +1,32 @@
 console.log("Menu");
 
 
-const Menu = {
+function onOpen(){
 
 
-create(){
+    SpreadsheetApp
+    .getUi()
 
+    .createMenu(
+        "TaxControl ERP"
+    )
 
-SpreadsheetApp
-.getUi()
-.createMenu("ERP SYSTEM")
+    .addItem(
+        "🚀 Запустить ERP",
+        "startERP"
+    )
 
+    .addItem(
+        "❤️ Проверка системы",
+        "healthERP"
+    )
 
-.addItem(
-"Initialize System",
-"erpInit"
-)
-
-
-.addItem(
-"Health Check",
-"erpHealth"
-)
-
-
-.addItem(
-"Startup Test",
-"erpTest"
-)
-
-
-.addToUi();
+    .addToUi();
 
 
 }
 
 
-};
-
-
-function erpInit(){
-
-    Bootstrap.init();
-
-}
-
-
-function erpHealth(){
-
-    CoreFunctions.health();
-
-}
 
 
 function startERP(){
@@ -62,5 +38,13 @@ function startERP(){
 }
 
 
-globalThis.Menu =
-Menu;
+
+
+
+function healthERP(){
+
+
+    return Inspector.inspect();
+
+
+}

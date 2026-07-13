@@ -1,6 +1,17 @@
 console.log("CoreFunctions");
 
+function erpTest(){
 
+
+    Logger.log(
+        "LEGACY ERP TEST REDIRECT"
+    );
+
+
+    return Bootstrap.start();
+
+
+},
 const CoreFunctions = {
 
 
