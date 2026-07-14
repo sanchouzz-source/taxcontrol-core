@@ -16,7 +16,6 @@ SecurityGuard.check(
 );
 
 
-
 data =
 ClientValidator.validate(
 data
@@ -26,12 +25,10 @@ data
 
 if(!data.ClientID){
 
-
 data.ClientID =
 IdService.generate(
 "Clients"
 );
-
 
 }
 
@@ -52,12 +49,15 @@ data
 
 EventBus.emit(
 "CLIENT_CREATED",
-client
+result
 );
 
 
-EventBus.emit(
-"CLIENT_CREATED",
+
+Versioning.save(
+"CLIENT",
+result.ClientID,
+null,
 result
 );
 
