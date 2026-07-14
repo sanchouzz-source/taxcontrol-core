@@ -10,15 +10,17 @@ CLIENT:{
 
 
 entity:
-ENTITY_CLIENT,
+"CLIENT",
+
 
 
 table:
-ENTITY_CLIENT_TABLE,
+"Clients",
+
 
 
 idField:
-ENTITY_ID_FIELDS.CLIENT,
+"ClientID",
 
 
 
