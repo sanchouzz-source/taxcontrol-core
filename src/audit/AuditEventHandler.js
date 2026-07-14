@@ -1,7 +1,10 @@
+console.log("AuditEventHandler");
+
+
 const AuditEventHandler = {
 
 
-version:"0.2.0",
+version:"0.4.0",
 
 
 init(){
@@ -9,123 +12,100 @@ init(){
 
 EventBus.subscribe(
 "CLIENT_CREATED",
-this.clientCreated.bind(this)
+(data)=>{
+
+Logger.log(
+"AUDIT EVENT CLIENT_CREATED"
 );
+
+
+AuditLog.write(
+"CREATE",
+"Client",
+null,
+data
+);
+
+
+Logger.log(
+"AUDIT CREATE Client "
++
+data.ClientID
+);
+
+
+}
+);
+
 
 
 EventBus.subscribe(
 "CLIENT_UPDATED",
-this.clientUpdated.bind(this)
+(data)=>{
+
+
+AuditLog.write(
+"UPDATE",
+"Client",
+null,
+data
 );
+
+
+Logger.log(
+"AUDIT UPDATE Client "
++
+data.ClientID
+);
+
+
+}
+);
+
 
 
 EventBus.subscribe(
 "CLIENT_DELETED",
-this.clientDeleted.bind(this)
+(data)=>{
+
+
+AuditLog.write(
+"DELETE",
+"Client",
+null,
+data
 );
+
+
+}
+);
+
 
 
 EventBus.subscribe(
 "CLIENT_RESTORED",
-this.clientRestored.bind(this)
+(data)=>{
+
+
+AuditLog.write(
+"RESTORE",
+"Client",
+null,
+data
+);
+
+
+}
 );
 
 
 
-Logger.log(
+console.log(
 "AuditEventHandler READY"
 );
 
 
-},
-
-
-
-clientCreated(payload){
-
-
-AuditLog.write(
-
-"CREATE",
-
-"Client",
-
-payload.ClientID,
-
-null,
-
-payload
-
-);
-
-
-},
-
-
-
-
-clientUpdated(payload){
-
-
-AuditLog.write(
-
-"UPDATE",
-
-"Client",
-
-payload.id,
-
-payload.before,
-
-payload.after
-
-);
-
-
-},
-
-
-
-
-clientDeleted(payload){
-
-
-AuditLog.write(
-
-"DELETE",
-
-"Client",
-
-payload.ClientID,
-
-payload.before,
-
-payload.after
-
-);
-
-
-},
-
-
-
-
-clientRestored(payload){
-
-
-AuditLog.write(
-
-"RESTORE",
-
-"Client",
-
-payload.ClientID,
-
-payload.before,
-
-payload.after
-
-);
+return true;
 
 
 }
@@ -133,6 +113,7 @@ payload.after
 
 
 };
+
 
 
 globalThis.AuditEventHandler =

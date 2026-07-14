@@ -4,59 +4,81 @@ console.log("AuditLog");
 const AuditLog = {
 
 
-version:"0.5.0",
+version:"0.4.0",
 
 
 
 init(){
 
-    const sheet =
-    SpreadsheetApp.getActive()
-    .getSheetByName("AuditLog")
-    ||
-    SpreadsheetApp.getActive()
-    .insertSheet("AuditLog");
+
+const ss =
+SpreadsheetApp.getActive();
 
 
-    if(sheet.getLastRow() === 0){
-
-        sheet.appendRow([
-
-            "AuditID",
-            "OrganizationID",
-            "UserID",
-            "Role",
-            "Action",
-            "Entity",
-            "EntityID",
-            "Before",
-            "After",
-            "CreatedAt"
-
-        ]);
-
-    }
+let sheet =
+ss.getSheetByName(
+"AuditLog"
+);
 
 
-    return HealthContract.create(
 
-        "AuditLog",
+if(!sheet){
 
-        "OK",
 
-        {
+sheet =
+ss.insertSheet(
+"AuditLog"
+);
 
-            version:this.version,
 
-            sheet:"AuditLog",
+sheet.appendRow([
 
-            initialized:true
+"AuditID",
+"OrganizationID",
+"UserID",
+"Role",
+"Action",
+"Entity",
+"EntityID",
+"Before",
+"After",
+"CreatedAt"
 
-        }
+]);
 
-    );
+
+}
+
+
+
+console.log(
+"AuditLog READY"
+);
+
+
+
+return HealthContract.create(
+
+"AuditLog",
+
+"OK",
+
+{
+
+version:this.version,
+
+sheet:"AuditLog",
+
+initialized:true
+
+}
+
+);
+
+
 
 },
+
 
 
 
@@ -69,18 +91,18 @@ after
 ){
 
 
+
 const props =
 PropertiesService
 .getScriptProperties();
 
 
 
-const record = {
+const row = {
 
 
 AuditID:
 Utilities.getUuid(),
-
 
 
 OrganizationID:
@@ -111,31 +133,19 @@ props.getProperty(
 
 
 Action:
-action.toUpperCase(),
+action,
 
 
 
 Entity:
-entity.toUpperCase(),
+entity,
 
 
 
 EntityID:
-(
-after &&
-(after.ClientID ||
-after.TripID ||
-after.PaymentID ||
-after.VehicleID)
-)
+after?.ClientID
 ||
-(
-before &&
-(before.ClientID ||
-before.TripID ||
-before.PaymentID ||
-before.VehicleID)
-)
+before?.ClientID
 ||
 "",
 
@@ -160,8 +170,7 @@ JSON.stringify(after)
 
 
 CreatedAt:
-new Date().toISOString()
-
+new Date()
 
 };
 
@@ -171,91 +180,41 @@ new Date().toISOString()
 const sheet =
 SpreadsheetApp
 .getActive()
-.getSheetByName("AuditLog");
+.getSheetByName(
+"AuditLog"
+);
 
 
 
 sheet.appendRow([
 
-record.AuditID,
+row.AuditID,
 
-record.OrganizationID,
+row.OrganizationID,
 
-record.UserID,
+row.UserID,
 
-record.Role,
+row.Role,
 
-record.Action,
+row.Action,
 
-record.Entity,
+row.Entity,
 
-record.EntityID,
+row.EntityID,
 
-record.Before,
+row.Before,
 
-record.After,
+row.After,
 
-record.CreatedAt
+row.CreatedAt
+
 
 ]);
 
 
 
-return record;
+return row;
 
-
-},
-
-
-
-
-test(entityId){
-
-
-return this.write(
-
-"TEST",
-
-"CLIENT",
-
-null,
-
-{
-
-ClientID:entityId,
-
-Test:true
-
-}
-
-);
-
-
-},
-
-
-
-
-health(){
-
-
-return HealthContract.create(
-
-"AuditLog",
-
-"OK",
-
-{
-
-version:this.version,
-
-sheet:"AuditLog",
-
-initialized:true
-
-}
-
-);
 
 
 }
