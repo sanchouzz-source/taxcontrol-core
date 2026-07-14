@@ -60,8 +60,8 @@ event=>{
 AuditLog.write(
 "DELETE",
 "Client",
-data.before,
-data.after
+event.before,
+event.after
 );
 
 

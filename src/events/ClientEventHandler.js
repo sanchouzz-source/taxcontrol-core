@@ -31,12 +31,23 @@ console.log(
 "ClientEventHandler READY"
 );
 
+},
+
+
+
+extract(payload){
+
+return payload.after || payload;
 
 },
 
 
 
-onCreated(client){
+onCreated(payload){
+
+const client =
+this.extract(payload);
+
 
 console.log(
 "CLIENT CREATED EVENT:",
@@ -47,58 +58,51 @@ client.ClientID
 
 
 
-onUpdated(client){
+onUpdated(payload){
+
+const client =
+this.extract(payload);
+
 
 console.log(
 "CLIENT UPDATED EVENT:",
 client.ClientID
 );
 
-AuditLog.write(
-"UPDATE",
-"Client",
-null,
-client
-);
 
 },
 
 
 
-onDeleted(client){
+onDeleted(payload){
+
+const client =
+this.extract(payload);
+
 
 console.log(
 "CLIENT DELETED EVENT:",
 client.ClientID
 );
 
-AuditLog.write(
-"DELETE",
-"Client",
-client,
-null
-);
 
 },
 
 
 
-onRestored(client){
+onRestored(payload){
+
+const client =
+this.extract(payload);
+
 
 console.log(
 "CLIENT RESTORED EVENT:",
 client.ClientID
 );
 
-AuditLog.write(
-"RESTORE",
-"Client",
-null,
-client
-);
 
 }
-
 
 
 };
