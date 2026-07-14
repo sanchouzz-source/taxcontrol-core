@@ -4,10 +4,9 @@ console.log("AuditLog");
 const AuditLog = {
 
 
-version:"0.1.0",
+version:"0.2.0",
 
 initialized:false,
-
 
 
 // =========================
@@ -46,6 +45,12 @@ ss.insertSheet(
 );
 
 
+}
+
+
+
+if(sheet.getLastRow()===0){
+
 
 sheet.appendRow([
 
@@ -70,14 +75,13 @@ sheet.appendRow([
 this.initialized=true;
 
 
-
 Logger.log(
 "AuditLog READY"
 );
 
 
-},
 
+},
 
 
 
@@ -87,12 +91,13 @@ Logger.log(
 // WRITE
 // =========================
 
+
 write(
 action,
 entity,
+entityId,
 before,
-after,
-entityId=""
+after
 ){
 
 
@@ -106,17 +111,15 @@ PropertiesService
 
 
 
-const log = {
+const log={
 
 
 id:
 Utilities.getUuid(),
 
 
-
 timestamp:
 new Date(),
-
 
 
 organizationId:
@@ -146,13 +149,18 @@ props.getProperty(
 
 
 
+action:
 action,
 
 
+entity:
 entity,
 
 
-entityId,
+entityId:
+entityId
+||
+"",
 
 
 
@@ -169,9 +177,7 @@ after
 null
 
 
-
 };
-
 
 
 
@@ -182,6 +188,7 @@ SpreadsheetApp
 .getSheetByName(
 "AuditLog"
 );
+
 
 
 
@@ -212,12 +219,12 @@ log.entity,
 log.entityId,
 
 
-JSON.stringify(
+this.safeJson(
 log.before
 ),
 
 
-JSON.stringify(
+this.safeJson(
 log.after
 )
 
@@ -254,16 +261,45 @@ return log;
 
 
 
+// =========================
+// JSON SAFE
+// =========================
+
+
+safeJson(obj){
+
+
+try{
+
+
+return JSON.stringify(
+obj
+);
+
+
+
+}
+catch(e){
+
+
+return "{}";
+
+
+}
+
+
+},
+
+
+
 
 
 // =========================
 // QUERY
 // =========================
 
-findByEntity(
-entity,
-entityId
-){
+
+find(entityId){
 
 
 this.init();
@@ -296,13 +332,15 @@ return values
 .map(row=>{
 
 
-const obj={};
+let obj={};
 
 
 headers.forEach(
 (h,i)=>{
 
+
 obj[h]=row[i];
+
 
 });
 
@@ -311,22 +349,17 @@ return obj;
 
 
 })
-
-
-.filter(obj=>
-
-obj.Entity===entity
-&&
-String(obj.EntityID)
+.filter(
+(x)=>
+String(x.EntityID)
 ===
 String(entityId)
 
 );
 
 
+
 },
-
-
 
 
 
@@ -336,10 +369,12 @@ String(entityId)
 // HEALTH
 // =========================
 
+
 health(){
 
 
 return HealthContract.create(
+
 
 "AuditLog",
 
@@ -357,8 +392,8 @@ this.initialized
 version:this.version,
 
 
-sheet:
-"AuditLog"
+sheet:"AuditLog"
+
 
 }
 
@@ -369,7 +404,10 @@ sheet:
 }
 
 
+
+
 };
+
 
 
 globalThis.AuditLog =
