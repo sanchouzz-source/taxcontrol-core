@@ -1,31 +1,70 @@
 console.log("EntityRegistry");
 
 
+
 const EntityRegistry = {
+
 
 
 CLIENT:{
 
 
 entity:
-ENTITY_NAMES.CLIENT,
+ENTITY_CLIENT,
 
 
 table:
-ENTITY_TABLES.CLIENT,
+ENTITY_CLIENT_TABLE,
 
 
 idField:
-ENTITY_ID_FIELDS.CLIENT,
+ENTITY_CLIENT_ID,
 
 
 
-events:
-EntityEvents.CLIENT,
+events:{
+
+
+created:
+EntityEvents.CLIENT.CREATED,
+
+
+updated:
+EntityEvents.CLIENT.UPDATED,
+
+
+deleted:
+EntityEvents.CLIENT.DELETED,
+
+
+restored:
+EntityEvents.CLIENT.RESTORED
+
+
+},
 
 
 
-audit:true
+permissions:{
+
+
+create:
+PERMISSION_CLIENT_CREATE,
+
+
+update:
+PERMISSION_CLIENT_UPDATE,
+
+
+delete:
+PERMISSION_CLIENT_DELETE,
+
+
+read:
+PERMISSION_CLIENT_READ
+
+
+}
 
 
 
@@ -37,5 +76,14 @@ audit:true
 
 
 
+
+
 globalThis.EntityRegistry =
 EntityRegistry;
+
+
+
+
+console.log(
+"EntityRegistry READY"
+);
