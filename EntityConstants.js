@@ -1,7 +1,33 @@
 console.log("EntityConstants");
 
 
-const ENTITY_CLIENT = "CLIENT";
+const ENTITY_NAMES = {
+
+CLIENT:"CLIENT"
+
+};
+
+
+const ENTITY_TABLES = {
+
+
+CLIENT:"Clients"
+
+
+};
+
+
+const ENTITY_ID_FIELDS = {
+
+
+CLIENT:"ClientID"
+
+
+};
+
+
+
+
 const ENTITY_CLIENT_TABLE = "Clients";
 
 
