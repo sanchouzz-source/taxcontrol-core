@@ -45,24 +45,16 @@ data
 );
 
 
-
-AuditLog.write(
-"CREATE",
-"CLIENT",
-null,
-result
-);
-
-
-
 EventBus.emit(
 "CLIENT_CREATED",
-result
+{
+before:null,
+after:result
+}
 );
 
 
 return result;
-
 
 },
 
@@ -254,16 +246,15 @@ restore(clientId) {
 
 
 
-    const restored =
-    Database.update(
-        "Clients",
-        clientId,
-        {
-
-            Deleted:false
-
-        }
-    );
+const restored =
+Database.update(
+"Clients",
+clientId,
+{
+Deleted:false,
+UpdatedAt:new Date().toISOString()
+}
+);
 
 
 
@@ -334,9 +325,8 @@ Database.update(
 "Clients",
 clientId,
 {
-
-Deleted:true
-
+Deleted:true,
+UpdatedAt:new Date().toISOString()
 }
 
 );
