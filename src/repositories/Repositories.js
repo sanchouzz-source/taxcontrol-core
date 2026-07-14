@@ -155,19 +155,6 @@ validated
 
 
 
-
-
-AuditLog.write(
-"UPDATE",
-"CLIENT",
-existing,
-updated
-);
-
-
-
-
-
 EventBus.emit(
 "CLIENT_UPDATED",
 updated
@@ -279,14 +266,6 @@ restore(clientId) {
 
 
 
-    AuditLog.write(
-        "RESTORE",
-        "CLIENT",
-        existing,
-        restored
-    );
-
-
 
     EventBus.emit(
         "CLIENT_RESTORED",
@@ -357,19 +336,6 @@ Deleted:true
 }
 
 );
-
-
-
-
-
-AuditLog.write(
-"DELETE",
-"CLIENT",
-existing,
-deleted
-);
-
-
 
 
 

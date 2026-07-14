@@ -1,14 +1,7 @@
-console.log("ClientEventHandler");
-
-
 const ClientEventHandler = {
 
 
-version:"0.1.0",
-
-
 init(){
-
 
 EventBus.subscribe(
 "CLIENT_CREATED",
@@ -22,82 +15,93 @@ this.onUpdated
 );
 
 
+EventBus.subscribe(
+"CLIENT_DELETED",
+this.onDeleted
+);
 
-Logger.log(
+
+EventBus.subscribe(
+"CLIENT_RESTORED",
+this.onRestored
+);
+
+
+console.log(
 "ClientEventHandler READY"
 );
 
-EventBus.on(
-"CLIENT_RESTORED",
-(client)=>{
 
-
-Logger.log(
-"CLIENT RESTORED "
-+
-client.ClientID
-);
-
-
-}
-);
 },
-
 
 
 
 onCreated(client){
 
-
-Logger.log(
-"CLIENT CREATED EVENT:"
-+
+console.log(
+"CLIENT CREATED EVENT:",
 client.ClientID
 );
-
-
-
-AuditLog.write(
-"EVENT",
-"CLIENT_CREATED",
-null,
-client
-);
-
-
 
 },
 
 
 
-
-
 onUpdated(client){
 
-
-Logger.log(
-"CLIENT UPDATED EVENT:"
-+
+console.log(
+"CLIENT UPDATED EVENT:",
 client.ClientID
 );
 
-
-
 AuditLog.write(
-"EVENT",
-"CLIENT_UPDATED",
+"UPDATE",
+"Client",
 null,
 client
 );
 
+},
 
+
+
+onDeleted(client){
+
+console.log(
+"CLIENT DELETED EVENT:",
+client.ClientID
+);
+
+AuditLog.write(
+"DELETE",
+"Client",
+client,
+null
+);
+
+},
+
+
+
+onRestored(client){
+
+console.log(
+"CLIENT RESTORED EVENT:",
+client.ClientID
+);
+
+AuditLog.write(
+"RESTORE",
+"Client",
+null,
+client
+);
 
 }
 
 
 
 };
-
 
 
 globalThis.ClientEventHandler =
