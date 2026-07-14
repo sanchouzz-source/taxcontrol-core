@@ -1,27 +1,35 @@
 const AuditLog = {
 
 
-version:"0.4.0",
+version:"0.5.0",
 
 initialized:false,
 
-sheetName:"AuditLog",
-
-
-
-// =======================
-// INIT
-// =======================
 
 init(){
 
 
 if(this.initialized){
-
 return;
-
 }
 
+
+this.ensureSheet();
+
+
+this.initialized=true;
+
+
+Logger.log(
+"AuditLog READY"
+);
+
+
+},
+
+
+
+ensureSheet(){
 
 
 const ss =
@@ -31,19 +39,17 @@ SpreadsheetApp.getActive();
 
 let sheet =
 ss.getSheetByName(
-this.sheetName
+"AuditLog"
 );
 
 
 
 if(!sheet){
 
-
 sheet =
 ss.insertSheet(
-this.sheetName
+"AuditLog"
 );
-
 
 }
 
@@ -51,8 +57,7 @@ this.sheetName
 
 const headers=[
 
-"ID",
-"Timestamp",
+"AuditID",
 "OrganizationID",
 "UserID",
 "Role",
@@ -60,7 +65,8 @@ const headers=[
 "Entity",
 "EntityID",
 "Before",
-"After"
+"After",
+"CreatedAt"
 
 ];
 
@@ -87,25 +93,11 @@ headers.length
 
 
 
-this.initialized=true;
-
-
-
-Logger.log(
-"AuditLog READY"
-);
-
-
-
 },
 
 
 
 
-
-// =======================
-// WRITE
-// =======================
 
 write(
 action,
@@ -126,15 +118,14 @@ PropertiesService
 
 
 
-const row=[
+const record={
 
 
+AuditID:
 Utilities.getUuid(),
 
 
-new Date(),
-
-
+OrganizationID:
 props.getProperty(
 "CURRENT_ORG"
 )
@@ -142,6 +133,8 @@ props.getProperty(
 "UNKNOWN",
 
 
+
+UserID:
 props.getProperty(
 "CURRENT_USER"
 )
@@ -149,6 +142,8 @@ props.getProperty(
 "SYSTEM",
 
 
+
+Role:
 props.getProperty(
 "CURRENT_ROLE"
 )
@@ -156,47 +151,83 @@ props.getProperty(
 "SYSTEM",
 
 
+
+Action:
 action,
 
 
+Entity:
 entity,
 
 
-entityId
-||
+EntityID:
+entityId || "",
+
+
+
+Before:
+before
+?
+JSON.stringify(before)
+:
 "",
 
 
-JSON.stringify(
-before || null
-),
 
-
-JSON.stringify(
-after || null
-)
-
-
-];
+After:
+after
+?
+JSON.stringify(after)
+:
+"",
 
 
 
+CreatedAt:
+new Date()
+
+};
 
 
+
+
+
+const sheet =
 SpreadsheetApp
 .getActive()
 .getSheetByName(
-this.sheetName
-)
-.appendRow(
-row
+"AuditLog"
 );
 
 
 
+sheet.appendRow([
+
+record.AuditID,
+
+record.OrganizationID,
+
+record.UserID,
+
+record.Role,
+
+record.Action,
+
+record.Entity,
+
+record.EntityID,
+
+record.Before,
+
+record.After,
+
+record.CreatedAt
+
+]);
+
+
 
 Logger.log(
-
 "AUDIT "
 +
 action
@@ -207,20 +238,12 @@ entity
 +
 " "
 +
-(entityId || "")
-
+entityId
 );
 
 
 
-return {
-
-action,
-entity,
-entityId
-
-};
-
+return record;
 
 
 },
@@ -228,10 +251,6 @@ entityId
 
 
 
-
-// =======================
-// READ
-// =======================
 
 findByEntity(
 entity,
@@ -247,7 +266,7 @@ const sheet =
 SpreadsheetApp
 .getActive()
 .getSheetByName(
-this.sheetName
+"AuditLog"
 );
 
 
@@ -269,12 +288,23 @@ return data
 .filter(row=>{
 
 
+const obj={};
+
+
+headers.forEach(
+(h,i)=>{
+obj[h]=row[i];
+}
+);
+
+
+
 return (
-
-row[6]===entity
+obj.Entity===entity
 &&
-row[7]===entityId
-
+String(obj.EntityID)
+===
+String(entityId)
 );
 
 
@@ -287,10 +317,9 @@ const obj={};
 
 headers.forEach(
 (h,i)=>{
-
 obj[h]=row[i];
-
-});
+}
+);
 
 
 return obj;
@@ -306,18 +335,14 @@ return obj;
 
 
 
-// =======================
-// HEALTH
-// =======================
-
-
 health(){
-
 
 
 return HealthContract.create(
 
+
 "AuditLog",
+
 
 this.initialized
 ?
@@ -325,13 +350,14 @@ this.initialized
 :
 "WARNING",
 
+
 {
 
 
 version:this.version,
 
 
-sheet:this.sheetName,
+sheet:"AuditLog",
 
 
 initialized:this.initialized
@@ -343,9 +369,7 @@ initialized:this.initialized
 );
 
 
-
 }
-
 
 
 };
