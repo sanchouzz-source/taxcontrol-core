@@ -8,8 +8,12 @@ version:"0.4.0",
 
 
 
-entity:null,
+initialized:false,
 
+
+
+entity:
+EntityRegistry.CLIENT,
 
 
 
@@ -17,19 +21,15 @@ entity:null,
 init(){
 
 
-this.entity =
-EntityRegistry.CLIENT;
+if(this.initialized){
 
-
-
-if(!this.entity){
-
-throw new Error(
-"ClientEventHandler: CLIENT entity not registered"
+Logger.log(
+"ClientEventHandler ALREADY READY"
 );
 
-}
+return true;
 
+}
 
 
 
@@ -73,17 +73,21 @@ this.onRestored.bind(this)
 
 
 
-console.log(
-"ClientEventHandler READY"
+this.initialized=true;
+
+
+
+Logger.log(
+"ClientEventHandler READY v"
++
+this.version
 );
 
 
 
 return true;
 
-
 },
-
 
 
 
@@ -100,7 +104,6 @@ return null;
 }
 
 
-
 return payload.after || payload;
 
 
@@ -110,21 +113,14 @@ return payload.after || payload;
 
 
 
+log(action,payload){
 
 
-onCreated(payload){
-
-
-const client =
-this.extract(payload);
+const client=this.extract(payload);
 
 
 
 if(!client){
-
-Logger.warn(
-"CLIENT CREATED EVENT WITHOUT DATA"
-);
 
 return;
 
@@ -134,11 +130,16 @@ return;
 
 Logger.log(
 
-"CLIENT CREATED EVENT: "
+"CLIENT "
 +
-client.ClientID
+action
++
+" EVENT "
++
+client[this.entity.idField]
 
 );
+
 
 
 },
@@ -147,115 +148,47 @@ client.ClientID
 
 
 
+onCreated(event){
 
-
-onUpdated(payload){
-
-
-const client =
-this.extract(payload);
-
-
-
-if(!client){
-
-Logger.warn(
-"CLIENT UPDATED EVENT WITHOUT DATA"
+this.log(
+"CREATED",
+event
 );
-
-return;
-
-}
-
-
-
-Logger.log(
-
-"CLIENT UPDATED EVENT: "
-+
-client.ClientID
-
-);
-
 
 },
 
 
 
+onUpdated(event){
 
-
-
-
-onDeleted(payload){
-
-
-const client =
-this.extract(payload);
-
-
-
-if(!client){
-
-Logger.warn(
-"CLIENT DELETED EVENT WITHOUT DATA"
+this.log(
+"UPDATED",
+event
 );
-
-return;
-
-}
-
-
-
-Logger.log(
-
-"CLIENT DELETED EVENT: "
-+
-client.ClientID
-
-);
-
 
 },
 
 
 
+onDeleted(event){
 
-
-
-
-onRestored(payload){
-
-
-const client =
-this.extract(payload);
-
-
-
-if(!client){
-
-Logger.warn(
-"CLIENT RESTORED EVENT WITHOUT DATA"
+this.log(
+"DELETED",
+event
 );
-
-return;
-
-}
-
-
-
-Logger.log(
-
-"CLIENT RESTORED EVENT: "
-+
-client.ClientID
-
-);
-
 
 },
 
 
 
+onRestored(event){
+
+this.log(
+"RESTORED",
+event
+);
+
+},
 
 
 
@@ -275,29 +208,7 @@ return HealthContract.create(
 version:this.version,
 
 
-entity:
-this.entity
-?
-this.entity.entity
-:
-"NOT_INITIALIZED",
-
-
-
-dependencies:{
-
-
-EventBus:!!EventBus,
-
-
-EntityRegistry:!!EntityRegistry,
-
-
-Logger:!!Logger
-
-
-}
-
+entity:this.entity.entity
 
 
 }

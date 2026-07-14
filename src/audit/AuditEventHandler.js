@@ -4,11 +4,15 @@ console.log("AuditEventHandler");
 const AuditEventHandler = {
 
 
-version:"0.8.1",
+version:"0.9.0",
 
 
 
 registered:{},
+
+
+
+initialized:false,
 
 
 
@@ -17,7 +21,17 @@ registered:{},
 init(){
 
 
-try{
+
+if(this.initialized){
+
+Logger.log(
+"AuditEventHandler ALREADY READY"
+);
+
+return true;
+
+}
+
 
 
 this.registerEntity(
@@ -26,30 +40,19 @@ EntityRegistry.CLIENT
 
 
 
+this.initialized=true;
+
+
+
 Logger.log(
-"AuditEventHandler READY"
+"AuditEventHandler READY v"
++
+this.version
 );
 
 
 
 return true;
-
-
-}
-catch(e){
-
-
-Logger.log(
-"AuditEventHandler ERROR: "
-+
-e.message
-);
-
-
-return false;
-
-
-}
 
 
 },
@@ -63,85 +66,44 @@ return false;
 registerEntity(entity){
 
 
-
 if(!entity){
 
-
 Logger.log(
-"AUDIT REGISTER FAILED: ENTITY NOT FOUND"
+"AUDIT ENTITY NOT FOUND"
 );
 
-
-return false;
+return;
 
 }
-
-
 
 
 
 if(!entity.audit){
 
-
 Logger.log(
-
-"AUDIT SKIPPED ENTITY WITHOUT AUDIT CONFIG: "
+"AUDIT SKIP "
 +
 entity.entity
-
 );
 
-
-return false;
+return;
 
 }
 
 
 
 
-
-if(
-this.registered[
-entity.entity
-]
-){
-
+if(this.registered[entity.entity]){
 
 Logger.log(
-
 "AUDIT ALREADY REGISTERED "
 +
 entity.entity
-
 );
 
-
-return true;
-
-}
-
-
-
-
-
-if(
-!entity.events
-){
-
-
-Logger.log(
-
-"AUDIT FAILED NO EVENTS CONFIG "
-+
-entity.entity
-
-);
-
-
-return false;
+return;
 
 }
-
 
 
 
@@ -152,28 +114,18 @@ EventBus.subscribe(
 
 entity.events.created,
 
-(event)=>{
-
+event=>{
 
 this.writeAudit(
-
 ACTION_CREATE,
-
 entity,
-
 null,
-
 event.after
-
 );
-
 
 }
 
 );
-
-
-
 
 
 
@@ -183,28 +135,18 @@ EventBus.subscribe(
 
 entity.events.updated,
 
-(event)=>{
-
+event=>{
 
 this.writeAudit(
-
 ACTION_UPDATE,
-
 entity,
-
 event.before,
-
 event.after
-
 );
-
 
 }
 
 );
-
-
-
 
 
 
@@ -214,28 +156,18 @@ EventBus.subscribe(
 
 entity.events.deleted,
 
-(event)=>{
-
+event=>{
 
 this.writeAudit(
-
 ACTION_DELETE,
-
 entity,
-
 event.before,
-
 event.after
-
 );
-
 
 }
 
 );
-
-
-
 
 
 
@@ -245,26 +177,18 @@ EventBus.subscribe(
 
 entity.events.restored,
 
-(event)=>{
-
+event=>{
 
 this.writeAudit(
-
 ACTION_RESTORE,
-
 entity,
-
 event.before,
-
 event.after
-
 );
-
 
 }
 
 );
-
 
 
 
@@ -288,9 +212,6 @@ entity.entity
 
 
 
-return true;
-
-
 },
 
 
@@ -302,34 +223,24 @@ return true;
 writeAudit(
 
 action,
-
 entity,
-
 before,
-
 after
 
 ){
 
 
-
 if(!after){
 
-
 Logger.log(
-
-"AUDIT SKIPPED WITHOUT AFTER DATA "
+"AUDIT WITHOUT AFTER "
 +
 entity.entity
-
 );
-
 
 return;
 
 }
-
-
 
 
 
@@ -362,15 +273,14 @@ entity.entity
 +
 " "
 +
-after[
-entity.idField
-]
+after[entity.idField]
 
 );
 
 
 
 },
+
 
 
 
@@ -393,27 +303,11 @@ return HealthContract.create(
 version:this.version,
 
 
-registeredEntities:
-
+registered:
 Object.keys(
 this.registered
-),
+)
 
-
-
-dependencies:{
-
-
-EventBus:!!EventBus,
-
-
-AuditLog:!!AuditLog,
-
-
-EntityRegistry:!!EntityRegistry
-
-
-}
 
 
 }

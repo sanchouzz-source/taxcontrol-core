@@ -1,8 +1,10 @@
 console.log("EntityRegistry");
 
 
-
 const EntityRegistry = {
+
+
+version:"0.3.0",
 
 
 
@@ -10,17 +12,15 @@ CLIENT:{
 
 
 entity:
-"CLIENT",
-
+ENTITY_CLIENT,
 
 
 table:
-"Clients",
-
+ENTITY_CLIENT_TABLE,
 
 
 idField:
-"ClientID",
+ENTITY_CLIENT_ID,
 
 
 
@@ -73,13 +73,11 @@ PERMISSION_CLIENT_READ
 }
 
 
-
 }
 
 
 
 };
-
 
 
 
@@ -90,6 +88,8 @@ EntityRegistry;
 
 
 
-console.log(
-"EntityRegistry READY"
+Logger.log(
+"EntityRegistry READY v"
++
+EntityRegistry.version
 );
