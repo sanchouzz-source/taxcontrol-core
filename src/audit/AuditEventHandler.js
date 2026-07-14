@@ -1,128 +1,34 @@
-console.log("AuditEventHandler");
-
-
 const AuditEventHandler = {
 
 
-name:"AuditEventHandler",
+version:"0.2.0",
 
-
-initialized:false,
-
-
-
-// ======================
-// INIT
-// ======================
 
 init(){
 
 
-if(this.initialized){
-
-return;
-
-}
-
-
-
-EventBus.on(
+EventBus.subscribe(
 "CLIENT_CREATED",
-payload=>{
-
-
-AuditLog.write(
-
-"CREATE",
-"Client",
-client.ClientID,
-null,
-client
+this.clientCreated.bind(this)
 );
 
-});
 
-
-
-
-EventBus.on(
+EventBus.subscribe(
 "CLIENT_UPDATED",
-payload=>{
-
-
-AuditLog.write(
-
-"UPDATE",
-
-"CLIENT",
-
-payload.before,
-
-payload.after,
-
-payload.ClientID
-
+this.clientUpdated.bind(this)
 );
 
 
-});
-
-
-
-
-
-EventBus.on(
+EventBus.subscribe(
 "CLIENT_DELETED",
-payload=>{
-
-
-AuditLog.write(
-
-"DELETE",
-
-"CLIENT",
-
-payload.before,
-
-payload.after,
-
-payload.ClientID
-
+this.clientDeleted.bind(this)
 );
 
 
-});
-
-
-
-
-
-EventBus.on(
+EventBus.subscribe(
 "CLIENT_RESTORED",
-payload=>{
-
-
-AuditLog.write(
-
-"RESTORE",
-
-"CLIENT",
-
-payload.before,
-
-payload.after,
-
-payload.ClientID
-
+this.clientRestored.bind(this)
 );
-
-
-});
-
-
-
-
-this.initialized=true;
 
 
 
@@ -135,26 +41,89 @@ Logger.log(
 
 
 
+clientCreated(payload){
 
 
-health(){
+AuditLog.write(
+
+"CREATE",
+
+"Client",
+
+payload.ClientID,
+
+null,
+
+payload
+
+);
 
 
-return HealthContract.create(
+},
 
-"AuditEventHandler",
 
-this.initialized
-?
-"OK"
-:
-"WARNING",
 
-{
 
-version:"0.1.0"
+clientUpdated(payload){
 
-}
+
+AuditLog.write(
+
+"UPDATE",
+
+"Client",
+
+payload.id,
+
+payload.before,
+
+payload.after
+
+);
+
+
+},
+
+
+
+
+clientDeleted(payload){
+
+
+AuditLog.write(
+
+"DELETE",
+
+"Client",
+
+payload.ClientID,
+
+payload.before,
+
+payload.after
+
+);
+
+
+},
+
+
+
+
+clientRestored(payload){
+
+
+AuditLog.write(
+
+"RESTORE",
+
+"Client",
+
+payload.ClientID,
+
+payload.before,
+
+payload.after
 
 );
 
@@ -164,7 +133,6 @@ version:"0.1.0"
 
 
 };
-
 
 
 globalThis.AuditEventHandler =
