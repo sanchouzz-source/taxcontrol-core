@@ -4,7 +4,13 @@ console.log("AuditEventHandler");
 const AuditEventHandler = {
 
 
-version:"0.7.0",
+version:"0.8.0",
+
+
+
+registered:{},
+
+
 
 
 
@@ -33,16 +39,51 @@ return true;
 
 
 
+
 registerEntity(entity){
 
 
 
-if(!entity.audit){
+if(!entity){
+
+Logger.warn(
+"AUDIT REGISTER FAILED: ENTITY NOT FOUND"
+);
 
 return;
 
 }
 
+
+
+if(!entity.audit){
+
+Logger.warn(
+"AUDIT SKIPPED ENTITY WITHOUT AUDIT CONFIG: "
++
+entity.entity
+
+);
+
+return;
+
+}
+
+
+
+if(
+this.registered[entity.entity]
+){
+
+Logger.log(
+"AUDIT ALREADY REGISTERED "
++
+entity.entity
+);
+
+return;
+
+}
 
 
 
@@ -54,11 +95,11 @@ entity.events.created,
 (event)=>{
 
 
-AuditLog.write(
+this.writeAudit(
 
-"CREATE",
+ACTION_CREATE,
 
-entity.entity,
+entity,
 
 null,
 
@@ -67,26 +108,9 @@ event.after
 );
 
 
-
-Logger.log(
-
-"AUDIT CREATE "
-+
-entity.entity
-+
-" "
-+
-event.after[entity.idField]
-
-);
-
-
 }
 
 );
-
-
-
 
 
 
@@ -99,11 +123,11 @@ entity.events.updated,
 (event)=>{
 
 
-AuditLog.write(
+this.writeAudit(
 
-"UPDATE",
+ACTION_UPDATE,
 
-entity.entity,
+entity,
 
 event.before,
 
@@ -112,27 +136,9 @@ event.after
 );
 
 
-
-Logger.log(
-
-"AUDIT UPDATE "
-+
-entity.entity
-+
-" "
-+
-event.after[entity.idField]
-
-);
-
-
-
 }
 
 );
-
-
-
 
 
 
@@ -145,11 +151,11 @@ entity.events.deleted,
 (event)=>{
 
 
-AuditLog.write(
+this.writeAudit(
 
-"DELETE",
+ACTION_DELETE,
 
-entity.entity,
+entity,
 
 event.before,
 
@@ -158,27 +164,9 @@ event.after
 );
 
 
-
-Logger.log(
-
-"AUDIT DELETE "
-+
-entity.entity
-+
-" "
-+
-event.after[entity.idField]
-
-);
-
-
-
 }
 
 );
-
-
-
 
 
 
@@ -191,11 +179,11 @@ entity.events.restored,
 (event)=>{
 
 
-AuditLog.write(
+this.writeAudit(
 
-"RESTORE",
+ACTION_RESTORE,
 
-entity.entity,
+entity,
 
 event.before,
 
@@ -204,24 +192,18 @@ event.after
 );
 
 
-
-Logger.log(
-
-"AUDIT RESTORE "
-+
-entity.entity
-+
-" "
-+
-event.after[entity.idField]
-
-);
-
-
-
 }
 
 );
+
+
+
+
+
+this.registered[
+entity.entity
+]=true;
+
 
 
 
@@ -234,8 +216,78 @@ entity.entity
 );
 
 
+
 },
 
+
+
+
+
+
+
+writeAudit(
+
+action,
+
+entity,
+
+before,
+
+after
+
+){
+
+
+
+if(!after){
+
+Logger.warn(
+"AUDIT EVENT WITHOUT AFTER DATA "
++
+entity.entity
+);
+
+return;
+
+}
+
+
+
+
+AuditLog.write(
+
+action,
+
+entity.entity,
+
+before,
+
+after
+
+);
+
+
+
+
+Logger.log(
+
+"AUDIT "
++
+action
++
+" "
++
+entity.entity
++
+" "
++
+after[entity.idField]
+
+);
+
+
+
+},
 
 
 
@@ -256,6 +308,13 @@ return HealthContract.create(
 
 
 version:this.version,
+
+
+registeredEntities:
+Object.keys(
+this.registered
+),
+
 
 
 dependencies:{
