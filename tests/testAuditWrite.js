@@ -3,19 +3,18 @@ function testAuditWrite(){
 
 AuditLog.write(
 
-"TEST",
+"CREATE",
 
-"CLIENT",
+"Client",
+
+"CLI000021",
+
+null,
 
 {
-Name:"Old Client"
-},
-
-{
-Name:"New Client"
-},
-
-"CLI000021"
+Name:"Test Client",
+INN:"1111111111"
+}
 
 );
 

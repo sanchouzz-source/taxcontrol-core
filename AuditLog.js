@@ -1,10 +1,7 @@
-console.log("AuditLog");
-
-
 const AuditLog = {
 
 
-version:"0.2.0",
+version:"0.3.0",
 
 initialized:false,
 
@@ -12,24 +9,26 @@ sheetName:"AuditLog",
 
 
 
-// =========================
+// ===============================
 // INIT
-// =========================
+// ===============================
 
 init(){
 
 
 if(this.initialized){
-
-return;
-
+    return;
 }
 
 
+
+const ss =
+SpreadsheetApp.getActive();
+
+
+
 let sheet =
-SpreadsheetApp
-.getActive()
-.getSheetByName(
+ss.getSheetByName(
 this.sheetName
 );
 
@@ -37,13 +36,16 @@ this.sheetName
 
 if(!sheet){
 
-
 sheet =
-SpreadsheetApp
-.getActive()
-.insertSheet(
+ss.insertSheet(
 this.sheetName
 );
+
+}
+
+
+
+if(sheet.getLastRow()===0){
 
 
 sheet.appendRow([
@@ -60,11 +62,6 @@ sheet.appendRow([
 "After"
 
 ]);
-
-
-Logger.log(
-"AuditLog SHEET CREATED"
-);
 
 
 }
@@ -84,9 +81,9 @@ Logger.log(
 
 
 
-// =========================
+// ===============================
 // WRITE
-// =========================
+// ===============================
 
 
 write(
@@ -102,32 +99,37 @@ this.init();
 
 
 
+try{
+
+
 const props =
 PropertiesService
 .getScriptProperties();
 
 
 
-const record={
+const log={
 
 
-id:
+ID:
 Utilities.getUuid(),
 
 
-timestamp:
+Timestamp:
 new Date(),
 
 
-organizationId:
+
+OrganizationID:
 props.getProperty(
 "CURRENT_ORG"
 )
 ||
-"UNKNOWN",
+"ORG000001",
 
 
-userId:
+
+UserID:
 props.getProperty(
 "CURRENT_USER"
 )
@@ -135,7 +137,8 @@ props.getProperty(
 "SYSTEM",
 
 
-role:
+
+Role:
 props.getProperty(
 "CURRENT_ROLE"
 )
@@ -143,24 +146,44 @@ props.getProperty(
 "SYSTEM",
 
 
+
+Action:
 action,
 
 
+
+Entity:
 entity,
 
 
-entityId,
+
+EntityID:
+entityId
+||
+"",
 
 
-before:
-before || null,
+
+Before:
+before
+?
+JSON.stringify(before)
+:
+"",
 
 
-after:
-after || null
+
+After:
+after
+?
+JSON.stringify(after)
+:
+""
+
 
 
 };
+
 
 
 
@@ -174,35 +197,32 @@ this.sheetName
 
 
 
+
 sheet.appendRow([
 
+log.ID,
 
-record.id,
+log.Timestamp,
 
-record.timestamp,
+log.OrganizationID,
 
-record.organizationId,
+log.UserID,
 
-record.userId,
+log.Role,
 
-record.role,
+log.Action,
 
-record.action,
+log.Entity,
 
-record.entity,
+log.EntityID,
 
-record.entityId,
+log.Before,
 
-JSON.stringify(
-record.before
-),
-
-JSON.stringify(
-record.after
-)
-
+log.After
 
 ]);
+
+
 
 
 
@@ -224,7 +244,26 @@ entityId
 
 
 
-return record;
+
+return log;
+
+
+
+}
+catch(e){
+
+
+Logger.log(
+"AUDIT ERROR "
++
+e.message
+);
+
+
+return null;
+
+
+}
 
 
 },
@@ -232,109 +271,21 @@ return record;
 
 
 
-// =========================
-// QUERY
-// =========================
 
 
-findByEntity(
-entity,
-entityId
-){
-
-
-this.init();
-
-
-const sheet =
-SpreadsheetApp
-.getActive()
-.getSheetByName(
-this.sheetName
-);
-
-
-
-const values =
-sheet
-.getDataRange()
-.getValues();
-
-
-
-const headers =
-values[0];
-
-
-
-return values
-.slice(1)
-.filter(row=>{
-
-
-return (
-
-row[
-headers.indexOf(
-"Entity"
-)
-]
-===
-entity
-
-&&
-
-row[
-headers.indexOf(
-"EntityID"
-)
-]
-===
-entityId
-
-);
-
-
-})
-.map(row=>{
-
-
-const obj={};
-
-
-headers.forEach(
-(h,i)=>{
-
-
-obj[h]=row[i];
-
-
-});
-
-
-return obj;
-
-
-});
-
-
-},
-
-
-
-
-// =========================
+// ===============================
 // HEALTH
-// =========================
+// ===============================
 
 
 health(){
 
 
-
 return HealthContract.create(
 
+
 "AuditLog",
+
 
 this.initialized
 ?
@@ -342,16 +293,23 @@ this.initialized
 :
 "WARNING",
 
+
 {
+
 
 version:this.version,
 
+
 sheet:this.sheetName,
+
 
 initialized:this.initialized
 
 
+
 }
+
+
 
 );
 
@@ -361,6 +319,7 @@ initialized:this.initialized
 
 
 };
+
 
 
 

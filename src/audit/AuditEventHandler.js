@@ -34,17 +34,11 @@ payload=>{
 AuditLog.write(
 
 "CREATE",
-
-"CLIENT",
-
+"Client",
+client.ClientID,
 null,
-
-payload,
-
-payload.ClientID
-
+client
 );
-
 
 });
 
