@@ -157,9 +157,11 @@ validated
 
 EventBus.emit(
 "CLIENT_UPDATED",
-updated
+{
+before: existing,
+after: updated
+}
 );
-
 
 
 
@@ -267,10 +269,13 @@ restore(clientId) {
 
 
 
-    EventBus.emit(
-        "CLIENT_RESTORED",
-        restored
-    );
+EventBus.emit(
+"CLIENT_RESTORED",
+{
+before: existing,
+after: restored
+}
+);
 
 
 
@@ -341,9 +346,11 @@ Deleted:true
 
 EventBus.emit(
 "CLIENT_DELETED",
-deleted
+{
+before: existing,
+after: deleted
+}
 );
-
 
 
 return deleted;

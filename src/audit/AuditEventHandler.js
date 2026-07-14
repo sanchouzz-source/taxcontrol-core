@@ -41,44 +41,31 @@ data.ClientID
 
 EventBus.subscribe(
 "CLIENT_UPDATED",
-(data)=>{
-
-
+event=>{
+    
 AuditLog.write(
 "UPDATE",
 "Client",
-null,
-data
+event.before,
+event.after
 );
 
-
-Logger.log(
-"AUDIT UPDATE Client "
-+
-data.ClientID
-);
-
-
-}
-);
-
+});
 
 
 EventBus.subscribe(
 "CLIENT_DELETED",
-(data)=>{
-
+event=>{
 
 AuditLog.write(
 "DELETE",
 "Client",
-null,
-data
+data.before,
+data.after
 );
 
 
-}
-);
+});
 
 
 
@@ -90,13 +77,12 @@ EventBus.subscribe(
 AuditLog.write(
 "RESTORE",
 "Client",
-null,
-data
+data.before,
+data.after
 );
 
 
-}
-);
+});
 
 
 
