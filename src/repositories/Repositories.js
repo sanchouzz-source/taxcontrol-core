@@ -38,7 +38,6 @@ data.OrganizationID =
 OrganizationContext.get();
 
 
-
 const result =
 Database.insert(
 "Clients",
@@ -47,17 +46,17 @@ data
 
 
 
-EventBus.emit(
-"CLIENT_CREATED",
+AuditLog.write(
+"CREATE",
+"CLIENT",
+null,
 result
 );
 
 
 
-Versioning.save(
-"CLIENT",
-result.ClientID,
-null,
+EventBus.emit(
+"CLIENT_CREATED",
 result
 );
 

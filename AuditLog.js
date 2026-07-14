@@ -1,100 +1,62 @@
+console.log("AuditLog");
+
+
 const AuditLog = {
 
 
 version:"0.5.0",
 
-initialized:false,
 
 
 init(){
 
-
-if(this.initialized){
-return;
-}
-
-
-this.ensureSheet();
-
-
-this.initialized=true;
+    const sheet =
+    SpreadsheetApp.getActive()
+    .getSheetByName("AuditLog")
+    ||
+    SpreadsheetApp.getActive()
+    .insertSheet("AuditLog");
 
 
-Logger.log(
-"AuditLog READY"
-);
+    if(sheet.getLastRow() === 0){
+
+        sheet.appendRow([
+
+            "AuditID",
+            "OrganizationID",
+            "UserID",
+            "Role",
+            "Action",
+            "Entity",
+            "EntityID",
+            "Before",
+            "After",
+            "CreatedAt"
+
+        ]);
+
+    }
 
 
-},
+    return HealthContract.create(
 
+        "AuditLog",
 
+        "OK",
 
-ensureSheet(){
+        {
 
+            version:this.version,
 
-const ss =
-SpreadsheetApp.getActive();
+            sheet:"AuditLog",
 
+            initialized:true
 
+        }
 
-let sheet =
-ss.getSheetByName(
-"AuditLog"
-);
-
-
-
-if(!sheet){
-
-sheet =
-ss.insertSheet(
-"AuditLog"
-);
-
-}
-
-
-
-const headers=[
-
-"AuditID",
-"OrganizationID",
-"UserID",
-"Role",
-"Action",
-"Entity",
-"EntityID",
-"Before",
-"After",
-"CreatedAt"
-
-];
-
-
-
-if(
-sheet.getLastRow()===0
-){
-
-
-sheet
-.getRange(
-1,
-1,
-1,
-headers.length
-)
-.setValues(
-[headers]
-);
-
-
-}
-
-
+    );
 
 },
-
 
 
 
@@ -102,14 +64,9 @@ headers.length
 write(
 action,
 entity,
-entityId,
 before,
 after
 ){
-
-
-this.init();
-
 
 
 const props =
@@ -118,11 +75,12 @@ PropertiesService
 
 
 
-const record={
+const record = {
 
 
 AuditID:
 Utilities.getUuid(),
+
 
 
 OrganizationID:
@@ -130,7 +88,7 @@ props.getProperty(
 "CURRENT_ORG"
 )
 ||
-"UNKNOWN",
+"ORG000001",
 
 
 
@@ -153,15 +111,33 @@ props.getProperty(
 
 
 Action:
-action,
+action.toUpperCase(),
+
 
 
 Entity:
-entity,
+entity.toUpperCase(),
+
 
 
 EntityID:
-entityId || "",
+(
+after &&
+(after.ClientID ||
+after.TripID ||
+after.PaymentID ||
+after.VehicleID)
+)
+||
+(
+before &&
+(before.ClientID ||
+before.TripID ||
+before.PaymentID ||
+before.VehicleID)
+)
+||
+"",
 
 
 
@@ -184,10 +160,10 @@ JSON.stringify(after)
 
 
 CreatedAt:
-new Date()
+new Date().toISOString()
+
 
 };
-
 
 
 
@@ -195,9 +171,7 @@ new Date()
 const sheet =
 SpreadsheetApp
 .getActive()
-.getSheetByName(
-"AuditLog"
-);
+.getSheetByName("AuditLog");
 
 
 
@@ -227,22 +201,6 @@ record.CreatedAt
 
 
 
-Logger.log(
-"AUDIT "
-+
-action
-+
-" "
-+
-entity
-+
-" "
-+
-entityId
-);
-
-
-
 return record;
 
 
@@ -251,86 +209,29 @@ return record;
 
 
 
-
-findByEntity(
-entity,
-entityId
-){
+test(entityId){
 
 
-this.init();
+return this.write(
 
+"TEST",
 
+"CLIENT",
 
-const sheet =
-SpreadsheetApp
-.getActive()
-.getSheetByName(
-"AuditLog"
-);
+null,
 
+{
 
+ClientID:entityId,
 
-const data =
-sheet
-.getDataRange()
-.getValues();
+Test:true
 
-
-
-const headers =
-data[0];
-
-
-
-return data
-.slice(1)
-.filter(row=>{
-
-
-const obj={};
-
-
-headers.forEach(
-(h,i)=>{
-obj[h]=row[i];
 }
+
 );
-
-
-
-return (
-obj.Entity===entity
-&&
-String(obj.EntityID)
-===
-String(entityId)
-);
-
-
-})
-.map(row=>{
-
-
-const obj={};
-
-
-headers.forEach(
-(h,i)=>{
-obj[h]=row[i];
-}
-);
-
-
-return obj;
-
-
-});
-
 
 
 },
-
 
 
 
@@ -340,36 +241,25 @@ health(){
 
 return HealthContract.create(
 
-
 "AuditLog",
 
-
-this.initialized
-?
-"OK"
-:
-"WARNING",
-
+"OK",
 
 {
 
-
 version:this.version,
-
 
 sheet:"AuditLog",
 
-
-initialized:this.initialized
-
+initialized:true
 
 }
-
 
 );
 
 
 }
+
 
 
 };
