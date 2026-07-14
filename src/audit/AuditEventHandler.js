@@ -4,7 +4,7 @@ console.log("AuditEventHandler");
 const AuditEventHandler = {
 
 
-version:"0.8.0",
+version:"0.8.1",
 
 
 
@@ -17,19 +17,39 @@ registered:{},
 init(){
 
 
+try{
+
+
 this.registerEntity(
 EntityRegistry.CLIENT
 );
 
 
 
-console.log(
+Logger.log(
 "AuditEventHandler READY"
 );
 
 
 
 return true;
+
+
+}
+catch(e){
+
+
+Logger.log(
+"AuditEventHandler ERROR: "
++
+e.message
+);
+
+
+return false;
+
+
+}
 
 
 },
@@ -46,44 +66,84 @@ registerEntity(entity){
 
 if(!entity){
 
-Logger.warn(
+
+Logger.log(
 "AUDIT REGISTER FAILED: ENTITY NOT FOUND"
 );
 
-return;
+
+return false;
 
 }
 
 
 
+
+
 if(!entity.audit){
 
-Logger.warn(
+
+Logger.log(
+
 "AUDIT SKIPPED ENTITY WITHOUT AUDIT CONFIG: "
 +
 entity.entity
 
 );
 
-return;
+
+return false;
 
 }
+
+
 
 
 
 if(
-this.registered[entity.entity]
+this.registered[
+entity.entity
+]
 ){
 
+
 Logger.log(
+
 "AUDIT ALREADY REGISTERED "
 +
 entity.entity
+
 );
 
-return;
+
+return true;
 
 }
+
+
+
+
+
+if(
+!entity.events
+){
+
+
+Logger.log(
+
+"AUDIT FAILED NO EVENTS CONFIG "
++
+entity.entity
+
+);
+
+
+return false;
+
+}
+
+
+
 
 
 
@@ -111,6 +171,9 @@ event.after
 }
 
 );
+
+
+
 
 
 
@@ -144,6 +207,9 @@ event.after
 
 
 
+
+
+
 EventBus.subscribe(
 
 entity.events.deleted,
@@ -167,6 +233,9 @@ event.after
 }
 
 );
+
+
+
 
 
 
@@ -200,6 +269,8 @@ event.after
 
 
 
+
+
 this.registered[
 entity.entity
 ]=true;
@@ -215,6 +286,9 @@ entity.entity
 
 );
 
+
+
+return true;
 
 
 },
@@ -241,15 +315,21 @@ after
 
 if(!after){
 
-Logger.warn(
-"AUDIT EVENT WITHOUT AFTER DATA "
+
+Logger.log(
+
+"AUDIT SKIPPED WITHOUT AFTER DATA "
 +
 entity.entity
+
 );
+
 
 return;
 
 }
+
+
 
 
 
@@ -269,6 +349,7 @@ after
 
 
 
+
 Logger.log(
 
 "AUDIT "
@@ -281,7 +362,9 @@ entity.entity
 +
 " "
 +
-after[entity.idField]
+after[
+entity.idField
+]
 
 );
 
@@ -311,6 +394,7 @@ version:this.version,
 
 
 registeredEntities:
+
 Object.keys(
 this.registered
 ),

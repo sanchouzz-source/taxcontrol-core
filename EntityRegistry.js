@@ -18,7 +18,11 @@ ENTITY_CLIENT_TABLE,
 
 
 idField:
-ENTITY_CLIENT_ID,
+ENTITY_ID_FIELDS.CLIENT,
+
+
+
+audit:true,
 
 
 
