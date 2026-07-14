@@ -35,10 +35,10 @@ data
 
 
 EventBus.emit(
-EVENT_CLIENT_CREATED,
+EntityEvents.CLIENT.CREATED,
 {
-entity:ENTITY_CLIENT,
-action:ACTION_CREATE,
+entity:"CLIENT",
+action:"CREATE",
 before:null,
 after:result
 }
@@ -105,10 +105,10 @@ validated
 );
 
 EventBus.emit(
-EVENT_CLIENT_UPDATED,
+EntityEvents.CLIENT.UPDATED,
 {
-entity:ENTITY_CLIENT,
-action:ACTION_UPDATE,
+entity:"CLIENT",
+action:"UPDATE",
 before:existing,
 after:updated
 }
@@ -200,10 +200,10 @@ UpdatedAt:new Date().toISOString()
 
 
 EventBus.emit(
-EVENT_CLIENT_RESTORED,
+EntityEvents.CLIENT.RESTORED,
 {
-entity:ENTITY_CLIENT,
-action:ACTION_RESTORE,
+entity:"CLIENT",
+action:"RESTORE",
 before:existing,
 after:restored
 }
@@ -264,10 +264,10 @@ UpdatedAt:new Date().toISOString()
 
 
 EventBus.emit(
-EVENT_CLIENT_DELETED,
+EntityEvents.CLIENT.DELETED,
 {
-entity:ENTITY_CLIENT,
-action:ACTION_DELETE,
+entity:"CLIENT",
+action:"DELETE",
 before:existing,
 after:deleted
 }

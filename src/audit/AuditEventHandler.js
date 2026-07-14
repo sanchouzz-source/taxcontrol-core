@@ -4,7 +4,7 @@ console.log("AuditEventHandler");
 const AuditEventHandler = {
 
 
-version:"0.5.0",
+version:"0.6.0",
 
 
 
@@ -12,14 +12,8 @@ init(){
 
 
 EventBus.subscribe(
-"CLIENT_CREATED",
+EntityEvents.CLIENT.CREATED,
 (event)=>{
-
-
-Logger.log(
-"AUDIT EVENT CLIENT_CREATED"
-);
-
 
 
 AuditLog.write(
@@ -30,13 +24,11 @@ event.after
 );
 
 
-
 Logger.log(
-"AUDIT CREATE Client "
+"AUDIT CREATE CLIENT "
 +
 event.after.ClientID
 );
-
 
 
 }
@@ -48,7 +40,7 @@ event.after.ClientID
 
 
 EventBus.subscribe(
-"CLIENT_UPDATED",
+EntityEvents.CLIENT.UPDATED,
 (event)=>{
 
 
@@ -61,7 +53,7 @@ event.after
 
 
 Logger.log(
-"AUDIT UPDATE Client "
+"AUDIT UPDATE CLIENT "
 +
 event.after.ClientID
 );
@@ -72,9 +64,13 @@ event.after.ClientID
 );
 
 
+
+
+
 EventBus.subscribe(
-"CLIENT_DELETED",
+EntityEvents.CLIENT.DELETED,
 (event)=>{
+
 
 AuditLog.write(
 "DELETE",
@@ -83,19 +79,26 @@ event.before,
 event.after
 );
 
+
 Logger.log(
-"AUDIT DELETE Client "
+"AUDIT DELETE CLIENT "
 +
 event.after.ClientID
 );
+
 
 }
 
 );
 
+
+
+
+
 EventBus.subscribe(
-"CLIENT_RESTORED",
+EntityEvents.CLIENT.RESTORED,
 (event)=>{
+
 
 AuditLog.write(
 "RESTORE",
@@ -105,9 +108,8 @@ event.after
 );
 
 
-
 Logger.log(
-"AUDIT RESTORE Client "
+"AUDIT RESTORE CLIENT "
 +
 event.after.ClientID
 );
@@ -116,7 +118,6 @@ event.after.ClientID
 }
 
 );
-
 
 
 
@@ -130,7 +131,6 @@ return true;
 
 
 }
-
 
 
 };
