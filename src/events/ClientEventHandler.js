@@ -4,18 +4,32 @@ console.log("ClientEventHandler");
 const ClientEventHandler = {
 
 
-version:"0.3.0",
+version:"0.4.0",
 
 
 
-entity:
-EntityRegistry.CLIENT,
+entity:null,
 
 
 
 
 
 init(){
+
+
+this.entity =
+EntityRegistry.CLIENT;
+
+
+
+if(!this.entity){
+
+throw new Error(
+"ClientEventHandler: CLIENT entity not registered"
+);
+
+}
+
 
 
 
@@ -29,7 +43,6 @@ this.onCreated.bind(this)
 
 
 
-
 EventBus.subscribe(
 
 this.entity.events.updated,
@@ -37,7 +50,6 @@ this.entity.events.updated,
 this.onUpdated.bind(this)
 
 );
-
 
 
 
@@ -51,7 +63,6 @@ this.onDeleted.bind(this)
 
 
 
-
 EventBus.subscribe(
 
 this.entity.events.restored,
@@ -62,12 +73,8 @@ this.onRestored.bind(this)
 
 
 
-
-
 console.log(
-
 "ClientEventHandler READY"
-
 );
 
 
@@ -76,7 +83,6 @@ return true;
 
 
 },
-
 
 
 
@@ -116,6 +122,10 @@ this.extract(payload);
 
 if(!client){
 
+Logger.warn(
+"CLIENT CREATED EVENT WITHOUT DATA"
+);
+
 return;
 
 }
@@ -125,12 +135,10 @@ return;
 Logger.log(
 
 "CLIENT CREATED EVENT: "
-
 +
 client.ClientID
 
 );
-
 
 
 },
@@ -151,6 +159,10 @@ this.extract(payload);
 
 if(!client){
 
+Logger.warn(
+"CLIENT UPDATED EVENT WITHOUT DATA"
+);
+
 return;
 
 }
@@ -160,16 +172,13 @@ return;
 Logger.log(
 
 "CLIENT UPDATED EVENT: "
-
 +
 client.ClientID
 
 );
 
 
-
 },
-
 
 
 
@@ -187,6 +196,10 @@ this.extract(payload);
 
 if(!client){
 
+Logger.warn(
+"CLIENT DELETED EVENT WITHOUT DATA"
+);
+
 return;
 
 }
@@ -196,16 +209,13 @@ return;
 Logger.log(
 
 "CLIENT DELETED EVENT: "
-
 +
 client.ClientID
 
 );
 
 
-
 },
-
 
 
 
@@ -223,6 +233,10 @@ this.extract(payload);
 
 if(!client){
 
+Logger.warn(
+"CLIENT RESTORED EVENT WITHOUT DATA"
+);
+
 return;
 
 }
@@ -232,12 +246,10 @@ return;
 Logger.log(
 
 "CLIENT RESTORED EVENT: "
-
 +
 client.ClientID
 
 );
-
 
 
 },
@@ -263,7 +275,13 @@ return HealthContract.create(
 version:this.version,
 
 
-entity:this.entity.entity,
+entity:
+this.entity
+?
+this.entity.entity
+:
+"NOT_INITIALIZED",
+
 
 
 dependencies:{

@@ -1,149 +1,49 @@
 console.log("EntityConstants");
 
 
-// ==========================
-// ENTITY NAMES
-// ==========================
+const ENTITY_CLIENT = "CLIENT";
 
-const ENTITY_NAMES = {
+const ENTITY_CLIENT_TABLE = "Clients";
 
-CLIENT:"CLIENT"
-
-};
-
-
-// ==========================
-// DATABASE TABLES
-// ==========================
-
-const ENTITY_TABLES = {
-
-CLIENT:"Clients"
-
-};
-
-
-// ==========================
-// PRIMARY KEYS
-// ==========================
-
-const ENTITY_ID_FIELDS = {
-
-CLIENT:"ClientID"
-
-};
+const ENTITY_CLIENT_ID = "ClientID";
 
 
 
-// ==========================
-// EVENTS
-// ==========================
-
-const EVENT_CLIENT_CREATED =
-"CLIENT_CREATED";
-
-
-const EVENT_CLIENT_UPDATED =
-"CLIENT_UPDATED";
-
-
-const EVENT_CLIENT_DELETED =
-"CLIENT_DELETED";
-
-
-const EVENT_CLIENT_RESTORED =
-"CLIENT_RESTORED";
+const ACTION_CREATE = "CREATE";
+const ACTION_UPDATE = "UPDATE";
+const ACTION_DELETE = "DELETE";
+const ACTION_RESTORE = "RESTORE";
 
 
 
-// ==========================
-// ACTIONS
-// ==========================
-
-const ACTION_CREATE =
-"CREATE";
-
-
-const ACTION_UPDATE =
-"UPDATE";
-
-
-const ACTION_DELETE =
-"DELETE";
-
-
-const ACTION_RESTORE =
-"RESTORE";
+const PERMISSION_CLIENT_CREATE = "CLIENT_CREATE";
+const PERMISSION_CLIENT_UPDATE = "CLIENT_UPDATE";
+const PERMISSION_CLIENT_DELETE = "CLIENT_DELETE";
+const PERMISSION_CLIENT_READ = "CLIENT_READ";
 
 
 
-// ==========================
-// PERMISSIONS
-// ==========================
-
-const PERMISSION_CLIENT_CREATE =
-"CLIENT_CREATE";
+globalThis.ENTITY_CLIENT =
+ENTITY_CLIENT;
 
 
-const PERMISSION_CLIENT_UPDATE =
-"CLIENT_UPDATE";
+globalThis.ENTITY_CLIENT_TABLE =
+ENTITY_CLIENT_TABLE;
 
 
-const PERMISSION_CLIENT_DELETE =
-"CLIENT_DELETE";
-
-
-const PERMISSION_CLIENT_READ =
-"CLIENT_READ";
-
-
-
-
-// ==========================
-// GLOBAL EXPORT
-// ==========================
-
-globalThis.ENTITY_NAMES =
-ENTITY_NAMES;
-
-
-globalThis.ENTITY_TABLES =
-ENTITY_TABLES;
-
-
-globalThis.ENTITY_ID_FIELDS =
-ENTITY_ID_FIELDS;
-
-
-
-globalThis.EVENT_CLIENT_CREATED =
-EVENT_CLIENT_CREATED;
-
-
-globalThis.EVENT_CLIENT_UPDATED =
-EVENT_CLIENT_UPDATED;
-
-
-globalThis.EVENT_CLIENT_DELETED =
-EVENT_CLIENT_DELETED;
-
-
-globalThis.EVENT_CLIENT_RESTORED =
-EVENT_CLIENT_RESTORED;
+globalThis.ENTITY_CLIENT_ID =
+ENTITY_CLIENT_ID;
 
 
 
 globalThis.ACTION_CREATE =
 ACTION_CREATE;
 
-
 globalThis.ACTION_UPDATE =
 ACTION_UPDATE;
 
-
 globalThis.ACTION_DELETE =
 ACTION_DELETE;
-
 
 globalThis.ACTION_RESTORE =
 ACTION_RESTORE;
@@ -153,14 +53,11 @@ ACTION_RESTORE;
 globalThis.PERMISSION_CLIENT_CREATE =
 PERMISSION_CLIENT_CREATE;
 
-
 globalThis.PERMISSION_CLIENT_UPDATE =
 PERMISSION_CLIENT_UPDATE;
 
-
 globalThis.PERMISSION_CLIENT_DELETE =
 PERMISSION_CLIENT_DELETE;
-
 
 globalThis.PERMISSION_CLIENT_READ =
 PERMISSION_CLIENT_READ;
