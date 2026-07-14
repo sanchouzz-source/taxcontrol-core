@@ -72,13 +72,9 @@ event.after.ClientID
 );
 
 
-
-
-
 EventBus.subscribe(
 "CLIENT_DELETED",
 (event)=>{
-
 
 AuditLog.write(
 "DELETE",
@@ -87,26 +83,19 @@ event.before,
 event.after
 );
 
-
 Logger.log(
 "AUDIT DELETE Client "
 +
 event.after.ClientID
 );
 
-
 }
 
 );
 
-
-
-
-
 EventBus.subscribe(
 "CLIENT_RESTORED",
 (event)=>{
-
 
 AuditLog.write(
 "RESTORE",

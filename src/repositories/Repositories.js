@@ -7,7 +7,7 @@ version:"0.2.0",
 create(data){
 
 SecurityGuard.check(
-"CLIENT_CREATE"
+PERMISSION_CLIENT_CREATE
 );
 
 data =
@@ -29,16 +29,16 @@ OrganizationContext.get();
 
 const result =
 Database.insert(
-"Clients",
+ENTITY_CLIENT_TABLE,
 data
 );
 
 
 EventBus.emit(
-"CLIENT_CREATED",
+EVENT_CLIENT_CREATED,
 {
-entity:"CLIENT",
-action:"CREATE",
+entity:ENTITY_CLIENT,
+action:ACTION_CREATE,
 before:null,
 after:result
 }
@@ -49,29 +49,19 @@ return result;
 
 },
 
-
-
-
-
 update(clientId,data){
 
-
 SecurityGuard.check(
-"CLIENT_UPDATE"
+PERMISSION_CLIENT_UPDATE
 );
-
-
 
 const existing =
 Database.find(
-"Clients",
+ENTITY_CLIENT_TABLE,
 clientId
 );
 
-
-
 if(!existing){
-
 
 throw new Error(
 "Client not found: "
@@ -79,54 +69,33 @@ throw new Error(
 clientId
 );
 
-
 }
 
-
-
-
 Versioning.save(
-"CLIENT",
+ENTITY_CLIENT,
 clientId,
 existing
 );
 
 
-
-
 const merged = {
-
 
 ...existing,
 
 ...data
 
-
 };
-
-
-
-
 
 const validated =
 ClientValidator.validate(
 merged
 );
 
-
-
-
 validated.OrganizationID =
 OrganizationContext.get();
 
-
-
 validated.ClientID =
 clientId;
-
-
-
-
 
 const updated =
 Database.update(
@@ -135,13 +104,13 @@ clientId,
 validated
 );
 
-
-
 EventBus.emit(
-"CLIENT_UPDATED",
+EVENT_CLIENT_UPDATED,
 {
-before: existing,
-after: updated
+entity:ENTITY_CLIENT,
+action:ACTION_UPDATE,
+before:existing,
+after:updated
 }
 );
 
@@ -178,7 +147,9 @@ return Database.query(
 
 restore(clientId) {
 
-    SecurityGuard.check("CLIENT_UPDATE");
+   SecurityGuard.check(
+PERMISSION_CLIENT_UPDATE
+);
 
 
     const existing =
@@ -228,17 +199,15 @@ UpdatedAt:new Date().toISOString()
 );
 
 
-
-
 EventBus.emit(
-"CLIENT_RESTORED",
+EVENT_CLIENT_RESTORED,
 {
-before: existing,
-after: restored
+entity:ENTITY_CLIENT,
+action:ACTION_RESTORE,
+before:existing,
+after:restored
 }
 );
-
-
 
     return restored;
 
@@ -246,13 +215,11 @@ after: restored
 },
 
 
-
-
 delete(clientId){
 
 
 SecurityGuard.check(
-"CLIENT_DELETE"
+PERMISSION_CLIENT_DELETE
 );
 
 
@@ -264,9 +231,7 @@ clientId
 );
 
 
-
 if(!existing){
-
 
 throw new Error(
 "Client not found: "
@@ -278,17 +243,11 @@ clientId
 }
 
 
-
-
-
 Versioning.save(
 "CLIENT",
 clientId,
 existing
 );
-
-
-
 
 
 const deleted =
@@ -305,10 +264,12 @@ UpdatedAt:new Date().toISOString()
 
 
 EventBus.emit(
-"CLIENT_DELETED",
+EVENT_CLIENT_DELETED,
 {
-before: existing,
-after: deleted
+entity:ENTITY_CLIENT,
+action:ACTION_DELETE,
+before:existing,
+after:deleted
 }
 );
 
@@ -317,11 +278,6 @@ return deleted;
 
 
 },
-
-
-
-
-
 
 health(){
 
@@ -354,11 +310,7 @@ SecurityGuard:!!SecurityGuard
 }
 
 
-
-
-
 };
-
 
 
 globalThis.ClientRepository =
