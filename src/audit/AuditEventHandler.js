@@ -4,7 +4,8 @@ console.log("AuditEventHandler");
 const AuditEventHandler = {
 
 
-version:"0.4.0",
+version:"0.5.0",
+
 
 
 init(){
@@ -12,77 +13,122 @@ init(){
 
 EventBus.subscribe(
 "CLIENT_CREATED",
-(data)=>{
+(event)=>{
+
 
 Logger.log(
 "AUDIT EVENT CLIENT_CREATED"
 );
 
 
+
 AuditLog.write(
 "CREATE",
-"Client",
+"CLIENT",
 null,
-data
+event.after
 );
+
 
 
 Logger.log(
 "AUDIT CREATE Client "
 +
-data.ClientID
+event.after.ClientID
 );
+
 
 
 }
+
 );
+
+
 
 
 
 EventBus.subscribe(
 "CLIENT_UPDATED",
-event=>{
-    
+(event)=>{
+
+
 AuditLog.write(
 "UPDATE",
-"Client",
+"CLIENT",
 event.before,
 event.after
 );
 
-});
+
+Logger.log(
+"AUDIT UPDATE Client "
++
+event.after.ClientID
+);
+
+
+}
+
+);
+
+
+
 
 
 EventBus.subscribe(
 "CLIENT_DELETED",
-event=>{
+(event)=>{
+
 
 AuditLog.write(
 "DELETE",
-"Client",
+"CLIENT",
 event.before,
 event.after
 );
 
 
-});
+Logger.log(
+"AUDIT DELETE Client "
++
+event.after.ClientID
+);
+
+
+}
+
+);
+
+
 
 
 
 EventBus.subscribe(
 "CLIENT_RESTORED",
-(data)=>{
+(event)=>{
 
 
 AuditLog.write(
 "RESTORE",
-"Client",
-data.before,
-data.after
+"CLIENT",
+event.before,
+event.after
 );
 
 
-});
+
+Logger.log(
+"AUDIT RESTORE Client "
++
+event.after.ClientID
+);
+
+
+}
+
+);
+
+
 
 
 

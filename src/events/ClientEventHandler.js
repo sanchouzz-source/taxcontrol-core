@@ -5,25 +5,25 @@ init(){
 
 EventBus.subscribe(
 "CLIENT_CREATED",
-this.onCreated
+this.onCreated.bind(this)
 );
 
 
 EventBus.subscribe(
 "CLIENT_UPDATED",
-this.onUpdated
+this.onUpdated.bind(this)
 );
 
 
 EventBus.subscribe(
 "CLIENT_DELETED",
-this.onDeleted
+this.onDeleted.bind(this)
 );
 
 
 EventBus.subscribe(
 "CLIENT_RESTORED",
-this.onRestored
+this.onRestored.bind(this)
 );
 
 

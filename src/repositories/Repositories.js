@@ -1,27 +1,19 @@
 console.log("ClientRepository");
 
-
 const ClientRepository = {
-
 
 version:"0.2.0",
 
-
-
 create(data){
-
 
 SecurityGuard.check(
 "CLIENT_CREATE"
 );
 
-
 data =
 ClientValidator.validate(
 data
 );
-
-
 
 if(!data.ClientID){
 
@@ -32,11 +24,8 @@ IdService.generate(
 
 }
 
-
-
 data.OrganizationID =
 OrganizationContext.get();
-
 
 const result =
 Database.insert(
@@ -48,6 +37,8 @@ data
 EventBus.emit(
 "CLIENT_CREATED",
 {
+entity:"CLIENT",
+action:"CREATE",
 before:null,
 after:result
 }
@@ -154,48 +145,28 @@ after: updated
 }
 );
 
-
-
 return updated;
-
 
 },
 
-
-
-
-
-
 getById(id){
-
 
 SecurityGuard.check(
 "CLIENT_READ"
 );
-
-
 
 return Database.find(
 "Clients",
 id
 );
 
-
 },
 
-
-
-
-
-
 list(){
-
 
 SecurityGuard.check(
 "CLIENT_READ"
 );
-
-
 
 return Database.query(
 "Clients",
