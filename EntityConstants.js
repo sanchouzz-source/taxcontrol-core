@@ -1,6 +1,10 @@
 console.log("EntityConstants");
 
 
+// ==========================
+// ENTITY NAMES
+// ==========================
+
 const ENTITY_NAMES = {
 
 CLIENT:"CLIENT"
@@ -8,54 +12,108 @@ CLIENT:"CLIENT"
 };
 
 
-const ENTITY_TABLES = {
+// ==========================
+// DATABASE TABLES
+// ==========================
 
+const ENTITY_TABLES = {
 
 CLIENT:"Clients"
 
-
 };
 
+
+// ==========================
+// PRIMARY KEYS
+// ==========================
 
 const ENTITY_ID_FIELDS = {
 
-
 CLIENT:"ClientID"
-
 
 };
 
 
 
+// ==========================
+// EVENTS
+// ==========================
 
-const ENTITY_CLIENT_TABLE = "Clients";
-
-
-const EVENT_CLIENT_CREATED = "CLIENT_CREATED";
-const EVENT_CLIENT_UPDATED = "CLIENT_UPDATED";
-const EVENT_CLIENT_DELETED = "CLIENT_DELETED";
-const EVENT_CLIENT_RESTORED = "CLIENT_RESTORED";
+const EVENT_CLIENT_CREATED =
+"CLIENT_CREATED";
 
 
-const ACTION_CREATE = "CREATE";
-const ACTION_UPDATE = "UPDATE";
-const ACTION_DELETE = "DELETE";
-const ACTION_RESTORE = "RESTORE";
+const EVENT_CLIENT_UPDATED =
+"CLIENT_UPDATED";
 
 
-const PERMISSION_CLIENT_CREATE = "CLIENT_CREATE";
-const PERMISSION_CLIENT_UPDATE = "CLIENT_UPDATE";
-const PERMISSION_CLIENT_DELETE = "CLIENT_DELETE";
-const PERMISSION_CLIENT_READ = "CLIENT_READ";
+const EVENT_CLIENT_DELETED =
+"CLIENT_DELETED";
+
+
+const EVENT_CLIENT_RESTORED =
+"CLIENT_RESTORED";
 
 
 
-globalThis.ENTITY_CLIENT =
-ENTITY_CLIENT;
+// ==========================
+// ACTIONS
+// ==========================
+
+const ACTION_CREATE =
+"CREATE";
 
 
-globalThis.ENTITY_CLIENT_TABLE =
-ENTITY_CLIENT_TABLE;
+const ACTION_UPDATE =
+"UPDATE";
+
+
+const ACTION_DELETE =
+"DELETE";
+
+
+const ACTION_RESTORE =
+"RESTORE";
+
+
+
+// ==========================
+// PERMISSIONS
+// ==========================
+
+const PERMISSION_CLIENT_CREATE =
+"CLIENT_CREATE";
+
+
+const PERMISSION_CLIENT_UPDATE =
+"CLIENT_UPDATE";
+
+
+const PERMISSION_CLIENT_DELETE =
+"CLIENT_DELETE";
+
+
+const PERMISSION_CLIENT_READ =
+"CLIENT_READ";
+
+
+
+
+// ==========================
+// GLOBAL EXPORT
+// ==========================
+
+globalThis.ENTITY_NAMES =
+ENTITY_NAMES;
+
+
+globalThis.ENTITY_TABLES =
+ENTITY_TABLES;
+
+
+globalThis.ENTITY_ID_FIELDS =
+ENTITY_ID_FIELDS;
+
 
 
 globalThis.EVENT_CLIENT_CREATED =
@@ -74,6 +132,7 @@ globalThis.EVENT_CLIENT_RESTORED =
 EVENT_CLIENT_RESTORED;
 
 
+
 globalThis.ACTION_CREATE =
 ACTION_CREATE;
 
@@ -90,6 +149,7 @@ globalThis.ACTION_RESTORE =
 ACTION_RESTORE;
 
 
+
 globalThis.PERMISSION_CLIENT_CREATE =
 PERMISSION_CLIENT_CREATE;
 
@@ -104,3 +164,9 @@ PERMISSION_CLIENT_DELETE;
 
 globalThis.PERMISSION_CLIENT_READ =
 PERMISSION_CLIENT_READ;
+
+
+
+console.log(
+"EntityConstants READY"
+);
