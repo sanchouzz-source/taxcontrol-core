@@ -1,23 +1,25 @@
 function testAuditFlow(){
 
 
+SystemInit.init();
+
+
+
 const client =
 ClientRepository.create({
 
-Name:"Audit Flow v2",
+Name:"Audit Flow v3",
 
 INN:"9999999999",
 
 Phone:"+79999999999",
 
-Email:"audit2@test.ru"
+Email:"audit3@test.ru"
 
 });
 
 
-Logger.log(
-JSON.stringify(client)
-);
+Logger.log(client);
 
 
 }
