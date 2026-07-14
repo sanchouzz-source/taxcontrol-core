@@ -4,47 +4,82 @@ console.log("ClientEventHandler");
 const ClientEventHandler = {
 
 
-version:"0.2.0",
+version:"0.3.0",
+
+
+
+entity:
+EntityRegistry.CLIENT,
+
+
 
 
 
 init(){
 
 
+
 EventBus.subscribe(
-EVENT_CLIENT_CREATED,
+
+this.entity.events.created,
+
 this.onCreated.bind(this)
+
 );
 
 
 
+
 EventBus.subscribe(
-EVENT_CLIENT_UPDATED,
+
+this.entity.events.updated,
+
 this.onUpdated.bind(this)
+
 );
 
 
 
+
 EventBus.subscribe(
-EVENT_CLIENT_DELETED,
+
+this.entity.events.deleted,
+
 this.onDeleted.bind(this)
+
 );
+
 
 
 
 EventBus.subscribe(
-EVENT_CLIENT_RESTORED,
+
+this.entity.events.restored,
+
 this.onRestored.bind(this)
+
 );
+
+
 
 
 
 console.log(
+
 "ClientEventHandler READY"
+
 );
 
 
+
+return true;
+
+
 },
+
+
+
+
 
 
 
@@ -52,10 +87,21 @@ console.log(
 extract(payload){
 
 
+if(!payload){
+
+return null;
+
+}
+
+
+
 return payload.after || payload;
 
 
 },
+
+
+
 
 
 
@@ -68,13 +114,29 @@ this.extract(payload);
 
 
 
-console.log(
-"CLIENT CREATED EVENT:",
+if(!client){
+
+return;
+
+}
+
+
+
+Logger.log(
+
+"CLIENT CREATED EVENT: "
+
++
 client.ClientID
+
 );
 
 
+
 },
+
+
+
 
 
 
@@ -87,13 +149,30 @@ this.extract(payload);
 
 
 
-console.log(
-"CLIENT UPDATED EVENT:",
+if(!client){
+
+return;
+
+}
+
+
+
+Logger.log(
+
+"CLIENT UPDATED EVENT: "
+
++
 client.ClientID
+
 );
 
 
+
 },
+
+
+
+
 
 
 
@@ -106,13 +185,30 @@ this.extract(payload);
 
 
 
-console.log(
-"CLIENT DELETED EVENT:",
+if(!client){
+
+return;
+
+}
+
+
+
+Logger.log(
+
+"CLIENT DELETED EVENT: "
+
++
 client.ClientID
+
 );
 
 
+
 },
+
+
+
+
 
 
 
@@ -125,9 +221,69 @@ this.extract(payload);
 
 
 
-console.log(
-"CLIENT RESTORED EVENT:",
+if(!client){
+
+return;
+
+}
+
+
+
+Logger.log(
+
+"CLIENT RESTORED EVENT: "
+
++
 client.ClientID
+
+);
+
+
+
+},
+
+
+
+
+
+
+
+health(){
+
+
+return HealthContract.create(
+
+"ClientEventHandler",
+
+"OK",
+
+{
+
+
+version:this.version,
+
+
+entity:this.entity.entity,
+
+
+dependencies:{
+
+
+EventBus:!!EventBus,
+
+
+EntityRegistry:!!EntityRegistry,
+
+
+Logger:!!Logger
+
+
+}
+
+
+
+}
+
 );
 
 
@@ -136,6 +292,7 @@ client.ClientID
 
 
 };
+
 
 
 

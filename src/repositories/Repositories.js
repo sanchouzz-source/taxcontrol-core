@@ -1,67 +1,289 @@
 console.log("ClientRepository");
 
+
 const ClientRepository = {
 
-version:"0.2.0",
+
+version:"0.3.0",
+
+
+
+entity:
+EntityRegistry.CLIENT,
+
+
+
+
+// CREATE
 
 create(data){
+
 
 SecurityGuard.check(
 PERMISSION_CLIENT_CREATE
 );
+
+
 
 data =
 ClientValidator.validate(
 data
 );
 
-if(!data.ClientID){
 
-data.ClientID =
+
+if(!data[this.entity.idField]){
+
+
+data[this.entity.idField] =
 IdService.generate(
-"Clients"
+this.entity.table
 );
 
+
 }
+
+
 
 data.OrganizationID =
 OrganizationContext.get();
 
+
+
 const result =
 Database.insert(
-ENTITY_CLIENT_TABLE,
+this.entity.table,
 data
 );
 
 
+
+
 EventBus.emit(
-EntityEvents.CLIENT.CREATED,
+this.entity.events.created,
 {
-entity:"CLIENT",
+
+entity:this.entity.entity,
+
 action:"CREATE",
+
 before:null,
+
 after:result
+
 }
+
 );
+
 
 
 return result;
 
+
 },
 
+
+
+
+
+// UPDATE
+
+
 update(clientId,data){
+
 
 SecurityGuard.check(
 PERMISSION_CLIENT_UPDATE
 );
 
+
+
 const existing =
 Database.find(
-ENTITY_CLIENT_TABLE,
+this.entity.table,
 clientId
 );
 
+
+
 if(!existing){
+
+
+throw new Error(
+
+"Client not found: "
++
+clientId
+
+);
+
+
+}
+
+
+
+
+
+Versioning.save(
+this.entity.entity,
+clientId,
+existing
+);
+
+
+
+
+const merged = {
+
+
+...existing,
+
+...data
+
+
+};
+
+
+
+
+const validated =
+ClientValidator.validate(
+merged
+);
+
+
+
+validated.OrganizationID =
+OrganizationContext.get();
+
+
+
+validated[this.entity.idField] =
+clientId;
+
+
+
+
+
+const updated =
+Database.update(
+this.entity.table,
+clientId,
+validated
+);
+
+
+
+
+
+EventBus.emit(
+this.entity.events.updated,
+{
+
+entity:this.entity.entity,
+
+action:"UPDATE",
+
+before:existing,
+
+after:updated
+
+}
+
+);
+
+
+
+return updated;
+
+
+},
+
+
+
+
+
+
+// GET
+
+
+getById(id){
+
+
+SecurityGuard.check(
+PERMISSION_CLIENT_READ
+);
+
+
+
+return Database.find(
+this.entity.table,
+id
+);
+
+
+},
+
+
+
+
+
+
+// LIST
+
+
+list(){
+
+
+SecurityGuard.check(
+PERMISSION_CLIENT_READ
+);
+
+
+
+return Database.query(
+
+this.entity.table,
+
+{
+Deleted:false
+}
+
+);
+
+
+},
+
+
+
+
+
+
+
+// RESTORE
+
+
+restore(clientId){
+
+
+SecurityGuard.check(
+PERMISSION_CLIENT_UPDATE
+);
+
+
+
+
+const existing =
+Database.find(
+this.entity.table,
+clientId
+);
+
+
+
+
+if(!existing){
+
 
 throw new Error(
 "Client not found: "
@@ -69,150 +291,99 @@ throw new Error(
 clientId
 );
 
+
 }
+
+
+
+
+if(
+
+existing.Deleted === false ||
+
+existing.Deleted === "false"
+
+){
+
+
+return existing;
+
+
+}
+
+
+
+
 
 Versioning.save(
-ENTITY_CLIENT,
+
+this.entity.entity,
+
 clientId,
+
 existing
+
 );
 
 
-const merged = {
 
-...existing,
-
-...data
-
-};
-
-const validated =
-ClientValidator.validate(
-merged
-);
-
-validated.OrganizationID =
-OrganizationContext.get();
-
-validated.ClientID =
-clientId;
-
-const updated =
-Database.update(
-"Clients",
-clientId,
-validated
-);
-
-EventBus.emit(
-EntityEvents.CLIENT.UPDATED,
-{
-entity:"CLIENT",
-action:"UPDATE",
-before:existing,
-after:updated
-}
-);
-
-return updated;
-
-},
-
-getById(id){
-
-SecurityGuard.check(
-"CLIENT_READ"
-);
-
-return Database.find(
-"Clients",
-id
-);
-
-},
-
-list(){
-
-SecurityGuard.check(
-"CLIENT_READ"
-);
-
-return Database.query(
-"Clients",
-{Deleted:false}
-);
-
-
-},
-
-restore(clientId) {
-
-   SecurityGuard.check(
-PERMISSION_CLIENT_UPDATE
-);
-
-
-    const existing =
-        Database.find(
-            "Clients",
-            clientId
-        );
-
-
-    if(!existing){
-
-        throw new Error(
-            "Client not found"
-        );
-
-    }
-
-
-
-    if(
-        existing.Deleted !== true &&
-        existing.Deleted !== "true"
-    ){
-
-        return existing;
-
-    }
-
-
-
-    Versioning.save(
-        "CLIENT",
-        clientId,
-        existing
-    );
 
 
 
 const restored =
 Database.update(
-"Clients",
+
+this.entity.table,
+
 clientId,
+
 {
+
 Deleted:false,
+
 UpdatedAt:new Date().toISOString()
+
 }
+
 );
+
+
+
 
 
 EventBus.emit(
-EntityEvents.CLIENT.RESTORED,
+
+this.entity.events.restored,
+
 {
-entity:"CLIENT",
+
+entity:this.entity.entity,
+
 action:"RESTORE",
+
 before:existing,
+
 after:restored
+
 }
+
 );
 
-    return restored;
+
+
+
+return restored;
 
 
 },
+
+
+
+
+
+
+
+// DELETE
 
 
 delete(clientId){
@@ -224,60 +395,104 @@ PERMISSION_CLIENT_DELETE
 
 
 
+
 const existing =
 Database.find(
-"Clients",
+
+this.entity.table,
+
 clientId
+
 );
+
+
 
 
 if(!existing){
 
+
 throw new Error(
+
 "Client not found: "
 +
 clientId
+
 );
 
 
 }
 
 
+
+
+
 Versioning.save(
-"CLIENT",
+
+this.entity.entity,
+
 clientId,
+
 existing
+
 );
+
+
+
+
 
 
 const deleted =
 Database.update(
-"Clients",
+
+this.entity.table,
+
 clientId,
+
 {
+
 Deleted:true,
+
 UpdatedAt:new Date().toISOString()
+
 }
 
 );
+
+
 
 
 
 EventBus.emit(
-EntityEvents.CLIENT.DELETED,
+
+this.entity.events.deleted,
+
 {
-entity:"CLIENT",
+
+entity:this.entity.entity,
+
 action:"DELETE",
+
 before:existing,
+
 after:deleted
+
 }
+
 );
+
+
+
 
 
 return deleted;
 
 
 },
+
+
+
+
+
 
 health(){
 
@@ -292,15 +507,30 @@ return HealthContract.create(
 
 version:this.version,
 
+
+entity:this.entity.entity,
+
+
 dependencies:{
+
 
 Database:!!Database,
 
+
 EventBus:!!EventBus,
 
-SecurityGuard:!!SecurityGuard
+
+SecurityGuard:!!SecurityGuard,
+
+
+Versioning:!!Versioning,
+
+
+EntityRegistry:!!EntityRegistry
+
 
 }
+
 
 }
 
@@ -310,7 +540,11 @@ SecurityGuard:!!SecurityGuard
 }
 
 
+
+
 };
+
+
 
 
 globalThis.ClientRepository =
