@@ -151,7 +151,9 @@ RoleConstants:3,
 Database:10,
 
 SchemaManager:11,
+ClientValidator:24,
 
+TripValidator:25,
 
 EntityConstants:20,
 
