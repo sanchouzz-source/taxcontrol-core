@@ -132,6 +132,7 @@ Logger.log(
 
 const modules=[
 
+"SecurityGuard",
 
 "TripEventHandler",
 
