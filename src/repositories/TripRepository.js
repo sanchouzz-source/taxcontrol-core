@@ -168,7 +168,10 @@ baseRepository:
 
 };
 
-
+RepositoryFactory.register(
+    "TRIP",
+    TripRepository
+);
 
 
 globalThis.TripRepository =

@@ -165,7 +165,10 @@ baseRepository:
 
 
 };
-
+RepositoryFactory.register(
+    "CLIENT",
+    ClientRepository
+);
 
 
 
