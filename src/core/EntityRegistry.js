@@ -1,13 +1,10 @@
 console.log("EntityRegistry");
 
 
-
 const EntityRegistry = {
 
 
-version:"0.6.0",
-
-
+version:"0.7.0",
 
 
 CLIENT:{
@@ -15,12 +12,13 @@ CLIENT:{
 
 entity:"CLIENT",
 
-
 table:"Clients",
-
 
 idField:"ClientID",
 
+
+validator:
+ClientValidator,
 
 
 permissions:{
@@ -39,20 +37,10 @@ PERMISSION_CLIENT_UPDATE,
 
 
 delete:
-PERMISSION_CLIENT_DELETE,
-
-
-restore:
-PERMISSION_CLIENT_RESTORE
+PERMISSION_CLIENT_DELETE
 
 
 },
-
-
-
-validator:
-()=>ClientValidator,
-
 
 
 events:{
@@ -61,27 +49,23 @@ events:{
 created:
 "CLIENT_CREATED",
 
-
 updated:
 "CLIENT_UPDATED",
 
-
 deleted:
 "CLIENT_DELETED",
-
 
 restored:
 "CLIENT_RESTORED"
 
 
+}
+
+
+
 },
 
 
-
-audit:true
-
-
-},
 
 
 TRIP:{
@@ -89,12 +73,13 @@ TRIP:{
 
 entity:"TRIP",
 
-
 table:"Trips",
-
 
 idField:"TripID",
 
+
+validator:
+TripValidator,
 
 
 permissions:{
@@ -113,19 +98,11 @@ PERMISSION_TRIP_UPDATE,
 
 
 delete:
-PERMISSION_TRIP_DELETE,
-
-
-restore:
-PERMISSION_TRIP_RESTORE
+PERMISSION_TRIP_DELETE
 
 
 },
 
-
-
-validator:
-()=>TripValidator,
 
 
 events:{
@@ -134,24 +111,18 @@ events:{
 created:
 "TRIP_CREATED",
 
-
 updated:
 "TRIP_UPDATED",
 
-
 deleted:
 "TRIP_DELETED",
-
 
 restored:
 "TRIP_RESTORED"
 
 
-},
+}
 
-
-
-audit:true
 
 
 }
@@ -162,16 +133,5 @@ audit:true
 
 
 
-
-
-
 globalThis.EntityRegistry =
 EntityRegistry;
-
-
-
-console.log(
-"EntityRegistry READY v"
-+
-EntityRegistry.version
-);

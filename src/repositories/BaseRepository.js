@@ -35,10 +35,24 @@ if(
 entityConfig.validator
 ){
 
+if(
+entityConfig.validator &&
+typeof entityConfig.validator.validate==="function"
+){
+
 data =
-entityConfig.validator.validate(
-data
+entityConfig.validator.validate(data);
+
+}
+else{
+
+Logger.warn(
+"VALIDATOR NOT FOUND FOR "
++
+entityConfig.entity
 );
+
+}
 
 }
 
