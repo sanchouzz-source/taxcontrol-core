@@ -1,10 +1,11 @@
 console.log("ModuleLoader");
 
 
+
 const ModuleLoader = {
 
 
-    version:"0.4.0",
+    version:"0.5.0",
 
 
     loaded:[],
@@ -14,7 +15,9 @@ const ModuleLoader = {
 
 
 
+
     loadCore(){
+
 
 
         Logger.log(
@@ -26,6 +29,30 @@ const ModuleLoader = {
         const modules=[
 
 
+            // CORE MODEL
+
+            "EntityConstants",
+
+            "EntityEvents",
+
+            "EntityMetadata",
+
+            "EntityRegistry",
+
+
+
+            // INFRASTRUCTURE
+
+            "Database",
+
+            "SchemaManager",
+
+            "EventBus",
+
+
+
+            // BUSINESS MODULES
+
             "TripEventHandler",
 
             "FinanceEngine",
@@ -33,14 +60,21 @@ const ModuleLoader = {
             "KPIEngine",
 
             "DashboardEngine",
+
             "ClientEventHandler",
+
             "AuditEventHandler"
+
 
         ];
 
 
 
+
+
+
         modules.forEach(name=>{
+
 
 
             const module =
@@ -51,10 +85,14 @@ const ModuleLoader = {
             if(module){
 
 
+
                 const registered =
                     ModuleRegistry.register(
+
                         name,
+
                         module
+
                     );
 
 
@@ -62,8 +100,11 @@ const ModuleLoader = {
                 if(registered){
 
 
+
                     this.loaded.push(
+
                         name
+
                     );
 
 
@@ -77,12 +118,15 @@ const ModuleLoader = {
                     );
 
 
+
                 }
+
 
 
             }
 
             else{
+
 
 
                 Logger.warn(
@@ -94,11 +138,15 @@ const ModuleLoader = {
                 );
 
 
+
             }
 
 
 
         });
+
+
+
 
 
 
@@ -117,11 +165,14 @@ const ModuleLoader = {
 
 
 
+
+
     initAll(){
 
 
 
         if(this.initialized){
+
 
 
             Logger.log(
@@ -139,7 +190,11 @@ const ModuleLoader = {
 
 
 
+
+
         ModuleRegistry.initAll();
+
+
 
 
 
@@ -147,15 +202,22 @@ const ModuleLoader = {
 
 
 
+
+
         Logger.log(
 
-            "MODULE LOADER READY"
+            "MODULE LOADER READY v"
+            +
+            this.version
 
         );
 
 
 
     },
+
+
+
 
 
 
@@ -173,26 +235,37 @@ const ModuleLoader = {
 
 
             this.initialized
+
             ?
+
             "OK"
+
             :
+
             "WARNING",
+
+
 
 
 
             {
 
+
                 version:this.version,
 
 
+
                 loaded:this.loaded,
+
 
 
                 initialized:
                     this.initialized
 
 
+
             }
+
 
 
         );
@@ -204,6 +277,8 @@ const ModuleLoader = {
 
 
 };
+
+
 
 
 

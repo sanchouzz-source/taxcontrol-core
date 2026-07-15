@@ -5,26 +5,40 @@ console.log("EntityRegistry");
 const EntityRegistry = {
 
 
-version:"0.5.0",
+version:"0.6.0",
+
 
 
 
 CLIENT:{
 
 
+version:"0.1.0",
+
+
 entity:
-ENTITY_CLIENT,
+EntityConstants.CLIENT,
 
 
 table:
-ENTITY_CLIENT_TABLE,
+EntityConstants.TABLES.CLIENT,
 
 
 idField:
-ENTITY_CLIENT_ID,
+EntityConstants.IDS.CLIENT,
+
+
+metadata:
+EntityMetadata.CLIENT,
 
 
 audit:true,
+
+
+softDelete:true,
+
+
+timestamps:true,
 
 
 
@@ -47,29 +61,6 @@ restored:
 EntityEvents.CLIENT.RESTORED
 
 
-},
-
-
-
-permissions:{
-
-
-create:
-PERMISSION_CLIENT_CREATE,
-
-
-update:
-PERMISSION_CLIENT_UPDATE,
-
-
-delete:
-PERMISSION_CLIENT_DELETE,
-
-
-read:
-PERMISSION_CLIENT_READ
-
-
 }
 
 
@@ -84,20 +75,32 @@ PERMISSION_CLIENT_READ
 TRIP:{
 
 
+version:"0.1.0",
+
+
 entity:
-"TRIP",
+EntityConstants.TRIP,
 
 
 table:
-"Trips",
+EntityConstants.TABLES.TRIP,
 
 
 idField:
-"TripID",
+EntityConstants.IDS.TRIP,
 
+
+metadata:
+EntityMetadata.TRIP,
 
 
 audit:true,
+
+
+softDelete:true,
+
+
+timestamps:true,
 
 
 
@@ -105,42 +108,19 @@ events:{
 
 
 created:
-"TRIP_CREATED",
+EntityEvents.TRIP.CREATED,
 
 
 updated:
-"TRIP_UPDATED",
+EntityEvents.TRIP.UPDATED,
 
 
 deleted:
-"TRIP_DELETED",
+EntityEvents.TRIP.DELETED,
 
 
 restored:
-"TRIP_RESTORED"
-
-
-},
-
-
-
-permissions:{
-
-
-create:
-"TRIP_CREATE",
-
-
-update:
-"TRIP_UPDATE",
-
-
-delete:
-"TRIP_DELETE",
-
-
-read:
-"TRIP_READ"
+EntityEvents.TRIP.RESTORED
 
 
 }
@@ -152,6 +132,7 @@ read:
 
 
 };
+
 
 
 
