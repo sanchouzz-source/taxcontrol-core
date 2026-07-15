@@ -6,6 +6,7 @@ const SchemaManager = {
 
 version:"0.5.0",
 
+
 initialized:false,
 
 
@@ -45,6 +46,7 @@ init(){
 
 
 
+
         this.createSheets(schema);
 
 
@@ -70,13 +72,10 @@ init(){
     catch(error){
 
 
-
-        Logger.error(
-
+        Logger.log(
             "SchemaManager ERROR: "
             +
             error.message
-
         );
 
 
@@ -84,7 +83,6 @@ init(){
 
 
     }
-
 
 
 },
@@ -95,7 +93,7 @@ init(){
 
 
 
-normalizeColumns(definition){
+getColumns(definition){
 
 
 
@@ -105,20 +103,18 @@ normalizeColumns(definition){
 
         return definition;
 
-
     }
 
 
 
 
+
     if(
-        definition
-        &&
+        definition &&
         Array.isArray(definition.columns)
     ){
 
         return definition.columns;
-
 
     }
 
@@ -127,9 +123,7 @@ normalizeColumns(definition){
 
 
     throw new Error(
-
-        "INVALID SCHEMA DEFINITION"
-
+        "Invalid schema definition"
     );
 
 
@@ -147,7 +141,6 @@ getSchema(){
 return {
 
 
-
 EventLog:[
 
 "EventID",
@@ -160,12 +153,12 @@ EventLog:[
 
 
 
-
 AuditLog:[
 
 "AuditID",
 "OrganizationID",
 "UserID",
+"Role",
 "Action",
 "Entity",
 "EntityID",
@@ -174,7 +167,6 @@ AuditLog:[
 "CreatedAt"
 
 ],
-
 
 
 
@@ -221,21 +213,23 @@ Clients:[
 
 
 
-Vehicles:[
+ClientFinanceProfiles:{
 
-"VehicleID",
+
+columns:[
+
+"FinanceProfileID",
 "OrganizationID",
-"PlateNumber",
-"Brand",
-"Model",
-"VIN",
-"DriverID",
+"ClientID",
+"ClientName",
+"Balance",
+"CreditLimit",
 "Status",
-"CreatedAt",
-"UpdatedAt",
-"Deleted"
+"CreatedAt"
 
-],
+]
+
+},
 
 
 
@@ -278,47 +272,21 @@ Trips:[
 
 
 
-
-Payments:[
-
-"PaymentID",
-"OrganizationID",
-"InvoiceID",
-"TripID",
-
-"Amount",
-
-"PaymentDate",
-"PaymentMethod",
-
-"Type",
-
-"CreatedAt",
-"UpdatedAt",
-"Deleted"
-
-],
+FinancialTransactions:{
 
 
-
-
-
-FinancialTransactions:[
+columns:[
 
 "TransactionID",
-
 "OrganizationID",
 
 "Type",
 
 "Entity",
-
 "EntityID",
 
 "Revenue",
-
 "Cost",
-
 "Profit",
 
 "Currency",
@@ -330,19 +298,22 @@ FinancialTransactions:[
 "CreatedBy",
 
 "CreatedAt",
-
 "UpdatedAt",
-
 "Deleted"
 
-],
+]
+
+},
 
 
 
 
 
 
-KPIMetrics:[
+KPIMetrics:{
+
+
+columns:[
 
 "KPIID",
 
@@ -351,54 +322,18 @@ KPIMetrics:[
 "MetricType",
 
 "Entity",
-
 "EntityID",
 
 "Revenue",
-
 "Cost",
-
 "Profit",
-
 "Margin",
 
 "CreatedAt",
-
 "UpdatedAt",
-
 "Deleted"
 
-],
-
-
-
-
-
-
-
-ClientFinanceProfiles:{
-
-
-columns:[
-
-"FinanceProfileID",
-
-"OrganizationID",
-
-"ClientID",
-
-"ClientName",
-
-"Balance",
-
-"CreditLimit",
-
-"Status",
-
-"CreatedAt"
-
 ]
-
 
 }
 
@@ -432,108 +367,68 @@ Object.keys(schema)
 .forEach(sheetName=>{
 
 
-    const columns =
-        this.normalizeColumns(
-            schema[sheetName]
-        );
 
-
-
-
-    let sheet =
-        ss.getSheetByName(
-            sheetName
-        );
-
-
-
-
-    if(!sheet){
-
-
-
-        sheet =
-            ss.insertSheet(
-                sheetName
-            );
-
-
-
-
-        sheet
-        .getRange(
-            1,
-            1,
-            1,
-            columns.length
-        )
-        .setValues(
-            [
-                columns
-            ]
-        );
-
-
-
-
-        Logger.log(
-
-            "CREATED SHEET: "
-            +
-            sheetName
-
-        );
-
-
-    }
+const columns =
+this.getColumns(
+schema[sheetName]
+);
 
 
 
 
 
-    this.formatSheet(sheet);
+let sheet =
+ss.getSheetByName(
+sheetName
+);
+
+
+
+
+
+if(!sheet){
+
+
+
+sheet =
+ss.insertSheet(
+sheetName
+);
+
+
+
+
+
+sheet
+.getRange(
+1,
+1,
+1,
+columns.length
+)
+.setValues(
+[
+columns
+]
+);
+
+
+
+Logger.log(
+"CREATED SHEET "
++
+sheetName
+);
+
+
+
+}
+
+
 
 
 
 });
-
-
-
-},
-
-
-
-
-
-
-
-formatSheet(sheet){
-
-
-
-    const rows =
-        Math.max(
-            sheet.getMaxRows(),
-            1
-        );
-
-
-    const cols =
-        Math.max(
-            sheet.getMaxColumns(),
-            1
-        );
-
-
-
-    sheet
-    .getRange(
-        1,
-        1,
-        rows,
-        cols
-    )
-    .setNumberFormat("@");
 
 
 
@@ -561,107 +456,122 @@ Object.keys(schema)
 .forEach(sheetName=>{
 
 
-
-    const columns =
-        this.normalizeColumns(
-            schema[sheetName]
-        );
-
-
-
-
-    const sheet =
-        ss.getSheetByName(
-            sheetName
-        );
-
-
-
-    if(!sheet)
-        return;
+const columns =
+this.getColumns(
+schema[sheetName]
+);
 
 
 
 
 
-    let lastColumn =
-        sheet.getLastColumn();
-
-
-
-
-    let headers=[];
-
-
-
-
-    if(lastColumn>0){
-
-
-
-        headers =
-            sheet
-            .getRange(
-                1,
-                1,
-                1,
-                lastColumn
-            )
-            .getValues()[0];
-
-
-    }
+const sheet =
+ss.getSheetByName(
+sheetName
+);
 
 
 
 
 
-    columns
-    .forEach(column=>{
+if(!sheet)
+return;
 
 
 
-        if(
-            headers.indexOf(column)
-            ===
-            -1
-        ){
+
+
+let lastColumn =
+sheet.getLastColumn();
 
 
 
-            lastColumn++;
+
+
+let headers=[];
 
 
 
-            sheet
-            .getRange(
-                1,
-                lastColumn
-            )
-            .setValue(
-                column
-            );
+
+if(lastColumn>0){
+
+
+headers =
+sheet
+.getRange(
+1,
+1,
+1,
+lastColumn
+)
+.getValues()[0];
+
+
+}
 
 
 
-            Logger.log(
-
-                "ADDED COLUMN "
-                +
-                column
-                +
-                " TO "
-                +
-                sheetName
-
-            );
-
-
-        }
 
 
 
-    });
+
+columns.forEach(column=>{
+
+
+
+if(
+headers.indexOf(column)
+===-1
+){
+
+
+
+lastColumn++;
+
+
+
+
+sheet
+.getRange(
+1,
+lastColumn
+)
+.setValue(
+column
+);
+
+
+
+
+Logger.log(
+"ADDED COLUMN "
++
+column
++
+" TO "
++
+sheetName
+);
+
+
+
+}
+
+
+
+});
+
+
+
+
+sheet
+.getRange(
+1,
+1,
+sheet.getMaxRows(),
+sheet.getMaxColumns()
+)
+.setNumberFormat("@");
 
 
 
@@ -696,9 +606,7 @@ this.initialized
 
 {
 
-
 version:this.version,
-
 
 initialized:this.initialized,
 
@@ -712,9 +620,7 @@ this.getSchema()
 }
 
 
-
 );
-
 
 
 },
@@ -725,25 +631,18 @@ this.getSchema()
 
 
 
-
 reset(){
-
 
 
 this.initialized=false;
 
 
-
 Logger.log(
-
 "SchemaManager RESET"
-
 );
 
 
-
 }
-
 
 
 
