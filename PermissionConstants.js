@@ -1,175 +1,149 @@
 console.log("PermissionConstants");
 
 
+
 const PermissionConstants = {
 
 
-    version:"0.3.0",
+version:"1.1.0",
 
 
 
-    CLIENT:{
+CLIENT_CREATE:
+    "CLIENT_CREATE",
 
 
-        CREATE:"CLIENT_CREATE",
+CLIENT_READ:
+    "CLIENT_READ",
 
-        READ:"CLIENT_READ",
 
-        UPDATE:"CLIENT_UPDATE",
+CLIENT_UPDATE:
+    "CLIENT_UPDATE",
 
-        DELETE:"CLIENT_DELETE",
 
-        RESTORE:"CLIENT_RESTORE"
+CLIENT_DELETE:
+    "CLIENT_DELETE",
 
 
-    },
+CLIENT_RESTORE:
+    "CLIENT_RESTORE",
 
 
 
-    TRIP:{
+TRIP_CREATE:
+    "TRIP_CREATE",
 
 
-        CREATE:"TRIP_CREATE",
+TRIP_READ:
+    "TRIP_READ",
 
-        READ:"TRIP_READ",
 
-        UPDATE:"TRIP_UPDATE",
+TRIP_UPDATE:
+    "TRIP_UPDATE",
 
-        DELETE:"TRIP_DELETE",
 
-        RESTORE:"TRIP_RESTORE"
+TRIP_DELETE:
+    "TRIP_DELETE",
 
 
-    },
+TRIP_RESTORE:
+    "TRIP_RESTORE",
 
 
 
-    FINANCE:{
+FINANCE_VIEW:
+    "FINANCE_VIEW",
 
 
-        VIEW:"FINANCE_VIEW",
+FINANCE_EDIT:
+    "FINANCE_EDIT",
 
-        CREATE:"FINANCE_CREATE",
 
-        UPDATE:"FINANCE_UPDATE",
 
-        DELETE:"FINANCE_DELETE"
+REPORT_VIEW:
+    "REPORT_VIEW",
 
 
-    },
+REPORT_EXPORT:
+    "REPORT_EXPORT",
 
 
 
-    REPORT:{
 
 
-        VIEW:"REPORT_VIEW",
+register(){
 
-        EXPORT:"REPORT_EXPORT"
 
 
-    },
+Object.keys(this)
 
+.forEach(key=>{
 
 
-    SYSTEM:{
+if(
+typeof this[key]==="string"
+){
 
 
-        ADMIN:"SYSTEM_ADMIN",
+globalThis[
+"PERMISSION_"+key
+]=
+this[key];
 
-        CONFIG:"SYSTEM_CONFIG",
 
-        AUDIT_VIEW:"AUDIT_VIEW"
+}
 
 
-    },
+});
 
 
 
+Logger.log(
+"PERMISSION CONSTANTS REGISTERED"
+);
 
 
 
-    all(){
+},
 
 
-        return [
 
-            ...Object.values(this.CLIENT),
 
-            ...Object.values(this.TRIP),
 
-            ...Object.values(this.FINANCE),
+health(){
 
-            ...Object.values(this.REPORT),
 
-            ...Object.values(this.SYSTEM)
+return HealthContract.create(
 
-        ];
+"PermissionConstants",
 
+"OK",
 
-    },
+{
 
 
+version:this.version,
 
 
+permissions:
 
+Object.keys(this)
 
-    registerGlobal(){
+.filter(k=>
 
+typeof this[k]==="string"
 
+)
 
-        this.all()
-        .forEach(permission=>{
 
+}
 
-            const key =
-                "PERMISSION_" +
-                permission;
 
+);
 
-            globalThis[key]=permission;
 
 
-        });
-
-
-
-        Logger.log(
-            "PERMISSION CONSTANTS REGISTERED"
-        );
-
-
-    },
-
-
-
-
-
-
-
-    health(){
-
-
-        return HealthContract.create(
-
-            "PermissionConstants",
-
-            "OK",
-
-            {
-
-                version:this.version,
-
-                permissions:
-                    this.all().length
-
-            }
-
-
-        );
-
-
-    }
+}
 
 
 
@@ -179,9 +153,9 @@ const PermissionConstants = {
 
 
 
-PermissionConstants.registerGlobal();
+PermissionConstants.register();
 
 
 
 globalThis.PermissionConstants =
-    PermissionConstants;
+PermissionConstants;

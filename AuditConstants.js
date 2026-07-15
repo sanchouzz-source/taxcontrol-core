@@ -1,214 +1,102 @@
 console.log("AuditConstants");
 
 
+const AuditConstants = {
 
-const AuditConstants={
 
+    version:"1.0.0",
 
-version:"0.2.0",
 
+    ACTION_CREATE:
+        "CREATE",
 
 
+    ACTION_UPDATE:
+        "UPDATE",
 
-ACTION:{
 
+    ACTION_DELETE:
+        "DELETE",
 
-CREATE:"CREATE",
 
-READ:"READ",
+    ACTION_RESTORE:
+        "RESTORE",
 
-UPDATE:"UPDATE",
 
-DELETE:"DELETE",
 
-RESTORE:"RESTORE"
+    register(){
 
 
-},
+        globalThis.ACTION_CREATE =
+            this.ACTION_CREATE;
 
 
+        globalThis.ACTION_UPDATE =
+            this.ACTION_UPDATE;
 
 
+        globalThis.ACTION_DELETE =
+            this.ACTION_DELETE;
 
-ENTITY:{
 
+        globalThis.ACTION_RESTORE =
+            this.ACTION_RESTORE;
 
-CLIENT:"CLIENT",
 
-TRIP:"TRIP",
 
-FINANCE:"FINANCE",
+        Logger.log(
+            "AUDIT CONSTANTS REGISTERED"
+        );
 
-DOCUMENT:"DOCUMENT",
 
-USER:"USER"
+    },
 
 
-},
 
+    health(){
 
 
+        return HealthContract.create(
 
+            "AuditConstants",
 
+            "OK",
 
+            {
 
-EVENT:{
+                version:this.version,
 
 
+                actions:[
 
-CLIENT_CREATED:
-"CLIENT_CREATED",
+                    this.ACTION_CREATE,
 
+                    this.ACTION_UPDATE,
 
-CLIENT_UPDATED:
-"CLIENT_UPDATED",
+                    this.ACTION_DELETE,
 
+                    this.ACTION_RESTORE
 
-CLIENT_DELETED:
-"CLIENT_DELETED",
+                ]
 
+            }
 
-CLIENT_RESTORED:
-"CLIENT_RESTORED",
+        );
 
 
+    }
 
-
-
-TRIP_CREATED:
-"TRIP_CREATED",
-
-
-TRIP_UPDATED:
-"TRIP_UPDATED",
-
-
-TRIP_DELETED:
-"TRIP_DELETED",
-
-
-TRIP_RESTORED:
-"TRIP_RESTORED"
-
-
-
-},
-
-
-
-
-
-
-
-AUDIT_TYPES:{
-
-
-SYSTEM:
-"SYSTEM",
-
-
-USER:
-"USER",
-
-
-SECURITY:
-"SECURITY",
-
-
-DATA:
-"DATA"
-
-
-},
-
-
-
-
-
-
-
-
-createRecord(
-
-action,
-entity,
-before,
-after
-
-){
-
-
-return {
-
-
-Action:action,
-
-
-Entity:entity,
-
-
-Before:
-before || null,
-
-
-After:
-after || null,
-
-
-Timestamp:
-new Date()
 
 
 };
 
 
-},
 
+// регистрация при загрузке
 
-
-
-
-
-
-health(){
-
-
-return HealthContract.create(
-
-"AuditConstants",
-
-"OK",
-
-{
-
-version:this.version,
-
-actions:
-Object.keys(
-this.ACTION
-).length,
-
-
-entities:
-Object.keys(
-this.ENTITY
-).length
-
-
-}
-
-);
-
-
-}
-
-
-
-
-};
-
+AuditConstants.register();
 
 
 
 globalThis.AuditConstants =
-AuditConstants;
+    AuditConstants;
