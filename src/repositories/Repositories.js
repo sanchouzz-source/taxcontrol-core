@@ -1,10 +1,12 @@
 console.log("ClientRepository");
 
 
+
 const ClientRepository = {
 
 
-version:"0.3.0",
+
+version:"0.4.0",
 
 
 
@@ -14,14 +16,15 @@ EntityRegistry.CLIENT,
 
 
 
-// CREATE
 
 create(data){
 
 
-SecurityGuard.check(
+
+SecurityGuard.require(
 PERMISSION_CLIENT_CREATE
 );
+
 
 
 
@@ -45,8 +48,10 @@ this.entity.table
 
 
 
+
 data.OrganizationID =
 OrganizationContext.get();
+
 
 
 
@@ -59,21 +64,35 @@ data
 
 
 
+
 EventBus.emit(
+
 this.entity.events.created,
+
 {
+
 
 entity:this.entity.entity,
 
+
 action:"CREATE",
+
+
+actor:
+SecurityGuard.getCurrentUser(),
+
 
 before:null,
 
+
 after:result
+
 
 }
 
+
 );
+
 
 
 
@@ -86,23 +105,28 @@ return result;
 
 
 
-// UPDATE
 
 
 update(clientId,data){
 
 
-SecurityGuard.check(
+
+SecurityGuard.require(
 PERMISSION_CLIENT_UPDATE
 );
 
 
 
+
 const existing =
 Database.find(
+
 this.entity.table,
+
 clientId
+
 );
+
 
 
 
@@ -125,21 +149,24 @@ clientId
 
 
 Versioning.save(
+
 this.entity.entity,
+
 clientId,
+
 existing
+
 );
 
 
 
 
-const merged = {
 
+const merged={
 
 ...existing,
 
 ...data
-
 
 };
 
@@ -153,12 +180,14 @@ merged
 
 
 
+
+
 validated.OrganizationID =
 OrganizationContext.get();
 
 
 
-validated[this.entity.idField] =
+validated[this.entity.idField]=
 clientId;
 
 
@@ -167,9 +196,13 @@ clientId;
 
 const updated =
 Database.update(
+
 this.entity.table,
+
 clientId,
+
 validated
+
 );
 
 
@@ -177,16 +210,26 @@ validated
 
 
 EventBus.emit(
+
 this.entity.events.updated,
+
 {
 
 entity:this.entity.entity,
 
+
 action:"UPDATE",
+
+
+actor:
+SecurityGuard.getCurrentUser(),
+
 
 before:existing,
 
+
 after:updated
+
 
 }
 
@@ -194,7 +237,9 @@ after:updated
 
 
 
+
 return updated;
+
 
 
 },
@@ -204,21 +249,23 @@ return updated;
 
 
 
-// GET
-
 
 getById(id){
 
 
-SecurityGuard.check(
+
+SecurityGuard.require(
 PERMISSION_CLIENT_READ
 );
 
 
 
 return Database.find(
+
 this.entity.table,
+
 id
+
 );
 
 
@@ -229,13 +276,12 @@ id
 
 
 
-// LIST
-
 
 list(){
 
 
-SecurityGuard.check(
+
+SecurityGuard.require(
 PERMISSION_CLIENT_READ
 );
 
@@ -246,7 +292,9 @@ return Database.query(
 this.entity.table,
 
 {
+
 Deleted:false
+
 }
 
 );
@@ -260,14 +308,12 @@ Deleted:false
 
 
 
-// RESTORE
-
-
 restore(clientId){
 
 
-SecurityGuard.check(
-PERMISSION_CLIENT_UPDATE
+
+SecurityGuard.require(
+PERMISSION_CLIENT_RESTORE
 );
 
 
@@ -275,8 +321,11 @@ PERMISSION_CLIENT_UPDATE
 
 const existing =
 Database.find(
+
 this.entity.table,
+
 clientId
+
 );
 
 
@@ -286,9 +335,11 @@ if(!existing){
 
 
 throw new Error(
+
 "Client not found: "
 +
 clientId
+
 );
 
 
@@ -299,9 +350,9 @@ clientId
 
 if(
 
-existing.Deleted === false ||
+existing.Deleted===false ||
 
-existing.Deleted === "false"
+existing.Deleted==="false"
 
 ){
 
@@ -310,6 +361,7 @@ return existing;
 
 
 }
+
 
 
 
@@ -341,11 +393,13 @@ clientId,
 
 Deleted:false,
 
-UpdatedAt:new Date().toISOString()
+UpdatedAt:
+new Date().toISOString()
 
 }
 
 );
+
 
 
 
@@ -359,11 +413,19 @@ this.entity.events.restored,
 
 entity:this.entity.entity,
 
+
 action:"RESTORE",
+
+
+actor:
+SecurityGuard.getCurrentUser(),
+
 
 before:existing,
 
+
 after:restored
+
 
 }
 
@@ -383,15 +445,14 @@ return restored;
 
 
 
-// DELETE
-
-
 delete(clientId){
 
 
-SecurityGuard.check(
+
+SecurityGuard.require(
 PERMISSION_CLIENT_DELETE
 );
+
 
 
 
@@ -452,11 +513,13 @@ clientId,
 
 Deleted:true,
 
-UpdatedAt:new Date().toISOString()
+UpdatedAt:
+new Date().toISOString()
 
 }
 
 );
+
 
 
 
@@ -470,11 +533,19 @@ this.entity.events.deleted,
 
 entity:this.entity.entity,
 
+
 action:"DELETE",
+
+
+actor:
+SecurityGuard.getCurrentUser(),
+
 
 before:existing,
 
+
 after:deleted
+
 
 }
 
@@ -494,21 +565,27 @@ return deleted;
 
 
 
+
 health(){
+
 
 
 return HealthContract.create(
 
 "ClientRepository",
 
+
 "OK",
 
+
 {
+
 
 version:this.version,
 
 
 entity:this.entity.entity,
+
 
 
 dependencies:{
@@ -526,10 +603,14 @@ SecurityGuard:!!SecurityGuard,
 Versioning:!!Versioning,
 
 
-EntityRegistry:!!EntityRegistry
+EntityRegistry:!!EntityRegistry,
+
+
+ClientValidator:!!ClientValidator
 
 
 }
+
 
 
 }
@@ -538,7 +619,6 @@ EntityRegistry:!!EntityRegistry
 
 
 }
-
 
 
 

@@ -1,232 +1,752 @@
 console.log("TripRepository");
+
+
+
 const TripRepository = {
 
 
-    // =========================
-    // CREATE TRIP
-    // =========================
 
-    create(data) {
+version:"0.4.0",
 
-        SecurityGuard.check(
-            "TRIP_CREATE"
-        );
 
 
-        data = TripValidator.validate(
-            data
-        );
+entity:
+EntityRegistry.TRIP,
 
 
-        if (!data.TripID) {
 
-            data.TripID =
-                IdService.generate(
-                    "TRP"
-                );
 
-        }
 
+// =========================
+// CREATE
+// =========================
 
-        data.OrganizationID =
-            OrganizationContext.get();
 
+create(data){
 
 
-        const result =
-            Database.insert(
-                "Trips",
-                data
-            );
 
+SecurityGuard.require(
 
+PERMISSION_TRIP_CREATE
 
-        AuditLog.write(
-            "CREATE",
-            "TRIP",
-            null,
-            result
-        );
+);
 
 
 
-        EventBus.emit(
-            "TRIP_CREATED",
-            result
-        );
 
+data =
+TripValidator.validate(
+data
+);
 
 
-        return result;
 
-    },
 
+if(!data[this.entity.idField]){
 
 
-    // =========================
-    // UPDATE TRIP
-    // =========================
+data[this.entity.idField] =
 
-    update(tripId, data) {
+IdService.generate(
 
+this.entity.table
 
-        SecurityGuard.check(
-            "TRIP_UPDATE"
-        );
+);
 
 
+}
 
-        const existing =
-            Database.find(
-                "Trips",
-                tripId
-            );
 
 
 
-        if (!existing) {
+data.OrganizationID =
+OrganizationContext.get();
 
-            throw new Error(
-                "Trip not found: " + tripId
-            );
 
-        }
 
 
 
-        // сохраняем старую версию
+const result =
+Database.insert(
 
-        Versioning.save(
-            "TRIP",
-            tripId,
-            existing
-        );
+this.entity.table,
 
+data
 
+);
 
-        // объединяем старые и новые данные
 
-        const merged = {
 
-            ...existing,
 
-            ...data
 
-        };
 
+EventBus.emit(
 
+this.entity.events.created,
 
-        data =
-            TripValidator.validate(
-                merged
-            );
+{
 
 
+entity:this.entity.entity,
 
-        data.TripID =
-            tripId;
 
+action:"CREATE",
 
 
-        data.OrganizationID =
-            OrganizationContext.get();
+actor:
+SecurityGuard.getCurrentUser(),
 
 
+before:null,
 
-        const updated =
-            Database.update(
-                "Trips",
-                tripId,
-                data
-            );
 
+after:result
 
 
-        AuditLog.write(
-            "UPDATE",
-            "TRIP",
-            existing,
-            updated
-        );
+}
 
 
+);
 
-        EventBus.emit(
-            "TRIP_UPDATED",
-            updated
-        );
 
 
 
-        // =========================
-        // BUSINESS EVENT
-        // =========================
 
-        if (
-            updated.Status === "COMPLETED"
-        ) {
+return result;
 
 
-            EventBus.emit(
-                "TRIP_COMPLETED",
-                updated
-            );
 
+},
 
-        }
 
 
 
-        return updated;
 
-    },
 
 
+// =========================
+// UPDATE
+// =========================
 
-    // =========================
-    // GET BY ID
-    // =========================
 
-    getById(id) {
 
+update(tripId,data){
 
-        SecurityGuard.check(
-            "TRIP_READ"
-        );
 
 
-        return Database.find(
-            "Trips",
-            id
-        );
+SecurityGuard.require(
 
+PERMISSION_TRIP_UPDATE
 
-    },
+);
 
 
 
-    // =========================
-    // LIST
-    // =========================
 
-    list() {
 
+const existing =
 
-        SecurityGuard.check(
-            "TRIP_READ"
-        );
+Database.find(
 
+this.entity.table,
 
-        return Database.query(
-            "Trips",
-            {}
-        );
+tripId
 
+);
 
-    }
+
+
+
+
+if(!existing){
+
+
+throw new Error(
+
+"Trip not found: "
++
+tripId
+
+);
+
+
+}
+
+
+
+
+
+
+Versioning.save(
+
+this.entity.entity,
+
+tripId,
+
+existing
+
+);
+
+
+
+
+
+
+
+const merged={
+
+
+...existing,
+
+
+...data
 
 
 };
+
+
+
+
+
+let validated =
+
+TripValidator.validate(
+
+merged
+
+);
+
+
+
+
+
+validated[this.entity.idField]=
+
+tripId;
+
+
+
+
+
+validated.OrganizationID =
+
+OrganizationContext.get();
+
+
+
+
+
+
+const updated =
+
+Database.update(
+
+this.entity.table,
+
+tripId,
+
+validated
+
+);
+
+
+
+
+
+
+
+EventBus.emit(
+
+this.entity.events.updated,
+
+{
+
+
+entity:this.entity.entity,
+
+
+action:"UPDATE",
+
+
+actor:
+SecurityGuard.getCurrentUser(),
+
+
+before:existing,
+
+
+after:updated
+
+
+}
+
+
+);
+
+
+
+
+
+
+
+// =========================
+// BUSINESS EVENT
+// =========================
+
+
+if(
+
+updated.Status==="COMPLETED"
+
+){
+
+
+
+EventBus.emit(
+
+"TRIP_COMPLETED",
+
+{
+
+
+entity:"TRIP",
+
+
+trip:updated,
+
+
+actor:
+SecurityGuard.getCurrentUser()
+
+
+}
+
+);
+
+
+}
+
+
+
+
+
+
+return updated;
+
+
+
+},
+
+
+
+
+
+
+
+// =========================
+// GET
+// =========================
+
+
+
+getById(id){
+
+
+
+SecurityGuard.require(
+
+PERMISSION_TRIP_READ
+
+);
+
+
+
+
+
+return Database.find(
+
+this.entity.table,
+
+id
+
+);
+
+
+
+},
+
+
+
+
+
+
+
+// =========================
+// LIST
+// =========================
+
+
+
+list(){
+
+
+
+SecurityGuard.require(
+
+PERMISSION_TRIP_READ
+
+);
+
+
+
+
+
+return Database.query(
+
+this.entity.table,
+
+{
+
+Deleted:false
+
+}
+
+);
+
+
+
+},
+
+
+
+
+
+
+
+// =========================
+// DELETE
+// =========================
+
+
+delete(tripId){
+
+
+
+SecurityGuard.require(
+
+PERMISSION_TRIP_DELETE
+
+);
+
+
+
+
+
+const existing =
+
+Database.find(
+
+this.entity.table,
+
+tripId
+
+);
+
+
+
+
+
+if(!existing){
+
+
+throw new Error(
+
+"Trip not found: "
++
+tripId
+
+);
+
+
+}
+
+
+
+
+
+Versioning.save(
+
+this.entity.entity,
+
+tripId,
+
+existing
+
+);
+
+
+
+
+
+
+const deleted =
+
+Database.update(
+
+this.entity.table,
+
+tripId,
+
+{
+
+
+Deleted:true,
+
+
+UpdatedAt:
+new Date().toISOString()
+
+
+}
+
+);
+
+
+
+
+
+
+
+EventBus.emit(
+
+this.entity.events.deleted,
+
+{
+
+
+entity:this.entity.entity,
+
+
+action:"DELETE",
+
+
+actor:
+SecurityGuard.getCurrentUser(),
+
+
+before:existing,
+
+
+after:deleted
+
+
+}
+
+
+);
+
+
+
+
+
+return deleted;
+
+
+
+},
+
+
+
+
+
+
+
+// =========================
+// RESTORE
+// =========================
+
+
+restore(tripId){
+
+
+
+SecurityGuard.require(
+
+PERMISSION_TRIP_RESTORE
+
+);
+
+
+
+
+
+const existing =
+
+Database.find(
+
+this.entity.table,
+
+tripId
+
+);
+
+
+
+
+
+if(!existing){
+
+
+throw new Error(
+
+"Trip not found: "
++
+tripId
+
+);
+
+
+}
+
+
+
+
+
+
+const restored =
+
+Database.update(
+
+this.entity.table,
+
+tripId,
+
+{
+
+
+Deleted:false,
+
+
+UpdatedAt:
+new Date().toISOString()
+
+
+}
+
+);
+
+
+
+
+
+
+EventBus.emit(
+
+this.entity.events.restored,
+
+{
+
+
+entity:this.entity.entity,
+
+
+action:"RESTORE",
+
+
+actor:
+SecurityGuard.getCurrentUser(),
+
+
+before:existing,
+
+
+after:restored
+
+
+}
+
+
+);
+
+
+
+
+
+return restored;
+
+
+
+},
+
+
+
+
+
+
+
+health(){
+
+
+
+return HealthContract.create(
+
+
+"TripRepository",
+
+
+"OK",
+
+
+{
+
+
+version:this.version,
+
+
+entity:this.entity.entity,
+
+
+
+dependencies:{
+
+
+
+Database:!!Database,
+
+
+EventBus:!!EventBus,
+
+
+SecurityGuard:!!SecurityGuard,
+
+
+Versioning:!!Versioning,
+
+
+EntityRegistry:!!EntityRegistry,
+
+
+TripValidator:!!TripValidator
+
+
+}
+
+
+
+}
+
+
+);
+
+
+
+}
+
+
+
+};
+
 
 
 
