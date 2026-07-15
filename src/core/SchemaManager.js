@@ -324,7 +324,23 @@ init(){
                 "Deleted"
 
 
+            ],
+            ClientFinanceProfiles:{
+
+            columns:[
+
+                "FinanceProfileID",
+                "OrganizationID",
+                "ClientID",
+                "ClientName",
+                "Balance",
+                "CreditLimit",
+                "Status",
+                "CreatedAt"
+
             ]
+
+            }
 
 
 
