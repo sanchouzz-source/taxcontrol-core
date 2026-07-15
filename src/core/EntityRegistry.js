@@ -13,94 +13,45 @@ version:"0.6.0",
 CLIENT:{
 
 
-version:"0.1.0",
+entity:"CLIENT",
 
 
-entity:
-EntityConstants.CLIENT,
+table:"Clients",
 
 
-table:
-EntityConstants.TABLES.CLIENT,
-
-
-idField:
-EntityConstants.IDS.CLIENT,
-
-
-metadata:
-EntityMetadata.CLIENT,
-
-
-audit:true,
-
-
-softDelete:true,
-
-
-timestamps:true,
+idField:"ClientID",
 
 
 
-events:{
+permissions:{
 
 
-created:
-EntityEvents.CLIENT.CREATED,
+create:
+PERMISSION_CLIENT_CREATE,
 
 
-updated:
-EntityEvents.CLIENT.UPDATED,
+read:
+PERMISSION_CLIENT_READ,
 
 
-deleted:
-EntityEvents.CLIENT.DELETED,
+update:
+PERMISSION_CLIENT_UPDATE,
 
 
-restored:
-EntityEvents.CLIENT.RESTORED
+delete:
+PERMISSION_CLIENT_DELETE,
 
 
-}
-
+restore:
+PERMISSION_CLIENT_RESTORE
 
 
 },
 
 
 
-
-
-
-TRIP:{
-
-
-version:"0.1.0",
-
-
-entity:
-EntityConstants.TRIP,
-
-
-table:
-EntityConstants.TABLES.TRIP,
-
-
-idField:
-EntityConstants.IDS.TRIP,
-
-
-metadata:
-EntityMetadata.TRIP,
-
-
-audit:true,
-
-
-softDelete:true,
-
-
-timestamps:true,
+validator:
+ClientValidator,
 
 
 
@@ -108,23 +59,100 @@ events:{
 
 
 created:
-EntityEvents.TRIP.CREATED,
+"CLIENT_CREATED",
 
 
 updated:
-EntityEvents.TRIP.UPDATED,
+"CLIENT_UPDATED",
 
 
 deleted:
-EntityEvents.TRIP.DELETED,
+"CLIENT_DELETED",
 
 
 restored:
-EntityEvents.TRIP.RESTORED
+"CLIENT_RESTORED"
 
 
-}
+},
 
+
+
+audit:true
+
+
+},
+
+
+TRIP:{
+
+
+entity:"TRIP",
+
+
+table:"Trips",
+
+
+idField:"TripID",
+
+
+
+permissions:{
+
+
+create:
+PERMISSION_TRIP_CREATE,
+
+
+read:
+PERMISSION_TRIP_READ,
+
+
+update:
+PERMISSION_TRIP_UPDATE,
+
+
+delete:
+PERMISSION_TRIP_DELETE,
+
+
+restore:
+PERMISSION_TRIP_RESTORE
+
+
+},
+
+
+
+validator:
+TripValidator,
+
+
+
+events:{
+
+
+created:
+"TRIP_CREATED",
+
+
+updated:
+"TRIP_UPDATED",
+
+
+deleted:
+"TRIP_DELETED",
+
+
+restored:
+"TRIP_RESTORED"
+
+
+},
+
+
+
+audit:true
 
 
 }

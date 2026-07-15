@@ -6,7 +6,7 @@ const TripRepository = {
 
 
 
-version:"0.4.0",
+version:"0.5.0",
 
 
 
@@ -17,104 +17,16 @@ EntityRegistry.TRIP,
 
 
 
-// =========================
-// CREATE
-// =========================
-
-
 create(data){
 
 
+return BaseRepository.create(
 
-SecurityGuard.require(
-
-PERMISSION_TRIP_CREATE
-
-);
-
-
-
-
-data =
-TripValidator.validate(
-data
-);
-
-
-
-
-if(!data[this.entity.idField]){
-
-
-data[this.entity.idField] =
-
-IdService.generate(
-
-this.entity.table
-
-);
-
-
-}
-
-
-
-
-data.OrganizationID =
-OrganizationContext.get();
-
-
-
-
-
-const result =
-Database.insert(
-
-this.entity.table,
+this.entity,
 
 data
 
 );
-
-
-
-
-
-
-EventBus.emit(
-
-this.entity.events.created,
-
-{
-
-
-entity:this.entity.entity,
-
-
-action:"CREATE",
-
-
-actor:
-SecurityGuard.getCurrentUser(),
-
-
-before:null,
-
-
-after:result
-
-
-}
-
-
-);
-
-
-
-
-
-return result;
-
 
 
 },
@@ -124,296 +36,54 @@ return result;
 
 
 
-
-// =========================
-// UPDATE
-// =========================
+update(id,data){
 
 
+return BaseRepository.update(
 
-update(tripId,data){
+this.entity,
 
+id,
 
-
-SecurityGuard.require(
-
-PERMISSION_TRIP_UPDATE
+data
 
 );
-
-
-
-
-
-const existing =
-
-Database.find(
-
-this.entity.table,
-
-tripId
-
-);
-
-
-
-
-
-if(!existing){
-
-
-throw new Error(
-
-"Trip not found: "
-+
-tripId
-
-);
-
-
-}
-
-
-
-
-
-
-Versioning.save(
-
-this.entity.entity,
-
-tripId,
-
-existing
-
-);
-
-
-
-
-
-
-
-const merged={
-
-
-...existing,
-
-
-...data
-
-
-};
-
-
-
-
-
-let validated =
-
-TripValidator.validate(
-
-merged
-
-);
-
-
-
-
-
-validated[this.entity.idField]=
-
-tripId;
-
-
-
-
-
-validated.OrganizationID =
-
-OrganizationContext.get();
-
-
-
-
-
-
-const updated =
-
-Database.update(
-
-this.entity.table,
-
-tripId,
-
-validated
-
-);
-
-
-
-
-
-
-
-EventBus.emit(
-
-this.entity.events.updated,
-
-{
-
-
-entity:this.entity.entity,
-
-
-action:"UPDATE",
-
-
-actor:
-SecurityGuard.getCurrentUser(),
-
-
-before:existing,
-
-
-after:updated
-
-
-}
-
-
-);
-
-
-
-
-
-
-
-// =========================
-// BUSINESS EVENT
-// =========================
-
-
-if(
-
-updated.Status==="COMPLETED"
-
-){
-
-
-
-EventBus.emit(
-
-"TRIP_COMPLETED",
-
-{
-
-
-entity:"TRIP",
-
-
-trip:updated,
-
-
-actor:
-SecurityGuard.getCurrentUser()
-
-
-}
-
-);
-
-
-}
-
-
-
-
-
-
-return updated;
-
 
 
 },
 
 
 
-
-
-
-
-// =========================
-// GET
-// =========================
 
 
 
 getById(id){
 
 
+return BaseRepository.getById(
 
-SecurityGuard.require(
-
-PERMISSION_TRIP_READ
-
-);
-
-
-
-
-
-return Database.find(
-
-this.entity.table,
+this.entity,
 
 id
 
 );
 
 
-
 },
 
 
 
-
-
-
-
-// =========================
-// LIST
-// =========================
 
 
 
 list(){
 
 
+return BaseRepository.list(
 
-SecurityGuard.require(
-
-PERMISSION_TRIP_READ
-
-);
-
-
-
-
-
-return Database.query(
-
-this.entity.table,
-
-{
-
-Deleted:false
-
-}
+this.entity
 
 );
-
 
 
 },
@@ -423,135 +93,16 @@ Deleted:false
 
 
 
-
-// =========================
-// DELETE
-// =========================
+delete(id){
 
 
-delete(tripId){
+return BaseRepository.delete(
 
+this.entity,
 
-
-SecurityGuard.require(
-
-PERMISSION_TRIP_DELETE
+id
 
 );
-
-
-
-
-
-const existing =
-
-Database.find(
-
-this.entity.table,
-
-tripId
-
-);
-
-
-
-
-
-if(!existing){
-
-
-throw new Error(
-
-"Trip not found: "
-+
-tripId
-
-);
-
-
-}
-
-
-
-
-
-Versioning.save(
-
-this.entity.entity,
-
-tripId,
-
-existing
-
-);
-
-
-
-
-
-
-const deleted =
-
-Database.update(
-
-this.entity.table,
-
-tripId,
-
-{
-
-
-Deleted:true,
-
-
-UpdatedAt:
-new Date().toISOString()
-
-
-}
-
-);
-
-
-
-
-
-
-
-EventBus.emit(
-
-this.entity.events.deleted,
-
-{
-
-
-entity:this.entity.entity,
-
-
-action:"DELETE",
-
-
-actor:
-SecurityGuard.getCurrentUser(),
-
-
-before:existing,
-
-
-after:deleted
-
-
-}
-
-
-);
-
-
-
-
-
-return deleted;
-
 
 
 },
@@ -561,120 +112,16 @@ return deleted;
 
 
 
-
-// =========================
-// RESTORE
-// =========================
+restore(id){
 
 
-restore(tripId){
+return BaseRepository.restore(
 
+this.entity,
 
-
-SecurityGuard.require(
-
-PERMISSION_TRIP_RESTORE
+id
 
 );
-
-
-
-
-
-const existing =
-
-Database.find(
-
-this.entity.table,
-
-tripId
-
-);
-
-
-
-
-
-if(!existing){
-
-
-throw new Error(
-
-"Trip not found: "
-+
-tripId
-
-);
-
-
-}
-
-
-
-
-
-
-const restored =
-
-Database.update(
-
-this.entity.table,
-
-tripId,
-
-{
-
-
-Deleted:false,
-
-
-UpdatedAt:
-new Date().toISOString()
-
-
-}
-
-);
-
-
-
-
-
-
-EventBus.emit(
-
-this.entity.events.restored,
-
-{
-
-
-entity:this.entity.entity,
-
-
-action:"RESTORE",
-
-
-actor:
-SecurityGuard.getCurrentUser(),
-
-
-before:existing,
-
-
-after:restored
-
-
-}
-
-
-);
-
-
-
-
-
-return restored;
-
 
 
 },
@@ -691,12 +138,9 @@ health(){
 
 return HealthContract.create(
 
-
 "TripRepository",
 
-
 "OK",
-
 
 {
 
@@ -707,30 +151,8 @@ version:this.version,
 entity:this.entity.entity,
 
 
-
-dependencies:{
-
-
-
-Database:!!Database,
-
-
-EventBus:!!EventBus,
-
-
-SecurityGuard:!!SecurityGuard,
-
-
-Versioning:!!Versioning,
-
-
-EntityRegistry:!!EntityRegistry,
-
-
-TripValidator:!!TripValidator
-
-
-}
+baseRepository:
+!!BaseRepository
 
 
 
@@ -738,7 +160,6 @@ TripValidator:!!TripValidator
 
 
 );
-
 
 
 }
