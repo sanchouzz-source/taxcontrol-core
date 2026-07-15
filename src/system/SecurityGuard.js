@@ -1,11 +1,10 @@
 console.log("SecurityGuard");
 
 
-
 const SecurityGuard = {
 
 
-    version:"0.2.0",
+    version:"0.2.1",
 
 
     permissions:{},
@@ -18,13 +17,21 @@ const SecurityGuard = {
     init(){
 
 
+        if(this.initialized){
+
+            Logger.log(
+                "SecurityGuard ALREADY READY"
+            );
+
+            return;
+
+        }
+
 
         this.registerPermissions();
 
 
-
         this.initialized=true;
-
 
 
         Logger.log(
@@ -36,11 +43,7 @@ const SecurityGuard = {
         );
 
 
-
     },
-
-
-
 
 
 
@@ -48,111 +51,52 @@ const SecurityGuard = {
     registerPermissions(){
 
 
-
         this.permissions={
 
 
-
-            CLIENT_CREATE:
-                "CLIENT_CREATE",
-
-
-            CLIENT_UPDATE:
-                "CLIENT_UPDATE",
+            CLIENT_CREATE:"CLIENT_CREATE",
+            CLIENT_UPDATE:"CLIENT_UPDATE",
+            CLIENT_DELETE:"CLIENT_DELETE",
+            CLIENT_RESTORE:"CLIENT_RESTORE",
 
 
-            CLIENT_DELETE:
-                "CLIENT_DELETE",
+            TRIP_CREATE:"TRIP_CREATE",
+            TRIP_UPDATE:"TRIP_UPDATE",
+            TRIP_DELETE:"TRIP_DELETE",
+            TRIP_RESTORE:"TRIP_RESTORE",
 
 
-            CLIENT_RESTORE:
-                "CLIENT_RESTORE",
+            FINANCE_VIEW:"FINANCE_VIEW",
+            FINANCE_EDIT:"FINANCE_EDIT",
 
 
-
-
-            TRIP_CREATE:
-                "TRIP_CREATE",
-
-
-            TRIP_UPDATE:
-                "TRIP_UPDATE",
-
-
-            TRIP_DELETE:
-                "TRIP_DELETE",
-
-
-            TRIP_RESTORE:
-                "TRIP_RESTORE",
-
-
-
-            FINANCE_VIEW:
-                "FINANCE_VIEW",
-
-
-            FINANCE_EDIT:
-                "FINANCE_EDIT",
-
-
-
-            REPORT_VIEW:
-                "REPORT_VIEW",
-
-
-            REPORT_EXPORT:
-                "REPORT_EXPORT"
-
+            REPORT_VIEW:"REPORT_VIEW",
+            REPORT_EXPORT:"REPORT_EXPORT"
 
 
         };
 
 
 
-
-        /*
-            совместимость
-            со старым кодом
-        */
-
-
-        globalThis.PERMISSION_CLIENT_CREATE =
-            this.permissions.CLIENT_CREATE;
+        Object.keys(
+            this.permissions
+        )
+        .forEach(key=>{
 
 
-        globalThis.PERMISSION_CLIENT_UPDATE =
-            this.permissions.CLIENT_UPDATE;
+            globalThis[
+                "PERMISSION_" + key
+            ] =
+                this.permissions[key];
 
 
-        globalThis.PERMISSION_CLIENT_DELETE =
-            this.permissions.CLIENT_DELETE;
-
-
-        globalThis.PERMISSION_CLIENT_RESTORE =
-            this.permissions.CLIENT_RESTORE;
-
-
-
-        globalThis.PERMISSION_TRIP_CREATE =
-            this.permissions.TRIP_CREATE;
-
-
-        globalThis.PERMISSION_TRIP_UPDATE =
-            this.permissions.TRIP_UPDATE;
-
-
-        globalThis.PERMISSION_TRIP_DELETE =
-            this.permissions.TRIP_DELETE;
+        });
 
 
 
         Logger.log(
-
             "SECURITY PERMISSIONS REGISTERED"
-
         );
-
 
 
     },
@@ -160,36 +104,22 @@ const SecurityGuard = {
 
 
 
-
-
-
-
     check(permission){
-
 
 
         if(!permission){
 
-
-
             Logger.warn(
-
                 "SECURITY CHECK WITHOUT PERMISSION"
-
             );
 
-
-
             return false;
-
 
         }
 
 
 
-
-        const exists =
-
+        const allowed =
             Object.values(
                 this.permissions
             )
@@ -199,9 +129,7 @@ const SecurityGuard = {
 
 
 
-
-
-        if(!exists){
+        if(!allowed){
 
 
             Logger.warn(
@@ -213,13 +141,9 @@ const SecurityGuard = {
             );
 
 
-
             return false;
 
-
         }
-
-
 
 
 
@@ -236,13 +160,7 @@ const SecurityGuard = {
         return true;
 
 
-
     },
-
-
-
-
-
 
 
 
@@ -250,12 +168,9 @@ const SecurityGuard = {
     health(){
 
 
-
         return HealthContract.create(
 
-
             "SecurityGuard",
-
 
             this.initialized
             ?
@@ -264,30 +179,22 @@ const SecurityGuard = {
             "WARNING",
 
 
-
-
             {
 
-
                 version:this.version,
-
 
                 permissions:
                     Object.keys(
                         this.permissions
                     ),
 
-
                 initialized:
                     this.initialized
-
 
             }
 
 
-
         );
-
 
 
     }
@@ -295,8 +202,6 @@ const SecurityGuard = {
 
 
 };
-
-
 
 
 
