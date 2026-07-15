@@ -4,9 +4,12 @@ console.log("SchemaManager");
 const SchemaManager = {
 
 
-    version:"0.4.0",
+version:"0.5.0",
 
-    initialized:false,
+initialized:false,
+
+
+
 
 
 init(){
@@ -14,13 +17,17 @@ init(){
 
     if(this.initialized){
 
+
         Logger.log(
             "SchemaManager ALREADY READY"
         );
 
+
         return;
 
+
     }
+
 
 
 
@@ -46,33 +53,37 @@ init(){
 
 
 
+
         this.initialized=true;
 
 
 
         Logger.log(
-            "SchemaManager READY"
+            "SchemaManager READY v"
+            +
+            this.version
         );
 
 
 
     }
+    catch(error){
 
 
-  catch(error){
+
+        Logger.error(
+
+            "SchemaManager ERROR: "
+            +
+            error.message
+
+        );
 
 
-    Logger.log(
-        "SchemaManager ERROR: "
-        +
-        error.message
-    );
+        throw error;
 
 
-    throw error;
-
-
-}
+    }
 
 
 
@@ -82,329 +93,567 @@ init(){
 
 
 
-    getSchema(){
 
 
+normalizeColumns(definition){
 
-        return {
 
 
+    if(
+        Array.isArray(definition)
+    ){
 
-            EventLog:[
+        return definition;
 
-                "EventID",
-                "EventType",
-                "Payload",
-                "CreatedAt",
-                "OrganizationID"
 
-            ],
+    }
 
 
 
 
+    if(
+        definition
+        &&
+        Array.isArray(definition.columns)
+    ){
 
-            AuditLog:[
+        return definition.columns;
 
-                "AuditID",
-                "OrganizationID",
-                "UserID",
-                "Action",
-                "Entity",
-                "EntityID",
-                "Before",
-                "After",
-                "CreatedAt"
 
-            ],
+    }
 
 
 
 
 
-            Organizations:[
+    throw new Error(
 
-                "OrganizationID",
-                "ShortName",
-                "FullName",
-                "INN",
-                "KPP",
-                "OGRN",
-                "TaxSystem",
-                "Status",
-                "CreatedAt",
-                "UpdatedAt",
-                "Deleted"
+        "INVALID SCHEMA DEFINITION"
 
-            ],
+    );
 
 
+},
 
 
 
-            Clients:[
 
-                "ClientID",
-                "OrganizationID",
-                "Name",
-                "INN",
-                "Phone",
-                "Email",
-                "Address",
-                "ManagerID",
-                "Rating",
-                "Status",
-                "CreatedAt",
-                "UpdatedAt",
-                "Deleted"
 
-            ],
 
 
+getSchema(){
 
 
+return {
 
 
-            Vehicles:[
 
-                "VehicleID",
-                "OrganizationID",
-                "PlateNumber",
-                "Brand",
-                "Model",
-                "VIN",
-                "DriverID",
-                "Status",
-                "CreatedAt",
-                "UpdatedAt",
-                "Deleted"
+EventLog:[
 
-            ],
+"EventID",
+"EventType",
+"Payload",
+"CreatedAt",
+"OrganizationID"
 
+],
 
 
 
 
+AuditLog:[
 
-            Trips:[
+"AuditID",
+"OrganizationID",
+"UserID",
+"Action",
+"Entity",
+"EntityID",
+"Before",
+"After",
+"CreatedAt"
 
-                "TripID",
-                "OrganizationID",
-                "ClientID",
-                "VehicleID",
-                "DriverID",
-                "ManagerID",
+],
 
-                "LoadingPoint",
-                "UnloadingPoint",
 
-                "Distance",
-                "Cargo",
 
-                "Revenue",
-                "PlannedCost",
-                "ActualCost",
-                "Margin",
 
-                "Expedition",
-                "CarrierID",
 
-                "MailTrack",
+Organizations:[
 
-                "Status",
+"OrganizationID",
+"ShortName",
+"FullName",
+"INN",
+"KPP",
+"OGRN",
+"TaxSystem",
+"Status",
+"CreatedAt",
+"UpdatedAt",
+"Deleted"
 
-                "CreatedAt",
-                "UpdatedAt",
-                "Deleted"
+],
 
-            ],
 
 
 
 
+Clients:[
 
+"ClientID",
+"OrganizationID",
+"Name",
+"INN",
+"Phone",
+"Email",
+"Address",
+"ManagerID",
+"Rating",
+"Status",
+"CreatedAt",
+"UpdatedAt",
+"Deleted"
 
-            Payments:[
+],
 
-                "PaymentID",
-                "OrganizationID",
-                "InvoiceID",
-                "TripID",
 
-                "Amount",
 
-                "PaymentDate",
-                "PaymentMethod",
 
-                "Type",
 
-                "CreatedAt",
-                "UpdatedAt",
-                "Deleted"
+Vehicles:[
 
-            ],
+"VehicleID",
+"OrganizationID",
+"PlateNumber",
+"Brand",
+"Model",
+"VIN",
+"DriverID",
+"Status",
+"CreatedAt",
+"UpdatedAt",
+"Deleted"
 
+],
 
 
 
 
 
-            FinancialTransactions:[
+Trips:[
 
+"TripID",
+"OrganizationID",
+"ClientID",
+"VehicleID",
+"DriverID",
+"ManagerID",
 
-                "TransactionID",
+"LoadingPoint",
+"UnloadingPoint",
 
-                "OrganizationID",
+"Distance",
+"Cargo",
 
-                "Type",
+"Revenue",
+"PlannedCost",
+"ActualCost",
+"Margin",
 
-                "Entity",
+"Expedition",
+"CarrierID",
 
-                "EntityID",
+"MailTrack",
 
+"Status",
 
-                "Revenue",
+"CreatedAt",
+"UpdatedAt",
+"Deleted"
 
-                "Cost",
+],
 
-                "Profit",
 
 
-                "Currency",
 
-                "Description",
 
-                "PaymentStatus",
 
-                "CreatedBy",
+Payments:[
 
+"PaymentID",
+"OrganizationID",
+"InvoiceID",
+"TripID",
 
-                "CreatedAt",
+"Amount",
 
-                "UpdatedAt",
+"PaymentDate",
+"PaymentMethod",
 
-                "Deleted"
+"Type",
 
+"CreatedAt",
+"UpdatedAt",
+"Deleted"
 
-            ],
+],
 
 
 
 
 
+FinancialTransactions:[
 
+"TransactionID",
 
-            KPIMetrics:[
+"OrganizationID",
 
+"Type",
 
-                "KPIID",
+"Entity",
 
-                "OrganizationID",
+"EntityID",
 
-                "MetricType",
+"Revenue",
 
-                "Entity",
+"Cost",
 
-                "EntityID",
+"Profit",
 
+"Currency",
 
-                "Revenue",
+"Description",
 
-                "Cost",
+"PaymentStatus",
 
-                "Profit",
+"CreatedBy",
 
-                "Margin",
+"CreatedAt",
 
+"UpdatedAt",
 
-                "CreatedAt",
+"Deleted"
 
-                "UpdatedAt",
+],
 
-                "Deleted"
 
 
-            ],
-            ClientFinanceProfiles:{
 
-            columns:[
 
-                "FinanceProfileID",
-                "OrganizationID",
-                "ClientID",
-                "ClientName",
-                "Balance",
-                "CreditLimit",
-                "Status",
-                "CreatedAt"
 
-            ]
+KPIMetrics:[
 
-            }
+"KPIID",
 
+"OrganizationID",
 
+"MetricType",
 
-        };
+"Entity",
 
+"EntityID",
 
-    },
+"Revenue",
 
+"Cost",
 
+"Profit",
 
+"Margin",
 
+"CreatedAt",
 
+"UpdatedAt",
 
+"Deleted"
 
+],
 
-    createSheets(schema){
 
 
-    const ss =
-        SpreadsheetApp
-        .getActiveSpreadsheet();
 
 
 
-    Object.keys(schema)
-    .forEach(sheetName=>{
 
+ClientFinanceProfiles:{
 
-        let sheet =
-            ss.getSheetByName(
+
+columns:[
+
+"FinanceProfileID",
+
+"OrganizationID",
+
+"ClientID",
+
+"ClientName",
+
+"Balance",
+
+"CreditLimit",
+
+"Status",
+
+"CreatedAt"
+
+]
+
+
+}
+
+
+
+
+};
+
+
+},
+
+
+
+
+
+
+
+createSheets(schema){
+
+
+
+const ss =
+SpreadsheetApp
+.getActiveSpreadsheet();
+
+
+
+
+
+Object.keys(schema)
+.forEach(sheetName=>{
+
+
+    const columns =
+        this.normalizeColumns(
+            schema[sheetName]
+        );
+
+
+
+
+    let sheet =
+        ss.getSheetByName(
+            sheetName
+        );
+
+
+
+
+    if(!sheet){
+
+
+
+        sheet =
+            ss.insertSheet(
                 sheetName
             );
 
 
 
-        if(!sheet){
+
+        sheet
+        .getRange(
+            1,
+            1,
+            1,
+            columns.length
+        )
+        .setValues(
+            [
+                columns
+            ]
+        );
 
 
-            sheet =
-                ss.insertSheet(
-                    sheetName
-                );
+
+
+        Logger.log(
+
+            "CREATED SHEET: "
+            +
+            sheetName
+
+        );
+
+
+    }
+
+
+
+
+
+    this.formatSheet(sheet);
+
+
+
+});
+
+
+
+},
+
+
+
+
+
+
+
+formatSheet(sheet){
+
+
+
+    const rows =
+        Math.max(
+            sheet.getMaxRows(),
+            1
+        );
+
+
+    const cols =
+        Math.max(
+            sheet.getMaxColumns(),
+            1
+        );
+
+
+
+    sheet
+    .getRange(
+        1,
+        1,
+        rows,
+        cols
+    )
+    .setNumberFormat("@");
+
+
+
+},
+
+
+
+
+
+
+
+syncSheets(schema){
+
+
+
+const ss =
+SpreadsheetApp
+.getActiveSpreadsheet();
+
+
+
+
+
+Object.keys(schema)
+.forEach(sheetName=>{
+
+
+
+    const columns =
+        this.normalizeColumns(
+            schema[sheetName]
+        );
+
+
+
+
+    const sheet =
+        ss.getSheetByName(
+            sheetName
+        );
+
+
+
+    if(!sheet)
+        return;
+
+
+
+
+
+    let lastColumn =
+        sheet.getLastColumn();
+
+
+
+
+    let headers=[];
+
+
+
+
+    if(lastColumn>0){
+
+
+
+        headers =
+            sheet
+            .getRange(
+                1,
+                1,
+                1,
+                lastColumn
+            )
+            .getValues()[0];
+
+
+    }
+
+
+
+
+
+    columns
+    .forEach(column=>{
+
+
+
+        if(
+            headers.indexOf(column)
+            ===
+            -1
+        ){
+
+
+
+            lastColumn++;
 
 
 
             sheet
             .getRange(
                 1,
-                1,
-                1,
-                schema[sheetName].length
+                lastColumn
             )
-            .setValues(
-                [
-                    schema[sheetName]
-                ]
+            .setValue(
+                column
             );
 
 
 
             Logger.log(
-                "Created sheet: "
+
+                "ADDED COLUMN "
+                +
+                column
+                +
+                " TO "
                 +
                 sheetName
+
             );
 
 
@@ -412,21 +661,12 @@ init(){
 
 
 
-        // форматируем существующий лист
-        // после получения объекта sheet
-
-        sheet
-        .getRange(
-            1,
-            1,
-            sheet.getMaxRows(),
-            sheet.getMaxColumns()
-        )
-        .setNumberFormat("@");
-
-
-
     });
+
+
+
+});
+
 
 
 },
@@ -437,202 +677,73 @@ init(){
 
 
 
-    syncSheets(schema){
+health(){
 
 
 
-        const ss =
-            SpreadsheetApp
-            .getActiveSpreadsheet();
+return HealthContract.create(
 
 
+"SchemaManager",
 
 
+this.initialized
+?
+"OK"
+:
+"WARNING",
 
-        Object.keys(schema)
-        .forEach(sheetName=>{
 
+{
 
 
-            const sheet =
-                ss.getSheetByName(
-                    sheetName
-                );
+version:this.version,
 
 
+initialized:this.initialized,
 
-            if(!sheet)
-                return;
 
+tables:
+Object.keys(
+this.getSchema()
+)
 
 
+}
 
 
-            let lastColumn =
-                sheet.getLastColumn();
 
+);
 
 
 
-            let headers=[];
+},
 
 
 
-            if(lastColumn>0){
 
 
-                headers =
-                    sheet
-                    .getRange(
-                        1,
-                        1,
-                        1,
-                        lastColumn
-                    )
-                    .getValues()[0];
 
 
-            }
 
+reset(){
 
 
 
+this.initialized=false;
 
-            schema[sheetName]
-            .forEach(column=>{
 
 
+Logger.log(
 
-                if(
-                    headers.indexOf(column)
-                    ===
-                    -1
-                ){
+"SchemaManager RESET"
 
+);
 
 
-                    lastColumn++;
 
+}
 
-
-                    sheet
-                    .getRange(
-                        1,
-                        lastColumn
-                    )
-                    .setValue(
-                        column
-                    );
-
-
-
-                    headers.push(
-                        column
-                    );
-
-
-
-                    Logger.log(
-
-                        "Added column "
-                        +
-                        column
-                        +
-                        " to "
-                        +
-                        sheetName
-
-                    );
-
-
-
-                }
-
-
-
-            });
-
-
-
-        });
-
-
-
-    },
-
-
-
-
-
-
-
-
-    health(){
-
-
-
-        return HealthContract.create(
-
-
-            "SchemaManager",
-
-
-            this.initialized
-            ?
-            "OK"
-            :
-            "WARNING",
-
-
-            {
-
-                version:this.version,
-
-
-                initialized:
-                    this.initialized,
-
-
-                tables:
-                    Object.keys(
-                        this.getSchema()
-                    )
-
-
-            }
-
-
-
-        );
-
-
-
-    },
-
-
-
-
-
-
-
-
-
-    reset(){
-
-
-
-        this.initialized=false;
-
-
-
-        Logger.log(
-
-            "SchemaManager RESET"
-
-        );
-
-
-    }
 
 
 
