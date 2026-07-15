@@ -4,10 +4,13 @@ console.log("SecurityGuard");
 const SecurityGuard = {
 
 
-version:"0.3.0",
+version:"0.4.0",
 
 
 permissions:{},
+
+
+currentUser:null,
 
 
 initialized:false,
@@ -21,17 +24,22 @@ init(){
 
 if(this.initialized){
 
+
 Logger.log(
 "SecurityGuard ALREADY READY"
 );
 
+
 return;
+
 
 }
 
 
 
+
 this.registerPermissions();
+
 
 
 this.initialized=true;
@@ -48,7 +56,6 @@ this.version
 
 
 },
-
 
 
 
@@ -114,6 +121,7 @@ REPORT_EXPORT:"REPORT_EXPORT"
 
 
 
+
 Object.keys(
 this.permissions
 )
@@ -131,9 +139,11 @@ this.permissions[key];
 
 
 
+
 Logger.log(
 "SECURITY PERMISSIONS REGISTERED"
 );
+
 
 
 },
@@ -169,9 +179,11 @@ if(
 !permission
 ){
 
+
 throw new Error(
 "SECURITY PERMISSION EMPTY"
 );
+
 
 }
 
@@ -208,8 +220,8 @@ permission
 );
 
 
-
 }
+
 
 
 
@@ -225,6 +237,136 @@ permission
 
 
 return true;
+
+
+
+},
+
+
+
+
+
+
+
+
+// ===============================
+// USER CONTEXT
+// ===============================
+
+
+
+setCurrentUser(user){
+
+
+
+this.currentUser =
+user || null;
+
+
+
+Logger.log(
+
+"SECURITY USER SET: "
++
+(
+user?.UserID ||
+user?.Name ||
+"SYSTEM"
+)
+
+);
+
+
+
+},
+
+
+
+
+
+
+
+
+getCurrentUser(){
+
+
+
+if(!this.currentUser){
+
+
+
+return {
+
+
+UserID:
+"SYSTEM",
+
+
+Name:
+"SYSTEM",
+
+
+Role:
+"SYSTEM",
+
+
+OrganizationID:
+"SYSTEM"
+
+
+
+};
+
+
+}
+
+
+
+
+return this.currentUser;
+
+
+
+},
+
+
+
+
+
+
+
+
+clearUser(){
+
+
+
+this.currentUser=null;
+
+
+
+Logger.log(
+
+"SECURITY USER CLEARED"
+
+);
+
+
+
+},
+
+
+
+
+
+
+
+getCurrentUserId(){
+
+
+
+return this.getCurrentUser()
+.UserID;
+
 
 
 },
@@ -261,8 +403,22 @@ this.permissions
 ),
 
 
+
 initialized:
-this.initialized
+this.initialized,
+
+
+
+currentUser:
+this.currentUser
+?
+(
+this.currentUser.UserID ||
+this.currentUser.Name
+)
+:
+"SYSTEM"
+
 
 
 }
