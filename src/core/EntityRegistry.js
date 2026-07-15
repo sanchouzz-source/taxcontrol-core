@@ -4,7 +4,8 @@ console.log("EntityRegistry");
 const EntityRegistry = {
 
 
-version:"0.7.0",
+version:"0.8.0",
+
 
 
 CLIENT:{
@@ -17,8 +18,12 @@ table:"Clients",
 idField:"ClientID",
 
 
-validator:
-ClientValidator,
+get validator(){
+
+    return globalThis.ClientValidator;
+
+},
+
 
 
 permissions:{
@@ -41,6 +46,7 @@ PERMISSION_CLIENT_DELETE
 
 
 },
+
 
 
 events:{
@@ -68,6 +74,9 @@ restored:
 
 
 
+
+
+
 TRIP:{
 
 
@@ -78,8 +87,13 @@ table:"Trips",
 idField:"TripID",
 
 
-validator:
-TripValidator,
+
+get validator(){
+
+    return globalThis.TripValidator;
+
+},
+
 
 
 permissions:{
@@ -129,7 +143,12 @@ restored:
 
 
 
+
+
+
 };
+
+
 
 
 
