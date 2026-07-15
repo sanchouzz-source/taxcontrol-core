@@ -33,7 +33,7 @@ Logger.log(
 
 const core=[
 
-
+"Logger",
 "EntityConstants",
 
 "EntityEvents",
@@ -46,8 +46,9 @@ const core=[
 
 "SchemaManager",
 
-"EventBus"
+"EventBus",
 
+"SecurityGuard"
 
 ];
 
@@ -132,7 +133,6 @@ Logger.log(
 
 const modules=[
 
-"SecurityGuard",
 
 "TripEventHandler",
 
