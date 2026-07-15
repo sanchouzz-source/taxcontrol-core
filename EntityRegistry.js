@@ -5,7 +5,7 @@ console.log("EntityRegistry");
 const EntityRegistry = {
 
 
-version:"0.4.0",
+version:"0.5.0",
 
 
 
@@ -22,7 +22,6 @@ ENTITY_CLIENT_TABLE,
 
 idField:
 ENTITY_CLIENT_ID,
-
 
 
 audit:true,
@@ -69,6 +68,79 @@ PERMISSION_CLIENT_DELETE,
 
 read:
 PERMISSION_CLIENT_READ
+
+
+}
+
+
+
+},
+
+
+
+
+
+
+TRIP:{
+
+
+entity:
+"TRIP",
+
+
+table:
+"Trips",
+
+
+idField:
+"TripID",
+
+
+
+audit:true,
+
+
+
+events:{
+
+
+created:
+"TRIP_CREATED",
+
+
+updated:
+"TRIP_UPDATED",
+
+
+deleted:
+"TRIP_DELETED",
+
+
+restored:
+"TRIP_RESTORED"
+
+
+},
+
+
+
+permissions:{
+
+
+create:
+"TRIP_CREATE",
+
+
+update:
+"TRIP_UPDATE",
+
+
+delete:
+"TRIP_DELETE",
+
+
+read:
+"TRIP_READ"
 
 
 }

@@ -5,7 +5,7 @@ console.log("AuditEventHandler");
 const AuditEventHandler = {
 
 
-version:"1.0.0",
+version:"1.1.0",
 
 
 
@@ -23,6 +23,11 @@ EntityRegistry.CLIENT
 );
 
 
+this.registerEntity(
+EntityRegistry.TRIP
+);
+
+
 
 Logger.log(
 "AuditEventHandler READY v"
@@ -36,7 +41,6 @@ return true;
 
 
 },
-
 
 
 
