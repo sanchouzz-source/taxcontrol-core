@@ -4,368 +4,507 @@ console.log("FinanceEngine");
 const FinanceEngine = {
 
 
-    version:"0.2.0",
+version:"0.3.0",
 
 
-    initialized:false,
+initialized:false,
 
 
-    health(){
 
 
-        return HealthContract.create(
 
-            "FinanceEngine",
+health(){
 
-            this.initialized
-            ?
-            "OK"
-            :
-            "WARNING",
 
-            {
+return HealthContract.create(
 
-                version:this.version,
+"FinanceEngine",
 
-                initialized:this.initialized,
+this.initialized
+?
+"OK"
+:
+"WARNING",
 
+{
 
-                dependencies:{
+version:this.version,
 
-                    EventBus:
-                    !!globalThis.EventBus,
 
+initialized:this.initialized,
 
-                    Database:
-                    !!globalThis.Database
 
+dependencies:{
 
-                }
 
+EventBus:
+!!globalThis.EventBus,
 
-            }
 
-        );
+Database:
+!!globalThis.Database,
 
 
-    },
+IdService:
+!!globalThis.IdService
 
 
+}
 
+}
 
-    init(){
+);
 
 
-        if(this.initialized){
+},
 
 
-            Logger.log(
-                "FinanceEngine already initialized"
-            );
 
 
-            return;
 
 
-        }
 
+init(){
 
 
 
-        if(!EventBus){
+if(this.initialized){
 
 
-            throw new Error(
-                "EventBus missing"
-            );
+Logger.log(
 
+"FinanceEngine ALREADY READY"
 
-        }
+);
 
 
+return;
 
 
+}
 
-        EventBus.on(
 
-            "TRIP_COMPLETED",
 
-            trip=>{
 
 
-                this.calculateTripProfit(trip);
 
+if(!globalThis.EventBus){
 
-            }
 
+throw new Error(
 
-        );
+"FinanceEngine: EventBus missing"
 
+);
 
 
+}
 
 
-        EventBus.on(
 
-            "CLIENT_CREATED",
 
-            client=>{
 
+EventBus.on(
 
-                this.initClientFinance(client);
+"TRIP_COMPLETED",
 
+trip=>{
 
-            }
 
+this.calculateTripProfit(trip);
 
-        );
 
+}
 
+);
 
 
 
 
-        this.initialized=true;
 
 
 
-        Logger.log(
-            "FinanceEngine READY"
-        );
+EventBus.on(
 
+"CLIENT_CREATED",
 
-    },
+client=>{
 
 
+this.initClientFinance(client);
 
 
+}
 
+);
 
 
-    calculateTripProfit(trip){
 
 
 
-        if(!trip){
 
+this.initialized=true;
 
-            Logger.log(
-                "EMPTY TRIP"
-            );
 
 
-            return null;
+Logger.log(
 
+"FinanceEngine READY v"
++
+this.version
 
-        }
+);
 
 
+},
 
 
 
-        const revenue =
 
-            Number(
-                trip.Revenue || 0
-            );
 
 
 
+calculateTripProfit(trip){
 
-        const cost =
 
-            Number(
-                trip.ActualCost || 0
-            );
 
+if(!trip){
 
 
+Logger.log(
 
+"FINANCE EMPTY TRIP"
 
-        const profit =
+);
 
-            revenue - cost;
 
+return null;
 
 
+}
 
 
 
-        const transaction={
 
 
 
-            TransactionID:
+const revenue = Number(
 
-                IdService.generate(
-                    "FIN"
-                ),
+trip.Revenue || 0
 
+);
 
 
-            OrganizationID:
 
-                this.getOrganizationID(),
 
 
+const cost = Number(
 
-            Type:
+trip.ActualCost || 0
 
-                "TRIP_PROFIT",
+);
 
 
 
-            Entity:
 
-                "TRIP",
 
+const profit =
+revenue - cost;
 
 
-            EntityID:
 
-                trip.TripID,
 
 
 
-            Revenue:
 
-                revenue,
+const transaction={
 
 
 
-            Cost:
+TransactionID:
 
-                cost,
+IdService.generate(
+"FIN"
+),
 
 
 
-            Profit:
+OrganizationID:
 
-                profit,
+this.getOrganizationID(),
 
 
-            CreatedAt:
 
-                new Date()
-                .toISOString()
+Type:
 
+"TRIP_PROFIT",
 
 
-        };
 
+Entity:
 
+"TRIP",
 
 
 
+EntityID:
 
-        Database.insert(
+trip.TripID,
 
-            "FinancialTransactions",
 
-            transaction
 
-        );
+Revenue:
 
+revenue,
 
 
 
+Cost:
 
+cost,
 
 
-        EventBus.emit(
 
-            "TRIP_PROFIT_CALCULATED",
+Profit:
 
-            {
+profit,
 
-                transaction,
 
-                profit
 
+CreatedAt:
 
-            }
-
-
-        );
-
-
-
-
-
-
-
-        Logger.log(
-
-            "FINANCE CREATED: "
-            +
-            transaction.TransactionID
-
-        );
-
-
-
-        return transaction;
-
-
-    },
-
-
-
-
-
-
-
-
-    getOrganizationID(){
-
-
-
-        if(
-            globalThis.OrganizationContext
-        ){
-
-
-            return OrganizationContext.get();
-
-
-        }
-
-
-
-
-
-        return "DEFAULT";
-
-
-    },
-
-
-
-
-
-
-
-
-
-    initClientFinance(client){
-
-
-
-        Logger.log(
-
-            "Finance profile created: "
-            +
-            client.Name
-
-        );
-
-
-
-    }
+new Date()
+.toISOString()
 
 
 
 };
+
+
+
+
+
+
+
+Database.insert(
+
+"FinancialTransactions",
+
+transaction
+
+);
+
+
+
+
+
+
+
+
+EventBus.emit(
+
+"TRIP_PROFIT_CALCULATED",
+
+{
+
+transaction,
+
+profit
+
+}
+
+);
+
+
+
+
+
+
+Logger.log(
+
+"FINANCE CREATED: "
++
+transaction.TransactionID
+
+);
+
+
+
+
+return transaction;
+
+
+
+},
+
+
+
+
+
+
+
+initClientFinance(client){
+
+
+
+if(!client){
+
+
+Logger.log(
+
+"FINANCE CLIENT EMPTY"
+
+);
+
+
+return null;
+
+
+}
+
+
+
+
+
+
+const profile={
+
+
+
+FinanceProfileID:
+
+IdService.generate(
+"FP"
+),
+
+
+
+OrganizationID:
+
+client.OrganizationID
+||
+this.getOrganizationID(),
+
+
+
+ClientID:
+
+client.ClientID,
+
+
+
+ClientName:
+
+client.Name,
+
+
+
+Balance:
+
+0,
+
+
+
+CreditLimit:
+
+0,
+
+
+
+Status:
+
+"ACTIVE",
+
+
+
+CreatedAt:
+
+new Date()
+.toISOString()
+
+
+
+};
+
+
+
+
+
+
+
+Database.insert(
+
+"ClientFinanceProfiles",
+
+profile
+
+);
+
+
+
+
+
+
+
+
+Logger.log(
+
+"FINANCE PROFILE CREATED: "
++
+profile.FinanceProfileID
+
+);
+
+
+
+
+
+return profile;
+
+
+
+},
+
+
+
+
+
+
+
+
+getOrganizationID(){
+
+
+
+if(
+
+globalThis.OrganizationContext
+
+){
+
+
+
+return OrganizationContext.get();
+
+
+}
+
+
+
+
+
+return "DEFAULT";
+
+
+}
+
+
+
+
+
+};
+
+
 
 
 
