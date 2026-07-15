@@ -1,236 +1,233 @@
 console.log("ModuleRegistry");
 
 
+
 const ModuleRegistry = {
 
 
-version:"0.3.0",
+    version:"0.4.0",
 
 
-modules:{},
-
-
-
-register(name,module){
-
-
-if(!name || !module){
-
-Logger.log(
-"MODULE REGISTER FAILED "
-+name
-);
-
-return false;
-
-}
+    modules:{},
 
 
 
-this.modules[name]={
+    initialized:false,
 
 
-name:name,
 
-instance:module,
 
-status:"LOADED",
 
-initialized:false,
+    register(name,module){
 
-error:null,
 
-startedAt:null
+
+        if(!module){
+
+
+            Logger.warn(
+
+                "MODULE REGISTER FAILED "
+                +
+                name
+
+            );
+
+
+            return false;
+
+        }
+
+
+
+
+
+        if(this.modules[name]){
+
+
+            Logger.log(
+
+                "MODULE ALREADY REGISTERED "
+                +
+                name
+
+            );
+
+
+            return false;
+
+        }
+
+
+
+
+
+        this.modules[name]=module;
+
+
+
+        Logger.log(
+
+            "MODULE REGISTERED: "
+            +
+            name
+
+        );
+
+
+
+        return true;
+
+
+    },
+
+
+
+
+
+
+
+    initAll(){
+
+
+
+        Object.keys(
+            this.modules
+        )
+        .forEach(name=>{
+
+
+
+            const module =
+                this.modules[name];
+
+
+
+            if(
+                typeof module.init==="function"
+            ){
+
+
+                try{
+
+
+                    module.init();
+
+
+
+                }
+                catch(e){
+
+
+                    Logger.error(
+
+                        "MODULE INIT ERROR "
+                        +
+                        name
+                        +
+                        " "
+                        +
+                        e.message
+
+                    );
+
+
+                }
+
+
+
+            }
+
+
+
+        });
+
+
+
+
+        this.initialized=true;
+
+
+
+        Logger.log(
+
+            "MODULE REGISTRY READY v"
+            +
+            this.version
+
+        );
+
+
+
+    },
+
+
+
+
+
+
+
+    get(name){
+
+
+        return this.modules[name];
+
+
+    },
+
+
+
+
+
+
+
+
+    health(){
+
+
+
+        return HealthContract.create(
+
+
+            "ModuleRegistry",
+
+
+            this.initialized
+            ?
+            "OK"
+            :
+            "WARNING",
+
+
+
+
+            {
+
+
+                version:this.version,
+
+
+                modules:
+                    Object.keys(
+                        this.modules
+                    )
+
+
+
+            }
+
+
+
+        );
+
+
+
+    }
+
 
 
 };
 
-
-
-Logger.log(
-"MODULE REGISTERED: "
-+name
-);
-
-
-return true;
-
-
-},
-
-
-
-
-init(name){
-
-
-const item=this.modules[name];
-
-
-if(!item){
-
-Logger.log(
-"MODULE NOT FOUND "
-+name
-);
-
-return false;
-
-}
-
-
-
-if(item.initialized){
-
-return true;
-
-}
-
-
-
-try{
-
-
-if(
-typeof item.instance.init==="function"
-){
-
-item.instance.init();
-
-}
-
-
-
-item.initialized=true;
-
-item.status="READY";
-
-item.startedAt=
-new Date()
-.toISOString();
-
-
-
-Logger.log(
-name+" READY"
-);
-
-
-return true;
-
-
-
-}
-
-catch(e){
-
-
-item.status="ERROR";
-
-item.error=e.message;
-
-
-Logger.log(
-name+" ERROR "+e.message
-);
-
-
-return false;
-
-
-}
-
-
-
-},
-
-
-
-
-
-initAll(){
-
-
-Object.keys(this.modules)
-.forEach(
-name=>{
-
-this.init(name);
-
-}
-
-);
-
-
-},
-reset(){
-
-
-this.modules={};
-
-
-Logger.log(
-"MODULE REGISTRY RESET COMPLETE"
-);
-
-
-return true;
-
-
-},
-
-
-
-
-health(){
-
-
-return {
-
-
-status:"OK",
-
-module:"ModuleRegistry",
-
-version:this.version,
-
-
-modules:
-
-Object.keys(this.modules)
-.map(name=>{
-
-
-let m=this.modules[name];
-
-
-return {
-
-
-Module:name,
-
-Status:m.status,
-
-Initialized:m.initialized,
-
-Error:m.error
-
-
-};
-
-
-})
-
-
-};
-
-
-
-}
-
-
-
-};
 
 
 

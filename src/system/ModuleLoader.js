@@ -5,279 +5,307 @@ console.log("ModuleLoader");
 const ModuleLoader = {
 
 
-    version:"0.5.0",
+version:"0.6.0",
 
 
-    loaded:[],
+loaded:[],
 
 
-    initialized:false,
+coreLoaded:[],
 
 
+initialized:false,
 
 
-    loadCore(){
 
 
 
-        Logger.log(
-            "MODULE LOADER START"
-        );
+loadCore(){
 
 
 
-        const modules=[
+Logger.log(
+"CORE LOADER START"
+);
 
 
-            // CORE MODEL
 
-            "EntityConstants",
 
-            "EntityEvents",
+const core=[
 
-            "EntityMetadata",
 
-            "EntityRegistry",
+"EntityConstants",
 
+"EntityEvents",
 
+"EntityMetadata",
 
-            // INFRASTRUCTURE
+"EntityRegistry",
 
-            "Database",
+"Database",
 
-            "SchemaManager",
+"SchemaManager",
 
-            "EventBus",
+"EventBus"
 
 
+];
 
-            // BUSINESS MODULES
 
-            "TripEventHandler",
 
-            "FinanceEngine",
 
-            "KPIEngine",
 
-            "DashboardEngine",
+core.forEach(name=>{
 
-            "ClientEventHandler",
 
-            "AuditEventHandler"
+const component =
+globalThis[name];
 
 
-        ];
 
+if(component){
 
 
+CoreRegistry.register(
+name,
+component
+);
 
 
+this.coreLoaded.push(
+name
+);
 
-        modules.forEach(name=>{
 
 
+}
 
-            const module =
-                globalThis[name];
 
+else{
 
 
-            if(module){
+Logger.warn(
 
+"CORE NOT FOUND "
++
+name
 
+);
 
-                const registered =
-                    ModuleRegistry.register(
 
-                        name,
+}
 
-                        module
 
-                    );
 
+});
 
 
-                if(registered){
 
+Logger.log(
 
+"CORE LOADER COMPLETE"
 
-                    this.loaded.push(
+);
 
-                        name
 
-                    );
 
+},
 
 
-                    Logger.log(
 
-                        "LOADED "
-                        +
-                        name
 
-                    );
 
 
 
-                }
+loadModules(){
 
 
 
-            }
+Logger.log(
 
-            else{
+"MODULE LOADER START"
 
+);
 
 
-                Logger.warn(
 
-                    "MODULE NOT FOUND: "
-                    +
-                    name
 
-                );
+const modules=[
 
 
+"TripEventHandler",
 
-            }
+"FinanceEngine",
 
+"KPIEngine",
 
+"DashboardEngine",
 
-        });
+"ClientEventHandler",
 
+"AuditEventHandler"
 
 
+];
 
 
 
-        Logger.log(
 
-            "MODULE LOADER COMPLETE"
 
-        );
+modules.forEach(name=>{
 
 
+const module =
+globalThis[name];
 
-    },
 
 
+if(module){
 
 
+ModuleRegistry.register(
 
+name,
 
+module
 
+);
 
-    initAll(){
 
 
+this.loaded.push(
+name
+);
 
-        if(this.initialized){
 
 
+Logger.log(
 
-            Logger.log(
+"LOADED "
++
+name
 
-                "MODULES ALREADY INITIALIZED"
+);
 
-            );
 
 
-            return;
+}
 
 
-        }
+else{
 
 
+Logger.warn(
 
+"MODULE NOT FOUND "
++
+name
 
+);
 
 
-        ModuleRegistry.initAll();
 
+}
 
 
+});
 
 
-        this.initialized=true;
 
 
+Logger.log(
 
+"MODULE LOADER COMPLETE"
 
+);
 
-        Logger.log(
 
-            "MODULE LOADER READY v"
-            +
-            this.version
 
-        );
+},
 
 
 
-    },
 
 
 
 
+initAll(){
 
 
 
+if(this.initialized)
+return;
 
 
-    health(){
 
+CoreRegistry.initAll();
 
 
-        return HealthContract.create(
+ModuleRegistry.initAll();
 
 
-            "ModuleLoader",
 
+this.initialized=true;
 
-            this.initialized
 
-            ?
 
-            "OK"
+Logger.log(
 
-            :
+"MODULE LOADER READY v"
++
+this.version
 
-            "WARNING",
+);
 
 
 
+},
 
 
-            {
 
 
-                version:this.version,
 
 
 
-                loaded:this.loaded,
+health(){
 
 
+return HealthContract.create(
 
-                initialized:
-                    this.initialized
+"ModuleLoader",
 
+this.initialized
+?
+"OK"
+:
+"WARNING",
 
 
-            }
+{
 
 
+version:this.version,
 
-        );
 
+core:
+this.coreLoaded,
 
 
-    }
+modules:
+this.loaded
+
+
+}
+
+
+);
+
+
+}
 
 
 
 };
-
 
 
 
