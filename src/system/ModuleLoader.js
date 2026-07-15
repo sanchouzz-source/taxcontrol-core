@@ -1,11 +1,10 @@
 console.log("ModuleLoader");
 
 
-
 const ModuleLoader = {
 
 
-version:"0.6.0",
+version:"0.7.0",
 
 
 loaded:[],
@@ -15,6 +14,89 @@ coreLoaded:[],
 
 
 initialized:false,
+
+
+
+coreOrder:[
+
+
+"Logger",
+
+
+"AuditConstants",
+
+"PermissionConstants",
+
+"RoleConstants",
+
+
+
+"Database",
+
+"SchemaManager",
+
+
+
+"EntityConstants",
+
+"EntityEvents",
+
+"EntityMetadata",
+
+"EntityRegistry",
+
+
+
+"ClientValidator",
+
+"TripValidator",
+
+
+
+"EventBus",
+
+
+
+"SecurityGuard",
+
+
+
+"AuditLog",
+
+"AuditEventHandler",
+
+
+
+"BaseRepository",
+
+"ClientRepository",
+
+"TripRepository"
+
+
+],
+
+
+
+
+
+moduleOrder:[
+
+
+"ClientEventHandler",
+
+"TripEventHandler",
+
+
+"FinanceEngine",
+
+"KPIEngine",
+
+"DashboardEngine"
+
+
+],
+
 
 
 
@@ -31,40 +113,17 @@ Logger.log(
 
 
 
-const core=[
-
-"Logger",
-"AuditConstants",
-"PermissionConstants",
-
-"ClientValidator",
-"TripValidator",
-
-"EntityConstants",
-"EntityEvents",
-"EntityMetadata",
-"EntityRegistry",
-
-"Database",
-"SchemaManager",
-
-"EventBus",
-
-"SecurityGuard",
-
-"AuditLog",
-
-"AuditEventHandler",
-
-"Repositories"
-
-];
+this.coreOrder.forEach(name=>{
 
 
+if(
+this.coreLoaded.includes(name)
+){
 
+return;
 
+}
 
-core.forEach(name=>{
 
 
 const component =
@@ -72,17 +131,74 @@ globalThis[name];
 
 
 
+
 if(component){
 
 
+
+const priorities={
+
+
+Logger:0,
+
+AuditConstants:1,
+
+PermissionConstants:2,
+
+RoleConstants:3,
+
+
+Database:10,
+
+SchemaManager:11,
+
+
+EntityConstants:20,
+
+EntityEvents:21,
+
+EntityMetadata:22,
+
+EntityRegistry:23,
+
+
+EventBus:30,
+
+
+SecurityGuard:40,
+
+AuditLog:41,
+
+AuditEventHandler:42,
+
+
+BaseRepository:50,
+
+ClientRepository:51,
+
+TripRepository:52
+
+
+};
+
+
+
 CoreRegistry.register(
+
 name,
-component
+
+component,
+
+priorities[name] || 100
+
 );
 
 
+
 this.coreLoaded.push(
+
 name
+
 );
 
 
@@ -107,6 +223,7 @@ name
 
 
 });
+
 
 
 
@@ -139,29 +256,18 @@ Logger.log(
 
 
 
-const modules=[
+this.moduleOrder.forEach(name=>{
 
 
-"TripEventHandler",
+if(
+this.loaded.includes(name)
+){
 
-"FinanceEngine",
+return;
 
-"KPIEngine",
-
-"DashboardEngine",
-
-"ClientEventHandler",
-
-"AuditEventHandler"
+}
 
 
-];
-
-
-
-
-
-modules.forEach(name=>{
 
 
 const module =
@@ -169,7 +275,9 @@ globalThis[name];
 
 
 
+
 if(module){
+
 
 
 ModuleRegistry.register(
@@ -183,14 +291,16 @@ module
 
 
 this.loaded.push(
+
 name
+
 );
 
 
 
 Logger.log(
 
-"LOADED "
+"MODULE LOADED "
 +
 name
 
@@ -217,7 +327,9 @@ name
 }
 
 
+
 });
+
 
 
 
@@ -242,19 +354,54 @@ initAll(){
 
 
 
-if(this.initialized)
+if(this.initialized){
+
+
+Logger.log(
+
+"MODULE LOADER ALREADY READY"
+
+);
+
+
 return;
+
+
+}
+
+
+
+
+
+Logger.log(
+
+"SYSTEM COMPONENT INITIALIZATION START"
+
+);
+
+
+
+
+this.loadCore();
 
 
 
 CoreRegistry.initAll();
 
 
+
+
+this.loadModules();
+
+
+
 ModuleRegistry.initAll();
 
 
 
+
 this.initialized=true;
+
 
 
 
@@ -276,7 +423,39 @@ this.version
 
 
 
+getStatus(){
+
+
+
+return {
+
+
+version:this.version,
+
+
+initialized:this.initialized,
+
+
+coreLoaded:this.coreLoaded,
+
+
+modulesLoaded:this.loaded
+
+
+};
+
+
+
+},
+
+
+
+
+
+
+
 health(){
+
 
 
 return HealthContract.create(
@@ -284,9 +463,13 @@ return HealthContract.create(
 "ModuleLoader",
 
 this.initialized
+
 ?
+
 "OK"
+
 :
+
 "WARNING",
 
 
@@ -296,18 +479,21 @@ this.initialized
 version:this.version,
 
 
-core:
-this.coreLoaded,
+core:this.coreLoaded,
 
 
-modules:
-this.loaded
+modules:this.loaded,
+
+
+initialized:this.initialized
 
 
 }
 
 
+
 );
+
 
 
 }

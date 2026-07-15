@@ -51,7 +51,7 @@ PERMISSION_CLIENT_RESTORE
 
 
 validator:
-ClientValidator,
+()=>ClientValidator,
 
 
 
@@ -125,8 +125,7 @@ PERMISSION_TRIP_RESTORE
 
 
 validator:
-TripValidator,
-
+()=>TripValidator,
 
 
 events:{

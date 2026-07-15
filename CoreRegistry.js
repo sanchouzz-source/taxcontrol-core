@@ -5,186 +5,352 @@ console.log("CoreRegistry");
 const CoreRegistry = {
 
 
-    version:"0.1.0",
+version:"0.2.0",
 
 
-    loaded:{},
+loaded:{},
 
 
-    initialized:false,
+metadata:{},
 
 
+initialized:false,
 
 
-    register(name, component){
 
 
-        if(!component){
 
+register(
+    name,
+    component,
+    priority=100
+){
 
-            Logger.warn(
-                "CORE REGISTER FAILED: "
-                +
-                name
-            );
 
 
-            return false;
+if(!component){
 
-        }
 
+Logger.warn(
 
+"CORE REGISTER FAILED: "
++
+name
 
-        if(this.loaded[name]){
+);
 
 
-            Logger.log(
+return false;
 
-                "CORE ALREADY REGISTERED "
-                +
-                name
 
-            );
+}
 
 
-            return false;
 
-        }
 
+if(this.loaded[name]){
 
 
-        this.loaded[name]=component;
+Logger.log(
 
+"CORE ALREADY REGISTERED "
++
+name
 
+);
 
-        Logger.log(
 
-            "CORE REGISTERED: "
-            +
-            name
 
-        );
+return false;
 
 
+}
 
-        return true;
 
 
-    },
 
 
+this.loaded[name]=component;
 
 
 
+this.metadata[name]={
 
-    initAll(){
+priority:priority,
 
+initialized:false
 
+};
 
-        Object.keys(
-            this.loaded
-        )
-        .forEach(name=>{
 
 
-            const component =
-                this.loaded[name];
 
 
+Logger.log(
 
-            if(
-                typeof component.init==="function"
-            ){
+"CORE REGISTERED: "
++
+name
++
+" PRIORITY "
++
+priority
 
+);
 
-                component.init();
 
 
-            }
 
+return true;
 
 
-        });
+},
 
 
 
 
-        this.initialized=true;
 
 
 
+initAll(){
 
-        Logger.log(
 
-            "CORE REGISTRY READY v"
-            +
-            this.version
 
-        );
+if(this.initialized){
 
 
+Logger.log(
 
-    },
+"CORE REGISTRY ALREADY READY"
 
+);
 
 
+return;
 
 
+}
 
 
 
-    get(name){
 
 
-        return this.loaded[name];
+Logger.log(
 
+"CORE INITIALIZATION START"
 
-    },
+);
 
 
 
 
 
+const queue =
 
+Object.keys(
+this.loaded
+)
 
+.sort(
 
-    health(){
+(a,b)=>{
 
 
-        return HealthContract.create(
+return (
 
+this.metadata[a].priority
 
-            "CoreRegistry",
+-
 
+this.metadata[b].priority
 
-            this.initialized
-            ?
-            "OK"
-            :
-            "WARNING",
+);
 
 
+}
 
-            {
+);
 
 
-                version:this.version,
 
 
-                coreComponents:
-                    Object.keys(
-                        this.loaded
-                    )
 
 
+queue.forEach(name=>{
 
-            }
 
 
+const component =
+this.loaded[name];
 
-        );
 
-    }
+
+try{
+
+
+
+if(
+typeof component.init==="function"
+){
+
+
+
+component.init();
+
+
+
+}
+
+
+
+
+this.metadata[name]
+.initialized=true;
+
+
+
+Logger.log(
+
+"CORE INITIALIZED: "
++
+name
+
+);
+
+
+
+}
+
+catch(error){
+
+
+
+Logger.error(
+
+"CORE INIT FAILED "
++
+name
++
+" : "
++
+error.message
+
+);
+
+
+
+}
+
+
+
+});
+
+
+
+
+
+
+this.initialized=true;
+
+
+
+
+Logger.log(
+
+"CORE REGISTRY READY v"
++
+this.version
+
+);
+
+
+
+},
+
+
+
+
+
+
+
+get(name){
+
+
+return this.loaded[name];
+
+
+},
+
+
+
+
+
+
+
+getPriority(name){
+
+
+return this.metadata[name]
+?
+this.metadata[name].priority
+:
+null;
+
+
+},
+
+
+
+
+
+
+
+health(){
+
+
+
+return HealthContract.create(
+
+
+"CoreRegistry",
+
+
+this.initialized
+
+?
+
+"OK"
+
+:
+
+"WARNING",
+
+
+
+{
+
+
+version:this.version,
+
+
+components:
+
+Object.keys(
+this.loaded
+),
+
+
+metadata:this.metadata
+
+
+}
+
+
+
+);
+
+
+}
 
 
 
