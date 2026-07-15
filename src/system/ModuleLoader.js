@@ -37,6 +37,9 @@ const core=[
 "AuditConstants",
 "PermissionConstants",
 
+"ClientValidator",
+"TripValidator",
+
 "EntityConstants",
 "EntityEvents",
 "EntityMetadata",

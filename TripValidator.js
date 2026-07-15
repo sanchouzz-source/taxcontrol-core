@@ -1,75 +1,88 @@
+console.log("TripValidator");
+
+
+
 const TripValidator = {
 
 
-    validate(data) {
+
+version:"0.1.0",
 
 
-        if (!data.ClientID) {
-
-            throw new Error(
-                "ClientID is required"
-            );
-
-        }
 
 
-        if (!data.LoadingPoint) {
 
-            throw new Error(
-                "LoadingPoint is required"
-            );
-
-        }
+validate(data){
 
 
-        if (!data.UnloadingPoint) {
+if(!data){
 
-            throw new Error(
-                "UnloadingPoint is required"
-            );
+throw new Error(
+"Trip data required"
+);
 
-        }
-
-
-        if (!data.Status) {
-
-            data.Status = "NEW";
-
-        }
+}
 
 
-        if (!data.Revenue) {
-
-            data.Revenue = 0;
-
-        }
 
 
-        if (!data.PlannedCost) {
-
-            data.PlannedCost = 0;
-
-        }
+return {
 
 
-        if (!data.ActualCost) {
-
-            data.ActualCost = 0;
-
-        }
+...data,
 
 
-        data.Margin =
-            Number(data.Revenue)
-            -
-            Number(data.ActualCost);
+Status:
+data.Status || "NEW",
 
 
-        return data;
 
-    }
+CreatedAt:
+data.CreatedAt ||
+new Date().toISOString(),
+
+
+
+UpdatedAt:
+new Date().toISOString()
+
+
 
 };
 
 
-globalThis.TripValidator = TripValidator;
+},
+
+
+
+
+
+health(){
+
+
+return HealthContract.create(
+
+"TripValidator",
+
+"OK",
+
+{
+
+version:this.version
+
+}
+
+);
+
+
+}
+
+
+
+};
+
+
+
+
+globalThis.TripValidator =
+TripValidator;
