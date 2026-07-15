@@ -1,10 +1,11 @@
 console.log("EntityRegistry");
 
 
+
 const EntityRegistry = {
 
 
-version:"0.3.0",
+version:"0.4.0",
 
 
 
@@ -73,6 +74,7 @@ PERMISSION_CLIENT_READ
 }
 
 
+
 }
 
 
@@ -82,13 +84,13 @@ PERMISSION_CLIENT_READ
 
 
 
+
 globalThis.EntityRegistry =
 EntityRegistry;
 
 
 
-
-Logger.log(
+console.log(
 "EntityRegistry READY v"
 +
 EntityRegistry.version

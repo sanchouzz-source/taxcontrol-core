@@ -1,18 +1,15 @@
 console.log("AuditEventHandler");
 
 
+
 const AuditEventHandler = {
 
 
-version:"0.9.0",
+version:"1.0.0",
 
 
 
 registered:{},
-
-
-
-initialized:false,
 
 
 
@@ -21,26 +18,9 @@ initialized:false,
 init(){
 
 
-
-if(this.initialized){
-
-Logger.log(
-"AuditEventHandler ALREADY READY"
-);
-
-return true;
-
-}
-
-
-
 this.registerEntity(
 EntityRegistry.CLIENT
 );
-
-
-
-this.initialized=true;
 
 
 
@@ -66,10 +46,11 @@ return true;
 registerEntity(entity){
 
 
+
 if(!entity){
 
 Logger.log(
-"AUDIT ENTITY NOT FOUND"
+"AUDIT REGISTER FAILED ENTITY NOT FOUND"
 );
 
 return;
@@ -78,7 +59,10 @@ return;
 
 
 
-if(!entity.audit){
+
+if(
+!entity.audit
+){
 
 Logger.log(
 "AUDIT SKIP "
@@ -93,18 +77,13 @@ return;
 
 
 
-if(this.registered[entity.entity]){
-
-Logger.log(
-"AUDIT ALREADY REGISTERED "
-+
-entity.entity
-);
+if(
+this.registered[entity.entity]
+){
 
 return;
 
 }
-
 
 
 
@@ -116,6 +95,7 @@ entity.events.created,
 
 event=>{
 
+
 this.writeAudit(
 ACTION_CREATE,
 entity,
@@ -123,9 +103,11 @@ null,
 event.after
 );
 
+
 }
 
 );
+
 
 
 
@@ -137,6 +119,7 @@ entity.events.updated,
 
 event=>{
 
+
 this.writeAudit(
 ACTION_UPDATE,
 entity,
@@ -144,9 +127,12 @@ event.before,
 event.after
 );
 
+
 }
 
 );
+
+
 
 
 
@@ -158,6 +144,7 @@ entity.events.deleted,
 
 event=>{
 
+
 this.writeAudit(
 ACTION_DELETE,
 entity,
@@ -165,9 +152,12 @@ event.before,
 event.after
 );
 
+
 }
 
 );
+
+
 
 
 
@@ -179,12 +169,14 @@ entity.events.restored,
 
 event=>{
 
+
 this.writeAudit(
 ACTION_RESTORE,
 entity,
 event.before,
 event.after
 );
+
 
 }
 
@@ -201,7 +193,6 @@ entity.entity
 
 
 
-
 Logger.log(
 
 "AUDIT REGISTERED ENTITY "
@@ -209,7 +200,6 @@ Logger.log(
 entity.entity
 
 );
-
 
 
 },
@@ -230,10 +220,28 @@ after
 ){
 
 
-if(!after){
+
+if(
+!action
+){
 
 Logger.log(
-"AUDIT WITHOUT AFTER "
+"AUDIT ERROR ACTION EMPTY"
+);
+
+return;
+
+}
+
+
+
+
+if(
+!after
+){
+
+Logger.log(
+"AUDIT EMPTY AFTER "
 +
 entity.entity
 );
@@ -273,14 +281,15 @@ entity.entity
 +
 " "
 +
-after[entity.idField]
+after[
+entity.idField
+]
 
 );
 
 
 
 },
-
 
 
 
@@ -306,8 +315,20 @@ version:this.version,
 registered:
 Object.keys(
 this.registered
-)
+),
 
+
+dependencies:{
+
+
+EventBus:!!EventBus,
+
+AuditLog:!!AuditLog,
+
+EntityRegistry:!!EntityRegistry
+
+
+}
 
 
 }
