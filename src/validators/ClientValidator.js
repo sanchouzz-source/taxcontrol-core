@@ -1,30 +1,131 @@
+console.log("ClientValidator");
+
+
+
 const ClientValidator = {
 
-    validate(data) {
 
-        if (!data) {
-            throw new Error("ClientValidator: empty data");
-        }
 
-        if (!data.Name || data.Name.trim() === "") {
-            throw new Error("Name is required");
-        }
+version:"0.1.0",
 
-        if (!data.INN) {
-            throw new Error("INN is required");
-        }
 
-        // 🧠 FIX: always enforce ClientID
-        if (!data.ClientID || data.ClientID === "") {
-            data.ClientID = IdService.generate("CLI");
-        }
 
-        if (!data.OrganizationID) {
-            data.OrganizationID =
-                PropertiesService.getScriptProperties().getProperty("CURRENT_ORG");
-        }
+validate(data){
 
-        return data;
-    }
+
+if(!data){
+
+throw new Error(
+"Client data required"
+);
+
+}
+
+
+
+if(!data.Name){
+
+
+throw new Error(
+"Client Name required"
+);
+
+
+}
+
+
+
+return {
+
+
+...data,
+
+
+Name:
+String(data.Name).trim(),
+
+
+
+INN:
+data.INN || "",
+
+
+
+Phone:
+data.Phone || "",
+
+
+
+Email:
+data.Email || "",
+
+
+
+Address:
+data.Address || "",
+
+
+
+ManagerID:
+data.ManagerID || "",
+
+
+
+Rating:
+data.Rating || "",
+
+
+
+Status:
+data.Status || "ACTIVE",
+
+
+
+Deleted:
+data.Deleted || false,
+
+
+
+UpdatedAt:
+new Date().toISOString()
+
+
+
 };
-globalThis.ClientValidator = ClientValidator;
+
+
+},
+
+
+
+
+
+health(){
+
+
+return HealthContract.create(
+
+"ClientValidator",
+
+"OK",
+
+{
+
+version:this.version
+
+}
+
+);
+
+
+}
+
+
+
+};
+
+
+
+
+globalThis.ClientValidator =
+ClientValidator;
