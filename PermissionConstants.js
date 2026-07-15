@@ -4,54 +4,184 @@ console.log("PermissionConstants");
 const PermissionConstants = {
 
 
-    CLIENT_CREATE:
-        "CLIENT_CREATE",
-
-    CLIENT_UPDATE:
-        "CLIENT_UPDATE",
-
-    CLIENT_DELETE:
-        "CLIENT_DELETE",
+    version:"0.3.0",
 
 
-    TRIP_CREATE:
-        "TRIP_CREATE",
 
-    TRIP_UPDATE:
-        "TRIP_UPDATE",
-
-    TRIP_DELETE:
-        "TRIP_DELETE",
+    CLIENT:{
 
 
-    PAYMENT_CREATE:
-        "PAYMENT_CREATE",
+        CREATE:"CLIENT_CREATE",
 
-    PAYMENT_UPDATE:
-        "PAYMENT_UPDATE",
+        READ:"CLIENT_READ",
+
+        UPDATE:"CLIENT_UPDATE",
+
+        DELETE:"CLIENT_DELETE",
+
+        RESTORE:"CLIENT_RESTORE"
 
 
-    DOCUMENT_CREATE:
-        "DOCUMENT_CREATE"
+    },
+
+
+
+    TRIP:{
+
+
+        CREATE:"TRIP_CREATE",
+
+        READ:"TRIP_READ",
+
+        UPDATE:"TRIP_UPDATE",
+
+        DELETE:"TRIP_DELETE",
+
+        RESTORE:"TRIP_RESTORE"
+
+
+    },
+
+
+
+    FINANCE:{
+
+
+        VIEW:"FINANCE_VIEW",
+
+        CREATE:"FINANCE_CREATE",
+
+        UPDATE:"FINANCE_UPDATE",
+
+        DELETE:"FINANCE_DELETE"
+
+
+    },
+
+
+
+    REPORT:{
+
+
+        VIEW:"REPORT_VIEW",
+
+        EXPORT:"REPORT_EXPORT"
+
+
+    },
+
+
+
+    SYSTEM:{
+
+
+        ADMIN:"SYSTEM_ADMIN",
+
+        CONFIG:"SYSTEM_CONFIG",
+
+        AUDIT_VIEW:"AUDIT_VIEW"
+
+
+    },
+
+
+
+
+
+
+    all(){
+
+
+        return [
+
+            ...Object.values(this.CLIENT),
+
+            ...Object.values(this.TRIP),
+
+            ...Object.values(this.FINANCE),
+
+            ...Object.values(this.REPORT),
+
+            ...Object.values(this.SYSTEM)
+
+        ];
+
+
+    },
+
+
+
+
+
+
+    registerGlobal(){
+
+
+
+        this.all()
+        .forEach(permission=>{
+
+
+            const key =
+                "PERMISSION_" +
+                permission;
+
+
+            globalThis[key]=permission;
+
+
+        });
+
+
+
+        Logger.log(
+            "PERMISSION CONSTANTS REGISTERED"
+        );
+
+
+    },
+
+
+
+
+
+
+
+    health(){
+
+
+        return HealthContract.create(
+
+            "PermissionConstants",
+
+            "OK",
+
+            {
+
+                version:this.version,
+
+                permissions:
+                    this.all().length
+
+            }
+
+
+        );
+
+
+    }
+
 
 
 };
 
 
 
+
+
+PermissionConstants.registerGlobal();
+
+
+
 globalThis.PermissionConstants =
     PermissionConstants;
-
-
-
-// совместимость с Repository
-globalThis.PERMISSION_CLIENT_CREATE =
-    PermissionConstants.CLIENT_CREATE;
-
-
-globalThis.PERMISSION_CLIENT_UPDATE =
-    PermissionConstants.CLIENT_UPDATE;
-
-
-globalThis.PERMISSION_CLIENT_DELETE =
-    PermissionConstants.CLIENT_DELETE;

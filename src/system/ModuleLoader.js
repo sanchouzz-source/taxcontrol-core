@@ -34,21 +34,26 @@ Logger.log(
 const core=[
 
 "Logger",
+"AuditConstants",
+"PermissionConstants",
+
 "EntityConstants",
-
 "EntityEvents",
-
 "EntityMetadata",
-
 "EntityRegistry",
 
 "Database",
-
 "SchemaManager",
 
 "EventBus",
 
-"SecurityGuard"
+"SecurityGuard",
+
+"AuditLog",
+
+"AuditEventHandler",
+
+"Repositories"
 
 ];
 
