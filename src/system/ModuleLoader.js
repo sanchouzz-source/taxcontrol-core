@@ -68,6 +68,7 @@ coreOrder:[
 
 
 "BaseRepository",
+
 "RepositoryFactory",
 
 "ClientRepository",
@@ -131,7 +132,15 @@ return;
 const component =
 globalThis[name];
 
-
+Logger.log(
+"CHECK CORE "
++
+name
++
+": "
++
+!!component
+);
 
 
 if(component){
