@@ -174,3 +174,9 @@ RepositoryFactory.register(
 
 globalThis.ClientRepository =
 ClientRepository;
+
+
+RepositoryFactory.register(
+    "ClientRepository",
+    ClientRepository
+);

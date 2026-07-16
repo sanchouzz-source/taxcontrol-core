@@ -4,119 +4,130 @@ console.log("RepositoryFactory");
 const RepositoryFactory = {
 
 
-version:"0.1.0",
+    version:"0.1.0",
 
 
-repositories:{},
+    repositories:{},
 
 
 
+    register(
+        name,
+        repository
+    ){
 
-register(
-    entity,
-    repository
-){
 
+        if(
+            !repository
+        ){
 
-this.repositories[entity]=repository;
+            throw new Error(
+                "Repository missing: "
+                +
+                name
+            );
 
+        }
 
 
-Logger.log(
 
-"REPOSITORY REGISTERED: "
-+
-entity
+        this.repositories[name]=repository;
 
-);
 
 
+        Logger.log(
+            "REPOSITORY REGISTERED: "
+            +
+            name
+        );
 
-},
 
+    },
 
 
 
 
 
-get(entity){
+    get(name){
 
 
+        const repo =
+            this.repositories[name];
 
-const repo =
-this.repositories[entity];
 
 
+        if(!repo){
 
 
-if(!repo){
+            throw new Error(
 
+                "Repository not found: "
+                +
+                name
 
-throw new Error(
+            );
 
-"Repository not found: "
-+
-entity
 
-);
+        }
 
 
-}
+        return repo;
 
 
+    },
 
 
-return repo;
 
 
 
-},
 
+    init(){
 
 
+        Logger.log(
+            "RepositoryFactory READY v"
+            +
+            this.version
+        );
 
 
+    },
 
 
-health(){
 
 
-return HealthContract.create(
 
 
-"RepositoryFactory",
 
+    health(){
 
-"OK",
 
+        return HealthContract.create(
 
-{
+            "RepositoryFactory",
 
+            "OK",
 
-version:this.version,
+            {
 
+                version:this.version,
 
-repositories:
-Object.keys(
-this.repositories
-)
+                repositories:
+                    Object.keys(
+                        this.repositories
+                    )
 
 
+            }
 
-}
+        );
 
 
-
-);
-
-
-
-}
+    }
 
 
 
 };
-
 
 
 

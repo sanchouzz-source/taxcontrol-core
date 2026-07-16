@@ -168,11 +168,13 @@ baseRepository:
 
 };
 
-RepositoryFactory.register(
-    "TRIP",
-    TripRepository
-);
 
 
 globalThis.TripRepository =
 TripRepository;
+
+
+RepositoryFactory.register(
+    "TripRepository",
+    TripRepository
+);
