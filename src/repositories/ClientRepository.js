@@ -7,10 +7,33 @@ const ClientRepository = {
 version:"0.6.0",
 
 
-
 entity:
 EntityRegistry.CLIENT,
 
+
+
+init(){
+
+
+    RepositoryFactory.register(
+
+        "ClientRepository",
+
+        this
+
+    );
+
+
+    Logger.log(
+
+        "ClientRepository READY v"
+        +
+        this.version
+
+    );
+
+
+},
 
 
 
@@ -28,7 +51,6 @@ create(data){
 
 
 },
-
 
 
 
@@ -56,7 +78,6 @@ update(id,data){
 
 
 
-
 getById(id){
 
 
@@ -76,21 +97,6 @@ getById(id){
 
 
 
-
-findById(id){
-
-
-    return this.getById(id);
-
-
-},
-
-
-
-
-
-
-
 list(){
 
 
@@ -102,7 +108,6 @@ list(){
 
 
 },
-
 
 
 
@@ -128,7 +133,6 @@ delete(id){
 
 
 
-
 restore(id){
 
 
@@ -148,42 +152,43 @@ restore(id){
 
 
 
-
 health(){
 
 
 
-return HealthContract.create(
+    return HealthContract.create(
 
-"ClientRepository",
+        "ClientRepository",
 
-"OK",
+        "OK",
 
-{
-
-
-version:this.version,
+        {
 
 
-entity:
-this.entity.entity,
+            version:this.version,
 
 
-table:
-this.entity.table,
+            entity:
+            this.entity.entity,
 
 
-baseRepository:
-!!BaseRepository
+            baseRepository:
+            !!BaseRepository,
 
 
+            registered:
+            !!(
+                RepositoryFactory
+                &&
+                RepositoryFactory.repositories
+                &&
+                RepositoryFactory.repositories.ClientRepository
+            )
 
-}
 
+        }
 
-
-);
-
+    );
 
 
 }
@@ -198,24 +203,3 @@ baseRepository:
 
 globalThis.ClientRepository =
 ClientRepository;
-
-
-
-
-
-// регистрация в фабрике
-if(
-globalThis.RepositoryFactory
-){
-
-
-RepositoryFactory.register(
-
-"CLIENT",
-
-ClientRepository
-
-);
-
-
-}

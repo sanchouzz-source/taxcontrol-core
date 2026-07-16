@@ -1,13 +1,10 @@
 console.log("TripRepository");
 
 
-
 const TripRepository = {
 
 
-
-version:"0.5.0",
-
+version:"0.6.0",
 
 
 entity:
@@ -15,18 +12,37 @@ EntityRegistry.TRIP,
 
 
 
+init(){
+
+
+    RepositoryFactory.register(
+        "TripRepository",
+        this
+    );
+
+
+    Logger.log(
+        "TripRepository READY v"
+        +
+        this.version
+    );
+
+
+},
+
+
 
 
 create(data){
 
 
-return BaseRepository.create(
+    return BaseRepository.create(
 
-this.entity,
+        this.entity,
 
-data
+        data
 
-);
+    );
 
 
 },
@@ -39,15 +55,15 @@ data
 update(id,data){
 
 
-return BaseRepository.update(
+    return BaseRepository.update(
 
-this.entity,
+        this.entity,
 
-id,
+        id,
 
-data
+        data
 
-);
+    );
 
 
 },
@@ -60,13 +76,13 @@ data
 getById(id){
 
 
-return BaseRepository.getById(
+    return BaseRepository.getById(
 
-this.entity,
+        this.entity,
 
-id
+        id
 
-);
+    );
 
 
 },
@@ -79,11 +95,11 @@ id
 list(){
 
 
-return BaseRepository.list(
+    return BaseRepository.list(
 
-this.entity
+        this.entity
 
-);
+    );
 
 
 },
@@ -96,13 +112,13 @@ this.entity
 delete(id){
 
 
-return BaseRepository.delete(
+    return BaseRepository.delete(
 
-this.entity,
+        this.entity,
 
-id
+        id
 
-);
+    );
 
 
 },
@@ -115,17 +131,16 @@ id
 restore(id){
 
 
-return BaseRepository.restore(
+    return BaseRepository.restore(
 
-this.entity,
+        this.entity,
 
-id
+        id
 
-);
+    );
 
 
 },
-
 
 
 
@@ -148,11 +163,16 @@ return HealthContract.create(
 version:this.version,
 
 
-entity:this.entity.entity,
+entity:
+this.entity.entity,
 
 
 baseRepository:
-!!BaseRepository
+!!BaseRepository,
+
+
+registered:
+!!RepositoryFactory.repositories.TripRepository
 
 
 
@@ -160,6 +180,7 @@ baseRepository:
 
 
 );
+
 
 
 }
@@ -170,11 +191,7 @@ baseRepository:
 
 
 
+
+
 globalThis.TripRepository =
 TripRepository;
-
-
-RepositoryFactory.register(
-    "TripRepository",
-    TripRepository
-);
