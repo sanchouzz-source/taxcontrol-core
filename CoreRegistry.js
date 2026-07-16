@@ -5,7 +5,7 @@ console.log("CoreRegistry");
 const CoreRegistry = {
 
 
-version:"0.2.0",
+version:"0.3.0",
 
 
 loaded:{},
@@ -28,14 +28,33 @@ register(
 
 
 
+if(!name){
+
+
+Logger.error(
+"CORE REGISTER FAILED: EMPTY NAME"
+);
+
+
+return false;
+
+
+}
+
+
+
+
+
 if(!component){
 
 
-Logger.warn(
+Logger.error(
 
 "CORE REGISTER FAILED: "
 +
 name
++
+" COMPONENT EMPTY"
 
 );
 
@@ -48,17 +67,17 @@ return false;
 
 
 
+
 if(this.loaded[name]){
 
 
-Logger.log(
+Logger.warn(
 
-"CORE ALREADY REGISTERED "
+"CORE ALREADY REGISTERED: "
 +
 name
 
 );
-
 
 
 return false;
@@ -76,9 +95,20 @@ this.loaded[name]=component;
 
 this.metadata[name]={
 
+
 priority:priority,
 
-initialized:false
+
+initialized:false,
+
+
+status:"REGISTERED",
+
+
+version:
+component.version || null
+
+
 
 };
 
@@ -145,11 +175,7 @@ Logger.log(
 
 
 
-const queue =
-
-Object.keys(
-this.loaded
-)
+const queue = Object.keys(this.loaded)
 
 .sort(
 
@@ -185,18 +211,26 @@ this.loaded[name];
 
 
 
-try{
+const meta =
+this.metadata[name];
 
 
 
-if(
-typeof component.init==="function"
-){
 
 
+if(meta.initialized){
 
-component.init();
 
+Logger.log(
+
+"CORE SKIP ALREADY INITIALIZED: "
++
+name
+
+);
+
+
+return;
 
 
 }
@@ -204,8 +238,26 @@ component.init();
 
 
 
-this.metadata[name]
-.initialized=true;
+
+try{
+
+
+
+if(
+typeof component.init === "function"
+){
+
+
+component.init();
+
+
+}
+
+
+
+meta.initialized=true;
+
+meta.status="READY";
 
 
 
@@ -221,13 +273,22 @@ name
 
 }
 
+
+
 catch(error){
+
+
+
+meta.status="FAILED";
+
+meta.error=
+error.message;
 
 
 
 Logger.error(
 
-"CORE INIT FAILED "
+"CORE INIT FAILED: "
 +
 name
 +
@@ -251,7 +312,6 @@ error.message
 
 
 this.initialized=true;
-
 
 
 
@@ -283,14 +343,76 @@ return this.loaded[name];
 
 
 
+
+
+
+has(name){
+
+
+return !!this.loaded[name];
+
+
+},
+
+
+
+
+
+
+
 getPriority(name){
 
 
+
 return this.metadata[name]
+
 ?
+
 this.metadata[name].priority
+
 :
+
 null;
+
+
+},
+
+
+
+
+
+
+
+getStatus(name){
+
+
+
+return this.metadata[name]
+
+?
+
+this.metadata[name].status
+
+:
+
+"NOT_FOUND";
+
+
+},
+
+
+
+
+
+
+
+list(){
+
+
+
+return Object.keys(
+this.loaded
+);
 
 
 },
@@ -311,6 +433,7 @@ return HealthContract.create(
 "CoreRegistry",
 
 
+
 this.initialized
 
 ?
@@ -329,14 +452,21 @@ this.initialized
 version:this.version,
 
 
-components:
+initialized:this.initialized,
 
-Object.keys(
-this.loaded
-),
+
+components:this.loaded
+?
+
+Object.keys(this.loaded)
+
+:
+
+[],
 
 
 metadata:this.metadata
+
 
 
 }

@@ -1,147 +1,243 @@
 console.log("KPIRepository");
+
+
+
 const KPIRepository = {
 
 
-    create(data) {
+version:"0.6.0",
 
 
-    SecurityGuard.check(
-        "KPI_CREATE"
-    );
+
+entity:
+EntityRegistry.KPI,
 
 
-    if (!data.KPIID) {
-
-        data.KPIID =
-            IdService.generate("KPI");
-
-    }
 
 
-    data.OrganizationID =
-        OrganizationContext.get();
+
+create(data){
 
 
-    const result =
-        Database.insert(
-            "KPIMetrics",
-            data
-        );
+return BaseRepository.create(
 
+    this.entity,
 
-    AuditLog.write(
-        "CREATE",
-        "KPI",
-        null,
-        result
-    );
+    data
 
+);
 
-    return result;
 
 },
 
 
-    getById(id) {
 
 
-        SecurityGuard.check(
-            "KPI_READ"
-        );
 
 
-        return Database.find(
-            "KPIMetrics",
-            id
-        );
 
-    },
+update(id,data){
 
 
-    list(filters = {}) {
+return BaseRepository.update(
+
+    this.entity,
+
+    id,
+
+    data
+
+);
 
 
-        SecurityGuard.check(
-            "KPI_READ"
-        );
+},
 
 
-        return Database.query(
-            "KPIMetrics",
-            filters
-        );
-
-    },
 
 
-    update(id, data) {
 
 
-        SecurityGuard.check(
-            "KPI_UPDATE"
-        );
+
+getById(id){
 
 
-        const existing =
-            Database.find(
-                "KPIMetrics",
-                id
-            );
+return BaseRepository.getById(
+
+    this.entity,
+
+    id
+
+);
 
 
-        if (!existing) {
-
-            throw new Error(
-                "KPI not found"
-            );
-
-        }
+},
 
 
-        Versioning.save(
-            "KPI",
-            id,
-            existing
-        );
 
 
-        const merged = {
-
-            ...existing,
-
-            ...data
-
-        };
 
 
-        const updated =
-            Database.update(
-                "KPIMetrics",
-                id,
-                merged
-            );
+
+// совместимость EntityService
+
+findById(id){
 
 
-        AuditLog.write(
-            "UPDATE",
-            "KPI",
-            existing,
-            updated
-        );
+return this.getById(id);
 
 
-        EventBus.emit(
-            "KPI_UPDATED",
-            updated
-        );
+},
 
 
-        return updated;
+
+
+
+
+
+list(filters={}){
+
+
+return BaseRepository.list(
+
+    this.entity,
+
+    filters
+
+);
+
+
+},
+
+
+
+
+
+
+
+// совместимость EntityService
+
+findAll(filters={}){
+
+
+return this.list(filters);
+
+
+},
+
+
+
+
+
+
+
+delete(id){
+
+
+return BaseRepository.delete(
+
+    this.entity,
+
+    id
+
+);
+
+
+},
+
+
+
+
+
+
+
+restore(id){
+
+
+return BaseRepository.restore(
+
+    this.entity,
+
+    id
+
+);
+
+
+},
+
+
+
+
+
+
+
+health(){
+
+
+
+return HealthContract.create(
+
+    "KPIRepository",
+
+    "OK",
+
+    {
+
+
+        version:this.version,
+
+
+        entity:this.entity.entity,
+
+
+        baseRepository:
+        !!BaseRepository
+
 
     }
+
+
+);
+
+
+}
+
 
 
 };
 
 
-globalThis.KPIRepository = KPIRepository;
+
+
+
+
+
+globalThis.KPIRepository =
+KPIRepository;
+
+
+
+
+
+
+
+RepositoryFactory.register(
+
+    "KPIRepository",
+
+    KPIRepository
+
+);
+
+
+
+
+
+
+
+console.log(
+
+    "KPIRepository READY v"
+    +
+    KPIRepository.version
+
+);
