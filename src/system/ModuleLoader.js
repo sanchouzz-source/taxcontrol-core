@@ -75,6 +75,7 @@ coreOrder:[
 
 
 "TripRepository",
+"KPIRepository",
 "EntityService"
 
 ],
@@ -191,8 +192,9 @@ RepositoryFactory:51,
 ClientRepository:52,
 
 TripRepository:53,
+KPIRepository:54,
 
-EntityService:54
+EntityService:55
 };
 
 
