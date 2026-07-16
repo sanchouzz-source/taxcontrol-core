@@ -4,130 +4,219 @@ console.log("RepositoryFactory");
 const RepositoryFactory = {
 
 
-    version:"0.1.0",
+version:"0.2.0",
 
 
-    repositories:{},
-
-
-
-    register(
-        name,
-        repository
-    ){
-
-
-        if(
-            !repository
-        ){
-
-            throw new Error(
-                "Repository missing: "
-                +
-                name
-            );
-
-        }
+repositories:{},
 
 
 
-        this.repositories[name]=repository;
+aliases:{
+
+
+    CLIENT:"ClientRepository",
+
+    TRIP:"TripRepository"
+
+
+},
 
 
 
-        Logger.log(
-            "REPOSITORY REGISTERED: "
+
+
+register(
+    name,
+    repository
+){
+
+
+    if(!repository){
+
+        throw new Error(
+            "Repository missing: "
             +
             name
         );
 
-
-    },
-
+    }
 
 
 
-
-    get(name){
-
-
-        const repo =
-            this.repositories[name];
+    this.repositories[name]=repository;
 
 
 
-        if(!repo){
+    Logger.log(
+        "REPOSITORY REGISTERED: "
+        +
+        name
+    );
 
 
-            throw new Error(
-
-                "Repository not found: "
-                +
-                name
-
-            );
+},
 
 
-        }
 
+
+
+
+registerAlias(
+    entity,
+    repositoryName
+){
+
+
+    this.aliases[entity]=repositoryName;
+
+
+
+    Logger.log(
+        "REPOSITORY ALIAS: "
+        +
+        entity
+        +
+        " -> "
+        +
+        repositoryName
+    );
+
+
+},
+
+
+
+
+
+
+
+get(name){
+
+
+
+    let repo =
+        this.repositories[name];
+
+
+
+    if(repo){
 
         return repo;
 
-
-    },
-
+    }
 
 
 
 
-
-    init(){
-
-
-        Logger.log(
-            "RepositoryFactory READY v"
-            +
-            this.version
-        );
-
-
-    },
+    const alias =
+        this.aliases[name];
 
 
 
+    if(alias){
 
 
+        repo =
+        this.repositories[alias];
 
 
-    health(){
+        if(repo){
 
+            return repo;
 
-        return HealthContract.create(
-
-            "RepositoryFactory",
-
-            "OK",
-
-            {
-
-                version:this.version,
-
-                repositories:
-                    Object.keys(
-                        this.repositories
-                    )
-
-
-            }
-
-        );
+        }
 
 
     }
 
 
 
+
+
+
+    throw new Error(
+
+        "Repository not found: "
+        +
+        name
+
+    );
+
+
+},
+
+
+
+
+
+
+
+init(){
+
+
+
+    this.registerAlias(
+        "CLIENT",
+        "ClientRepository"
+    );
+
+
+    this.registerAlias(
+        "TRIP",
+        "TripRepository"
+    );
+
+
+
+    Logger.log(
+
+        "RepositoryFactory READY v"
+        +
+        this.version
+
+    );
+
+
+},
+
+
+
+
+
+
+
+health(){
+
+
+return HealthContract.create(
+
+"RepositoryFactory",
+
+"OK",
+
+{
+
+version:this.version,
+
+repositories:
+Object.keys(
+this.repositories
+),
+
+aliases:this.aliases
+
+
+}
+
+);
+
+
+}
+
+
+
 };
+
 
 
 
