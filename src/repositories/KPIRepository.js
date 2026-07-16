@@ -7,13 +7,9 @@ const KPIRepository = {
 version:"0.7.0",
 
 
-
 entity:
-EntityRegistry.KPI || 
-{
-    entity:"KPIMetrics",
-    table:"KPIMetrics"
-},
+EntityRegistry.KPI,
+
 
 
 
@@ -21,40 +17,33 @@ EntityRegistry.KPI ||
 create(data){
 
 
-SecurityGuard.check(
-    "KPI_CREATE"
-);
-
-
-
-if(!data.KPIID){
-
-
-data.KPIID =
-IdService.generate(
-    "KPI"
-);
-
-
-}
-
-
-
-if(globalThis.OrganizationContext){
-
-
-data.OrganizationID =
-OrganizationContext.get();
-
-
-}
-
-
-
-
 return BaseRepository.create(
-    this.entity,
-    data
+
+this.entity,
+
+data
+
+);
+
+
+},
+
+
+
+
+
+
+update(id,data){
+
+
+return BaseRepository.update(
+
+this.entity,
+
+id,
+
+data
+
 );
 
 
@@ -68,15 +57,12 @@ return BaseRepository.create(
 getById(id){
 
 
-SecurityGuard.check(
-    "KPI_READ"
-);
-
-
-
 return BaseRepository.getById(
-    this.entity,
-    id
+
+this.entity,
+
+id
+
 );
 
 
@@ -101,31 +87,13 @@ return this.getById(id);
 
 
 
-list(filters={}){
-
-
-SecurityGuard.check(
-    "KPI_READ"
-);
-
-
-
-if(filters &&
-Object.keys(filters).length){
-
-
-return BaseRepository.query(
-    this.entity,
-    filters
-);
-
-
-}
-
+list(){
 
 
 return BaseRepository.list(
-    this.entity
+
+this.entity
+
 );
 
 
@@ -135,6 +103,8 @@ return BaseRepository.list(
 
 
 
+
+// совместимость EntityService
 
 findAll(){
 
@@ -149,70 +119,15 @@ return this.list();
 
 
 
-update(id,data){
-
-
-SecurityGuard.check(
-    "KPI_UPDATE"
-);
-
-
-
-const existing =
-this.getById(id);
-
-
-
-if(!existing){
-
-
-throw new Error(
-"KPI not found"
-);
-
-
-}
-
-
-
-
-Versioning.save(
-    "KPI",
-    id,
-    existing
-);
-
-
-
-
-return BaseRepository.update(
-    this.entity,
-    id,
-    data
-);
-
-
-
-},
-
-
-
-
-
-
-
 delete(id){
 
 
-SecurityGuard.check(
-    "KPI_DELETE"
-);
-
-
-
 return BaseRepository.delete(
-    this.entity,
-    id
+
+this.entity,
+
+id
+
 );
 
 
@@ -226,15 +141,12 @@ return BaseRepository.delete(
 restore(id){
 
 
-SecurityGuard.check(
-    "KPI_RESTORE"
-);
-
-
-
 return BaseRepository.restore(
-    this.entity,
-    id
+
+this.entity,
+
+id
+
 );
 
 
@@ -252,9 +164,12 @@ health(){
 
 return HealthContract.create(
 
+
 "KPIRepository",
 
+
 "OK",
+
 
 {
 
@@ -262,8 +177,7 @@ return HealthContract.create(
 version:this.version,
 
 
-entity:
-this.entity.entity,
+entity:this.entity.entity,
 
 
 baseRepository:
@@ -274,8 +188,8 @@ baseRepository:
 }
 
 
-);
 
+);
 
 
 }
@@ -289,6 +203,8 @@ baseRepository:
 
 
 
+
+
 globalThis.KPIRepository =
 KPIRepository;
 
@@ -296,36 +212,44 @@ KPIRepository;
 
 
 
+
 // безопасная регистрация
 
-if(globalThis.RepositoryFactory){
+if(
+globalThis.RepositoryFactory
+){
 
 
 RepositoryFactory.register(
-    "KPIRepository",
-    KPIRepository
+
+"KPIRepository",
+
+KPIRepository
+
 );
 
 
-
 }
-
 else{
 
 
 Logger.warn(
+
 "RepositoryFactory not ready, delayed registration"
+
 );
 
 
-
 }
+
 
 
 
 
 console.log(
+
 "KPIRepository READY v"
 +
 KPIRepository.version
+
 );
