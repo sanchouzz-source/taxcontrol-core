@@ -89,7 +89,18 @@ getById(id){
 
 
 
+findById(id){
 
+    return this.getById(id);
+
+},
+
+
+findAll(){
+
+    return this.list();
+
+},
 
 
 list(){
