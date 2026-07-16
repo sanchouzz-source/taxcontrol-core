@@ -1,12 +1,10 @@
 console.log("ClientRepository");
 
 
-
 const ClientRepository = {
 
 
-
-version:"0.5.0",
+version:"0.6.0",
 
 
 
@@ -20,16 +18,17 @@ EntityRegistry.CLIENT,
 create(data){
 
 
-return BaseRepository.create(
+    return BaseRepository.create(
 
-this.entity,
+        this.entity,
 
-data
+        data
 
-);
+    );
 
 
 },
+
 
 
 
@@ -39,18 +38,19 @@ data
 update(id,data){
 
 
-return BaseRepository.update(
+    return BaseRepository.update(
 
-this.entity,
+        this.entity,
 
-id,
+        id,
 
-data
+        data
 
-);
+    );
 
 
 },
+
 
 
 
@@ -60,16 +60,31 @@ data
 getById(id){
 
 
-return BaseRepository.getById(
+    return BaseRepository.getById(
 
-this.entity,
+        this.entity,
 
-id
+        id
 
-);
+    );
 
 
 },
+
+
+
+
+
+
+
+findById(id){
+
+
+    return this.getById(id);
+
+
+},
+
 
 
 
@@ -79,14 +94,15 @@ id
 list(){
 
 
-return BaseRepository.list(
+    return BaseRepository.list(
 
-this.entity
+        this.entity
 
-);
+    );
 
 
 },
+
 
 
 
@@ -96,16 +112,17 @@ this.entity
 delete(id){
 
 
-return BaseRepository.delete(
+    return BaseRepository.delete(
 
-this.entity,
+        this.entity,
 
-id
+        id
 
-);
+    );
 
 
 },
+
 
 
 
@@ -115,16 +132,17 @@ id
 restore(id){
 
 
-return BaseRepository.restore(
+    return BaseRepository.restore(
 
-this.entity,
+        this.entity,
 
-id
+        id
 
-);
+    );
 
 
 },
+
 
 
 
@@ -147,7 +165,12 @@ return HealthContract.create(
 version:this.version,
 
 
-entity:this.entity.entity,
+entity:
+this.entity.entity,
+
+
+table:
+this.entity.table,
 
 
 baseRepository:
@@ -157,7 +180,10 @@ baseRepository:
 
 }
 
+
+
 );
+
 
 
 }
@@ -168,11 +194,28 @@ baseRepository:
 
 
 
+
+
 globalThis.ClientRepository =
 ClientRepository;
 
 
+
+
+
+// регистрация в фабрике
+if(
+globalThis.RepositoryFactory
+){
+
+
 RepositoryFactory.register(
-    "ClientRepository",
-    ClientRepository
+
+"CLIENT",
+
+ClientRepository
+
 );
+
+
+}
