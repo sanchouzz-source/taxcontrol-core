@@ -180,7 +180,7 @@ ClientRepository:51,
 
 TripRepository:52,
 
-EntityService PRIORITY 53
+EntityService:53
 };
 
 
