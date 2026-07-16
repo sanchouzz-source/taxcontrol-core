@@ -4,13 +4,78 @@ console.log("RepositoryFactory");
 const RepositoryFactory = {
 
 
-version:"0.3.0",
+version:"0.4.0",
 
 
 repositories:{},
 
 
 aliases:{},
+
+
+
+
+contract:[
+
+"findById",
+"findAll",
+"create",
+"update",
+"delete",
+"restore"
+
+],
+
+
+
+
+
+
+
+
+validateRepository(
+name,
+repository
+){
+
+
+this.contract.forEach(method=>{
+
+
+if(typeof repository[method] !== "function"){
+
+
+throw new Error(
+
+"Repository contract failed: "
++
+name
++
+" missing "
++
+method
+
+);
+
+
+}
+
+
+});
+
+
+
+Logger.log(
+
+"REPOSITORY CONTRACT OK: "
++
+name
+
+);
+
+
+},
+
 
 
 
@@ -23,15 +88,52 @@ repository
 ){
 
 
+
 if(!repository){
 
+
 throw new Error(
+
 "Repository missing: "
 +
 name
+
 );
 
+
 }
+
+
+
+
+
+this.validateRepository(
+name,
+repository
+);
+
+
+
+
+
+if(this.repositories[name]){
+
+
+Logger.log(
+
+"REPOSITORY ALREADY REGISTERED: "
++
+name
+
+);
+
+
+return this.repositories[name];
+
+
+}
+
+
 
 
 
@@ -49,6 +151,11 @@ name
 
 
 
+
+
+return repository;
+
+
 },
 
 
@@ -61,6 +168,27 @@ registerAlias(
 entity,
 repositoryName
 ){
+
+
+
+if(!this.repositories[repositoryName]
+&&
+!globalThis[repositoryName]){
+
+
+Logger.log(
+
+"WARNING: alias target not loaded "
++
+repositoryName
+
+);
+
+
+}
+
+
+
 
 
 this.aliases[entity]=repositoryName;
@@ -80,6 +208,7 @@ repositoryName
 );
 
 
+
 },
 
 
@@ -88,8 +217,9 @@ repositoryName
 
 
 
-
-get(name){
+get(
+name
+){
 
 
 
@@ -107,6 +237,7 @@ return repo;
 
 
 
+
 const alias =
 this.aliases[name];
 
@@ -119,13 +250,18 @@ repo =
 this.repositories[alias];
 
 
+
 if(repo){
 
 return repo;
 
 }
 
+
 }
+
+
+
 
 
 
@@ -142,7 +278,77 @@ name
 
 
 
+
+
+
+
+getOrThrow(
+name
+){
+
+
+try{
+
+
+return this.get(name);
+
+
+}
+
+catch(e){
+
+
+Logger.log(
+
+"RepositoryFactory ERROR: "
++
+e.message
+
+);
+
+
+throw e;
+
+
+}
+
+
+},
+
+
+
+
+
+
+
+has(
+name
+){
+
+
+return !!this.repositories[name]
+||
+!!this.aliases[name];
+
+
+},
+
+
+
+
+
+
+
 init(){
+
+
+
+Logger.log(
+"RepositoryFactory INIT"
+);
+
+
+
 
 
 this.registerAlias(
@@ -166,6 +372,8 @@ this.registerAlias(
 
 
 
+
+
 [
 "ClientRepository",
 "TripRepository",
@@ -175,12 +383,30 @@ this.registerAlias(
 .forEach(name=>{
 
 
-if(globalThis[name]){
+const repo =
+globalThis[name];
+
+
+
+if(repo){
 
 
 this.register(
 name,
-globalThis[name]
+repo
+);
+
+
+}
+else{
+
+
+Logger.log(
+
+"REPOSITORY NOT FOUND DURING INIT: "
++
+name
+
 );
 
 
@@ -191,10 +417,15 @@ globalThis[name]
 
 
 
+
+
+
 Logger.log(
+
 "RepositoryFactory READY v"
 +
 this.version
+
 );
 
 
@@ -207,8 +438,8 @@ this.version
 
 
 
-
 health(){
+
 
 
 return HealthContract.create(
@@ -221,17 +452,26 @@ return HealthContract.create(
 
 version:this.version,
 
+
 repositories:
 Object.keys(this.repositories),
 
-aliases:this.aliases
+
+aliases:this.aliases,
+
+
+count:
+Object.keys(this.repositories).length
+
 
 }
+
 
 );
 
 
 }
+
 
 
 

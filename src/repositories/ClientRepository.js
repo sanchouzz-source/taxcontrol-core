@@ -1,47 +1,158 @@
 console.log("ClientRepository");
 
 
-const ClientRepository =
-BaseRepository.createRepository({
+const ClientRepository = {
 
-entity:"Client",
+
+version:"1.0.0",
+
 
 table:"Clients",
 
-prefix:"Clients",
+entity:"CLIENT",
+
+permission:"CLIENT",
 
 
-permissions:{
 
-CREATE:"CLIENT_CREATE",
+create(data){
 
-READ:"CLIENT_READ",
+return BaseRepository.create(
 
-UPDATE:"CLIENT_UPDATE",
+this.table,
 
-DELETE:"CLIENT_DELETE",
+data,
 
-RESTORE:"CLIENT_RESTORE"
+this.entity,
+
+this.permission
+
+);
 
 },
 
 
-events:{
 
-CREATED:"CLIENT_CREATED",
 
-UPDATED:"CLIENT_UPDATED",
+findById(id){
 
-DELETED:"CLIENT_DELETED",
 
-RESTORED:"CLIENT_RESTORED"
+return BaseRepository.findById(
+
+this.table,
+
+id,
+
+this.entity,
+
+this.permission
+
+);
+
+
+},
+
+
+
+
+
+findAll(filters={}){
+
+
+return BaseRepository.findAll(
+
+this.table,
+
+filters,
+
+this.entity,
+
+this.permission
+
+);
+
+
+},
+
+
+
+
+
+update(id,data){
+
+
+return BaseRepository.update(
+
+this.table,
+
+id,
+
+data,
+
+this.entity,
+
+this.permission
+
+);
+
+
+},
+
+
+
+
+
+delete(id){
+
+
+return BaseRepository.delete(
+
+this.table,
+
+id,
+
+this.entity,
+
+this.permission
+
+);
+
+
+},
+
+
+
+
+
+restore(id){
+
+
+return BaseRepository.restore(
+
+this.table,
+
+id,
+
+this.entity,
+
+this.permission
+
+);
+
 
 }
 
 
 
-});
+};
+
 
 
 globalThis.ClientRepository =
 ClientRepository;
+
+
+
+Logger.log(
+"ClientRepository READY v1.0.0"
+);

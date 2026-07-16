@@ -8,43 +8,24 @@ version:"1.0.0",
 
 
 
-createRepository(config){
-
-
-return {
-
-
-entity:
-config.entity,
-
-
-table:
-config.table,
-
-
-idField:
-config.idField || 
-(config.entity+"ID"),
-
-
-
-create(data){
+create(
+table,
+data,
+entity,
+permission
+){
 
 
 SecurityGuard.check(
-config.permissions.CREATE
+permission + "_CREATE"
 );
 
 
 
-if(!data[this.idField]){
+if(!data.ID){
 
-
-data[this.idField] =
-IdService.generate(
-config.prefix || config.entity
-);
-
+data.ID =
+IdService.generate(entity);
 
 }
 
@@ -57,32 +38,24 @@ OrganizationContext.get();
 
 const result =
 Database.insert(
-this.table,
+table,
 data
 );
 
 
 
 AuditLog.write(
-
 "CREATE",
-
-config.entity,
-
+entity,
 null,
-
 result
-
 );
 
 
 
 EventBus.emit(
-
-config.events.CREATED,
-
+entity + "_CREATED",
 result
-
 );
 
 
@@ -97,22 +70,23 @@ return result;
 
 
 
-
-getById(id){
+findById(
+table,
+id,
+entity,
+permission
+){
 
 
 SecurityGuard.check(
-config.permissions.READ
+permission + "_READ"
 );
 
 
 
 return Database.find(
-
-this.table,
-
+table,
 id
-
 );
 
 
@@ -124,21 +98,24 @@ id
 
 
 
-list(filters={}){
+
+findAll(
+table,
+filters={},
+entity,
+permission
+){
 
 
 SecurityGuard.check(
-config.permissions.READ
+permission + "_READ"
 );
 
 
 
 return Database.query(
-
-this.table,
-
+table,
 filters
-
 );
 
 
@@ -150,36 +127,34 @@ filters
 
 
 
-update(id,data){
+update(
+table,
+id,
+data,
+entity,
+permission
+){
 
 
 SecurityGuard.check(
-config.permissions.UPDATE
+permission + "_UPDATE"
 );
 
 
 
 const existing =
 Database.find(
-
-this.table,
-
+table,
 id
-
 );
 
 
 
 if(!existing){
 
-
 throw new Error(
-
-config.entity+
-" not found"
-
+entity+" not found"
 );
-
 
 }
 
@@ -187,72 +162,54 @@ config.entity+
 
 
 Versioning.save(
-
-config.entity,
-
+entity,
 id,
-
 existing
-
 );
 
 
 
-
-const merged={
+const updated = {
 
 ...existing,
 
 ...data,
 
 UpdatedAt:
-new Date()
+new Date().toISOString()
 
 };
 
 
 
 
-const updated =
+const result =
 Database.update(
-
-this.table,
-
+table,
 id,
-
-merged
-
+updated
 );
 
 
 
 
 AuditLog.write(
-
 "UPDATE",
-
-config.entity,
-
+entity,
 existing,
-
-updated
-
+result
 );
-
 
 
 
 EventBus.emit(
-
-config.events.UPDATED,
-
-updated
-
+entity+"_UPDATED",
+result
 );
 
 
 
-return updated;
+return result;
 
 
 },
@@ -263,100 +220,77 @@ return updated;
 
 
 
-remove(id){
+delete(
+table,
+id,
+entity,
+permission
+){
 
 
 SecurityGuard.check(
-config.permissions.DELETE
+permission+"_DELETE"
 );
 
 
 
 const existing =
 Database.find(
-
-this.table,
-
+table,
 id
-
 );
 
 
 
 if(!existing){
 
-
 throw new Error(
-
-config.entity+
-" not found"
-
+entity+" not found"
 );
-
 
 }
 
 
 
 Versioning.save(
-
-config.entity,
-
+entity,
 id,
-
 existing
-
 );
 
 
 
-const deleted = {
+const result =
+Database.update(
+table,
+id,
+{
 
 ...existing,
 
 Deleted:true,
 
 UpdatedAt:
-new Date()
+new Date().toISOString()
 
-};
-
-
-
-
-const result =
-Database.update(
-
-this.table,
-
-id,
-
-deleted
+}
 
 );
 
 
 
 AuditLog.write(
-
 "DELETE",
-
-config.entity,
-
+entity,
 existing,
-
 result
-
 );
 
 
 
 EventBus.emit(
-
-config.events.DELETED,
-
+entity+"_DELETED",
 result
-
 );
 
 
@@ -372,106 +306,77 @@ return result;
 
 
 
-restore(id){
+restore(
+table,
+id,
+entity,
+permission
+){
 
 
 SecurityGuard.check(
-config.permissions.RESTORE
+permission+"_RESTORE"
 );
 
 
 
 const existing =
 Database.find(
-
-this.table,
-
+table,
 id
-
 );
 
 
 
 if(!existing){
 
-
 throw new Error(
-
-config.entity+
-" not found"
-
+entity+" not found"
 );
-
 
 }
 
 
 
 Versioning.save(
-
-config.entity,
-
+entity,
 id,
-
 existing
-
 );
-
-
-
-
-const restored={
-
-
-...existing,
-
-
-Deleted:false,
-
-
-UpdatedAt:
-new Date()
-
-
-};
-
 
 
 
 const result =
 Database.update(
-
-this.table,
-
+table,
 id,
+{
 
-restored
+...existing,
+
+Deleted:false,
+
+UpdatedAt:
+new Date().toISOString()
+
+}
 
 );
 
 
 
-
 AuditLog.write(
-
 "RESTORE",
-
-config.entity,
-
+entity,
 existing,
-
 result
-
 );
 
 
 
 EventBus.emit(
-
-config.events.RESTORED,
-
+entity+"_RESTORED",
 result
-
 );
 
 
@@ -487,24 +392,15 @@ return result;
 
 
 
-health(){
+exists(
+table,
+id
+){
 
 
-return HealthContract.create(
-
-config.entity+"Repository",
-
-"OK",
-
-{
-
-version:"1.0.0",
-
-table:
-config.table
-
-}
-
+return !!Database.find(
+table,
+id
 );
 
 
@@ -512,20 +408,16 @@ config.table
 
 
 
-};
-
-
-
-}
-
-
-
-
 
 };
-
 
 
 
 globalThis.BaseRepository =
 BaseRepository;
+
+
+
+Logger.log(
+"BaseRepository READY v1.0.0"
+);

@@ -4,49 +4,77 @@ console.log("TripRepository");
 const TripRepository = {
 
 
-version:"0.6.0",
+version:"1.0.0",
 
 
-entity:
-EntityRegistry.TRIP,
+table:"Trips",
 
+entity:"TRIP",
 
-
-init(){
-
-
-    RepositoryFactory.register(
-        "TripRepository",
-        this
-    );
-
-
-    Logger.log(
-        "TripRepository READY v"
-        +
-        this.version
-    );
-
-
-},
+permission:"TRIP",
 
 
 
 
 create(data){
 
+return BaseRepository.create(
 
-    return BaseRepository.create(
+this.table,
 
-        this.entity,
+data,
 
-        data
+this.entity,
 
-    );
+this.permission
 
+);
 
 },
 
+
+
+
+
+findById(id){
+
+
+return BaseRepository.findById(
+
+this.table,
+
+id,
+
+this.entity,
+
+this.permission
+
+);
+
+},
+
+
+
+
+
+
+findAll(filters={}){
+
+
+return BaseRepository.findAll(
+
+this.table,
+
+filters,
+
+this.entity,
+
+this.permission
+
+);
+
+
+},
 
 
 
@@ -55,62 +83,22 @@ create(data){
 update(id,data){
 
 
-    return BaseRepository.update(
+return BaseRepository.update(
 
-        this.entity,
+this.table,
 
-        id,
+id,
 
-        data
+data,
 
-    );
+this.entity,
 
+this.permission
 
-},
-
-
-
-
-
-
-getById(id){
-
-
-    return BaseRepository.getById(
-
-        this.entity,
-
-        id
-
-    );
+);
 
 
 },
-
-
-
-findById(id){
-    return this.getById(id);
-},
-
-
-findAll(){
-    return this.list();
-},
-
-
-list(){
-
-
-    return BaseRepository.list(
-
-        this.entity
-
-    );
-
-
-},
-
 
 
 
@@ -119,18 +107,20 @@ list(){
 delete(id){
 
 
-    return BaseRepository.delete(
+return BaseRepository.delete(
 
-        this.entity,
+this.table,
 
-        id
+id,
 
-    );
+this.entity,
+
+this.permission
+
+);
 
 
 },
-
-
 
 
 
@@ -138,59 +128,21 @@ delete(id){
 restore(id){
 
 
-    return BaseRepository.restore(
+return BaseRepository.restore(
 
-        this.entity,
+this.table,
 
-        id
+id,
 
-    );
+this.entity,
 
-
-},
-
-
-
-
-
-
-health(){
-
-
-
-return HealthContract.create(
-
-"TripRepository",
-
-"OK",
-
-{
-
-
-version:this.version,
-
-
-entity:
-this.entity.entity,
-
-
-baseRepository:
-!!BaseRepository,
-
-
-registered:
-!!RepositoryFactory.repositories.TripRepository
-
-
-
-}
-
+this.permission
 
 );
 
 
-
 }
+
 
 
 
@@ -198,7 +150,11 @@ registered:
 
 
 
-
-
 globalThis.TripRepository =
 TripRepository;
+
+
+
+Logger.log(
+"TripRepository READY v1.0.0"
+);

@@ -1,47 +1,154 @@
 console.log("KPIRepository");
 
 
-const KPIRepository =
-BaseRepository.createRepository({
+const KPIRepository = {
 
-entity:"KPI",
+
+version:"1.0.0",
+
+
 
 table:"KPIMetrics",
 
-prefix:"KPI",
+entity:"KPI",
+
+permission:"KPI",
 
 
-permissions:{
 
-CREATE:"KPI_CREATE",
 
-READ:"KPI_READ",
 
-UPDATE:"KPI_UPDATE",
+create(data){
 
-DELETE:"KPI_DELETE",
+return BaseRepository.create(
 
-RESTORE:"KPI_RESTORE"
+this.table,
+
+data,
+
+this.entity,
+
+this.permission
+
+);
 
 },
 
 
 
-events:{
 
-CREATED:"KPI_CREATED",
 
-UPDATED:"KPI_UPDATED",
+findById(id){
 
-DELETED:"KPI_DELETED",
+return BaseRepository.findById(
 
-RESTORED:"KPI_RESTORED"
+this.table,
+
+id,
+
+this.entity,
+
+this.permission
+
+);
+
+},
+
+
+
+
+
+findAll(filters={}){
+
+
+return BaseRepository.findAll(
+
+this.table,
+
+filters,
+
+this.entity,
+
+this.permission
+
+);
+
+
+},
+
+
+
+
+
+update(id,data){
+
+
+return BaseRepository.update(
+
+this.table,
+
+id,
+
+data,
+
+this.entity,
+
+this.permission
+
+);
+
+
+},
+
+
+
+
+
+delete(id){
+
+
+return BaseRepository.delete(
+
+this.table,
+
+id,
+
+this.entity,
+
+this.permission
+
+);
+
+
+},
+
+
+
+
+
+restore(id){
+
+
+return BaseRepository.restore(
+
+this.table,
+
+id,
+
+this.entity,
+
+this.permission
+
+);
+
 
 }
 
 
 
-});
+
+};
+
 
 
 
