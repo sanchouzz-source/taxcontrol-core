@@ -71,8 +71,8 @@ coreOrder:[
 
 "ClientRepository",
 
-"TripRepository"
-
+"TripRepository",
+"EntityService"
 
 ],
 
@@ -178,9 +178,9 @@ BaseRepository:50,
 
 ClientRepository:51,
 
-TripRepository:52
+TripRepository:52,
 
-
+EntityService PRIORITY 53
 };
 
 
