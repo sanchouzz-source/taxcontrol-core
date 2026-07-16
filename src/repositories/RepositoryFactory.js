@@ -142,12 +142,7 @@ name
 
 
 
-
-
-
-
 init(){
-
 
 
 this.registerAlias(
@@ -156,31 +151,43 @@ this.registerAlias(
 );
 
 
-
 this.registerAlias(
 "TRIP",
 "TripRepository"
 );
 
+
 this.registerAlias(
-    "KPI",
-    "KPIRepository"
+"KPI",
+"KPIRepository"
 );
 
 
 
-// регистрация после загрузки всех классов
 
-if(globalThis.TripRepository){
+
+[
+"ClientRepository",
+"TripRepository",
+"KPIRepository"
+
+]
+.forEach(name=>{
+
+
+if(globalThis[name]){
 
 
 this.register(
-    "TripRepository",
-    TripRepository
+name,
+globalThis[name]
 );
 
 
 }
+
+
+});
 
 
 
