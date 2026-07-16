@@ -1,255 +1,49 @@
 console.log("KPIRepository");
 
 
-const KPIRepository = {
+const KPIRepository =
+BaseRepository.createRepository({
+
+entity:"KPI",
+
+table:"KPIMetrics",
+
+prefix:"KPI",
 
 
-version:"0.7.0",
+permissions:{
 
+CREATE:"KPI_CREATE",
 
-entity:
-EntityRegistry.KPI,
+READ:"KPI_READ",
 
+UPDATE:"KPI_UPDATE",
 
+DELETE:"KPI_DELETE",
 
-
-
-create(data){
-
-
-return BaseRepository.create(
-
-this.entity,
-
-data
-
-);
-
+RESTORE:"KPI_RESTORE"
 
 },
 
 
 
+events:{
 
+CREATED:"KPI_CREATED",
 
+UPDATED:"KPI_UPDATED",
 
-update(id,data){
+DELETED:"KPI_DELETED",
 
-
-return BaseRepository.update(
-
-this.entity,
-
-id,
-
-data
-
-);
-
-
-},
-
-
-
-
-
-
-getById(id){
-
-
-return BaseRepository.getById(
-
-this.entity,
-
-id
-
-);
-
-
-},
-
-
-
-
-
-// совместимость EntityService
-
-findById(id){
-
-
-return this.getById(id);
-
-
-},
-
-
-
-
-
-
-list(){
-
-
-return BaseRepository.list(
-
-this.entity
-
-);
-
-
-},
-
-
-
-
-
-
-// совместимость EntityService
-
-findAll(){
-
-
-return this.list();
-
-
-},
-
-
-
-
-
-
-delete(id){
-
-
-return BaseRepository.delete(
-
-this.entity,
-
-id
-
-);
-
-
-},
-
-
-
-
-
-
-restore(id){
-
-
-return BaseRepository.restore(
-
-this.entity,
-
-id
-
-);
-
-
-},
-
-
-
-
-
-
-
-health(){
-
-
-
-return HealthContract.create(
-
-
-"KPIRepository",
-
-
-"OK",
-
-
-{
-
-
-version:this.version,
-
-
-entity:this.entity.entity,
-
-
-baseRepository:
-!!BaseRepository
-
-
+RESTORED:"KPI_RESTORED"
 
 }
 
 
 
-);
-
-
-}
-
-
-
-};
-
-
-
-
-
+});
 
 
 
 globalThis.KPIRepository =
 KPIRepository;
-
-
-
-
-
-
-// безопасная регистрация
-
-if(
-globalThis.RepositoryFactory
-){
-
-
-RepositoryFactory.register(
-
-"KPIRepository",
-
-KPIRepository
-
-);
-
-
-}
-else{
-
-
-Logger.warn(
-
-"RepositoryFactory not ready, delayed registration"
-
-);
-
-
-}
-
-
-
-
-
-console.log(
-
-"KPIRepository READY v"
-+
-KPIRepository.version
-
-);

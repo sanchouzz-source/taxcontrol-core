@@ -1,165 +1,120 @@
 console.log("BaseRepository");
 
 
-
 const BaseRepository = {
 
 
-
-version:"0.5.0",
-
+version:"1.0.0",
 
 
 
-
-// =========================
-// CREATE
-// =========================
+createRepository(config){
 
 
-create(entityConfig,data){
+return {
+
+
+entity:
+config.entity,
+
+
+table:
+config.table,
+
+
+idField:
+config.idField || 
+(config.entity+"ID"),
 
 
 
-SecurityGuard.require(
+create(data){
 
-entityConfig.permissions.create
 
+SecurityGuard.check(
+config.permissions.CREATE
 );
 
 
 
+if(!data[this.idField]){
 
 
-if(
-entityConfig.validator
-){
-
-if(
-entityConfig.validator &&
-typeof entityConfig.validator.validate==="function"
-){
-
-if(
-entityConfig.validator &&
-typeof entityConfig.validator.validate === "function"
-){
-
-    data =
-    entityConfig.validator.validate(
-        data
-    );
-
-}
-else{
-
-    Logger.warn(
-        "VALIDATOR NOT FOUND FOR "
-        +
-        entityConfig.entity
-    );
-
-}
-
-}
-else{
-
-Logger.warn(
-"VALIDATOR NOT FOUND FOR "
-+
-entityConfig.entity
-);
-
-}
-
-}
-
-
-
-
-
-
-if(
-!data[entityConfig.idField]
-){
-
-
-data[entityConfig.idField] =
-
+data[this.idField] =
 IdService.generate(
-
-entityConfig.table
-
+config.prefix || config.entity
 );
 
 
 }
-
-
-
 
 
 
 data.OrganizationID =
-
 OrganizationContext.get();
 
 
 
-
-
-
 const result =
-
 Database.insert(
-
-entityConfig.table,
-
+this.table,
 data
-
 );
 
 
 
+AuditLog.write(
+
+"CREATE",
+
+config.entity,
+
+null,
+
+result
+
+);
 
 
 
 EventBus.emit(
 
-entityConfig.events.created,
+config.events.CREATED,
 
-{
-
-
-entity:
-entityConfig.entity,
-
-
-action:"CREATE",
-
-
-actor:
-SecurityGuard.getCurrentUser(),
-
-
-before:null,
-
-
-after:result
-
-
-}
-
+result
 
 );
-
-
 
 
 
 return result;
 
 
+},
+
+
+
+
+
+
+
+getById(id){
+
+
+SecurityGuard.check(
+config.permissions.READ
+);
+
+
+
+return Database.find(
+
+this.table,
+
+id
+
+);
+
 
 },
 
@@ -169,37 +124,49 @@ return result;
 
 
 
-// =========================
-// UPDATE
-// =========================
+list(filters={}){
+
+
+SecurityGuard.check(
+config.permissions.READ
+);
 
 
 
-update(entityConfig,id,data){
+return Database.query(
 
+this.table,
 
-
-SecurityGuard.require(
-
-entityConfig.permissions.update
+filters
 
 );
 
 
+},
+
+
+
+
+
+
+
+update(id,data){
+
+
+SecurityGuard.check(
+config.permissions.UPDATE
+);
 
 
 
 const existing =
-
 Database.find(
 
-entityConfig.table,
+this.table,
 
 id
 
 );
-
-
 
 
 
@@ -208,9 +175,8 @@ if(!existing){
 
 throw new Error(
 
-"Entity not found: "
-+
-id
+config.entity+
+" not found"
 
 );
 
@@ -220,134 +186,75 @@ id
 
 
 
-
-
 Versioning.save(
 
-entityConfig.entity,
+config.entity,
 
 id,
 
 existing
 
 );
-
-
 
 
 
 
 const merged={
 
-
 ...existing,
 
+...data,
 
-...data
-
+UpdatedAt:
+new Date()
 
 };
 
 
 
 
+const updated =
+Database.update(
 
-let validated = merged;
+this.table,
 
-
-
-
-
-if(
-entityConfig.validator
-){
-
-validated =
-
-entityConfig.validator.validate(
+id,
 
 merged
 
 );
 
-}
 
 
 
+AuditLog.write(
 
+"UPDATE",
 
+config.entity,
 
-validated[
-entityConfig.idField
-]=id;
+existing,
 
-
-
-
-validated.OrganizationID =
-
-OrganizationContext.get();
-
-
-
-
-
-
-const updated =
-
-Database.update(
-
-entityConfig.table,
-
-id,
-
-validated
+updated
 
 );
-
-
-
 
 
 
 
 EventBus.emit(
 
-entityConfig.events.updated,
+config.events.UPDATED,
 
-{
-
-
-entity:
-entityConfig.entity,
-
-
-action:"UPDATE",
-
-
-actor:
-SecurityGuard.getCurrentUser(),
-
-
-before:existing,
-
-
-after:updated
-
-
-}
-
+updated
 
 );
-
-
 
 
 
 return updated;
 
 
-
 },
 
 
@@ -356,37 +263,23 @@ return updated;
 
 
 
-// =========================
-// DELETE
-// =========================
+remove(id){
 
 
-
-delete(entityConfig,id){
-
-
-
-SecurityGuard.require(
-
-entityConfig.permissions.delete
-
+SecurityGuard.check(
+config.permissions.DELETE
 );
-
-
 
 
 
 const existing =
-
 Database.find(
 
-entityConfig.table,
+this.table,
 
 id
 
 );
-
-
 
 
 
@@ -395,9 +288,8 @@ if(!existing){
 
 throw new Error(
 
-"Entity not found: "
-+
-id
+config.entity+
+" not found"
 
 );
 
@@ -406,11 +298,9 @@ id
 
 
 
-
-
 Versioning.save(
 
-entityConfig.entity,
+config.entity,
 
 id,
 
@@ -420,72 +310,58 @@ existing
 
 
 
+const deleted = {
 
-
-
-
-const deleted =
-
-Database.update(
-
-entityConfig.table,
-
-id,
-
-{
-
+...existing,
 
 Deleted:true,
 
-
 UpdatedAt:
-new Date().toISOString()
+new Date()
+
+};
 
 
-}
+
+
+const result =
+Database.update(
+
+this.table,
+
+id,
+
+deleted
 
 );
 
 
 
+AuditLog.write(
+
+"DELETE",
+
+config.entity,
+
+existing,
+
+result
+
+);
 
 
 
 EventBus.emit(
 
-entityConfig.events.deleted,
+config.events.DELETED,
 
-{
-
-
-entity:
-entityConfig.entity,
-
-
-action:"DELETE",
-
-
-actor:
-SecurityGuard.getCurrentUser(),
-
-
-before:existing,
-
-
-after:deleted
-
-
-}
-
+result
 
 );
 
 
 
-
-
-return deleted;
-
+return result;
 
 
 },
@@ -496,37 +372,23 @@ return deleted;
 
 
 
-// =========================
-// RESTORE
-// =========================
+restore(id){
 
 
-
-restore(entityConfig,id){
-
-
-
-SecurityGuard.require(
-
-entityConfig.permissions.restore
-
+SecurityGuard.check(
+config.permissions.RESTORE
 );
-
-
 
 
 
 const existing =
-
 Database.find(
 
-entityConfig.table,
+this.table,
 
 id
 
 );
-
-
 
 
 
@@ -535,9 +397,8 @@ if(!existing){
 
 throw new Error(
 
-"Entity not found: "
-+
-id
+config.entity+
+" not found"
 
 );
 
@@ -546,13 +407,9 @@ id
 
 
 
-
-
-
-
 Versioning.save(
 
-entityConfig.entity,
+config.entity,
 
 id,
 
@@ -563,71 +420,63 @@ existing
 
 
 
+const restored={
 
 
-const restored =
-
-Database.update(
-
-entityConfig.table,
-
-id,
-
-{
+...existing,
 
 
 Deleted:false,
 
 
 UpdatedAt:
-new Date().toISOString()
+new Date()
 
 
-}
+};
+
+
+
+
+const result =
+Database.update(
+
+this.table,
+
+id,
+
+restored
 
 );
 
 
 
 
+AuditLog.write(
+
+"RESTORE",
+
+config.entity,
+
+existing,
+
+result
+
+);
 
 
 
 EventBus.emit(
 
-entityConfig.events.restored,
+config.events.RESTORED,
 
-{
-
-
-entity:
-entityConfig.entity,
-
-
-action:"RESTORE",
-
-
-actor:
-SecurityGuard.getCurrentUser(),
-
-
-before:existing,
-
-
-after:restored
-
-
-}
-
+result
 
 );
 
 
 
-
-
-return restored;
-
+return result;
 
 
 },
@@ -635,143 +484,28 @@ return restored;
 
 
 
-
-
-
-// =========================
-// GET
-// =========================
-
-
-
-getById(entityConfig,id){
-
-
-
-SecurityGuard.require(
-
-entityConfig.permissions.read
-
-);
-
-
-
-
-
-return Database.find(
-
-entityConfig.table,
-
-id
-
-);
-
-
-
-},
-
-
-
-
-
-
-
-// =========================
-// LIST
-// =========================
-
-
-
-list(entityConfig){
-
-
-
-SecurityGuard.require(
-
-entityConfig.permissions.read
-
-);
-
-
-
-
-
-return Database.query(
-
-entityConfig.table,
-
-{
-
-
-Deleted:false
-
-
-}
-
-);
-
-
-
-},
-
-
-
-
-
-
-
-// =========================
-// HEALTH
-// =========================
 
 
 
 health(){
 
 
-
 return HealthContract.create(
 
-"BaseRepository",
-
+config.entity+"Repository",
 
 "OK",
 
-
 {
 
+version:"1.0.0",
 
-version:this.version,
-
-
-
-dependencies:{
-
-
-Database:!!Database,
-
-
-EventBus:!!EventBus,
-
-
-SecurityGuard:!!SecurityGuard,
-
-
-Versioning:!!Versioning,
-
-
-IdService:!!IdService
-
+table:
+config.table
 
 }
-
-
-
-}
-
 
 );
-
 
 
 }
@@ -780,6 +514,15 @@ IdService:!!IdService
 
 };
 
+
+
+}
+
+
+
+
+
+};
 
 
 

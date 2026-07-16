@@ -1,255 +1,47 @@
 console.log("ClientRepository");
 
 
-const ClientRepository = {
+const ClientRepository =
+BaseRepository.createRepository({
+
+entity:"Client",
+
+table:"Clients",
+
+prefix:"Clients",
 
 
-version:"0.7.0",
+permissions:{
 
+CREATE:"CLIENT_CREATE",
 
-entity:
-EntityRegistry.CLIENT,
+READ:"CLIENT_READ",
 
+UPDATE:"CLIENT_UPDATE",
 
+DELETE:"CLIENT_DELETE",
 
-
-
-init(){
-
-
-    Logger.log(
-        "ClientRepository READY v"
-        +
-        this.version
-    );
-
-
-},
-
-
-
-
-
-create(data){
-
-
-    return BaseRepository.create(
-
-        this.entity,
-
-        data
-
-    );
-
+RESTORE:"CLIENT_RESTORE"
 
 },
 
 
+events:{
 
+CREATED:"CLIENT_CREATED",
 
+UPDATED:"CLIENT_UPDATED",
 
+DELETED:"CLIENT_DELETED",
 
-update(id,data){
-
-
-    return BaseRepository.update(
-
-        this.entity,
-
-        id,
-
-        data
-
-    );
-
-
-},
-
-
-
-
-
-
-getById(id){
-
-
-    return BaseRepository.getById(
-
-        this.entity,
-
-        id
-
-    );
-
-
-},
-
-
-
-
-// EntityService compatibility
-
-findById(id){
-
-
-    return this.getById(id);
-
-
-},
-
-
-
-
-
-list(){
-
-
-    return BaseRepository.list(
-
-        this.entity
-
-    );
-
-
-},
-
-
-
-
-
-// EntityService compatibility
-
-findAll(){
-
-
-    return this.list();
-
-
-},
-
-
-
-
-
-delete(id){
-
-
-    return BaseRepository.delete(
-
-        this.entity,
-
-        id
-
-    );
-
-
-},
-
-
-
-
-
-restore(id){
-
-
-    return BaseRepository.restore(
-
-        this.entity,
-
-        id
-
-    );
-
-
-},
-
-
-
-
-
-
-health(){
-
-
-
-return HealthContract.create(
-
-    "ClientRepository",
-
-    "OK",
-
-    {
-
-
-        version:this.version,
-
-
-        entity:
-        this.entity.entity,
-
-
-        baseRepository:
-        !!BaseRepository
-
-
-
-    }
-
-
-);
-
-
+RESTORED:"CLIENT_RESTORED"
 
 }
 
 
 
-};
-
-
-
+});
 
 
 globalThis.ClientRepository =
 ClientRepository;
-
-
-
-
-
-// безопасная регистрация
-
-if(
-    typeof RepositoryFactory !== "undefined"
-){
-
-
-    RepositoryFactory.register(
-
-        "ClientRepository",
-
-        ClientRepository
-
-    );
-
-
-}
-else{
-
-
-    console.warn(
-        "RepositoryFactory not ready, delayed registration"
-    );
-
-
-}
-
-
-
-
-
-console.log(
-    "ClientRepository READY v"
-    +
-    ClientRepository.version
-);
