@@ -4,11 +4,9 @@ console.log("Database");
 const Database = {
 
 
-version:"0.5.3",
+version:"2.0.0",
 
 initialized:false,
-
-
 
 
 
@@ -16,9 +14,7 @@ init(){
 
 
 if(this.initialized){
-
 return;
-
 }
 
 
@@ -29,14 +25,11 @@ this.initialized=true;
 
 
 Logger.log(
-"Database READY"
+"Database READY v"+this.version
 );
 
 
 },
-
-
-
 
 
 
@@ -52,24 +45,17 @@ return SpreadsheetApp
 
 
 
-
-
-
 getSheetOrThrow(name){
 
 
-const sheet =
-this.sheet(name);
-
+const sheet=this.sheet(name);
 
 
 if(!sheet){
 
-
 throw new Error(
-"Sheet not found: " + name
+"Sheet not found: "+name
 );
-
 
 }
 
@@ -82,28 +68,10 @@ return sheet;
 
 
 
+headers(sheet){
 
 
-
-// =========================
-// INSERT
-// =========================
-
-
-insert(sheetName,data){
-
-
-this.init();
-
-
-
-const sheet =
-this.getSheetOrThrow(sheetName);
-
-
-
-const headers =
-sheet
+return sheet
 .getRange(
 1,
 1,
@@ -113,102 +81,82 @@ sheet.getLastColumn()
 .getValues()[0];
 
 
+},
 
-const idField =
-SchemaRegistry.getIdField(
-sheetName
+
+
+
+insert(sheetName,data){
+
+
+this.init();
+
+
+const sheet=
+this.getSheetOrThrow(sheetName);
+
+
+const headers=
+this.headers(sheet);
+
+
+
+const idField=
+SchemaRegistry.getIdField(sheetName);
+
+
+
+if(!data[idField]){
+
+data[idField]=
+IdService.generate(sheetName);
+
+}
+
+
+
+if(headers.includes("CreatedAt")
+&&!data.CreatedAt){
+
+data.CreatedAt=new Date();
+
+}
+
+
+
+if(headers.includes("UpdatedAt")){
+
+data.UpdatedAt=new Date();
+
+}
+
+
+
+if(headers.includes("Deleted")
+&& data.Deleted===undefined){
+
+data.Deleted=false;
+
+}
+
+
+
+const row=
+headers.map(
+h=>data[h] ?? ""
 );
-
-
-
-const row =
-headers.map(h=>{
-
-
-if(h==="CreatedAt"){
-
-return new Date();
-
-}
-
-
-
-if(h==="UpdatedAt"){
-
-return new Date();
-
-}
-
-
-
-if(h==="Deleted"){
-
-return false;
-
-}
-
-
-
-
-if(
-h===idField &&
-!data[h]
-){
-
-
-data[h] =
-IdService.generate(
-sheetName
-);
-
-
-}
-
-
-
-
-return data[h] ?? "";
-
-
-});
-
-
-
-
-
-
-const nextRow =
-sheet.getLastRow()+1;
 
 
 
 sheet
-.getRange(
-nextRow,
-1,
-1,
-row.length
-)
-.setValues(
-[row]
-);
-
-
+.appendRow(row);
 
 
 
 Logger.log(
-
-"INSERT "
-+
+"INSERT "+
 sheetName
-+
-" ROW "
-+
-nextRow
-
 );
-
 
 
 return data;
@@ -220,76 +168,40 @@ return data;
 
 
 
-
-
-// =========================
-// FIND
-// =========================
-
-
 find(sheetName,id){
 
 
 this.init();
 
 
-
-const sheet =
-this.getSheetOrThrow(
-sheetName
-);
+const sheet=
+this.getSheetOrThrow(sheetName);
 
 
 
-const values =
-sheet
-.getDataRange()
+const values=
+sheet.getDataRange()
 .getValues();
 
 
 
-const headers =
+const headers=
 values[0];
 
 
-
-const idField =
-SchemaRegistry
-.getIdField(
+const idField=
+SchemaRegistry.getIdField(
 sheetName
 );
 
 
 
-const index =
-headers.indexOf(
-idField
-);
+const index=
+headers.indexOf(idField);
 
 
 
-
-
-if(index===-1){
-
-throw new Error(
-"ID FIELD NOT FOUND "
-+
-idField
-);
-
-}
-
-
-
-
-
-for(
-let i=1;
-i<values.length;
-i++
-){
-
+for(let i=1;i<values.length;i++){
 
 
 if(
@@ -299,19 +211,14 @@ String(id)
 ){
 
 
-const obj={};
-
+let obj={};
 
 
 headers.forEach(
 (h,j)=>{
-
 obj[h]=values[i][j];
-
 }
-
 );
-
 
 
 return obj;
@@ -324,7 +231,6 @@ return obj;
 
 
 
-
 return null;
 
 
@@ -334,20 +240,13 @@ return null;
 
 
 
-
-
-// =========================
-// EXISTS
-// =========================
-
-
 exists(sheetName,id){
 
 
-return this.find(
+return !!this.find(
 sheetName,
 id
-)!==null;
+);
 
 
 },
@@ -357,81 +256,109 @@ id
 
 
 
-
-// =========================
-// UPDATE
-// =========================
-
-
-update(sheetName,id,data){
+query(sheetName,filters={}){
 
 
 this.init();
 
 
-
-const sheet =
-this.getSheetOrThrow(
-sheetName
-);
+const sheet=
+this.getSheetOrThrow(sheetName);
 
 
 
-const range =
-sheet.getDataRange();
+const values=
+sheet.getDataRange()
+.getValues();
 
 
 
-const values =
-range.getValues();
-
-
-
-const headers =
+const headers=
 values[0];
 
 
 
-const idField =
-SchemaRegistry
-.getIdField(
-sheetName
+return values
+.slice(1)
+.map(row=>{
+
+
+let obj={};
+
+
+headers.forEach(
+(h,i)=>obj[h]=row[i]
 );
 
 
-
-const idIndex =
-headers.indexOf(
-idField
-);
+return obj;
 
 
+})
+
+.filter(obj=>{
 
 
+if(
+obj.Deleted===true ||
+obj.Deleted==="true"
+){
 
-if(idIndex===-1){
-
-
-throw new Error(
-"ID FIELD NOT FOUND "
-+
-idField
-);
-
+return false;
 
 }
 
 
 
+return Object.keys(filters)
+.every(
+k=>
+String(obj[k])
+===
+String(filters[k])
+);
+
+
+});
+
+
+},
 
 
 
-for(
-let i=1;
-i<values.length;
-i++
-){
 
+
+
+update(sheetName,id,data){
+
+
+const sheet=
+this.getSheetOrThrow(sheetName);
+
+
+const values=
+sheet.getDataRange()
+.getValues();
+
+
+
+const headers=
+values[0];
+
+
+const idField=
+SchemaRegistry.getIdField(
+sheetName
+);
+
+
+
+const idIndex=
+headers.indexOf(idField);
+
+
+
+for(let i=1;i<values.length;i++){
 
 
 if(
@@ -441,56 +368,35 @@ String(id)
 ){
 
 
-
-const row =
+let row=
 values[i];
 
 
 
 headers.forEach(
-(h,index)=>{
+(h,j)=>{
 
 
+if(data[h]!==undefined){
 
-if(
-data[h] !== undefined
-){
-
-
-row[index]=
-data[h];
-
+row[j]=data[h];
 
 }
-
 
 
 });
 
 
 
-
-
-if(
-headers.includes(
-"UpdatedAt"
-)
-){
-
+if(headers.includes("UpdatedAt")){
 
 row[
-headers.indexOf(
-"UpdatedAt"
-)
+headers.indexOf("UpdatedAt")
 ]
 =
 new Date();
 
-
 }
-
-
-
 
 
 
@@ -507,56 +413,22 @@ headers.length
 
 
 
-
-
-
-const result={};
-
-
-
-headers.forEach(
-(h,j)=>{
-
-result[h]=row[j];
-
-}
-
+return this.find(
+sheetName,
+id
 );
 
 
+}
+
+
+}
 
 
 
-Logger.log(
-
-"UPDATE "
-+
-sheetName
-+
-" ROW "
-+
-(i+1)
-
+throw new Error(
+"Record not found "+id
 );
-
-
-
-
-
-return result;
-
-
-}
-
-
-
-}
-
-
-
-
-
-return null;
 
 
 },
@@ -566,132 +438,23 @@ return null;
 
 
 
-
-// =========================
-// QUERY
-// =========================
+softDelete(sheetName,id){
 
 
-query(sheetName,filters={}){
-
-
-this.init();
-
-
-
-const sheet =
-this.getSheetOrThrow(
-sheetName
-);
-
-
-
-const values =
-sheet
-.getDataRange()
-.getValues();
-
-
-
-const headers =
-values[0];
-
-
-
-const currentOrg =
-PropertiesService
-.getScriptProperties()
-.getProperty(
-"CURRENT_ORG"
-);
-
-
-
-
-
-return values
-.slice(1)
-.map(row=>{
-
-
-const obj={};
-
-
-
-headers.forEach(
-(h,i)=>{
-
-
-obj[h]=row[i];
-
-
-});
-
-
-
-return obj;
-
-
-})
-
-.filter(obj=>{
-
-
-
-// скрываем удаленные записи
-
-if(
-obj.Deleted===true ||
-obj.Deleted==="true"
-){
-
-return false;
-
+return this.update(
+sheetName,
+id,
+{
+Deleted:true,
+UpdatedAt:new Date()
 }
-
-
-
-
-if(
-obj.OrganizationID &&
-currentOrg &&
-obj.OrganizationID!==currentOrg
-){
-
-return false;
-
-}
-
-
-
-
-return Object.keys(filters)
-.every(
-k=>
-
-String(obj[k])
-===
-String(filters[k])
-
 );
-
-
-
-});
-
 
 
 },
 
 
 
-
-
-
-
-// =========================
-// COUNT
-// =========================
 
 
 count(sheetName,filters={}){
@@ -711,195 +474,36 @@ filters
 
 
 
-
-// =========================
-// SOFT DELETE
-// =========================
-
-
-softDelete(sheetName,id){
-
-
-this.init();
-
-
-
-const sheet =
-this.getSheetOrThrow(
-sheetName
-);
-
-
-
-const values =
-sheet
-.getDataRange()
-.getValues();
-
-
-
-const headers =
-values[0];
-
-
-
-const idField =
-SchemaRegistry
-.getIdField(
-sheetName
-);
-
-
-
-const idIndex =
-headers.indexOf(
-idField
-);
-
-
-
-const deletedIndex =
-headers.indexOf(
-"Deleted"
-);
-
-
-
-const updatedIndex =
-headers.indexOf(
-"UpdatedAt"
-);
-
-
-
-
-
-for(
-let i=1;
-i<values.length;
-i++
-){
-
-
-
-if(
-String(values[i][idIndex])
-===
-String(id)
-){
-
-
-
-sheet
-.getRange(
-i+1,
-deletedIndex+1
-)
-.setValue(true);
-
-
-
-if(updatedIndex!==-1){
-
-
-sheet
-.getRange(
-i+1,
-updatedIndex+1
-)
-.setValue(
-new Date()
-);
-
-
-}
-
-
-
-Logger.log(
-"SOFT DELETE "
-+
-sheetName
-+
-" "
-+
-id
-);
-
-
-
-return true;
-
-
-}
-
-
-}
-
-
-
-return false;
-
-
-},
-
-
-
-
-
-
-
-// =========================
-// HEALTH
-// =========================
-
-
 health(){
-
 
 
 return HealthContract.create(
 
-
 "Database",
 
-
 this.initialized
-?
-"OK"
-:
-"WARNING",
-
+?"OK":"NOT_READY",
 
 {
 
-
-version:this.version,
-
-
-spreadsheet:
-SpreadsheetApp
-.getActiveSpreadsheet()
-.getName()
-
+version:this.version
 
 }
-
 
 );
 
 
-
 }
-
-
 
 
 };
 
 
 
-
-
-globalThis.Database =
+globalThis.Database=
 Database;
+
+
+Logger.log(
+"Database READY v2.0.0"
+);

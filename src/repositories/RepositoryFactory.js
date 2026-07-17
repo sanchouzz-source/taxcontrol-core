@@ -1,228 +1,377 @@
 console.log("RepositoryFactory");
 
+
 const RepositoryFactory = {
 
-    version: "1.0.0",
 
-    ready: false,
+version:"1.1.0",
 
-    repositories: {},
 
-    aliases: {
+ready:false,
 
-        CLIENT: "ClientRepository",
-        TRIP: "TripRepository",
-        KPI: "KPIRepository"
 
-    },
+repositories:{},
 
 
+aliases:{},
 
-    init() {
 
-        if (this.ready) {
 
-            Logger.log(
-                "RepositoryFactory ALREADY READY"
-            );
+contract:[
 
-            return;
+"create",
+"findById",
+"findAll",
+"update",
+"delete",
+"restore",
+"exists"
 
-        }
+],
 
-        Logger.log(
-            "RepositoryFactory INIT"
-        );
 
-        this.registerAll();
 
-        this.ready = true;
 
-        Logger.log(
-            "RepositoryFactory READY v" +
-            this.version
-        );
 
-    },
+init(){
 
 
+if(this.ready){
 
-    registerAll() {
+Logger.log(
+"RepositoryFactory ALREADY READY"
+);
 
-        Object.entries(this.aliases)
-            .forEach(([entity, repositoryName]) => {
+return;
 
-                const repository =
-                    globalThis[repositoryName];
+}
 
-                if (!repository) {
 
-                    Logger.log(
-                        "Repository NOT FOUND: " +
-                        repositoryName
-                    );
 
-                    return;
+Logger.log(
+"RepositoryFactory INIT"
+);
 
-                }
 
-                this.validate(repositoryName, repository);
 
-                this.repositories[entity] =
-                    repository;
+this.ready=true;
 
-                Logger.log(
-                    "REPOSITORY REGISTERED: " +
-                    entity +
-                    " -> " +
-                    repositoryName
-                );
 
-            });
 
-    },
+},
 
 
 
-    validate(name, repository) {
 
-        const required = [
 
-            "create",
-            "findById",
-            "findAll",
-            "update",
-            "delete",
-            "restore",
-            "exists"
 
-        ];
+register(
+name,
+repository,
+alias
+){
 
-        required.forEach(method => {
 
-            if (typeof repository[method] !== "function") {
 
-                throw new Error(
+this.validate(
+name,
+repository
+);
 
-                    "Repository " +
-                    name +
-                    " missing method " +
-                    method
 
-                );
 
-            }
+if(this.repositories[name]){
 
-        });
 
-        Logger.log(
-            "REPOSITORY CONTRACT OK: " +
-            name
-        );
+throw new Error(
+"Repository already registered: "
++
+name
+);
 
-    },
 
+}
 
 
-    get(entity) {
 
-        const repository =
-            this.repositories[entity];
 
-        if (!repository) {
+this.repositories[name]=repository;
 
-            throw new Error(
 
-                "Repository not registered: " +
-                entity
 
-            );
+if(alias){
 
-        }
+this.aliases[
+alias
+]=name;
 
-        return repository;
 
-    },
+Logger.log(
+"REPOSITORY ALIAS: "
++
+alias+
+" -> "+
+name
+);
 
 
+}
 
-    has(entity) {
 
-        return !!this.repositories[entity];
 
-    },
+Logger.log(
 
+"REPOSITORY REGISTERED: "
++
+name
 
+);
 
-    register(entity, repository) {
 
-        this.validate(entity, repository);
 
-        this.repositories[entity] =
-            repository;
+},
 
-        Logger.log(
-            "REPOSITORY ADDED: " +
-            entity
-        );
 
-    },
 
 
 
-    unregister(entity) {
 
-        delete this.repositories[entity];
+validate(
+name,
+repository
+){
 
-        Logger.log(
-            "REPOSITORY REMOVED: " +
-            entity
-        );
 
-    },
 
+if(!repository){
 
+throw new Error(
+"Repository missing: "
++
+name
+);
 
-    list() {
+}
 
-        return Object.keys(
-            this.repositories
-        );
 
-    },
 
 
+this.contract.forEach(
+method=>{
 
-    health() {
 
-        return HealthContract.create(
+if(
+typeof repository[method]
+!=="function"
+){
 
-            "RepositoryFactory",
 
-            this.ready
-                ? "OK"
-                : "NOT_READY",
+throw new Error(
 
-            {
+"Repository "
++
+name
++
+" missing method "
++
+method
 
-                version: this.version,
+);
 
-                repositories:
-                    Object.keys(
-                        this.repositories
-                    ).length
 
-            }
+}
 
-        );
 
-    }
+
+});
+
+
+Logger.log(
+
+"REPOSITORY CONTRACT OK: "
++
+name
+
+);
+
+
+
+},
+
+
+
+
+
+
+
+
+registerDefaults(){
+
+
+this.init();
+
+
+
+this.register(
+
+"ClientRepository",
+
+ClientRepository,
+
+"CLIENT"
+
+);
+
+
+
+this.register(
+
+"TripRepository",
+
+TripRepository,
+
+"TRIP"
+
+);
+
+
+
+this.register(
+
+"KPIRepository",
+
+KPIRepository,
+
+"KPI"
+
+);
+
+
+
+},
+
+
+
+
+
+
+
+get(
+alias
+){
+
+
+
+const name=
+this.aliases[alias];
+
+
+
+if(!name){
+
+
+throw new Error(
+
+"Repository not registered: "
++
+alias
+
+);
+
+
+}
+
+
+
+return this.repositories[name];
+
+
+},
+
+
+
+
+
+
+
+has(alias){
+
+
+return !!this.aliases[alias];
+
+
+},
+
+
+
+
+
+
+
+list(){
+
+
+return Object.keys(
+this.repositories
+);
+
+
+},
+
+
+
+
+
+
+
+health(){
+
+
+return HealthContract.create(
+
+"RepositoryFactory",
+
+this.ready
+?
+"OK"
+:
+"NOT_READY",
+
+{
+
+
+version:this.version,
+
+
+repositories:
+this.list(),
+
+
+aliases:
+this.aliases
+
+
+}
+
+
+);
+
+
+}
+
+
 
 };
 
-globalThis.RepositoryFactory =
-    RepositoryFactory;
+
+
+
+
+globalThis.RepositoryFactory=
+RepositoryFactory;
+
+
 
 Logger.log(
-    "RepositoryFactory READY v1.0.0"
+"RepositoryFactory READY v1.1.0"
 );

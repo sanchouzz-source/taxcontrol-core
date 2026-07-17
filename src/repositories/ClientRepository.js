@@ -9,133 +9,110 @@ version:"1.0.0",
 
 table:"Clients",
 
-entity:"CLIENT",
-
-permission:"CLIENT",
-
 
 
 create(data){
 
 return BaseRepository.create(
-
 this.table,
-
 data,
-
-this.entity,
-
-this.permission
-
+"CLIENT",
+"CLIENT"
 );
 
 },
-
 
 
 
 findById(id){
 
-
 return BaseRepository.findById(
-
 this.table,
-
 id,
-
-this.entity,
-
-this.permission
-
+"CLIENT",
+"CLIENT"
 );
 
-
 },
-
-
 
 
 
 findAll(filters={}){
 
-
 return BaseRepository.findAll(
-
 this.table,
-
 filters,
-
-this.entity,
-
-this.permission
-
+"CLIENT",
+"CLIENT"
 );
 
-
 },
-
-
 
 
 
 update(id,data){
 
-
 return BaseRepository.update(
-
 this.table,
-
 id,
-
 data,
-
-this.entity,
-
-this.permission
-
+"CLIENT",
+"CLIENT"
 );
 
-
 },
-
-
 
 
 
 delete(id){
 
-
 return BaseRepository.delete(
-
 this.table,
-
 id,
-
-this.entity,
-
-this.permission
-
+"CLIENT",
+"CLIENT"
 );
-
 
 },
 
 
 
-
-
 restore(id){
 
-
 return BaseRepository.restore(
-
 this.table,
-
 id,
+"CLIENT",
+"CLIENT"
+);
 
-this.entity,
+},
 
-this.permission
+
+
+exists(id){
+
+return BaseRepository.exists(
+this.table,
+id
+);
+
+},
+
+
+
+health(){
+
+
+return HealthContract.create(
+
+"ClientRepository",
+
+"OK",
+
+{
+version:this.version
+}
 
 );
 
@@ -148,9 +125,8 @@ this.permission
 
 
 
-globalThis.ClientRepository =
+globalThis.ClientRepository=
 ClientRepository;
-
 
 
 Logger.log(
