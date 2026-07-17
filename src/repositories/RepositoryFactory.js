@@ -114,3 +114,10 @@ const RepositoryFactory = {
     }
 
 };
+globalThis.RepositoryFactory =
+    RepositoryFactory;
+
+
+Logger.debug(
+    "RepositoryFactory GLOBAL REGISTERED v1.1.0"
+);
