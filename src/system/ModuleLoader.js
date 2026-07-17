@@ -69,13 +69,14 @@ coreOrder:[
 
 "BaseRepository",
 
-"RepositoryFactory",
+
 
 "ClientRepository",
 
 
 "TripRepository",
 "KPIRepository",
+"RepositoryFactory",
 "EntityService"
 
 ],
@@ -187,13 +188,13 @@ AuditEventHandler:42,
 
 
 BaseRepository:50,
-RepositoryFactory:51,
 
-ClientRepository:52,
 
-TripRepository:53,
-KPIRepository:54,
+ClientRepository:51,
 
+TripRepository:52,
+KPIRepository:53,
+RepositoryFactory:54,
 EntityService:55
 };
 

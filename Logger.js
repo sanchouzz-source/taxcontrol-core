@@ -4,7 +4,7 @@ console.log("Logger");
 const Logger = {
 
 
-    version:"0.2.0",
+    version:"0.3.0",
 
 
     log(message){
@@ -17,9 +17,21 @@ const Logger = {
 
 
 
+    debug(message){
+
+        console.log(
+            "[DEBUG]",
+            message
+        );
+
+    },
+
+
+
     info(message){
 
         console.info(
+            "[INFO]",
             message
         );
 
@@ -30,6 +42,7 @@ const Logger = {
     warn(message){
 
         console.warn(
+            "[WARN]",
             message
         );
 
@@ -40,6 +53,7 @@ const Logger = {
     error(message){
 
         console.error(
+            "[ERROR]",
             message
         );
 
@@ -53,7 +67,15 @@ const Logger = {
 
             status:"OK",
 
-            version:this.version
+            version:this.version,
+
+            methods:[
+                "log",
+                "debug",
+                "info",
+                "warn",
+                "error"
+            ]
 
         };
 
