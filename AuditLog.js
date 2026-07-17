@@ -1,79 +1,204 @@
 console.log("AuditLog");
 
 
+
 const AuditLog = {
 
 
-version:"0.4.0",
+
+version:"1.1.0",
+
+
+
+table:
+    "AuditLogs",
+
+
+
+
+
+ready:false,
+
+
 
 
 
 init(){
 
 
-const ss =
-SpreadsheetApp.getActive();
+    this.ready=true;
 
 
-let sheet =
-ss.getSheetByName(
-"AuditLog"
-);
+    Logger.log(
+        "AuditLog READY v"
+        +
+        this.version
+    );
 
 
-
-if(!sheet){
-
-
-sheet =
-ss.insertSheet(
-"AuditLog"
-);
-
-
-sheet.appendRow([
-
-"AuditID",
-"OrganizationID",
-"UserID",
-"Role",
-"Action",
-"Entity",
-"EntityID",
-"Before",
-"After",
-"CreatedAt"
-
-]);
-
-
-}
+},
 
 
 
-console.log(
-"AuditLog READY"
-);
+
+
+write(data){
 
 
 
-return HealthContract.create(
+    if(!data){
 
-"AuditLog",
+        throw new Error(
+            "Audit data missing"
+        );
 
-"OK",
+    }
 
-{
 
-version:this.version,
 
-sheet:"AuditLog",
+    const record = {
 
-initialized:true
 
-}
+        AuditID:
+            IdService.generate(
+                "AUDIT"
+            ),
 
-);
+
+
+        Entity:
+            data.entity || "",
+
+
+
+        EntityID:
+            data.entityId || "",
+
+
+
+        Action:
+            data.action || "SYSTEM",
+
+
+
+        UserID:
+            data.userId || 
+            UserSession?.userId ||
+            "SYSTEM",
+
+
+
+        OldValue:
+            this.serialize(
+                data.oldValue
+            ),
+
+
+
+        NewValue:
+            this.serialize(
+                data.newValue
+            ),
+
+
+
+        Event:
+            data.event || "",
+
+
+
+        Source:
+            data.source || "ERP",
+
+
+
+        CreatedAt:
+            new Date()
+            .toISOString(),
+
+
+
+        Version:
+            data.version || 1
+
+
+    };
+
+
+
+
+
+    this.insert(record);
+
+
+
+    return record;
+
+
+},
+
+
+
+
+
+
+insert(record){
+
+
+
+    try{
+
+
+        if(
+            Database &&
+            Database.insert
+        ){
+
+
+            Database.insert(
+
+                this.table,
+
+                record
+
+            );
+
+
+        }
+
+
+        Logger.log(
+
+            "AUDIT "
+            +
+            record.Action
+            +
+            " "
+            +
+            record.Entity
+            +
+            " "
+            +
+            record.EntityID
+
+        );
+
+
+
+    }
+    catch(e){
+
+
+        Logger.log(
+
+            "AUDIT WRITE ERROR: "
+            +
+            e.message
+
+        );
+
+
+    }
 
 
 
@@ -83,137 +208,110 @@ initialized:true
 
 
 
-write(
-action,
-entity,
-before,
-after
-){
+
+
+serialize(value){
 
 
 
-const props =
-PropertiesService
-.getScriptProperties();
+    if(
+        value === undefined ||
+        value === null
+    ){
+
+        return "";
+
+    }
 
 
 
-const row = {
+    if(
+        typeof value === "string"
+    ){
 
+        return value;
 
-AuditID:
-Utilities.getUuid(),
-
-
-OrganizationID:
-props.getProperty(
-"CURRENT_ORG"
-)
-||
-"ORG000001",
+    }
 
 
 
-UserID:
-props.getProperty(
-"CURRENT_USER"
-)
-||
-"SYSTEM",
+    return JSON.stringify(
+        value
+    );
 
 
 
-Role:
-props.getProperty(
-"CURRENT_ROLE"
-)
-||
-"SYSTEM",
-
-
-
-Action:
-action,
-
-
-
-Entity:
-entity,
-
-
-
-EntityID:
-after?.ClientID
-||
-before?.ClientID
-||
-"",
-
-
-
-Before:
-before
-?
-JSON.stringify(before)
-:
-"",
-
-
-
-After:
-after
-?
-JSON.stringify(after)
-:
-"",
-
-
-
-CreatedAt:
-new Date()
-
-};
+},
 
 
 
 
-const sheet =
-SpreadsheetApp
-.getActive()
-.getSheetByName(
-"AuditLog"
+
+
+
+findByEntity(entity,id){
+
+
+
+    if(!Database?.find){
+
+        return [];
+
+    }
+
+
+
+    return Database.find(
+
+        this.table,
+
+        {
+
+            Entity:entity,
+
+            EntityID:id
+
+        }
+
+    );
+
+
+},
+
+
+
+
+
+
+
+health(){
+
+
+
+return HealthContract.create(
+
+
+    "AuditLog",
+
+
+    this.ready
+        ?"OK"
+        :"NOT_READY",
+
+
+    {
+
+
+        version:this.version,
+
+
+        table:this.table
+
+
+    }
+
+
 );
-
-
-
-sheet.appendRow([
-
-row.AuditID,
-
-row.OrganizationID,
-
-row.UserID,
-
-row.Role,
-
-row.Action,
-
-row.Entity,
-
-row.EntityID,
-
-row.Before,
-
-row.After,
-
-row.CreatedAt
-
-
-]);
-
-
-
-return row;
 
 
 
@@ -225,5 +323,7 @@ return row;
 
 
 
+
+
 globalThis.AuditLog =
-AuditLog;
+    AuditLog;

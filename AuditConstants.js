@@ -4,48 +4,110 @@ console.log("AuditConstants");
 const AuditConstants = {
 
 
-    version:"1.0.0",
+    version:"1.1.0",
 
 
-    ACTION_CREATE:
-        "CREATE",
+
+    ACTIONS:{
 
 
-    ACTION_UPDATE:
-        "UPDATE",
+        CREATE:
+            "CREATE",
 
 
-    ACTION_DELETE:
-        "DELETE",
+        UPDATE:
+            "UPDATE",
 
 
-    ACTION_RESTORE:
-        "RESTORE",
+        DELETE:
+            "DELETE",
+
+
+        RESTORE:
+            "RESTORE",
+
+
+        READ:
+            "READ",
+
+
+        LOGIN:
+            "LOGIN",
+
+
+        LOGOUT:
+            "LOGOUT",
+
+
+        EXPORT:
+            "EXPORT",
+
+
+        IMPORT:
+            "IMPORT",
+
+
+        APPROVE:
+            "APPROVE",
+
+
+        CANCEL:
+            "CANCEL",
+
+
+        SECURITY:
+            "SECURITY",
+
+
+        SYSTEM:
+            "SYSTEM"
+
+
+    },
+
+
 
 
 
     register(){
 
 
+
+        /*
+        совместимость
+        со старым кодом
+        */
+
+
         globalThis.ACTION_CREATE =
-            this.ACTION_CREATE;
+            this.ACTIONS.CREATE;
 
 
         globalThis.ACTION_UPDATE =
-            this.ACTION_UPDATE;
+            this.ACTIONS.UPDATE;
 
 
         globalThis.ACTION_DELETE =
-            this.ACTION_DELETE;
+            this.ACTIONS.DELETE;
 
 
         globalThis.ACTION_RESTORE =
-            this.ACTION_RESTORE;
+            this.ACTIONS.RESTORE;
+
+
+
+        globalThis.AuditActions =
+            this.ACTIONS;
+
 
 
 
         Logger.log(
-            "AUDIT CONSTANTS REGISTERED"
+
+            "AUDIT CONSTANTS REGISTERED v"
+            +
+            this.version
+
         );
 
 
@@ -53,33 +115,73 @@ const AuditConstants = {
 
 
 
+
+
+    get(action){
+
+
+        return this.ACTIONS[action] || null;
+
+
+    },
+
+
+
+
+
+    has(action){
+
+
+        return Object
+            .values(this.ACTIONS)
+            .includes(action);
+
+
+    },
+
+
+
+
+
+    list(){
+
+
+        return Object
+            .values(this.ACTIONS);
+
+
+    },
+
+
+
+
+
     health(){
+
 
 
         return HealthContract.create(
 
+
             "AuditConstants",
+
 
             "OK",
 
+
             {
 
-                version:this.version,
+
+                version:
+                    this.version,
 
 
-                actions:[
+                actions:
+                    this.list()
 
-                    this.ACTION_CREATE,
-
-                    this.ACTION_UPDATE,
-
-                    this.ACTION_DELETE,
-
-                    this.ACTION_RESTORE
-
-                ]
 
             }
+
 
         );
 
@@ -92,7 +194,8 @@ const AuditConstants = {
 
 
 
-// регистрация при загрузке
+
+
 
 AuditConstants.register();
 

@@ -1,32 +1,24 @@
 console.log("AuditEventHandler");
 
 
-
 const AuditEventHandler = {
 
 
-version:"1.1.0",
-
-
-
-registered:{},
-
-
-
+version:"1.2.0",
 
 
 init(){
 
 
-this.registerEntity(
-EntityRegistry.CLIENT
-);
+if(this.ready){
+return;
+}
 
 
-this.registerEntity(
-EntityRegistry.TRIP
-);
+this.subscribe();
 
+
+this.ready=true;
 
 
 Logger.log(
@@ -36,173 +28,48 @@ this.version
 );
 
 
-
-return true;
-
-
 },
 
 
 
 
 
-
-registerEntity(entity){
-
-
-
-if(!entity){
-
-Logger.log(
-"AUDIT REGISTER FAILED ENTITY NOT FOUND"
-);
-
-return;
-
-}
-
-
-
-
-if(
-!entity.audit
-){
-
-Logger.log(
-"AUDIT SKIP "
-+
-entity.entity
-);
-
-return;
-
-}
-
-
-
-
-if(
-this.registered[entity.entity]
-){
-
-return;
-
-}
-
-
-
+subscribe(){
 
 
 EventBus.subscribe(
-
-entity.events.created,
-
-event=>{
-
-
-this.writeAudit(
-ACTION_CREATE,
-entity,
-null,
-event.after
+EntityEvents.CREATED,
+event=>this.handle(
+"CREATE",
+event
+)
 );
-
-
-}
-
-);
-
-
-
-
 
 
 EventBus.subscribe(
-
-entity.events.updated,
-
-event=>{
-
-
-this.writeAudit(
-ACTION_UPDATE,
-entity,
-event.before,
-event.after
+EntityEvents.UPDATED,
+event=>this.handle(
+"UPDATE",
+event
+)
 );
-
-
-}
-
-);
-
-
-
-
-
 
 
 EventBus.subscribe(
-
-entity.events.deleted,
-
-event=>{
-
-
-this.writeAudit(
-ACTION_DELETE,
-entity,
-event.before,
-event.after
+EntityEvents.DELETED,
+event=>this.handle(
+"DELETE",
+event
+)
 );
-
-
-}
-
-);
-
-
-
-
-
 
 
 EventBus.subscribe(
-
-entity.events.restored,
-
-event=>{
-
-
-this.writeAudit(
-ACTION_RESTORE,
-entity,
-event.before,
-event.after
-);
-
-
-}
-
-);
-
-
-
-
-
-
-this.registered[
-entity.entity
-]=true;
-
-
-
-Logger.log(
-
-"AUDIT REGISTERED ENTITY "
-+
-entity.entity
-
+EntityEvents.RESTORED,
+event=>this.handle(
+"RESTORE",
+event
+)
 );
 
 
@@ -214,62 +81,82 @@ entity.entity
 
 
 
-writeAudit(
-
+handle(
 action,
-entity,
-before,
-after
-
+event
 ){
 
 
-
-if(
-!action
-){
-
-Logger.log(
-"AUDIT ERROR ACTION EMPTY"
-);
-
-return;
-
-}
+try{
 
 
+const audit={
 
 
-if(
-!after
-){
+AuditID:
+IdService.generate(
+"AUDIT"
+),
 
-Logger.log(
-"AUDIT EMPTY AFTER "
-+
-entity.entity
-);
 
-return;
+Entity:
+event.entity
+||
+event.Entity
+||
+"UNKNOWN",
 
-}
+
+EntityID:
+event.id
+||
+event.entityId
+||
+"",
+
+
+Action:
+action,
+
+
+UserID:
+(
+typeof UserSession!=="undefined"
+&&
+UserSession.current
+)
+?
+UserSession.current.UserID
+:
+"SYSTEM",
+
+
+CreatedAt:
+new Date().toISOString(),
+
+
+Before:
+event.before
+||
+null,
+
+
+After:
+event.after
+||
+event.data
+||
+null
+
+
+};
 
 
 
 
 AuditLog.write(
-
-action,
-
-entity.entity,
-
-before,
-
-after
-
+audit
 );
-
-
 
 
 
@@ -281,63 +168,31 @@ action
 +
 " "
 +
-entity.entity
+audit.Entity
 +
 " "
 +
-after[
-entity.idField
-]
+audit.EntityID
 
 );
 
 
 
-},
-
-
-
-
-
-
-
-health(){
-
-
-return HealthContract.create(
-
-"AuditEventHandler",
-
-"OK",
-
-{
-
-
-version:this.version,
-
-
-registered:
-Object.keys(
-this.registered
-),
-
-
-dependencies:{
-
-
-EventBus:!!EventBus,
-
-AuditLog:!!AuditLog,
-
-EntityRegistry:!!EntityRegistry
-
-
 }
+catch(e){
 
 
-}
+Logger.log(
+
+"AUDIT ERROR: "
++
+e.message
 
 );
+
+
+}
+
 
 
 }
@@ -345,7 +200,6 @@ EntityRegistry:!!EntityRegistry
 
 
 };
-
 
 
 
