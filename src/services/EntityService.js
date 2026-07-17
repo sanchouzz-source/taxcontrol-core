@@ -1,202 +1,164 @@
 console.log("EntityService");
 
+const EntityService = {
 
+    version: "2.0.0",
 
-const EntityService={
+    create(entity, data) {
 
+        const meta = this.getMetadata(entity);
 
+        SecurityGuard.check(
+            meta.permissions.create
+        );
 
-version:"0.1.0",
+        return RepositoryFactory
+            .get(entity)
+            .create(data);
 
+    },
 
 
 
-create(
-entity,
-data
-){
+    findById(entity, id) {
 
+        const meta = this.getMetadata(entity);
 
-const metadata =
-EntityRegistry[entity];
+        SecurityGuard.check(
+            meta.permissions.read
+        );
 
+        return RepositoryFactory
+            .get(entity)
+            .findById(id);
 
+    },
 
-if(!metadata)
-throw new Error(
-"ENTITY NOT FOUND "
-+
-entity
-);
 
 
+    findAll(entity, filters = {}) {
 
+        const meta = this.getMetadata(entity);
 
-SecurityGuard.require(
-metadata.permissions.create
-);
+        SecurityGuard.check(
+            meta.permissions.read
+        );
 
+        return RepositoryFactory
+            .get(entity)
+            .findAll(filters);
 
+    },
 
 
 
-const repo =
-RepositoryFactory.get(
-entity
-);
+    update(entity, id, data) {
 
+        const meta = this.getMetadata(entity);
 
+        SecurityGuard.check(
+            meta.permissions.update
+        );
 
+        return RepositoryFactory
+            .get(entity)
+            .update(id, data);
 
+    },
 
-const result =
-repo.create(
-data
-);
 
 
+    delete(entity, id) {
 
+        const meta = this.getMetadata(entity);
 
-return result;
+        SecurityGuard.check(
+            meta.permissions.delete
+        );
 
+        return RepositoryFactory
+            .get(entity)
+            .delete(id);
 
+    },
 
-},
 
 
+    restore(entity, id) {
 
+        const meta = this.getMetadata(entity);
 
+        SecurityGuard.check(
+            meta.permissions.restore
+        );
 
+        return RepositoryFactory
+            .get(entity)
+            .restore(id);
 
+    },
 
 
-findById(
-entity,
-id
-){
 
+    exists(entity, id) {
 
+        return RepositoryFactory
+            .get(entity)
+            .exists(id);
 
-const metadata =
-EntityRegistry[entity];
+    },
 
 
 
-SecurityGuard.require(
-metadata.permissions.read
-);
+    repository(entity) {
 
+        return RepositoryFactory.get(entity);
 
+    },
 
 
-return RepositoryFactory
-.get(entity)
-.findById(id);
 
+    getMetadata(entity) {
 
+        const meta = EntityRegistry[entity];
 
-},
+        if (!meta) {
 
+            throw new Error(
+                "Unknown entity: " + entity
+            );
 
+        }
 
+        return meta;
 
+    },
 
 
 
-update(
-entity,
-id,
-data
-){
+    health() {
 
+        return HealthContract.create(
 
-const metadata =
-EntityRegistry[entity];
+            "EntityService",
 
+            "OK",
 
-SecurityGuard.require(
-metadata.permissions.update
-);
+            {
 
+                version: this.version
 
+            }
 
+        );
 
-return RepositoryFactory
-.get(entity)
-.update(
-id,
-data
-);
-
-
-
-},
-
-
-
-
-
-
-
-
-delete(
-entity,
-id
-){
-
-
-
-const metadata =
-EntityRegistry[entity];
-
-
-SecurityGuard.require(
-metadata.permissions.delete
-);
-
-
-
-return RepositoryFactory
-.get(entity)
-.delete(id);
-
-
-
-},
-
-
-
-
-
-restore(
-entity,
-id
-){
-
-
-const metadata =
-EntityRegistry[entity];
-
-
-SecurityGuard.require(
-metadata.permissions.restore
-);
-
-
-
-return RepositoryFactory
-.get(entity)
-.restore(id);
-
-
-
-}
-
-
+    }
 
 };
 
-
-
 globalThis.EntityService =
-EntityService;
+    EntityService;
+
+Logger.log(
+    "EntityService READY v2.0.0"
+);

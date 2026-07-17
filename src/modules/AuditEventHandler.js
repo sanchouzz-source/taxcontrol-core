@@ -9,8 +9,13 @@ const AuditEventHandler = {
     init() {
 
         if (this.ready) {
-            Logger.log("AuditEventHandler ALREADY READY");
+
+            Logger.log(
+                "AuditEventHandler ALREADY READY"
+            );
+
             return;
+
         }
 
         this.subscribe();
@@ -30,41 +35,57 @@ const AuditEventHandler = {
 
         Object.values(EntityRegistry).forEach(meta => {
 
-            if (!meta.events) {
+            if (!meta || !meta.events) {
                 return;
             }
 
-            EventBus.subscribe(
-                meta.events.created,
-                event => this.handle(
-                    AuditConstants.ACTION_CREATE,
-                    event
-                )
-            );
+            if (meta.events.created) {
 
-            EventBus.subscribe(
-                meta.events.updated,
-                event => this.handle(
-                    AuditConstants.ACTION_UPDATE,
-                    event
-                )
-            );
+                EventBus.subscribe(
+                    meta.events.created,
+                    event => this.handle(
+                        AuditConstants.ACTION_CREATE,
+                        event
+                    )
+                );
 
-            EventBus.subscribe(
-                meta.events.deleted,
-                event => this.handle(
-                    AuditConstants.ACTION_DELETE,
-                    event
-                )
-            );
+            }
 
-            EventBus.subscribe(
-                meta.events.restored,
-                event => this.handle(
-                    AuditConstants.ACTION_RESTORE,
-                    event
-                )
-            );
+            if (meta.events.updated) {
+
+                EventBus.subscribe(
+                    meta.events.updated,
+                    event => this.handle(
+                        AuditConstants.ACTION_UPDATE,
+                        event
+                    )
+                );
+
+            }
+
+            if (meta.events.deleted) {
+
+                EventBus.subscribe(
+                    meta.events.deleted,
+                    event => this.handle(
+                        AuditConstants.ACTION_DELETE,
+                        event
+                    )
+                );
+
+            }
+
+            if (meta.events.restored) {
+
+                EventBus.subscribe(
+                    meta.events.restored,
+                    event => this.handle(
+                        AuditConstants.ACTION_RESTORE,
+                        event
+                    )
+                );
+
+            }
 
             Logger.log(
                 "AUDIT REGISTERED ENTITY " +
@@ -81,23 +102,41 @@ const AuditEventHandler = {
 
         try {
 
+            if (!event) {
+
+                Logger.log(
+                    "AUDIT EMPTY EVENT"
+                );
+
+                return;
+
+            }
+
             const audit = {
 
                 AuditID:
                     IdService.generate("AUDIT"),
 
+                OrganizationID:
+                    (
+                        typeof OrganizationContext !== "undefined"
+                    )
+                        ? OrganizationContext.get()
+                        : "",
+
                 Entity:
-                    event.entity ||
-                    event.Entity ||
+                    event.entity ??
+                    event.Entity ??
                     "UNKNOWN",
 
                 EntityID:
-                    event.id ||
-                    event.entityId ||
-                    event.EntityID ||
+                    event.entityId ??
+                    event.EntityID ??
+                    event.id ??
                     "",
 
-                Action: action,
+                Action:
+                    action,
 
                 UserID:
                     (
@@ -106,13 +145,6 @@ const AuditEventHandler = {
                     )
                         ? UserSession.current.UserID
                         : "SYSTEM",
-
-                OrganizationID:
-                    (
-                        typeof OrganizationContext !== "undefined"
-                    )
-                        ? OrganizationContext.get()
-                        : "",
 
                 CreatedAt:
                     new Date().toISOString(),
@@ -130,20 +162,30 @@ const AuditEventHandler = {
             AuditLog.write(audit);
 
             Logger.log(
+
                 "AUDIT " +
-                action +
+
+                audit.Action +
+
                 " " +
+
                 audit.Entity +
+
                 " " +
+
                 audit.EntityID
+
             );
 
         }
         catch (e) {
 
             Logger.log(
+
                 "AUDIT ERROR: " +
+
                 e.message
+
             );
 
         }
@@ -164,9 +206,14 @@ const AuditEventHandler = {
 
             {
 
-                version: this.version,
+                version:
+                    this.version,
 
-                ready: this.ready
+                ready:
+                    this.ready,
+
+                entities:
+                    Object.keys(EntityRegistry).length
 
             }
 

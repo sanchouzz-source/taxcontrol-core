@@ -1,395 +1,403 @@
 console.log("BaseRepository");
 
-
 const BaseRepository = {
 
+    version: "2.0.0",
 
-version:"1.0.0",
+    create(
+        table,
+        data,
+        entity,
+        permission
+    ) {
 
+        SecurityGuard.check(
+            permission + "_CREATE"
+        );
 
+        if (!data.ID) {
+            data.ID =
+                IdService.generate(entity);
+        }
 
-create(
-table,
-data,
-entity,
-permission
-){
+        data.OrganizationID =
+            OrganizationContext.get();
 
+        data.CreatedAt =
+            data.CreatedAt ??
+            new Date().toISOString();
 
-SecurityGuard.check(
-permission + "_CREATE"
-);
+        data.UpdatedAt =
+            data.CreatedAt;
 
+        const result =
+            Database.insert(
+                table,
+                data
+            );
 
+        EventBus.emit(
+            entity + "_CREATED",
+            this.createEvent(
+                entity,
+                AuditConstants.ACTION_CREATE,
+                null,
+                result
+            )
+        );
 
-if(!data.ID){
+        return result;
 
-data.ID =
-IdService.generate(entity);
+    },
 
-}
 
 
+    findById(
+        table,
+        id,
+        entity,
+        permission
+    ) {
 
-data.OrganizationID =
-OrganizationContext.get();
+        SecurityGuard.check(
+            permission + "_READ"
+        );
 
+        return Database.find(
+            table,
+            id
+        );
 
+    },
 
-const result =
-Database.insert(
-table,
-data
-);
 
 
+    findAll(
+        table,
+        filters = {},
+        entity,
+        permission
+    ) {
 
+        SecurityGuard.check(
+            permission + "_READ"
+        );
 
-EventBus.emit(
-entity + "_CREATED",
-result
-);
+        return Database.query(
+            table,
+            filters
+        );
 
+    },
 
 
-return result;
 
+    update(
+        table,
+        id,
+        data,
+        entity,
+        permission
+    ) {
 
-},
+        SecurityGuard.check(
+            permission + "_UPDATE"
+        );
 
+        const existing =
+            Database.find(
+                table,
+                id
+            );
 
+        if (!existing) {
 
+            throw new Error(
+                entity + " not found"
+            );
 
+        }
 
+        Versioning.save(
+            entity,
+            id,
+            existing
+        );
 
-findById(
-table,
-id,
-entity,
-permission
-){
+        const updated = {
 
+            ...existing,
 
-SecurityGuard.check(
-permission + "_READ"
-);
+            ...data,
 
+            UpdatedAt:
+                new Date().toISOString()
 
+        };
 
-return Database.find(
-table,
-id
-);
+        const result =
+            Database.update(
+                table,
+                id,
+                updated
+            );
 
+        EventBus.emit(
+            entity + "_UPDATED",
+            this.createEvent(
+                entity,
+                AuditConstants.ACTION_UPDATE,
+                existing,
+                result
+            )
+        );
 
-},
+        return result;
 
+    },
 
 
 
+    delete(
+        table,
+        id,
+        entity,
+        permission
+    ) {
 
+        SecurityGuard.check(
+            permission + "_DELETE"
+        );
 
+        const existing =
+            Database.find(
+                table,
+                id
+            );
 
+        if (!existing) {
 
-findAll(
-table,
-filters={},
-entity,
-permission
-){
+            throw new Error(
+                entity + " not found"
+            );
 
+        }
 
-SecurityGuard.check(
-permission + "_READ"
-);
+        Versioning.save(
+            entity,
+            id,
+            existing
+        );
 
+        const result =
+            Database.update(
+                table,
+                id,
+                {
 
+                    ...existing,
 
-return Database.query(
-table,
-filters
-);
+                    Deleted: true,
 
+                    UpdatedAt:
+                        new Date().toISOString()
 
-},
+                }
 
+            );
 
+        EventBus.emit(
+            entity + "_DELETED",
+            this.createEvent(
+                entity,
+                AuditConstants.ACTION_DELETE,
+                existing,
+                result
+            )
+        );
 
+        return result;
 
+    },
 
 
 
-update(
-table,
-id,
-data,
-entity,
-permission
-){
+    restore(
+        table,
+        id,
+        entity,
+        permission
+    ) {
 
+        SecurityGuard.check(
+            permission + "_RESTORE"
+        );
 
-SecurityGuard.check(
-permission + "_UPDATE"
-);
+        const existing =
+            Database.find(
+                table,
+                id
+            );
 
+        if (!existing) {
 
+            throw new Error(
+                entity + " not found"
+            );
 
-const existing =
-Database.find(
-table,
-id
-);
+        }
 
+        Versioning.save(
+            entity,
+            id,
+            existing
+        );
 
+        const result =
+            Database.update(
+                table,
+                id,
+                {
 
-if(!existing){
+                    ...existing,
 
-throw new Error(
-entity+" not found"
-);
+                    Deleted: false,
 
-}
+                    UpdatedAt:
+                        new Date().toISOString()
 
+                }
 
+            );
 
+        EventBus.emit(
+            entity + "_RESTORED",
+            this.createEvent(
+                entity,
+                AuditConstants.ACTION_RESTORE,
+                existing,
+                result
+            )
+        );
 
-Versioning.save(
-entity,
-id,
-existing
-);
+        return result;
 
+    },
 
 
-const updated = {
 
-...existing,
+    exists(
+        table,
+        id
+    ) {
 
-...data,
+        return !!Database.find(
+            table,
+            id
+        );
 
-UpdatedAt:
-new Date().toISOString()
+    },
+
+
+
+    createEvent(
+        entity,
+        action,
+        before,
+        after
+    ) {
+
+        return {
+
+            entity,
+
+            entityId:
+                this.extractEntityId(after),
+
+            action,
+
+            before,
+
+            after,
+
+            userId:
+                (
+                    typeof UserSession !== "undefined" &&
+                    UserSession.current
+                )
+                    ? UserSession.current.UserID
+                    : "SYSTEM",
+
+            organizationId:
+                (
+                    typeof OrganizationContext !== "undefined"
+                )
+                    ? OrganizationContext.get()
+                    : "",
+
+            timestamp:
+                new Date().toISOString()
+
+        };
+
+    },
+
+
+
+    extractEntityId(record) {
+
+        if (!record) {
+            return "";
+        }
+
+        return (
+
+            record.ID ??
+
+            record.ClientID ??
+
+            record.TripID ??
+
+            record.KPIID ??
+
+            record.InvoiceID ??
+
+            record.DriverID ??
+
+            record.VehicleID ??
+
+            ""
+
+        );
+
+    },
+
+
+
+    health() {
+
+        return HealthContract.create(
+
+            "BaseRepository",
+
+            "OK",
+
+            {
+
+                version:
+                    this.version
+
+            }
+
+        );
+
+    }
 
 };
-
-
-
-
-const result =
-Database.update(
-table,
-id,
-updated
-);
-
-
-
-
-
-
-EventBus.emit(
-entity+"_UPDATED",
-result
-);
-
-
-
-return result;
-
-
-},
-
-
-
-
-
-
-
-delete(
-table,
-id,
-entity,
-permission
-){
-
-
-SecurityGuard.check(
-permission+"_DELETE"
-);
-
-
-
-const existing =
-Database.find(
-table,
-id
-);
-
-
-
-if(!existing){
-
-throw new Error(
-entity+" not found"
-);
-
-}
-
-
-
-Versioning.save(
-entity,
-id,
-existing
-);
-
-
-
-const result =
-Database.update(
-table,
-id,
-{
-
-...existing,
-
-Deleted:true,
-
-UpdatedAt:
-new Date().toISOString()
-
-}
-
-);
-
-
-
-
-
-EventBus.emit(
-entity+"_DELETED",
-result
-);
-
-
-
-return result;
-
-
-},
-
-
-
-
-
-
-
-restore(
-table,
-id,
-entity,
-permission
-){
-
-
-SecurityGuard.check(
-permission+"_RESTORE"
-);
-
-
-
-const existing =
-Database.find(
-table,
-id
-);
-
-
-
-if(!existing){
-
-throw new Error(
-entity+" not found"
-);
-
-}
-
-
-
-Versioning.save(
-entity,
-id,
-existing
-);
-
-
-
-const result =
-Database.update(
-table,
-id,
-{
-
-...existing,
-
-Deleted:false,
-
-UpdatedAt:
-new Date().toISOString()
-
-}
-
-);
-
-
-
-
-
-
-EventBus.emit(
-entity+"_RESTORED",
-result
-);
-
-
-
-return result;
-
-
-},
-
-
-
-
-
-
-
-exists(
-table,
-id
-){
-
-
-return !!Database.find(
-table,
-id
-);
-
-
-}
-
-
-
-
-};
-
-
 
 globalThis.BaseRepository =
-BaseRepository;
-
-
+    BaseRepository;
 
 Logger.log(
-"BaseRepository READY v1.0.0"
+    "BaseRepository READY v2.0.0"
 );

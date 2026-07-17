@@ -1,485 +1,228 @@
 console.log("RepositoryFactory");
 
-
 const RepositoryFactory = {
 
+    version: "1.0.0",
 
-version:"0.4.0",
+    ready: false,
 
+    repositories: {},
 
-repositories:{},
+    aliases: {
 
+        CLIENT: "ClientRepository",
+        TRIP: "TripRepository",
+        KPI: "KPIRepository"
 
-aliases:{},
+    },
 
 
 
+    init() {
 
-contract:[
+        if (this.ready) {
 
-"findById",
-"findAll",
-"create",
-"update",
-"delete",
-"restore"
+            Logger.log(
+                "RepositoryFactory ALREADY READY"
+            );
 
-],
+            return;
 
+        }
 
+        Logger.log(
+            "RepositoryFactory INIT"
+        );
 
+        this.registerAll();
 
+        this.ready = true;
 
+        Logger.log(
+            "RepositoryFactory READY v" +
+            this.version
+        );
 
+    },
 
 
-validateRepository(
-name,
-repository
-){
 
+    registerAll() {
 
-this.contract.forEach(method=>{
+        Object.entries(this.aliases)
+            .forEach(([entity, repositoryName]) => {
 
+                const repository =
+                    globalThis[repositoryName];
 
-if(typeof repository[method] !== "function"){
+                if (!repository) {
 
+                    Logger.log(
+                        "Repository NOT FOUND: " +
+                        repositoryName
+                    );
 
-throw new Error(
+                    return;
 
-"Repository contract failed: "
-+
-name
-+
-" missing "
-+
-method
+                }
 
-);
+                this.validate(repositoryName, repository);
 
+                this.repositories[entity] =
+                    repository;
 
-}
+                Logger.log(
+                    "REPOSITORY REGISTERED: " +
+                    entity +
+                    " -> " +
+                    repositoryName
+                );
 
+            });
 
-});
+    },
 
 
 
-Logger.log(
+    validate(name, repository) {
 
-"REPOSITORY CONTRACT OK: "
-+
-name
+        const required = [
 
-);
+            "create",
+            "findById",
+            "findAll",
+            "update",
+            "delete",
+            "restore",
+            "exists"
 
+        ];
 
-},
+        required.forEach(method => {
 
+            if (typeof repository[method] !== "function") {
 
+                throw new Error(
 
+                    "Repository " +
+                    name +
+                    " missing method " +
+                    method
 
+                );
 
+            }
 
+        });
 
-register(
-name,
-repository
-){
+        Logger.log(
+            "REPOSITORY CONTRACT OK: " +
+            name
+        );
 
+    },
 
 
-if(!repository){
 
+    get(entity) {
 
-throw new Error(
+        const repository =
+            this.repositories[entity];
 
-"Repository missing: "
-+
-name
+        if (!repository) {
 
-);
+            throw new Error(
 
+                "Repository not registered: " +
+                entity
 
-}
+            );
 
+        }
 
+        return repository;
 
+    },
 
 
-this.validateRepository(
-name,
-repository
-);
 
+    has(entity) {
 
+        return !!this.repositories[entity];
 
+    },
 
 
-if(this.repositories[name]){
 
+    register(entity, repository) {
 
-Logger.log(
+        this.validate(entity, repository);
 
-"REPOSITORY ALREADY REGISTERED: "
-+
-name
+        this.repositories[entity] =
+            repository;
 
-);
+        Logger.log(
+            "REPOSITORY ADDED: " +
+            entity
+        );
 
+    },
 
-return this.repositories[name];
 
 
-}
+    unregister(entity) {
 
+        delete this.repositories[entity];
 
+        Logger.log(
+            "REPOSITORY REMOVED: " +
+            entity
+        );
 
+    },
 
 
-this.repositories[name]=repository;
 
+    list() {
 
+        return Object.keys(
+            this.repositories
+        );
 
-Logger.log(
+    },
 
-"REPOSITORY REGISTERED: "
-+
-name
 
-);
 
+    health() {
 
+        return HealthContract.create(
 
+            "RepositoryFactory",
 
+            this.ready
+                ? "OK"
+                : "NOT_READY",
 
-return repository;
+            {
 
+                version: this.version,
 
-},
+                repositories:
+                    Object.keys(
+                        this.repositories
+                    ).length
 
+            }
 
+        );
 
-
-
-
-
-registerAlias(
-entity,
-repositoryName
-){
-
-
-
-if(!this.repositories[repositoryName]
-&&
-!globalThis[repositoryName]){
-
-
-Logger.log(
-
-"WARNING: alias target not loaded "
-+
-repositoryName
-
-);
-
-
-}
-
-
-
-
-
-this.aliases[entity]=repositoryName;
-
-
-
-Logger.log(
-
-"REPOSITORY ALIAS: "
-+
-entity
-+
-" -> "
-+
-repositoryName
-
-);
-
-
-
-},
-
-
-
-
-
-
-
-get(
-name
-){
-
-
-
-let repo =
-this.repositories[name];
-
-
-
-if(repo){
-
-return repo;
-
-}
-
-
-
-
-
-const alias =
-this.aliases[name];
-
-
-
-if(alias){
-
-
-repo =
-this.repositories[alias];
-
-
-
-if(repo){
-
-return repo;
-
-}
-
-
-}
-
-
-
-
-
-
-throw new Error(
-
-"Repository not found: "
-+
-name
-
-);
-
-
-},
-
-
-
-
-
-
-
-getOrThrow(
-name
-){
-
-
-try{
-
-
-return this.get(name);
-
-
-}
-
-catch(e){
-
-
-Logger.log(
-
-"RepositoryFactory ERROR: "
-+
-e.message
-
-);
-
-
-throw e;
-
-
-}
-
-
-},
-
-
-
-
-
-
-
-has(
-name
-){
-
-
-return !!this.repositories[name]
-||
-!!this.aliases[name];
-
-
-},
-
-
-
-
-
-
-
-init(){
-
-
-
-Logger.log(
-"RepositoryFactory INIT"
-);
-
-
-
-
-
-this.registerAlias(
-"CLIENT",
-"ClientRepository"
-);
-
-
-this.registerAlias(
-"TRIP",
-"TripRepository"
-);
-
-
-this.registerAlias(
-"KPI",
-"KPIRepository"
-);
-
-
-
-
-
-
-
-[
-"ClientRepository",
-"TripRepository",
-"KPIRepository"
-
-]
-.forEach(name=>{
-
-
-const repo =
-globalThis[name];
-
-
-
-if(repo){
-
-
-this.register(
-name,
-repo
-);
-
-
-}
-else{
-
-
-Logger.log(
-
-"REPOSITORY NOT FOUND DURING INIT: "
-+
-name
-
-);
-
-
-}
-
-
-});
-
-
-
-
-
-
-Logger.log(
-
-"RepositoryFactory READY v"
-+
-this.version
-
-);
-
-
-
-},
-
-
-
-
-
-
-
-health(){
-
-
-
-return HealthContract.create(
-
-"RepositoryFactory",
-
-"OK",
-
-{
-
-version:this.version,
-
-
-repositories:
-Object.keys(this.repositories),
-
-
-aliases:this.aliases,
-
-
-count:
-Object.keys(this.repositories).length
-
-
-}
-
-
-);
-
-
-}
-
-
-
+    }
 
 };
 
-
-
-
-
 globalThis.RepositoryFactory =
-RepositoryFactory;
+    RepositoryFactory;
+
+Logger.log(
+    "RepositoryFactory READY v1.0.0"
+);
