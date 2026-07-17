@@ -4,100 +4,158 @@ console.log("ClientRepository");
 const ClientRepository = {
 
 
-version:"1.0.0",
+version:"1.1.0",
 
 
 table:"Clients",
 
 
+entity:"CLIENT",
+
+
 
 create(data){
 
+
 return BaseRepository.create(
+
 this.table,
+
 data,
-"CLIENT",
-"CLIENT"
+
+this.entity,
+
+this.entity
+
 );
 
+
 },
+
 
 
 
 findById(id){
 
+
 return BaseRepository.findById(
+
 this.table,
+
 id,
-"CLIENT",
-"CLIENT"
+
+this.entity,
+
+this.entity
+
 );
 
+
 },
+
 
 
 
 findAll(filters={}){
 
+
 return BaseRepository.findAll(
+
 this.table,
+
 filters,
-"CLIENT",
-"CLIENT"
+
+this.entity,
+
+this.entity
+
 );
 
+
 },
+
 
 
 
 update(id,data){
 
+
 return BaseRepository.update(
+
 this.table,
+
 id,
+
 data,
-"CLIENT",
-"CLIENT"
+
+this.entity,
+
+this.entity
+
 );
 
+
 },
+
 
 
 
 delete(id){
 
+
 return BaseRepository.delete(
+
 this.table,
+
 id,
-"CLIENT",
-"CLIENT"
+
+this.entity,
+
+this.entity
+
 );
 
+
 },
+
 
 
 
 restore(id){
 
+
 return BaseRepository.restore(
+
 this.table,
+
 id,
-"CLIENT",
-"CLIENT"
+
+this.entity,
+
+this.entity
+
 );
 
+
 },
+
 
 
 
 exists(id){
 
+
 return BaseRepository.exists(
+
 this.table,
+
 id
+
 );
 
+
 },
+
 
 
 
@@ -111,7 +169,11 @@ return HealthContract.create(
 "OK",
 
 {
-version:this.version
+
+version:this.version,
+
+table:this.table
+
 }
 
 );
@@ -125,10 +187,10 @@ version:this.version
 
 
 
-globalThis.ClientRepository=
+globalThis.ClientRepository =
 ClientRepository;
 
 
 Logger.log(
-"ClientRepository READY v1.0.0"
+"ClientRepository READY v1.1.0"
 );
