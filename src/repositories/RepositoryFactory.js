@@ -1,208 +1,106 @@
 const RepositoryFactory = {
 
-    VERSION: "1.2.0",
+    VERSION: "1.1.0",
 
-    _repositories: {},
-
-    _initialized: false,
+    repositories: {},
 
 
     init() {
 
-        if (this._initialized) {
-            Logger?.debug?.(
-                "RepositoryFactory ALREADY READY"
-            );
-            return;
-        }
-
-
-        Logger?.debug?.(
-            "RepositoryFactory INIT"
-        );
-
-
-        this.registerDefaults();
-
-
-        this.validateContract();
-
-
-        this._initialized = true;
-
-
-        Logger?.debug?.(
-            "RepositoryFactory READY v1.2.0"
-        );
-    },
-
-
-    register(entity, repository) {
-
-
-        if (!entity) {
-            throw new Error(
-                "RepositoryFactory: entity required"
-            );
-        }
-
-
-        if (!repository) {
-            throw new Error(
-                "RepositoryFactory: repository required"
-            );
-        }
-
-
-        const key = String(entity)
-            .toUpperCase();
-
-
-        if (typeof repository.create !== "function") {
-
-            throw new Error(
-                `Repository ${key} missing create`
-            );
-
-        }
-
-
-        if (typeof repository.exists !== "function") {
-
-            throw new Error(
-                `Repository ${key} missing exists`
-            );
-
-        }
-
-
-
-        this._repositories[key] = repository;
-
-
-        Logger?.debug?.(
-            `REPOSITORY REGISTERED ${key}`
-        );
-
-
-    },
-
-
-    registerDefaults(){
+        Logger.debug("RepositoryFactory INIT");
 
 
         this.register(
-            EntityConstants.CLIENT,
+            "CLIENT",
             ClientRepository
         );
 
 
         this.register(
-            EntityConstants.TRIP,
+            "TRIP",
             TripRepository
         );
 
 
         this.register(
-            EntityConstants.KPI,
+            "KPI",
             KPIRepository
         );
 
 
+        Logger.debug(
+          "RepositoryFactory READY v1.1.0"
+        );
     },
 
 
-
-    exists(entity){
-
-
-        const key =
-            String(entity)
-            .toUpperCase();
-
-
-        return !!this._repositories[key];
-
-    },
-
-
-
-    get(entity){
-
-
-        const key =
-            String(entity)
-            .toUpperCase();
-
-
-
-        const repository =
-            this._repositories[key];
-
+    register(name, repository) {
 
 
         if (!repository) {
+            throw new Error(
+              "Repository missing: " + name
+            );
+        }
+
+
+        const required = [
+            "create",
+            "get",
+            "update",
+            "delete",
+            "exists"
+        ];
+
+
+        required.forEach(method => {
+
+            if (
+              typeof repository[method] !== "function"
+            ) {
+
+                throw new Error(
+                 `Repository ${name} missing method ${method}`
+                );
+
+            }
+
+        });
+
+
+        this.repositories[name] = repository;
+
+
+        Logger.debug(
+          `REGISTERED REPOSITORY: ${name}`
+        );
+
+    },
+
+
+    get(name) {
+
+
+        if (
+          !this.repositories[name]
+        ) {
 
             throw new Error(
-                `Repository not registered: ${key}`
+              "Repository not registered: "
+              + name
             );
 
         }
 
 
-
-        return repository;
+        return this.repositories[name];
 
     },
 
 
+    has(name){
 
-    validateContract(){
-
-
-        Object.keys(this._repositories)
-            .forEach(key=>{
-
-
-                const repo =
-                    this._repositories[key];
-
-
-                const required=[
-                    "create",
-                    "get",
-                    "update",
-                    "delete",
-                    "exists"
-                ];
-
-
-
-                required.forEach(method=>{
-
-
-                    if (
-                        typeof repo[method]
-                        !== "function"
-                    ){
-
-                        throw new Error(
-                            `Repository ${key} missing ${method}`
-                        );
-
-                    }
-
-
-                });
-
-
-
-            });
-
-
-        Logger?.debug?.(
-            "RepositoryFactory CONTRACT OK"
-        );
+        return !!this.repositories[name];
 
     },
 
@@ -210,7 +108,7 @@ const RepositoryFactory = {
     list(){
 
         return Object.keys(
-            this._repositories
+            this.repositories
         );
 
     }
