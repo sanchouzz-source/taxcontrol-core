@@ -44,14 +44,6 @@ data
 
 
 
-AuditLog.write(
-"CREATE",
-entity,
-null,
-result
-);
-
-
 
 EventBus.emit(
 entity + "_CREATED",
@@ -193,13 +185,6 @@ updated
 
 
 
-AuditLog.write(
-"UPDATE",
-entity,
-existing,
-result
-);
-
 
 
 EventBus.emit(
@@ -278,13 +263,6 @@ new Date().toISOString()
 );
 
 
-
-AuditLog.write(
-"DELETE",
-entity,
-existing,
-result
-);
 
 
 
@@ -365,12 +343,6 @@ new Date().toISOString()
 
 
 
-AuditLog.write(
-"RESTORE",
-entity,
-existing,
-result
-);
 
 
 

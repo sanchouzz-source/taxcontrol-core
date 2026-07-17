@@ -57,15 +57,6 @@ data
 
 
 
-
-EventBus.emit(
-metadata.events.created,
-result
-);
-
-
-
-
 return result;
 
 
