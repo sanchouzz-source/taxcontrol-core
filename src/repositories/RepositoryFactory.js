@@ -118,6 +118,6 @@ globalThis.RepositoryFactory =
     RepositoryFactory;
 
 
-Logger.debug(
+Logger.log(
     "RepositoryFactory GLOBAL REGISTERED v1.1.0"
 );
