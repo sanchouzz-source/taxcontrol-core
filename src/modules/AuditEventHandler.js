@@ -1,208 +1,179 @@
 console.log("AuditEventHandler");
 
-
 const AuditEventHandler = {
 
+    version: "2.0.0",
 
-version:"1.2.0",
+    ready: false,
 
+    init() {
 
-init(){
+        if (this.ready) {
+            Logger.log("AuditEventHandler ALREADY READY");
+            return;
+        }
 
+        this.subscribe();
 
-if(this.ready){
-return;
-}
+        this.ready = true;
 
+        Logger.log(
+            "AuditEventHandler READY v" +
+            this.version
+        );
 
-this.subscribe();
-
-
-this.ready=true;
-
-
-Logger.log(
-"AuditEventHandler READY v"
-+
-this.version
-);
-
-
-},
+    },
 
 
 
+    subscribe() {
+
+        Object.values(EntityRegistry).forEach(meta => {
+
+            if (!meta.events) {
+                return;
+            }
+
+            EventBus.subscribe(
+                meta.events.created,
+                event => this.handle(
+                    AuditConstants.ACTION_CREATE,
+                    event
+                )
+            );
+
+            EventBus.subscribe(
+                meta.events.updated,
+                event => this.handle(
+                    AuditConstants.ACTION_UPDATE,
+                    event
+                )
+            );
+
+            EventBus.subscribe(
+                meta.events.deleted,
+                event => this.handle(
+                    AuditConstants.ACTION_DELETE,
+                    event
+                )
+            );
+
+            EventBus.subscribe(
+                meta.events.restored,
+                event => this.handle(
+                    AuditConstants.ACTION_RESTORE,
+                    event
+                )
+            );
+
+            Logger.log(
+                "AUDIT REGISTERED ENTITY " +
+                meta.entity
+            );
+
+        });
+
+    },
 
 
-subscribe(){
+
+    handle(action, event) {
+
+        try {
+
+            const audit = {
+
+                AuditID:
+                    IdService.generate("AUDIT"),
+
+                Entity:
+                    event.entity ||
+                    event.Entity ||
+                    "UNKNOWN",
+
+                EntityID:
+                    event.id ||
+                    event.entityId ||
+                    event.EntityID ||
+                    "",
+
+                Action: action,
+
+                UserID:
+                    (
+                        typeof UserSession !== "undefined" &&
+                        UserSession.current
+                    )
+                        ? UserSession.current.UserID
+                        : "SYSTEM",
+
+                OrganizationID:
+                    (
+                        typeof OrganizationContext !== "undefined"
+                    )
+                        ? OrganizationContext.get()
+                        : "",
+
+                CreatedAt:
+                    new Date().toISOString(),
+
+                Before:
+                    event.before ?? null,
+
+                After:
+                    event.after ??
+                    event.data ??
+                    null
+
+            };
+
+            AuditLog.write(audit);
+
+            Logger.log(
+                "AUDIT " +
+                action +
+                " " +
+                audit.Entity +
+                " " +
+                audit.EntityID
+            );
+
+        }
+        catch (e) {
+
+            Logger.log(
+                "AUDIT ERROR: " +
+                e.message
+            );
+
+        }
+
+    },
 
 
-EventBus.subscribe(
-EntityEvents.CREATED,
-event=>this.handle(
-"CREATE",
-event
-)
-);
 
+    health() {
 
-EventBus.subscribe(
-EntityEvents.UPDATED,
-event=>this.handle(
-"UPDATE",
-event
-)
-);
+        return HealthContract.create(
 
+            "AuditEventHandler",
 
-EventBus.subscribe(
-EntityEvents.DELETED,
-event=>this.handle(
-"DELETE",
-event
-)
-);
+            this.ready
+                ? "OK"
+                : "NOT_READY",
 
+            {
 
-EventBus.subscribe(
-EntityEvents.RESTORED,
-event=>this.handle(
-"RESTORE",
-event
-)
-);
+                version: this.version,
 
+                ready: this.ready
 
-},
+            }
 
+        );
 
-
-
-
-
-
-handle(
-action,
-event
-){
-
-
-try{
-
-
-const audit={
-
-
-AuditID:
-IdService.generate(
-"AUDIT"
-),
-
-
-Entity:
-event.entity
-||
-event.Entity
-||
-"UNKNOWN",
-
-
-EntityID:
-event.id
-||
-event.entityId
-||
-"",
-
-
-Action:
-action,
-
-
-UserID:
-(
-typeof UserSession!=="undefined"
-&&
-UserSession.current
-)
-?
-UserSession.current.UserID
-:
-"SYSTEM",
-
-
-CreatedAt:
-new Date().toISOString(),
-
-
-Before:
-event.before
-||
-null,
-
-
-After:
-event.after
-||
-event.data
-||
-null
-
+    }
 
 };
 
-
-
-
-AuditLog.write(
-audit
-);
-
-
-
-Logger.log(
-
-"AUDIT "
-+
-action
-+
-" "
-+
-audit.Entity
-+
-" "
-+
-audit.EntityID
-
-);
-
-
-
-}
-catch(e){
-
-
-Logger.log(
-
-"AUDIT ERROR: "
-+
-e.message
-
-);
-
-
-}
-
-
-
-}
-
-
-
-};
-
-
-
-
-globalThis.AuditEventHandler =
-AuditEventHandler;
+globalThis.AuditEventHandler = AuditEventHandler;
