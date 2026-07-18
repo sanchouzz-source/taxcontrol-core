@@ -4,35 +4,92 @@ console.log("IdService");
 const IdService = {
 
 
-version:"1.1.0",
+version:"2.0.0",
+
+
+registered:false,
+
+
+
+
+
+/*
+=================================
+GENERATE ID
+=================================
+*/
 
 
 generate(entity){
 
 
-    let prefix =
-        EntityConstants.getPrefix(
+
+    if(!entity){
+
+        throw new Error(
+            "IdService: entity required"
+        );
+
+    }
+
+
+
+
+
+    let meta;
+
+
+
+    try{
+
+
+        meta =
+        EntityRegistry.get(
             entity
         );
 
 
+    }
+    catch(e){
 
-    if(!prefix){
 
+        throw new Error(
 
-        prefix =
-        String(entity)
-        .substring(0,3)
-        .toUpperCase();
+            "IdService unknown entity: "
+            +
+            entity
+
+        );
 
 
     }
 
 
 
-    const sheet =
-        SpreadsheetApp
-        .getActive();
+
+
+    const prefix =
+        meta.idPrefix;
+
+
+
+
+
+    if(!prefix){
+
+
+        throw new Error(
+
+            "Entity prefix missing: "
+            +
+            entity
+
+        );
+
+
+    }
+
+
 
 
 
@@ -42,8 +99,13 @@ generate(entity){
 
 
 
+
+
     const key =
-        "ID_COUNTER_"+prefix;
+        "ID_COUNTER_"
+        +
+        entity;
+
 
 
 
@@ -57,26 +119,97 @@ generate(entity){
 
 
 
+
+
     counter++;
+
 
 
 
 
     props.setProperty(
         key,
-        counter
+        String(counter)
     );
 
 
 
 
 
-    return (
+
+
+    const id =
 
         prefix
         +
         String(counter)
-        .padStart(6,"0")
+        .padStart(
+            6,
+            "0"
+        );
+
+
+
+
+
+
+    Logger.debug(
+
+        "GENERATED ID "
+        +
+        entity
+        +
+        " => "
+        +
+        id
+
+    );
+
+
+
+
+
+    return id;
+
+
+
+},
+
+
+
+
+
+
+
+/*
+=================================
+RESET
+=================================
+*/
+
+
+reset(entity){
+
+
+    const key =
+        "ID_COUNTER_"
+        +
+        entity;
+
+
+
+    PropertiesService
+    .getScriptProperties()
+    .deleteProperty(
+        key
+    );
+
+
+    Logger.log(
+
+        "ID COUNTER RESET "
+        +
+        entity
 
     );
 
@@ -87,20 +220,76 @@ generate(entity){
 
 
 
+
+
+/*
+=================================
+CURRENT
+=================================
+*/
+
+
+current(entity){
+
+
+    const key =
+        "ID_COUNTER_"
+        +
+        entity;
+
+
+
+    return Number(
+
+        PropertiesService
+        .getScriptProperties()
+        .getProperty(key)
+
+    )
+    ||
+    0;
+
+
+},
+
+
+
+
+
+
+
+/*
+=================================
+HEALTH
+=================================
+*/
+
+
 health(){
 
 
 return HealthContract.create(
 
+
 "IdService",
+
 
 "OK",
 
+
 {
 
-version:this.version
+
+version:
+this.version,
+
+
+registered:
+this.registered
+
 
 }
+
 
 );
 
@@ -108,8 +297,18 @@ version:this.version
 }
 
 
+
+
+
+
 };
 
+
+
+
+
+
+IdService.registered=true;
 
 
 
@@ -117,8 +316,13 @@ globalThis.IdService =
 IdService;
 
 
+
+
+
 Logger.log(
+
 "IdService READY v"
 +
 IdService.version
+
 );

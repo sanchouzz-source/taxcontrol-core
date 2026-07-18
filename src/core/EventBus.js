@@ -4,197 +4,196 @@ console.log("EventBus");
 const EventBus = {
 
 
-    version:"0.2.0",
-
-    handlers:{},
+version:"1.1.0",
 
 
-    // =====================
-    // SUBSCRIBE
-    // =====================
-
-    on(event, handler){
+events:{},
 
 
-        if(!this.handlers[event]){
 
-            this.handlers[event]=[];
-
-        }
+subscribe(event, handler){
 
 
-        if(
-            this.handlers[event]
-            .includes(handler)
-        ){
-
-            Logger.log(
-                "Duplicate handler ignored: "
-                + event
-            );
-
-            return false;
-
-        }
+    if(!event)
+        throw new Error(
+            "Event name required"
+        );
 
 
-        this.handlers[event]
+
+    if(
+        !this.events[event]
+    ){
+
+        this.events[event]=[];
+
+    }
+
+
+
+    this.events[event]
         .push(handler);
 
 
-        Logger.log(
-            "SUBSCRIBED: "
-            + event
+
+    Logger.debug(
+        "SUBSCRIBED: "
+        +
+        event
+    );
+
+},
+
+
+
+
+
+publish(eventName, payload={}){
+
+
+    if(
+        !this.events[eventName]
+    ){
+
+        Logger.debug(
+            "NO HANDLERS FOR "
+            +
+            eventName
         );
 
+        return;
 
-        return true;
-
-    },
-
-
-
-    // =====================
-    // COMPATIBILITY ALIAS
-    // =====================
-
-    subscribe(event,handler){
-
-        return this.on(
-            event,
-            handler
-        );
-
-    },
+    }
 
 
 
-    // =====================
-    // EMIT
-    // =====================
 
-    emit(event,payload){
-
-
-        Logger.log(
-            "EVENT: "
-            + event
-        );
+    Logger.debug(
+        "EVENT: "
+        +
+        eventName
+    );
 
 
 
-        const list =
-            this.handlers[event];
+    const handlers =
+        this.events[eventName];
 
 
 
-        if(
-            !list ||
-            list.length===0
-        ){
+    Logger.debug(
+        "HANDLERS: "
+        +
+        handlers.length
+    );
 
-            Logger.log(
-                "No handlers for: "
-                + event
+
+
+
+
+    handlers.forEach(handler=>{
+
+
+        try{
+
+
+            handler(payload);
+
+
+        }
+        catch(e){
+
+
+            Logger.error(
+                "EVENT HANDLER ERROR "
+                +
+                e.message
             );
 
-            return;
 
         }
 
 
-
-        Logger.log(
-            "HANDLERS: "
-            + list.length
-        );
+    });
 
 
 
-        list.forEach(fn=>{
-
-
-            try{
-
-                fn(payload);
-
-            }
-
-            catch(e){
-
-
-                Logger.log(
-                    "EventBus error: "
-                    + e.message
-                );
-
-
-            }
-
-
-        });
+},
 
 
 
-    },
+
+
+// совместимость
+
+emit(
+    eventName,
+    payload
+){
+
+    return this.publish(
+        eventName,
+        payload
+    );
+
+},
 
 
 
-    // =====================
-    // CLEAR
-    // =====================
-
-    clear(){
-
-        this.handlers={};
-
-    },
 
 
+dispatch(
+    eventName,
+    payload
+){
 
-    // =====================
-    // HEALTH
-    // =====================
+    return this.publish(
+        eventName,
+        payload
+    );
 
-    health(){
-
-
-        return {
-
-
-            status:"OK",
-
-            module:"EventBus",
-
-            version:this.version,
+},
 
 
-            events:
-            Object.keys(
-                this.handlers
-            ),
 
 
-            handlersCount:
 
-            Object.values(
-                this.handlers
-            )
-            .reduce(
-                (sum,list)=>
-                sum+list.length,
-                0
-            ),
+list(){
 
 
-            timestamp:
-            new Date()
+    return Object.keys(
+        this.events
+    );
 
 
-        };
+},
 
 
-    }
+
+
+
+health(){
+
+
+return HealthContract.create(
+
+"EventBus",
+
+"OK",
+
+{
+
+version:this.version,
+
+events:this.list()
+
+}
+
+);
+
+
+}
+
 
 
 };
@@ -203,3 +202,11 @@ const EventBus = {
 
 globalThis.EventBus =
 EventBus;
+
+
+
+Logger.log(
+"EventBus READY v"
++
+EventBus.version
+);

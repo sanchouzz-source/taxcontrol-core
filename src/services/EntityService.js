@@ -39,82 +39,59 @@ const EntityService = {
 
 
 
-
-    create(entity,data){
-
+create(entity,data){
 
 
-        const meta =
-            this.getMetadata(entity);
+const meta =
+this.getMetadata(entity);
 
 
 
-
-
-        SecurityGuard.check(
-
-            meta.permissions.create
-
-        );
+SecurityGuard.check(
+meta.permissions.create
+);
 
 
 
+if(
+meta.idField &&
+meta.idPrefix &&
+!data[meta.idField]
+){
 
 
-        /*
-            Нормализация ID
-        */
+data[meta.idField]=
+IdService.generate(
+meta.idPrefix
+);
 
 
-        if(!data[meta.id]){
-
-
-            data[meta.id] =
-                this.generateId(
-                    entity,
-                    meta
-                );
-
-        }
+}
 
 
 
+const result =
+RepositoryFactory
+.get(entity)
+.create(data);
 
 
 
-        const repository =
-            RepositoryFactory.get(
-                entity
-            );
+this.publishEvent(
+meta.events.created,
+{
+entity:entity,
+entityId:data[meta.idField],
+data:data
+}
+);
 
 
 
+return result;
 
 
-
-        const result =
-            repository.create(
-                data
-            );
-
-
-
-
-
-        this.publishEvent(
-            meta.events.created,
-            result,
-            "CREATE"
-        );
-
-
-
-
-
-        return result;
-
-
-    },
+},
 
 
 

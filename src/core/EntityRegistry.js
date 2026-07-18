@@ -1,12 +1,10 @@
 console.log("EntityRegistry");
 
 
-
 const EntityRegistry = {
 
 
-version:"1.0.0",
-
+version:"1.1.0",
 
 
 ready:false,
@@ -20,34 +18,24 @@ CLIENT:{
 
 entity:"CLIENT",
 
-
 module:"core",
-
 
 table:"Clients",
 
 
-
 idField:"ClientID",
 
-
-idPrefix:"CLIENT",
-
+idPrefix:"CLI",
 
 
 metadata:"CLIENT",
 
-
-
 repository:"ClientRepository",
-
 
 
 audit:true,
 
-
 softDelete:true,
-
 
 timestamps:true,
 
@@ -60,7 +48,6 @@ get validator(){
     return globalThis.ClientValidator;
 
 },
-
 
 
 
@@ -93,24 +80,16 @@ PERMISSION_CLIENT_RESTORE
 
 
 
-
 events:{
 
 
-created:
-"CLIENT_CREATED",
+created:"CLIENT_CREATED",
 
+updated:"CLIENT_UPDATED",
 
-updated:
-"CLIENT_UPDATED",
+deleted:"CLIENT_DELETED",
 
-
-deleted:
-"CLIENT_DELETED",
-
-
-restored:
-"CLIENT_RESTORED"
+restored:"CLIENT_RESTORED"
 
 
 }
@@ -130,24 +109,17 @@ TRIP:{
 
 entity:"TRIP",
 
-
 module:"core",
-
 
 table:"Trips",
 
 
-
 idField:"TripID",
 
-
-idPrefix:"TRIP",
-
+idPrefix:"TRP",
 
 
 metadata:"TRIP",
-
-
 
 repository:"TripRepository",
 
@@ -155,9 +127,7 @@ repository:"TripRepository",
 
 audit:true,
 
-
 softDelete:true,
-
 
 timestamps:true,
 
@@ -207,20 +177,13 @@ PERMISSION_TRIP_RESTORE
 events:{
 
 
-created:
-"TRIP_CREATED",
+created:"TRIP_CREATED",
 
+updated:"TRIP_UPDATED",
 
-updated:
-"TRIP_UPDATED",
+deleted:"TRIP_DELETED",
 
-
-deleted:
-"TRIP_DELETED",
-
-
-restored:
-"TRIP_RESTORED"
+restored:"TRIP_RESTORED"
 
 
 }
@@ -256,7 +219,6 @@ idPrefix:"FP",
 
 
 metadata:"CLIENT_FINANCE_PROFILE",
-
 
 
 repository:"ClientFinanceProfileRepository",
@@ -307,20 +269,13 @@ PERMISSION_CLIENT_RESTORE
 events:{
 
 
-created:
-"CLIENT_FINANCE_PROFILE_CREATED",
+created:"CLIENT_FINANCE_PROFILE_CREATED",
 
+updated:"CLIENT_FINANCE_PROFILE_UPDATED",
 
-updated:
-"CLIENT_FINANCE_PROFILE_UPDATED",
+deleted:"CLIENT_FINANCE_PROFILE_DELETED",
 
-
-deleted:
-"CLIENT_FINANCE_PROFILE_DELETED",
-
-
-restored:
-"CLIENT_FINANCE_PROFILE_RESTORED"
+restored:"CLIENT_FINANCE_PROFILE_RESTORED"
 
 
 }
@@ -340,22 +295,20 @@ restored:
 
 
 
-
-
 /*
-=================================
-API
-=================================
+====================================
+ENTITY API
+====================================
 */
+
+
 
 
 
 EntityRegistry.get=function(entity){
 
 
-const meta =
-this[entity];
-
+const meta=this[entity];
 
 
 if(
@@ -382,14 +335,18 @@ return meta;
 
 
 
+
 EntityRegistry.has=function(entity){
 
 
-return !!this[entity];
+return !!(
+this[entity]
+&&
+this[entity].entity
+);
 
 
 };
-
 
 
 
@@ -401,12 +358,20 @@ EntityRegistry.list=function(){
 
 
 return Object.keys(this)
-.filter(
-key=>
-typeof this[key]==="object"
+.filter(key=>{
+
+const item=this[key];
+
+
+return (
+item
 &&
-this[key].entity
+typeof item==="object"
+&&
+item.entity
 );
+
+});
 
 
 };
@@ -423,20 +388,22 @@ config
 ){
 
 
-if(this[entity]){
-
+if(
+this.has(entity)
+){
 
 throw new Error(
-
 "Entity already exists: "
 +
 entity
-
 );
-
 
 }
 
+
+
+
+this.validate(config);
 
 
 
@@ -445,16 +412,66 @@ this[entity]=config;
 
 
 Logger.log(
-
 "ENTITY REGISTERED "
 +
 entity
-
 );
 
 
 
 };
+
+
+
+
+
+
+
+
+EntityRegistry.validate=function(meta){
+
+
+
+const required=[
+
+"entity",
+
+"table",
+
+"idField",
+
+"idPrefix",
+
+"repository"
+
+];
+
+
+
+required.forEach(field=>{
+
+
+if(
+!meta[field]
+){
+
+throw new Error(
+
+"Entity metadata missing: "
++
+field
+
+);
+
+}
+
+
+});
+
+
+
+};
+
 
 
 
@@ -478,12 +495,81 @@ return this
 
 
 
+
 EntityRegistry.getTable=function(entity){
 
 
 return this
 .get(entity)
 .table;
+
+
+};
+
+
+
+
+
+
+
+
+EntityRegistry.getRepository=function(entity){
+
+
+return this
+.get(entity)
+.repository;
+
+
+};
+
+
+
+
+
+
+
+
+EntityRegistry.getMetadata=function(entity){
+
+
+return this
+.get(entity)
+.metadata;
+
+
+};
+
+
+
+
+
+
+
+
+EntityRegistry.getEvents=function(entity){
+
+
+return this
+.get(entity)
+.events;
+
+
+};
+
+
+
+
+
+
+
+
+EntityRegistry.getPermissions=function(entity){
+
+
+return this
+.get(entity)
+.permissions;
 
 
 };
@@ -518,7 +604,10 @@ this.ready
 version:this.version,
 
 
-entities:this.list()
+entities:this.list(),
+
+
+count:this.list().length
 
 
 }
@@ -534,9 +623,15 @@ entities:this.list()
 
 
 
+
+/*
+====================================
+BOOT
+====================================
+*/
+
+
 EntityRegistry.ready=true;
-
-
 
 
 

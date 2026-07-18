@@ -1,16 +1,19 @@
 console.log("ClientRepository");
 
 
+
 const ClientRepository = {
 
 
-version:"1.1.0",
+version:"2.0.0",
 
-
-table:"Clients",
 
 
 entity:"CLIENT",
+
+
+
+
 
 
 
@@ -19,18 +22,17 @@ create(data){
 
 return BaseRepository.create(
 
-this.table,
+    this.entity,
 
-data,
-
-this.entity,
-
-this.entity
+    data
 
 );
 
 
 },
+
+
+
 
 
 
@@ -40,18 +42,31 @@ findById(id){
 
 return BaseRepository.findById(
 
-this.table,
+    this.entity,
 
-id,
-
-this.entity,
-
-this.entity
+    id
 
 );
 
 
 },
+
+
+
+
+
+
+
+get(id){
+
+
+return this.findById(id);
+
+
+},
+
+
+
 
 
 
@@ -61,18 +76,17 @@ findAll(filters={}){
 
 return BaseRepository.findAll(
 
-this.table,
+    this.entity,
 
-filters,
-
-this.entity,
-
-this.entity
+    filters
 
 );
 
 
 },
+
+
+
 
 
 
@@ -82,20 +96,19 @@ update(id,data){
 
 return BaseRepository.update(
 
-this.table,
+    this.entity,
 
-id,
+    id,
 
-data,
-
-this.entity,
-
-this.entity
+    data
 
 );
 
 
 },
+
+
+
 
 
 
@@ -105,18 +118,17 @@ delete(id){
 
 return BaseRepository.delete(
 
-this.table,
+    this.entity,
 
-id,
-
-this.entity,
-
-this.entity
+    id
 
 );
 
 
 },
+
+
+
 
 
 
@@ -126,18 +138,17 @@ restore(id){
 
 return BaseRepository.restore(
 
-this.table,
+    this.entity,
 
-id,
-
-this.entity,
-
-this.entity
+    id
 
 );
 
 
 },
+
+
+
 
 
 
@@ -147,30 +158,19 @@ exists(id){
 
 return BaseRepository.exists(
 
-this.table,
+    this.entity,
 
-id
+    id
 
 );
 
 
 },
 
-get(id){
-
-    return this.findById(id);
-
-},
 
 
-exists(id){
 
-    return BaseRepository.exists(
-        this.table,
-        id
-    );
 
-},
 
 
 health(){
@@ -178,17 +178,31 @@ health(){
 
 return HealthContract.create(
 
+
 "ClientRepository",
+
 
 "OK",
 
+
 {
 
-version:this.version,
 
-table:this.table
+version:
+this.version,
+
+
+entity:
+this.entity,
+
+
+table:
+EntityRegistry.CLIENT.table
+
+
 
 }
+
 
 );
 
@@ -201,10 +215,17 @@ table:this.table
 
 
 
+
+
 globalThis.ClientRepository =
 ClientRepository;
 
 
+
 Logger.log(
-"ClientRepository READY v1.1.0"
+
+"ClientRepository READY v"
++
+ClientRepository.version
+
 );

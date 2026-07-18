@@ -1,36 +1,37 @@
 console.log("TripRepository");
 
 
+
 const TripRepository = {
 
 
-version:"1.0.0",
+version:"2.0.0",
 
 
-table:"Trips",
 
 entity:"TRIP",
 
-permission:"TRIP",
+
+
 
 
 
 
 create(data){
 
+
 return BaseRepository.create(
 
-this.table,
+    this.entity,
 
-data,
-
-this.entity,
-
-this.permission
+    data
 
 );
 
+
 },
+
+
 
 
 
@@ -41,33 +42,31 @@ findById(id){
 
 return BaseRepository.findById(
 
-this.table,
+    this.entity,
 
-id,
-
-this.entity,
-
-this.permission
+    id
 
 );
 
+
 },
+
+
+
+
+
+
 
 get(id){
 
-    return this.findById(id);
+
+return this.findById(id);
+
 
 },
 
 
-exists(id){
 
-    return BaseRepository.exists(
-        this.table,
-        id
-    );
-
-},
 
 
 
@@ -77,18 +76,16 @@ findAll(filters={}){
 
 return BaseRepository.findAll(
 
-this.table,
+    this.entity,
 
-filters,
-
-this.entity,
-
-this.permission
+    filters
 
 );
 
 
 },
+
+
 
 
 
@@ -99,20 +96,18 @@ update(id,data){
 
 return BaseRepository.update(
 
-this.table,
+    this.entity,
 
-id,
+    id,
 
-data,
-
-this.entity,
-
-this.permission
+    data
 
 );
 
 
 },
+
+
 
 
 
@@ -123,13 +118,9 @@ delete(id){
 
 return BaseRepository.delete(
 
-this.table,
+    this.entity,
 
-id,
-
-this.entity,
-
-this.permission
+    id
 
 );
 
@@ -139,18 +130,79 @@ this.permission
 
 
 
+
+
+
 restore(id){
 
 
 return BaseRepository.restore(
 
-this.table,
+    this.entity,
 
-id,
+    id
 
+);
+
+
+},
+
+
+
+
+
+
+
+exists(id){
+
+
+return BaseRepository.exists(
+
+    this.entity,
+
+    id
+
+);
+
+
+},
+
+
+
+
+
+
+
+health(){
+
+
+return HealthContract.create(
+
+
+"TripRepository",
+
+
+"OK",
+
+
+{
+
+
+version:
+this.version,
+
+
+entity:
 this.entity,
 
-this.permission
+
+table:
+EntityRegistry.TRIP.table
+
+
+
+}
+
 
 );
 
@@ -159,8 +211,10 @@ this.permission
 
 
 
-
 };
+
+
+
 
 
 
@@ -170,5 +224,9 @@ TripRepository;
 
 
 Logger.log(
-"TripRepository READY v1.0.0"
+
+"TripRepository READY v"
++
+TripRepository.version
+
 );
