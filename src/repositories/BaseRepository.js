@@ -4,8 +4,7 @@ console.log("BaseRepository");
 const BaseRepository = {
 
 
-version:"2.3.0",
-
+version:"2.4.0",
 
 
 create(
@@ -13,82 +12,37 @@ create(
     data={}
 ){
 
-
     const meta =
-        EntityRegistry.get(entity);
+        this.getMeta(entity);
 
 
-
-    SecurityGuard.check(
-        meta.permissions.create
+    this.checkPermission(
+        meta,
+        "create"
     );
 
 
 
-
     const idField =
-        meta.idField;
-
+        meta.idField
+        ||
+        entity+"ID";
 
 
 
     if(!data[idField]){
 
-
         data[idField] =
             IdService.generate(entity);
 
-
     }
 
 
 
-
-
-
-    if(meta.timestamps){
-
-
-        const now =
-            new Date()
-            .toISOString();
-
-
-
-        data.CreatedAt =
-            data.CreatedAt
-            ??
-            now;
-
-
-
-        data.UpdatedAt =
-            now;
-
-
-    }
-
-
-
-
-
-
-    if(
-        meta.organization !== false
-        &&
-        typeof OrganizationContext !== "undefined"
-    ){
-
-
-        data.OrganizationID =
-            data.OrganizationID
-            ??
-            OrganizationContext.get();
-
-
-    }
-
-
+    this.applySystemFields(
+        meta,
+        data
+    );
 
 
 
@@ -103,31 +57,18 @@ create(
 
 
 
-
-
-    this.emitEvent(
-
+    this.publishEvent(
         entity,
-
-        meta.events.created,
-
+        meta.events?.created,
         AuditConstants.ACTION_CREATE,
-
         null,
-
         result
-
     );
-
-
 
 
     return result;
 
-
 },
-
-
 
 
 
@@ -137,32 +78,25 @@ findById(
     id
 ){
 
-
     const meta =
-        EntityRegistry.get(entity);
+        this.getMeta(entity);
 
 
 
-    SecurityGuard.check(
-        meta.permissions.read
+    this.checkPermission(
+        meta,
+        "read"
     );
 
 
 
     return Database.find(
-
         meta.table,
-
         id
-
     );
 
 
 },
-
-
-
-
 
 
 
@@ -172,24 +106,20 @@ findAll(
     filters={}
 ){
 
-
     const meta =
-        EntityRegistry.get(entity);
+        this.getMeta(entity);
 
 
 
-    SecurityGuard.check(
-        meta.permissions.read
+    this.checkPermission(
+        meta,
+        "read"
     );
 
 
-
     return Database.query(
-
         meta.table,
-
         filters
-
     );
 
 
@@ -199,36 +129,29 @@ findAll(
 
 
 
-
-
 update(
     entity,
     id,
-    data
+    data={}
 ){
 
-
     const meta =
-        EntityRegistry.get(entity);
+        this.getMeta(entity);
 
 
 
-    SecurityGuard.check(
-        meta.permissions.update
+    this.checkPermission(
+        meta,
+        "update"
     );
-
 
 
 
     const existing =
         Database.find(
-
             meta.table,
-
             id
-
         );
-
 
 
 
@@ -243,30 +166,17 @@ update(
 
 
 
-
-
-
     if(
-        typeof Versioning!=="undefined"
+        typeof Versioning !== "undefined"
     ){
 
-
         Versioning.save(
-
             entity,
-
             id,
-
             existing
-
         );
 
-
     }
-
-
-
-
 
 
 
@@ -279,62 +189,34 @@ update(
         ...data
 
 
-
     };
 
 
 
-
-
-
-
-    if(meta.timestamps){
-
-
-        updated.UpdatedAt =
-            new Date()
-            .toISOString();
-
-
-    }
-
-
-
+    this.applySystemFields(
+        meta,
+        updated,
+        true
+    );
 
 
 
     const result =
         Database.update(
-
             meta.table,
-
             id,
-
             updated
-
         );
 
 
 
-
-
-
-
-    this.emitEvent(
-
+    this.publishEvent(
         entity,
-
-        meta.events.updated,
-
+        meta.events?.updated,
         AuditConstants.ACTION_UPDATE,
-
         existing,
-
         result
-
     );
-
-
 
 
 
@@ -347,38 +229,28 @@ update(
 
 
 
-
-
-
 delete(
     entity,
     id
 ){
 
-
     const meta =
-        EntityRegistry.get(entity);
+        this.getMeta(entity);
 
 
 
-    SecurityGuard.check(
-        meta.permissions.delete
+    this.checkPermission(
+        meta,
+        "delete"
     );
-
-
-
 
 
 
     const existing =
         Database.find(
-
             meta.table,
-
             id
-
         );
-
 
 
 
@@ -394,17 +266,11 @@ delete(
 
 
 
-
-
     let result;
 
 
 
-
-
-
-    if(meta.softDelete){
-
+    if(meta.softDelete !== false){
 
 
         result =
@@ -430,9 +296,7 @@ delete(
 
                 }
 
-
             );
-
 
 
     }
@@ -454,24 +318,13 @@ delete(
 
 
 
-
-
-
-    this.emitEvent(
-
+    this.publishEvent(
         entity,
-
-        meta.events.deleted,
-
+        meta.events?.deleted,
         AuditConstants.ACTION_DELETE,
-
         existing,
-
         result
-
     );
-
-
 
 
 
@@ -484,73 +337,50 @@ delete(
 
 
 
-
-
 restore(
     entity,
     id
 ){
 
-
     const meta =
-        EntityRegistry.get(entity);
+        this.getMeta(entity);
 
 
 
-    SecurityGuard.check(
-        meta.permissions.restore
+    this.checkPermission(
+        meta,
+        "restore"
     );
 
 
 
-
-
-
-    if(!meta.softDelete){
-
+    if(meta.softDelete === false){
 
         throw new Error(
-
             entity+
-            " does not support restore"
-
+            " restore unavailable"
         );
 
     }
-
-
-
 
 
 
     const existing =
         Database.find(
-
             meta.table,
-
             id
-
         );
-
-
 
 
 
     if(!existing){
 
-
         throw new Error(
-
             entity+
             " not found"
-
         );
 
-
     }
-
-
-
 
 
 
@@ -578,29 +408,18 @@ restore(
 
             }
 
-
         );
 
 
 
 
-
-
-    this.emitEvent(
-
+    this.publishEvent(
         entity,
-
-        meta.events.restored,
-
+        meta.events?.restored,
         AuditConstants.ACTION_RESTORE,
-
         existing,
-
         result
-
     );
-
-
 
 
 
@@ -613,18 +432,131 @@ restore(
 
 
 
+getMeta(
+    entity
+){
+
+    const meta =
+        EntityRegistry.get(entity);
 
 
 
-emitEvent(
+    if(!meta){
+
+        throw new Error(
+            "Entity not registered: "
+            +
+            entity
+        );
+
+    }
+
+
+    return meta;
+
+},
+
+
+
+
+
+checkPermission(
+    meta,
+    action
+){
+
+    if(
+        typeof SecurityGuard === "undefined"
+    ){
+
+        return;
+
+    }
+
+
+
+    const permission =
+        meta.permissions?.[action];
+
+
+
+    if(permission){
+
+        SecurityGuard.check(
+            permission
+        );
+
+    }
+
+
+},
+
+
+
+
+
+applySystemFields(
+    meta,
+    data,
+    update=false
+){
+
+
+    if(meta.timestamps){
+
+
+        const now =
+            new Date()
+            .toISOString();
+
+
+
+        if(!update){
+
+            data.CreatedAt =
+                data.CreatedAt
+                ||
+                now;
+
+        }
+
+
+        data.UpdatedAt =
+            now;
+
+    }
+
+
+
+
+
+    if(
+        meta.organization !== false
+        &&
+        typeof OrganizationContext !== "undefined"
+    ){
+
+        data.OrganizationID =
+            data.OrganizationID
+            ||
+            OrganizationContext.get();
+
+    }
+
+
+},
+
+
+
+
+
+publishEvent(
     entity,
     event,
     action,
     before,
     after
 ){
-
-
 
     if(
         typeof EventBus==="undefined"
@@ -638,13 +570,9 @@ emitEvent(
 
 
 
-
-
-
     EventBus.emit(
 
         event,
-
 
         {
 
@@ -669,23 +597,8 @@ emitEvent(
         after,
 
 
-
-        userId:
-
-        (
-            typeof UserSession!=="undefined"
-            &&
-            UserSession.current
-        )
-
-        ?
-
-        UserSession.current.UserID
-
-        :
-
-        "SYSTEM",
-
+        source:
+            "BaseRepository",
 
 
 
@@ -706,14 +619,10 @@ emitEvent(
 
 
 
-
-
-
 extractEntityId(
     entity,
     record
 ){
-
 
     if(!record){
 
@@ -723,14 +632,15 @@ extractEntityId(
 
 
 
-
     const meta =
-        EntityRegistry.get(entity);
+        this.getMeta(entity);
 
 
 
     return record[
         meta.idField
+        ||
+        entity+"ID"
     ]
     ||
     "";
@@ -741,16 +651,13 @@ extractEntityId(
 
 
 
-
-
 exists(
     entity,
     id
 ){
 
-
     const meta =
-        EntityRegistry.get(entity);
+        this.getMeta(entity);
 
 
 
@@ -762,18 +669,13 @@ exists(
 
     );
 
-
 },
 
 
 
 
 
-
-
-
 health(){
-
 
 return HealthContract.create(
 
@@ -783,7 +685,10 @@ return HealthContract.create(
 
 {
 
-version:this.version
+version:this.version,
+
+architecture:
+"EntityRegistry v2.1 compatible"
 
 }
 
@@ -795,9 +700,6 @@ version:this.version
 
 
 };
-
-
-
 
 
 
