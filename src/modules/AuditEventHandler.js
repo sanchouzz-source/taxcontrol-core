@@ -44,7 +44,7 @@ const AuditEventHandler = {
                 EventBus.subscribe(
                     meta.events.created,
                     event => this.handle(
-                        AuditConstants.ACTION_CREATE,
+                        AuditConstants.ACTIONS.CREATE,
                         event
                     )
                 );
@@ -56,7 +56,7 @@ const AuditEventHandler = {
                 EventBus.subscribe(
                     meta.events.updated,
                     event => this.handle(
-                        AuditConstants.ACTION_UPDATE,
+                        AuditConstants.ACTIONS.UPDATE,
                         event
                     )
                 );
@@ -68,7 +68,7 @@ const AuditEventHandler = {
                 EventBus.subscribe(
                     meta.events.deleted,
                     event => this.handle(
-                        AuditConstants.ACTION_DELETE,
+                        AuditConstants.ACTIONS.DELETE,
                         event
                     )
                 );
@@ -80,7 +80,7 @@ const AuditEventHandler = {
                 EventBus.subscribe(
                     meta.events.restored,
                     event => this.handle(
-                        AuditConstants.ACTION_RESTORE,
+                        AuditConstants.ACTIONS.RESTORE,
                         event
                     )
                 );

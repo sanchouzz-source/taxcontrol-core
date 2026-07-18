@@ -4,64 +4,82 @@ console.log("AuditConstants");
 const AuditConstants = {
 
 
-    version:"1.1.0",
+    version:"1.2.0",
+
+
+    registered:false,
 
 
 
     ACTIONS:{
 
 
-        CREATE:
-            "CREATE",
+        CREATE:"CREATE",
+
+        UPDATE:"UPDATE",
+
+        DELETE:"DELETE",
+
+        RESTORE:"RESTORE",
+
+        READ:"READ",
+
+        LOGIN:"LOGIN",
+
+        LOGOUT:"LOGOUT",
+
+        EXPORT:"EXPORT",
+
+        IMPORT:"IMPORT",
+
+        APPROVE:"APPROVE",
+
+        CANCEL:"CANCEL",
+
+        SECURITY:"SECURITY",
+
+        SYSTEM:"SYSTEM"
 
 
-        UPDATE:
-            "UPDATE",
+    },
 
 
-        DELETE:
-            "DELETE",
 
 
-        RESTORE:
-            "RESTORE",
+
+    /*
+        Совместимость со старым кодом
+
+        AuditConstants.ACTION_CREATE
+        AuditConstants.ACTION_UPDATE
+
+    */
 
 
-        READ:
-            "READ",
+    get ACTION_CREATE(){
+
+        return this.ACTIONS.CREATE;
+
+    },
 
 
-        LOGIN:
-            "LOGIN",
+    get ACTION_UPDATE(){
+
+        return this.ACTIONS.UPDATE;
+
+    },
 
 
-        LOGOUT:
-            "LOGOUT",
+    get ACTION_DELETE(){
+
+        return this.ACTIONS.DELETE;
+
+    },
 
 
-        EXPORT:
-            "EXPORT",
+    get ACTION_RESTORE(){
 
-
-        IMPORT:
-            "IMPORT",
-
-
-        APPROVE:
-            "APPROVE",
-
-
-        CANCEL:
-            "CANCEL",
-
-
-        SECURITY:
-            "SECURITY",
-
-
-        SYSTEM:
-            "SYSTEM"
-
+        return this.ACTIONS.RESTORE;
 
     },
 
@@ -72,10 +90,21 @@ const AuditConstants = {
     register(){
 
 
+        if(this.registered){
+
+            Logger.log(
+                "AuditConstants ALREADY REGISTERED"
+            );
+
+            return;
+
+        }
+
+
+
 
         /*
-        совместимость
-        со старым кодом
+            Старый глобальный API
         */
 
 
@@ -96,18 +125,28 @@ const AuditConstants = {
 
 
 
+
+
+        /*
+            Новый API
+        */
+
+
         globalThis.AuditActions =
             this.ACTIONS;
 
 
 
 
-        Logger.log(
 
+        this.registered=true;
+
+
+
+        Logger.log(
             "AUDIT CONSTANTS REGISTERED v"
             +
             this.version
-
         );
 
 
@@ -117,13 +156,31 @@ const AuditConstants = {
 
 
 
+
+
     get(action){
 
 
-        return this.ACTIONS[action] || null;
+        if(!action){
+
+            return null;
+
+        }
+
+
+
+
+        return this.ACTIONS[
+            String(action)
+            .toUpperCase()
+        ]
+        ||
+        null;
 
 
     },
+
+
 
 
 
@@ -132,12 +189,12 @@ const AuditConstants = {
     has(action){
 
 
-        return Object
-            .values(this.ACTIONS)
-            .includes(action);
+        return this.get(action)!==null;
 
 
     },
+
+
 
 
 
@@ -146,8 +203,9 @@ const AuditConstants = {
     list(){
 
 
-        return Object
-            .values(this.ACTIONS);
+        return Object.values(
+            this.ACTIONS
+        );
 
 
     },
@@ -156,8 +214,9 @@ const AuditConstants = {
 
 
 
-    health(){
 
+
+    health(){
 
 
         return HealthContract.create(
@@ -174,6 +233,10 @@ const AuditConstants = {
 
                 version:
                     this.version,
+
+
+                registered:
+                    this.registered,
 
 
                 actions:
@@ -196,10 +259,24 @@ const AuditConstants = {
 
 
 
+/*
+    Регистрация при загрузке
+*/
+
 
 AuditConstants.register();
 
 
 
+
+
 globalThis.AuditConstants =
     AuditConstants;
+
+
+
+Logger.log(
+    "AuditConstants READY v"
+    +
+    AuditConstants.version
+);
