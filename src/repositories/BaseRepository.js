@@ -4,7 +4,8 @@ console.log("BaseRepository");
 const BaseRepository = {
 
 
-version:"2.4.0",
+version:"3.0.0",
+
 
 
 create(
@@ -19,6 +20,13 @@ create(
     this.checkPermission(
         meta,
         "create"
+    );
+
+
+    this.beforeCreate(
+        entity,
+        data,
+        meta
     );
 
 
@@ -57,6 +65,14 @@ create(
 
 
 
+    this.afterCreate(
+        entity,
+        result,
+        meta
+    );
+
+
+
     this.publishEvent(
         entity,
         meta.events?.created,
@@ -69,6 +85,7 @@ create(
     return result;
 
 },
+
 
 
 
@@ -89,14 +106,13 @@ findById(
     );
 
 
-
     return Database.find(
         meta.table,
         id
     );
 
-
 },
+
 
 
 
@@ -122,6 +138,27 @@ findAll(
         filters
     );
 
+},
+
+
+
+
+
+count(
+    entity,
+    filters={}
+){
+
+    const records =
+        this.findAll(
+            entity,
+            filters
+        );
+
+
+    return records
+        ? records.length
+        : 0;
 
 },
 
@@ -166,6 +203,7 @@ update(
 
 
 
+
     if(
         typeof Versioning !== "undefined"
     ){
@@ -177,6 +215,15 @@ update(
         );
 
     }
+
+
+
+    this.beforeUpdate(
+        entity,
+        existing,
+        data,
+        meta
+    );
 
 
 
@@ -210,6 +257,15 @@ update(
 
 
 
+    this.afterUpdate(
+        entity,
+        existing,
+        result,
+        meta
+    );
+
+
+
     this.publishEvent(
         entity,
         meta.events?.updated,
@@ -221,7 +277,6 @@ update(
 
 
     return result;
-
 
 },
 
@@ -265,12 +320,20 @@ delete(
 
 
 
+    this.beforeDelete(
+        entity,
+        existing,
+        meta
+    );
+
+
 
     let result;
 
 
 
     if(meta.softDelete !== false){
+
 
 
         result =
@@ -289,14 +352,19 @@ delete(
                 Deleted:true,
 
 
-                UpdatedAt:
+                DeletedAt:
                     new Date()
-                    .toISOString()
+                    .toISOString(),
+
+
+                DeletedBy:
+                    this.getCurrentUser()
 
 
                 }
 
             );
+
 
 
     }
@@ -305,16 +373,21 @@ delete(
 
         result =
             Database.delete(
-
                 meta.table,
-
                 id
-
             );
 
 
     }
 
+
+
+    this.afterDelete(
+        entity,
+        existing,
+        result,
+        meta
+    );
 
 
 
@@ -329,7 +402,6 @@ delete(
 
 
     return result;
-
 
 },
 
@@ -401,6 +473,12 @@ restore(
             Deleted:false,
 
 
+            DeletedAt:"",
+
+
+            DeletedBy:"",
+
+
             UpdatedAt:
                 new Date()
                 .toISOString()
@@ -409,6 +487,7 @@ restore(
             }
 
         );
+
 
 
 
@@ -425,6 +504,52 @@ restore(
 
     return result;
 
+},
+
+
+
+
+
+exists(
+    entity,
+    id
+){
+
+    const meta =
+        this.getMeta(entity);
+
+
+
+    return !!Database.find(
+
+        meta.table,
+
+        id
+
+    );
+
+},
+
+
+
+
+
+existsBy(
+    entity,
+    field,
+    value
+){
+
+    const rows =
+        this.findAll(
+            entity,
+            {
+                [field]:value
+            }
+        );
+
+
+    return rows.length>0;
 
 },
 
@@ -488,7 +613,6 @@ checkPermission(
 
     }
 
-
 },
 
 
@@ -525,7 +649,6 @@ applySystemFields(
             now;
 
     }
-
 
 
 
@@ -577,6 +700,12 @@ publishEvent(
         {
 
 
+        eventId:
+            IdService.generate(
+                "EVENT"
+            ),
+
+
         entity,
 
 
@@ -608,7 +737,6 @@ publishEvent(
 
 
         }
-
 
     );
 
@@ -651,25 +779,75 @@ extractEntityId(
 
 
 
-exists(
-    entity,
-    id
-){
+getCurrentUser(){
 
-    const meta =
-        this.getMeta(entity);
+    if(
+        typeof UserSession !== "undefined"
+        &&
+        UserSession.getCurrent
+    ){
+
+        return UserSession.getCurrent();
+
+    }
 
 
-
-    return !!Database.find(
-
-        meta.table,
-
-        id
-
-    );
+    return "SYSTEM";
 
 },
+
+
+
+
+
+beforeCreate(
+    entity,
+    data,
+    meta
+){},
+
+
+
+afterCreate(
+    entity,
+    result,
+    meta
+){},
+
+
+
+beforeUpdate(
+    entity,
+    oldData,
+    newData,
+    meta
+){},
+
+
+
+afterUpdate(
+    entity,
+    oldData,
+    result,
+    meta
+){},
+
+
+
+beforeDelete(
+    entity,
+    data,
+    meta
+){},
+
+
+
+afterDelete(
+    entity,
+    oldData,
+    result,
+    meta
+){},
 
 
 
@@ -688,7 +866,23 @@ return HealthContract.create(
 version:this.version,
 
 architecture:
-"EntityRegistry v2.1 compatible"
+"EntityRegistry v2.1 compatible",
+
+features:[
+
+"CRUD",
+
+"SoftDelete",
+
+"Restore",
+
+"LifecycleHooks",
+
+"EventBus",
+
+"Versioning"
+
+]
 
 }
 
@@ -703,8 +897,10 @@ architecture:
 
 
 
+
 globalThis.BaseRepository =
 BaseRepository;
+
 
 
 
