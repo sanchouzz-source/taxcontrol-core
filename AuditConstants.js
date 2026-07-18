@@ -4,7 +4,7 @@ console.log("AuditConstants");
 const AuditConstants = {
 
 
-    version:"1.2.0",
+    version:"1.3.0",
 
 
     registered:false,
@@ -45,15 +45,6 @@ const AuditConstants = {
 
 
 
-
-
-    /*
-        Совместимость со старым кодом
-
-        AuditConstants.ACTION_CREATE
-        AuditConstants.ACTION_UPDATE
-
-    */
 
 
     get ACTION_CREATE(){
@@ -102,9 +93,8 @@ const AuditConstants = {
 
 
 
-
         /*
-            Старый глобальный API
+            Legacy API
         */
 
 
@@ -128,12 +118,14 @@ const AuditConstants = {
 
 
         /*
-            Новый API
+            Modern API
         */
 
 
         globalThis.AuditActions =
-            this.ACTIONS;
+            Object.freeze(
+                this.ACTIONS
+            );
 
 
 
@@ -158,6 +150,7 @@ const AuditConstants = {
 
 
 
+
     get(action){
 
 
@@ -168,14 +161,17 @@ const AuditConstants = {
         }
 
 
-
-
-        return this.ACTIONS[
+        const key =
             String(action)
-            .toUpperCase()
-        ]
-        ||
-        null;
+            .trim()
+            .toUpperCase();
+
+
+
+
+        return this.ACTIONS[key]
+            ||
+            null;
 
 
     },
@@ -189,7 +185,9 @@ const AuditConstants = {
     has(action){
 
 
-        return this.get(action)!==null;
+        return Boolean(
+            this.get(action)
+        );
 
 
     },
@@ -203,9 +201,10 @@ const AuditConstants = {
     list(){
 
 
-        return Object.values(
-            this.ACTIONS
-        );
+        return Object
+            .values(
+                this.ACTIONS
+            );
 
 
     },
@@ -221,11 +220,13 @@ const AuditConstants = {
 
         return HealthContract.create(
 
-
             "AuditConstants",
 
-
-            "OK",
+            this.registered
+                ?
+                "OK"
+                :
+                "WARNING",
 
 
             {
@@ -239,12 +240,15 @@ const AuditConstants = {
                     this.registered,
 
 
+                count:
+                    this.list().length,
+
+
                 actions:
                     this.list()
 
 
             }
-
 
         );
 
@@ -259,10 +263,6 @@ const AuditConstants = {
 
 
 
-/*
-    Регистрация при загрузке
-*/
-
 
 AuditConstants.register();
 
@@ -272,6 +272,8 @@ AuditConstants.register();
 
 globalThis.AuditConstants =
     AuditConstants;
+
+
 
 
 
