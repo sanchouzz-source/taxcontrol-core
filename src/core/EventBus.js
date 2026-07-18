@@ -1,34 +1,20 @@
-console.log("EventBus v2.0");
-
+console.log("EventBus v2.1");
 
 
 const EventBus = {
 
 
-
-version:"2.0.0",
-
+version:"2.1.0",
 
 
 events:{},
 
 
-
 history:[],
-
 
 
 ready:false,
 
-
-
-
-
-/*
-====================================
-INIT
-====================================
-*/
 
 
 init(){
@@ -60,9 +46,6 @@ init(){
 
 
 
-
-
-
 /*
 ====================================
 SUBSCRIBE
@@ -72,9 +55,9 @@ SUBSCRIBE
 
 subscribe(
     eventName,
-    handler
+    handler,
+    options={}
 ){
-
 
 
     if(!eventName){
@@ -84,8 +67,6 @@ subscribe(
         );
 
     }
-
-
 
 
 
@@ -101,9 +82,6 @@ subscribe(
 
 
 
-
-
-
     if(
         !this.events[eventName]
     ){
@@ -115,36 +93,80 @@ subscribe(
 
 
 
+    const handlerName =
+        options.name
+        ||
+        handler.name
+        ||
+        "anonymous";
+
+
+
 
 
     const exists =
         this.events[eventName]
         .some(
             item =>
+
+                item.name === handlerName
+
+                ||
+
                 item.handler === handler
+
         );
 
 
 
 
 
-    if(!exists){
+    if(exists){
 
 
+        Logger.debug(
 
-        this.events[eventName]
-        .push({
+            "SKIP DUPLICATE SUBSCRIPTION "
+            +
+            eventName
+            +
+            " "
+            +
+            handlerName
 
-            handler,
+        );
 
-            createdAt:
-                new Date()
-                .toISOString()
 
-        });
+        return {
+
+            event:eventName,
+
+            duplicate:true
+
+        };
 
 
     }
+
+
+
+
+
+    this.events[eventName]
+    .push({
+
+        handler,
+
+
+        name:
+            handlerName,
+
+
+        createdAt:
+            new Date()
+            .toISOString()
+
+    });
 
 
 
@@ -155,9 +177,12 @@ subscribe(
         "SUBSCRIBED "
         +
         eventName
+        +
+        " "
+        +
+        handlerName
 
     );
-
 
 
 
@@ -165,7 +190,9 @@ subscribe(
 
         event:eventName,
 
-        handler
+        handler,
+
+        name:handlerName
 
     };
 
@@ -175,80 +202,19 @@ subscribe(
 
 
 
-
-
-
-/*
-====================================
-ALIASES
-====================================
-*/
 
 
 on(
-    eventName,
-    handler
+eventName,
+handler,
+options={}
 ){
 
-    return this.subscribe(
-        eventName,
-        handler
-    );
-
-},
-
-
-
-
-
-
-
-/*
-====================================
-ONCE
-====================================
-*/
-
-
-once(
+return this.subscribe(
     eventName,
-    handler
-){
-
-
-    const wrapper =
-    payload=>{
-
-
-        try{
-
-
-            handler(payload);
-
-
-        }
-        finally{
-
-
-            this.off(
-                eventName,
-                wrapper
-            );
-
-
-        }
-
-
-    };
-
-
-
-    return this.subscribe(
-        eventName,
-        wrapper
-    );
-
-
+    handler,
+    options
+);
 
 },
 
@@ -266,43 +232,33 @@ UNSUBSCRIBE
 
 
 off(
-    eventName,
-    handler
+eventName,
+handler
 ){
 
 
+if(
+!this.events[eventName]
+){
 
-    if(
-        !this.events[eventName]
-    ){
+return;
 
-        return;
-
-    }
-
+}
 
 
 
+this.events[eventName] =
 
+this.events[eventName]
 
-    this.events[eventName] =
-        this.events[eventName]
-        .filter(
-            item =>
-                item.handler !== handler
-        );
+.filter(
 
+item =>
 
+item.handler !== handler
 
+);
 
-
-    Logger.debug(
-
-        "UNSUBSCRIBED "
-        +
-        eventName
-
-    );
 
 
 },
@@ -321,185 +277,193 @@ PUBLISH
 
 
 publish(
-    eventName,
-    payload={}
+eventName,
+payload={}
 ){
 
 
 
-    if(!eventName){
+if(!eventName){
 
-        throw new Error(
-            "Event name required"
-        );
+throw new Error(
+"Event name required"
+);
 
-    }
+}
 
 
 
 
+const envelope={
 
 
-    const envelope = {
+event:eventName,
 
 
-        event:
-            eventName,
+timestamp:
+new Date()
+.toISOString(),
 
 
 
-        timestamp:
-            new Date()
-            .toISOString(),
+data:
+payload.data
+||
+payload,
 
 
 
+entity:
+payload.entity
+||
+null,
 
-        data:
-            payload.data
-            ||
-            payload,
 
 
+entityId:
+payload.entityId
+||
+null,
 
-        entity:
-            payload.entity
-            ||
-            null,
 
 
+before:
+payload.before
+||
+null,
 
-        entityId:
-            payload.entityId
-            ||
-            null,
 
 
+after:
+payload.after
+||
+null,
 
-        before:
-            payload.before
-            ||
-            null,
 
 
+metadata:
+payload.metadata
+||
+{
+source:"ERP"
+}
 
-        after:
-            payload.after
-            ||
-            null,
 
 
+};
 
-        metadata:
-            payload.metadata
-            ||
-            {
 
-                source:"ERP"
 
-            }
 
+this.history.push({
 
+event:eventName,
 
-    };
+timestamp:
+envelope.timestamp
 
+});
 
 
 
 
 
 
+const listeners =
 
-    this.history.push(
+[
+...
+(
+this.events[eventName]
+||
+[]
+)
+];
 
-        {
 
-            event:eventName,
 
-            timestamp:
-                envelope.timestamp
 
-        }
 
-    );
+Logger.debug(
 
+"EVENT "
++
+eventName
 
+);
 
 
 
+Logger.debug(
 
+"HANDLERS "
++
+listeners.length
 
-    const listeners =
-        [
-            ...(this.events[eventName] || [])
-        ];
+);
 
 
 
 
 
+let executed=0;
 
-    Logger.debug(
 
-        "EVENT "
-        +
-        eventName
 
-    );
 
+listeners.forEach(
 
+item=>{
 
 
+try{
 
-    Logger.debug(
 
-        "HANDLERS "
-        +
-        listeners.length
+item.handler(
 
-    );
+Object.freeze(
+envelope
+)
 
+);
 
 
+executed++;
 
 
+}
 
+catch(error){
 
-    listeners.forEach(
-        item=>{
 
+Logger.error(
 
-            try{
+"EVENT HANDLER ERROR "
++
+error.message
 
+);
 
-                item.handler(
-                    Object.freeze(
-                        envelope
-                    )
-                );
 
+}
 
-            }
-            catch(error){
 
+}
 
+);
 
-                Logger.error(
 
-                    "EVENT HANDLER ERROR "
-                    +
-                    error.message
 
-                );
 
+return {
 
-            }
+event:eventName,
 
+handlers:listeners.length,
 
-        }
-    );
+executed
 
-
+};
 
 
 },
@@ -509,24 +473,15 @@ publish(
 
 
 
-
-/*
-====================================
-ALIASES
-====================================
-*/
-
-
 emit(
-    eventName,
-    payload={}
+eventName,
+payload={}
 ){
 
-    return this.publish(
-        eventName,
-        payload
-    );
-
+return this.publish(
+eventName,
+payload
+);
 
 },
 
@@ -536,15 +491,14 @@ emit(
 
 
 dispatch(
-    eventName,
-    payload={}
+eventName,
+payload={}
 ){
 
-    return this.publish(
-        eventName,
-        payload
-    );
-
+return this.publish(
+eventName,
+payload
+);
 
 },
 
@@ -554,20 +508,11 @@ dispatch(
 
 
 
-/*
-====================================
-INFO
-====================================
-*/
-
-
 list(){
 
-
-    return Object.keys(
-        this.events
-    );
-
+return Object.keys(
+this.events
+);
 
 },
 
@@ -578,13 +523,13 @@ list(){
 
 listeners(eventName){
 
+return (
 
-    return (
-        this.events[eventName]
-        ||
-        []
-    )
-    .length;
+this.events[eventName]
+||
+[]
+
+).length;
 
 
 },
@@ -598,14 +543,12 @@ listeners(eventName){
 clear(){
 
 
-
-    this.events={};
-
+this.events={};
 
 
-    Logger.debug(
-        "EVENT BUS CLEARED"
-    );
+Logger.debug(
+"EVENT BUS CLEARED"
+);
 
 
 },
@@ -614,84 +557,52 @@ clear(){
 
 
 
-
-
-clearHistory(){
-
-
-    this.history=[];
-
-
-},
-
-
-
-
-
-
-
-/*
-====================================
-HEALTH
-====================================
-*/
 
 
 health(){
 
 
-
 return HealthContract.create(
 
+"EventBus",
 
-    "EventBus",
+this.ready
+?
+"OK"
+:
+"WARNING",
 
+{
 
-    this.ready
-    ?
-    "OK"
-    :
-    "WARNING",
-
-
-
-    {
+version:this.version,
 
 
-        version:
-            this.version,
+events:this.list(),
 
 
+handlers:
 
-        events:
-            this.list(),
+Object.values(
+this.events
+)
 
+.reduce(
 
+(total,list)=>
 
-        handlers:
-            Object.values(
-                this.events
-            )
-            .reduce(
-                (
-                    total,
-                    list
-                )=>
-                    total+list.length,
-                0
-            ),
+total+list.length,
+
+0
+
+),
 
 
-
-        history:
-            this.history.length
+history:this.history.length
 
 
-    }
-
+}
 
 );
-
 
 
 }
@@ -704,12 +615,11 @@ return HealthContract.create(
 
 
 
-
 globalThis.EventBus =
 EventBus;
 
 
 
 Logger.log(
-"EventBus READY v2.0.0"
+"EventBus READY v2.1.0"
 );

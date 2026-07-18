@@ -11,7 +11,8 @@ version:"3.0.0",
 ready:false,
 
 
-subscriptions:new Set(),
+subscriptions:new Map(),
+
 
 
 
@@ -159,10 +160,16 @@ SAFE SUBSCRIBE
 subscribe(eventName){
 
 
-
     if(
         this.subscriptions.has(eventName)
     ){
+
+        Logger.debug(
+            "AUDIT SKIP DUPLICATE "
+            +
+            eventName
+        );
+
 
         return;
 
@@ -171,9 +178,7 @@ subscribe(eventName){
 
 
 
-    EventBus.subscribe(
-
-        eventName,
+    const handler =
 
         event=>{
 
@@ -182,22 +187,49 @@ subscribe(eventName){
                 event
             );
 
+        };
+
+
+
+
+
+    EventBus.subscribe(
+
+        eventName,
+
+        handler,
+
+        {
+
+            name:
+            "AuditEventHandler_"+eventName
+
         }
 
     );
 
 
 
-    this.subscriptions.add(
-        eventName
+
+
+    this.subscriptions.set(
+
+        eventName,
+
+        handler
+
     );
 
 
 
+
+
     Logger.log(
+
         "AUDIT SUBSCRIBED "
         +
         eventName
+
     );
 
 
@@ -494,5 +526,5 @@ AuditEventHandler;
 
 
 Logger.log(
-"AuditEventHandler READY v3.0.0"
+"AuditEventHandler LOADED v3.1.0"
 );
