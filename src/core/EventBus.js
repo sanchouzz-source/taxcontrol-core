@@ -4,20 +4,38 @@ console.log("EventBus");
 const EventBus = {
 
 
-version:"1.1.0",
+version:"1.2.0",
 
 
 events:{},
 
 
 
-subscribe(event, handler){
+subscribe(
+    event,
+    handler
+){
 
 
-    if(!event)
+    if(!event){
+
         throw new Error(
             "Event name required"
         );
+
+    }
+
+
+    if(
+        typeof handler !== "function"
+    ){
+
+        throw new Error(
+            "Event handler must be function"
+        );
+
+    }
+
 
 
 
@@ -31,8 +49,19 @@ subscribe(event, handler){
 
 
 
-    this.events[event]
+
+
+    if(
+        this.events[event]
+        .indexOf(handler)
+        ===
+        -1
+    ){
+
+        this.events[event]
         .push(handler);
+
+    }
 
 
 
@@ -42,18 +71,129 @@ subscribe(event, handler){
         event
     );
 
+
 },
 
 
 
 
 
-publish(eventName, payload={}){
+/*
+=================================
+BACKWARD COMPATIBILITY
+=================================
+*/
+
+
+on(
+    event,
+    handler
+){
+
+    return this.subscribe(
+        event,
+        handler
+    );
+
+},
+
+
+
+
+
+
+once(
+    event,
+    handler
+){
+
+
+    const wrapper =
+    (payload)=>{
+
+
+        try{
+
+            handler(payload);
+
+        }
+        finally{
+
+            this.off(
+                event,
+                wrapper
+            );
+
+        }
+
+    };
+
+
+
+    return this.subscribe(
+        event,
+        wrapper
+    );
+
+
+},
+
+
+
+
+
+
+
+off(
+    event,
+    handler
+){
+
+
+    if(
+        !this.events[event]
+    ){
+
+        return;
+
+    }
+
+
+
+    this.events[event] =
+        this.events[event]
+        .filter(
+            h =>
+            h !== handler
+        );
+
+
+
+
+    Logger.debug(
+        "UNSUBSCRIBED: "
+        +
+        event
+    );
+
+
+},
+
+
+
+
+
+
+publish(
+    eventName,
+    payload={}
+){
 
 
     if(
         !this.events[eventName]
     ){
+
 
         Logger.debug(
             "NO HANDLERS FOR "
@@ -61,9 +201,12 @@ publish(eventName, payload={}){
             eventName
         );
 
+
         return;
 
+
     }
+
 
 
 
@@ -77,7 +220,9 @@ publish(eventName, payload={}){
 
 
     const handlers =
-        this.events[eventName];
+        [
+            ...this.events[eventName]
+        ];
 
 
 
@@ -91,30 +236,35 @@ publish(eventName, payload={}){
 
 
 
-    handlers.forEach(handler=>{
+
+    handlers.forEach(
+        handler=>{
 
 
-        try{
+            try{
 
 
-            handler(payload);
+                handler(
+                    payload
+                );
+
+
+            }
+            catch(e){
+
+
+                Logger.error(
+                    "EVENT HANDLER ERROR "
+                    +
+                    e.message
+                );
+
+
+            }
 
 
         }
-        catch(e){
-
-
-            Logger.error(
-                "EVENT HANDLER ERROR "
-                +
-                e.message
-            );
-
-
-        }
-
-
-    });
+    );
 
 
 
@@ -124,7 +274,6 @@ publish(eventName, payload={}){
 
 
 
-// совместимость
 
 emit(
     eventName,
@@ -137,6 +286,7 @@ emit(
     );
 
 },
+
 
 
 
@@ -158,13 +308,27 @@ dispatch(
 
 
 
-list(){
 
+list(){
 
     return Object.keys(
         this.events
     );
 
+
+},
+
+
+
+
+
+clear(){
+
+    this.events={};
+
+    Logger.debug(
+        "EVENT BUS CLEARED"
+    );
 
 },
 
@@ -185,7 +349,15 @@ return HealthContract.create(
 
 version:this.version,
 
-events:this.list()
+events:this.list(),
+
+handlers:
+Object.values(this.events)
+.reduce(
+(sum,array)=>
+sum+array.length,
+0
+)
 
 }
 
@@ -197,6 +369,7 @@ events:this.list()
 
 
 };
+
 
 
 

@@ -4,31 +4,77 @@ console.log("IdService");
 const IdService = {
 
 
-version:"2.0.0",
+version:"2.1.0",
 
-
-registered:false,
-
-
-
-
-
-/*
-=================================
-GENERATE ID
-=================================
-*/
 
 
 generate(entity){
 
 
-
     if(!entity){
 
         throw new Error(
-            "IdService: entity required"
+            "IdService entity missing"
         );
+
+    }
+
+
+
+    let config = null;
+
+
+
+    /*
+        ENTITY NAME
+    */
+
+    if(
+        EntityRegistry.has(entity)
+    ){
+
+        config =
+            EntityRegistry.get(entity);
+
+    }
+
+
+
+    /*
+        PREFIX INPUT
+        CLI
+        TRIP
+        FP
+    */
+
+
+    if(!config){
+
+
+        const found =
+            EntityRegistry
+            .list()
+            .find(
+                key => {
+
+                    const item =
+                        EntityRegistry[key];
+
+                    return (
+                        item.idPrefix === entity
+                    );
+
+                }
+            );
+
+
+
+        if(found){
+
+            config =
+                EntityRegistry.get(found);
+
+        }
 
     }
 
@@ -36,59 +82,21 @@ generate(entity){
 
 
 
-    let meta;
-
-
-
-    try{
-
-
-        meta =
-        EntityRegistry.get(
-            entity
-        );
-
-
-    }
-    catch(e){
-
+    if(!config){
 
         throw new Error(
-
             "IdService unknown entity: "
             +
             entity
-
         );
 
-
     }
-
 
 
 
 
     const prefix =
-        meta.idPrefix;
-
-
-
-
-
-    if(!prefix){
-
-
-        throw new Error(
-
-            "Entity prefix missing: "
-            +
-            entity
-
-        );
-
-
-    }
-
+        config.idPrefix;
 
 
 
@@ -99,14 +107,8 @@ generate(entity){
 
 
 
-
-
     const key =
-        "ID_COUNTER_"
-        +
-        entity;
-
-
+        "ID_COUNTER_"+prefix;
 
 
 
@@ -119,97 +121,24 @@ generate(entity){
 
 
 
-
-
     counter++;
-
-
 
 
 
     props.setProperty(
         key,
-        String(counter)
+        counter
     );
 
 
 
 
-
-
-
-    const id =
+    return (
 
         prefix
         +
         String(counter)
-        .padStart(
-            6,
-            "0"
-        );
-
-
-
-
-
-
-    Logger.debug(
-
-        "GENERATED ID "
-        +
-        entity
-        +
-        " => "
-        +
-        id
-
-    );
-
-
-
-
-
-    return id;
-
-
-
-},
-
-
-
-
-
-
-
-/*
-=================================
-RESET
-=================================
-*/
-
-
-reset(entity){
-
-
-    const key =
-        "ID_COUNTER_"
-        +
-        entity;
-
-
-
-    PropertiesService
-    .getScriptProperties()
-    .deleteProperty(
-        key
-    );
-
-
-    Logger.log(
-
-        "ID COUNTER RESET "
-        +
-        entity
+        .padStart(6,"0")
 
     );
 
@@ -218,51 +147,6 @@ reset(entity){
 
 
 
-
-
-
-
-/*
-=================================
-CURRENT
-=================================
-*/
-
-
-current(entity){
-
-
-    const key =
-        "ID_COUNTER_"
-        +
-        entity;
-
-
-
-    return Number(
-
-        PropertiesService
-        .getScriptProperties()
-        .getProperty(key)
-
-    )
-    ||
-    0;
-
-
-},
-
-
-
-
-
-
-
-/*
-=================================
-HEALTH
-=================================
-*/
 
 
 health(){
@@ -270,26 +154,15 @@ health(){
 
 return HealthContract.create(
 
-
 "IdService",
-
 
 "OK",
 
-
 {
 
-
-version:
-this.version,
-
-
-registered:
-this.registered
-
+version:this.version
 
 }
-
 
 );
 
@@ -298,17 +171,8 @@ this.registered
 
 
 
-
-
-
 };
 
-
-
-
-
-
-IdService.registered=true;
 
 
 
@@ -316,13 +180,8 @@ globalThis.IdService =
 IdService;
 
 
-
-
-
 Logger.log(
-
 "IdService READY v"
 +
 IdService.version
-
 );
