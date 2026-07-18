@@ -1,12 +1,15 @@
 console.log("EntityRegistry");
 
 
+
 const EntityRegistry = {
 
 
-version:"0.9.0",
+version:"1.0.0",
 
 
+
+ready:false,
 
 
 
@@ -24,7 +27,20 @@ module:"core",
 table:"Clients",
 
 
+
 idField:"ClientID",
+
+
+idPrefix:"CLIENT",
+
+
+
+metadata:"CLIENT",
+
+
+
+repository:"ClientRepository",
+
 
 
 audit:true,
@@ -34,6 +50,8 @@ softDelete:true,
 
 
 timestamps:true,
+
+
 
 
 
@@ -107,9 +125,6 @@ restored:
 
 
 
-
-
-
 TRIP:{
 
 
@@ -122,7 +137,20 @@ module:"core",
 table:"Trips",
 
 
+
 idField:"TripID",
+
+
+idPrefix:"TRIP",
+
+
+
+metadata:"TRIP",
+
+
+
+repository:"TripRepository",
+
 
 
 audit:true,
@@ -132,6 +160,8 @@ softDelete:true,
 
 
 timestamps:true,
+
+
 
 
 
@@ -174,7 +204,6 @@ PERMISSION_TRIP_RESTORE
 
 
 
-
 events:{
 
 
@@ -206,9 +235,6 @@ restored:
 
 
 
-
-
-
 CLIENT_FINANCE_PROFILE:{
 
 
@@ -221,16 +247,31 @@ module:"finance",
 table:"ClientFinanceProfiles",
 
 
+
 idField:"FinanceProfileID",
+
+
+idPrefix:"FP",
+
+
+
+metadata:"CLIENT_FINANCE_PROFILE",
+
+
+
+repository:"ClientFinanceProfileRepository",
+
 
 
 audit:true,
 
 
-softDelete:false,
+softDelete:true,
 
 
 timestamps:true,
+
+
 
 
 
@@ -250,7 +291,11 @@ PERMISSION_CLIENT_UPDATE,
 
 
 delete:
-PERMISSION_CLIENT_DELETE
+PERMISSION_CLIENT_DELETE,
+
+
+restore:
+PERMISSION_CLIENT_RESTORE
 
 
 },
@@ -271,7 +316,11 @@ updated:
 
 
 deleted:
-"CLIENT_FINANCE_PROFILE_DELETED"
+"CLIENT_FINANCE_PROFILE_DELETED",
+
+
+restored:
+"CLIENT_FINANCE_PROFILE_RESTORED"
 
 
 }
@@ -279,8 +328,6 @@ deleted:
 
 
 }
-
-
 
 
 
@@ -293,5 +340,213 @@ deleted:
 
 
 
+
+
+/*
+=================================
+API
+=================================
+*/
+
+
+
+EntityRegistry.get=function(entity){
+
+
+const meta =
+this[entity];
+
+
+
+if(
+!meta ||
+!meta.entity
+){
+
+throw new Error(
+"Entity not registered: "
++
+entity
+);
+
+}
+
+
+return meta;
+
+
+};
+
+
+
+
+
+
+EntityRegistry.has=function(entity){
+
+
+return !!this[entity];
+
+
+};
+
+
+
+
+
+
+
+
+EntityRegistry.list=function(){
+
+
+return Object.keys(this)
+.filter(
+key=>
+typeof this[key]==="object"
+&&
+this[key].entity
+);
+
+
+};
+
+
+
+
+
+
+
+EntityRegistry.register=function(
+entity,
+config
+){
+
+
+if(this[entity]){
+
+
+throw new Error(
+
+"Entity already exists: "
++
+entity
+
+);
+
+
+}
+
+
+
+
+this[entity]=config;
+
+
+
+Logger.log(
+
+"ENTITY REGISTERED "
++
+entity
+
+);
+
+
+
+};
+
+
+
+
+
+
+
+EntityRegistry.getIdPrefix=function(entity){
+
+
+return this
+.get(entity)
+.idPrefix;
+
+
+};
+
+
+
+
+
+
+
+EntityRegistry.getTable=function(entity){
+
+
+return this
+.get(entity)
+.table;
+
+
+};
+
+
+
+
+
+
+
+
+EntityRegistry.health=function(){
+
+
+
+return HealthContract.create(
+
+
+"EntityRegistry",
+
+
+this.ready
+?
+"OK"
+:
+"WARNING",
+
+
+{
+
+
+version:this.version,
+
+
+entities:this.list()
+
+
+}
+
+
+);
+
+
+};
+
+
+
+
+
+
+EntityRegistry.ready=true;
+
+
+
+
+
 globalThis.EntityRegistry =
 EntityRegistry;
+
+
+
+Logger.log(
+"EntityRegistry READY v"
++
+EntityRegistry.version
+);

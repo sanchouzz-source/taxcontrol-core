@@ -6,12 +6,62 @@ const EntityMetadata = {
 
 
 
-version:"0.1.0",
+version:"0.2.0",
 
 
 
 
 CLIENT:{
+
+
+entity:"CLIENT",
+
+table:"Clients",
+
+
+id:"ClientID",
+
+idPrefix:"CLIENT",
+
+
+
+
+permissions:{
+
+
+create:"CLIENT_CREATE",
+
+read:"CLIENT_READ",
+
+update:"CLIENT_UPDATE",
+
+delete:"CLIENT_DELETE",
+
+restore:"CLIENT_RESTORE"
+
+
+},
+
+
+
+
+events:{
+
+
+created:"CLIENT_CREATED",
+
+updated:"CLIENT_UPDATED",
+
+deleted:"CLIENT_DELETED",
+
+restored:"CLIENT_RESTORED"
+
+
+},
+
+
+
+
 
 
 fields:[
@@ -57,8 +107,45 @@ type:"STRING"
 
 
 {
+name:"Address",
+type:"STRING"
+},
+
+
+{
+name:"ManagerID",
+type:"REFERENCE"
+},
+
+
+{
+name:"Rating",
+type:"NUMBER"
+},
+
+
+{
 name:"Status",
-type:"ENUM"
+type:"ENUM",
+default:"ACTIVE"
+},
+
+
+{
+name:"CreatedAt",
+type:"DATETIME"
+},
+
+
+{
+name:"UpdatedAt",
+type:"DATETIME"
+},
+
+
+{
+name:"Deleted",
+type:"BOOLEAN"
 }
 
 
@@ -71,7 +158,58 @@ type:"ENUM"
 
 
 
+
 TRIP:{
+
+
+entity:"TRIP",
+
+table:"Trips",
+
+
+id:"TripID",
+
+idPrefix:"TRIP",
+
+
+
+
+permissions:{
+
+
+create:"TRIP_CREATE",
+
+read:"TRIP_READ",
+
+update:"TRIP_UPDATE",
+
+delete:"TRIP_DELETE",
+
+restore:"TRIP_RESTORE"
+
+
+},
+
+
+
+
+events:{
+
+
+created:"TRIP_CREATED",
+
+updated:"TRIP_UPDATED",
+
+deleted:"TRIP_DELETED",
+
+restored:"TRIP_RESTORED"
+
+
+},
+
+
+
+
 
 
 fields:[
@@ -80,6 +218,13 @@ fields:[
 {
 name:"TripID",
 type:"ID",
+required:true
+},
+
+
+{
+name:"OrganizationID",
+type:"REFERENCE",
 required:true
 },
 
@@ -104,14 +249,32 @@ type:"REFERENCE"
 
 
 {
-name:"StartDate",
-type:"DATE"
+name:"ManagerID",
+type:"REFERENCE"
 },
 
 
 {
-name:"EndDate",
-type:"DATE"
+name:"LoadingPoint",
+type:"STRING"
+},
+
+
+{
+name:"UnloadingPoint",
+type:"STRING"
+},
+
+
+{
+name:"Distance",
+type:"NUMBER"
+},
+
+
+{
+name:"Cargo",
+type:"STRING"
 },
 
 
@@ -122,13 +285,19 @@ type:"MONEY"
 
 
 {
-name:"Cost",
+name:"PlannedCost",
 type:"MONEY"
 },
 
 
 {
-name:"Profit",
+name:"ActualCost",
+type:"MONEY"
+},
+
+
+{
+name:"Margin",
 type:"MONEY",
 calculated:true
 },
@@ -136,7 +305,140 @@ calculated:true
 
 {
 name:"Status",
-type:"ENUM"
+type:"ENUM",
+default:"NEW"
+},
+
+
+{
+name:"CreatedAt",
+type:"DATETIME"
+},
+
+
+{
+name:"UpdatedAt",
+type:"DATETIME"
+},
+
+
+{
+name:"Deleted",
+type:"BOOLEAN"
+}
+
+
+]
+
+},
+
+
+
+
+
+
+
+CLIENT_FINANCE_PROFILE:{
+
+
+entity:"CLIENT_FINANCE_PROFILE",
+
+table:"ClientFinanceProfiles",
+
+
+id:"FinanceProfileID",
+
+idPrefix:"FP",
+
+
+
+
+permissions:{
+
+
+create:"CLIENT_FINANCE_CREATE",
+
+read:"CLIENT_FINANCE_READ",
+
+update:"CLIENT_FINANCE_UPDATE",
+
+delete:"CLIENT_FINANCE_DELETE",
+
+restore:"CLIENT_FINANCE_RESTORE"
+
+
+},
+
+
+
+
+events:{
+
+
+created:"CLIENT_FINANCE_PROFILE_CREATED",
+
+updated:"CLIENT_FINANCE_PROFILE_UPDATED",
+
+deleted:"CLIENT_FINANCE_PROFILE_DELETED",
+
+restored:"CLIENT_FINANCE_PROFILE_RESTORED"
+
+
+},
+
+
+
+
+
+
+fields:[
+
+
+{
+name:"FinanceProfileID",
+type:"ID",
+required:true
+},
+
+
+{
+name:"OrganizationID",
+type:"REFERENCE",
+required:true
+},
+
+
+{
+name:"ClientID",
+type:"REFERENCE",
+required:true
+},
+
+
+{
+name:"Balance",
+type:"MONEY",
+default:0
+},
+
+
+{
+name:"CreditLimit",
+type:"MONEY",
+default:0
+},
+
+
+{
+name:"Status",
+type:"ENUM",
+default:"ACTIVE"
+},
+
+
+{
+name:"CreatedAt",
+type:"DATETIME"
 }
 
 
@@ -146,7 +448,104 @@ type:"ENUM"
 
 
 
+
+
+
+
 };
+
+
+
+
+
+
+
+/*
+    Методы доступа
+*/
+
+
+
+EntityMetadata.get=function(entity){
+
+
+return this[entity]
+||
+null;
+
+
+};
+
+
+
+
+
+
+EntityMetadata.has=function(entity){
+
+
+return !!this[entity];
+
+
+};
+
+
+
+
+
+
+
+EntityMetadata.list=function(){
+
+
+return Object.keys(this)
+.filter(
+key=>
+typeof this[key]==="object"
+&&
+this[key].fields
+);
+
+
+};
+
+
+
+
+
+
+
+EntityMetadata.health=function(){
+
+
+
+return HealthContract.create(
+
+
+"EntityMetadata",
+
+
+"OK",
+
+
+{
+
+
+version:this.version,
+
+
+entities:this.list()
+
+
+}
+
+
+);
+
+
+};
+
+
 
 
 
@@ -157,7 +556,7 @@ EntityMetadata;
 
 
 
-console.log(
+Logger.log(
 "EntityMetadata READY v"
 +
 EntityMetadata.version

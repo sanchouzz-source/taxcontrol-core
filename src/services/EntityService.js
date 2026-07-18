@@ -1,164 +1,542 @@
 console.log("EntityService");
 
+
 const EntityService = {
 
-    version: "2.0.0",
 
-    create(entity, data) {
+    version:"2.1.0",
 
-        const meta = this.getMetadata(entity);
 
-        SecurityGuard.check(
-            meta.permissions.create
+    ready:false,
+
+
+
+    init(){
+
+        if(this.ready){
+
+            Logger.log(
+                "EntityService ALREADY READY"
+            );
+
+            return;
+
+        }
+
+
+        this.ready=true;
+
+
+        Logger.log(
+            "EntityService READY v"
+            +
+            this.version
         );
-
-        return RepositoryFactory
-            .get(entity)
-            .create(data);
 
     },
 
 
 
-    findById(entity, id) {
 
-        const meta = this.getMetadata(entity);
+
+
+    create(entity,data){
+
+
+
+        const meta =
+            this.getMetadata(entity);
+
+
+
+
 
         SecurityGuard.check(
-            meta.permissions.read
+
+            meta.permissions.create
+
         );
+
+
+
+
+
+        /*
+            Нормализация ID
+        */
+
+
+        if(!data[meta.id]){
+
+
+            data[meta.id] =
+                this.generateId(
+                    entity,
+                    meta
+                );
+
+        }
+
+
+
+
+
+
+        const repository =
+            RepositoryFactory.get(
+                entity
+            );
+
+
+
+
+
+
+        const result =
+            repository.create(
+                data
+            );
+
+
+
+
+
+        this.publishEvent(
+            meta.events.created,
+            result,
+            "CREATE"
+        );
+
+
+
+
+
+        return result;
+
+
+    },
+
+
+
+
+
+
+
+
+    findById(entity,id){
+
+
+        const meta =
+            this.getMetadata(entity);
+
+
+
+        SecurityGuard.check(
+
+            meta.permissions.read
+
+        );
+
+
 
         return RepositoryFactory
             .get(entity)
             .findById(id);
 
+
     },
 
 
 
-    findAll(entity, filters = {}) {
 
-        const meta = this.getMetadata(entity);
+
+
+
+
+    findAll(entity,filters={}){
+
+
+        const meta =
+            this.getMetadata(entity);
+
+
 
         SecurityGuard.check(
+
             meta.permissions.read
+
         );
+
+
 
         return RepositoryFactory
             .get(entity)
             .findAll(filters);
 
+
     },
 
 
 
-    update(entity, id, data) {
 
-        const meta = this.getMetadata(entity);
+
+
+
+
+
+    update(entity,id,data){
+
+
+
+        const meta =
+            this.getMetadata(entity);
+
+
+
 
         SecurityGuard.check(
+
             meta.permissions.update
+
         );
 
-        return RepositoryFactory
+
+
+
+        const result =
+            RepositoryFactory
             .get(entity)
-            .update(id, data);
+            .update(
+                id,
+                data
+            );
+
+
+
+
+        this.publishEvent(
+
+            meta.events.updated,
+
+            result,
+
+            "UPDATE"
+
+        );
+
+
+
+
+        return result;
+
 
     },
 
 
 
-    delete(entity, id) {
 
-        const meta = this.getMetadata(entity);
+
+
+
+
+
+    delete(entity,id){
+
+
+
+        const meta =
+            this.getMetadata(entity);
+
+
 
         SecurityGuard.check(
+
             meta.permissions.delete
+
         );
 
-        return RepositoryFactory
+
+
+        const result =
+            RepositoryFactory
             .get(entity)
             .delete(id);
 
+
+
+
+        this.publishEvent(
+
+            meta.events.deleted,
+
+            result,
+
+            "DELETE"
+
+        );
+
+
+
+        return result;
+
+
     },
 
 
 
-    restore(entity, id) {
 
-        const meta = this.getMetadata(entity);
+
+
+
+
+    restore(entity,id){
+
+
+        const meta =
+            this.getMetadata(entity);
+
+
 
         SecurityGuard.check(
+
             meta.permissions.restore
+
         );
 
-        return RepositoryFactory
+
+
+        const result =
+            RepositoryFactory
             .get(entity)
             .restore(id);
 
+
+
+
+        this.publishEvent(
+
+            meta.events.restored,
+
+            result,
+
+            "RESTORE"
+
+        );
+
+
+
+        return result;
+
+
     },
 
 
 
-    exists(entity, id) {
+
+
+
+
+
+
+    exists(entity,id){
+
 
         return RepositoryFactory
             .get(entity)
             .exists(id);
 
-    },
-
-
-
-    repository(entity) {
-
-        return RepositoryFactory.get(entity);
 
     },
 
 
 
-    getMetadata(entity) {
 
-        const meta = EntityRegistry[entity];
 
-        if (!meta) {
 
-            throw new Error(
-                "Unknown entity: " + entity
-            );
+
+
+
+    repository(entity){
+
+
+        return RepositoryFactory
+            .get(entity);
+
+
+    },
+
+
+
+
+
+
+
+
+
+    generateId(entity,meta){
+
+
+        /*
+            ВАЖНО:
+            используем metadata.idPrefix
+
+        */
+
+
+        let prefix =
+            meta.idPrefix;
+
+
+
+        if(!prefix){
+
+
+            prefix =
+                entity
+                .toUpperCase()
+                .substring(
+                    0,
+                    3
+                );
+
 
         }
 
-        return meta;
+
+
+
+        return IdService.generate(
+            prefix
+        );
+
 
     },
 
 
 
-    health() {
 
-        return HealthContract.create(
 
-            "EntityService",
 
-            "OK",
+
+
+
+    publishEvent(eventName,data,action){
+
+
+
+        if(!eventName){
+
+            return;
+
+        }
+
+
+
+
+
+        EventBus.publish(
+
+            eventName,
 
             {
 
-                version: this.version
+                action,
+
+                entity:data
 
             }
 
         );
 
+
+
+    },
+
+
+
+
+
+
+
+
+
+    getMetadata(entity){
+
+
+
+        const meta =
+            EntityRegistry[entity];
+
+
+
+        if(!meta){
+
+
+            throw new Error(
+
+                "Unknown entity: "
+                +
+                entity
+
+            );
+
+
+        }
+
+
+
+        return meta;
+
+
+    },
+
+
+
+
+
+
+
+
+
+    health(){
+
+
+
+        return HealthContract.create(
+
+            "EntityService",
+
+            this.ready
+            ?
+            "OK"
+            :
+            "WARNING",
+
+            {
+
+                version:
+                    this.version
+
+            }
+
+        );
+
+
     }
 
+
+
 };
+
+
+
+
 
 globalThis.EntityService =
     EntityService;
 
+
+
 Logger.log(
-    "EntityService READY v2.0.0"
+    "EntityService READY v2.1.0"
 );

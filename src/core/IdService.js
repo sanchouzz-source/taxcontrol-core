@@ -1,21 +1,124 @@
 console.log("IdService");
+
+
 const IdService = {
 
-    generate(prefix) {
 
-        if (!prefix) {
-            throw new Error("IdService: prefix is required");
-        }
+version:"1.1.0",
 
-        const props = PropertiesService.getScriptProperties();
 
-        let counter = Number(props.getProperty(prefix + "_SEQ") || 0);
+generate(entity){
 
-        counter++;
 
-        props.setProperty(prefix + "_SEQ", counter);
+    let prefix =
+        EntityConstants.getPrefix(
+            entity
+        );
 
-        return prefix + String(counter).padStart(6, "0");
+
+
+    if(!prefix){
+
+
+        prefix =
+        String(entity)
+        .substring(0,3)
+        .toUpperCase();
+
+
     }
+
+
+
+    const sheet =
+        SpreadsheetApp
+        .getActive();
+
+
+
+    const props =
+        PropertiesService
+        .getScriptProperties();
+
+
+
+    const key =
+        "ID_COUNTER_"+prefix;
+
+
+
+
+    let counter =
+        Number(
+            props.getProperty(key)
+        )
+        ||
+        0;
+
+
+
+    counter++;
+
+
+
+
+    props.setProperty(
+        key,
+        counter
+    );
+
+
+
+
+
+    return (
+
+        prefix
+        +
+        String(counter)
+        .padStart(6,"0")
+
+    );
+
+
+},
+
+
+
+
+
+health(){
+
+
+return HealthContract.create(
+
+"IdService",
+
+"OK",
+
+{
+
+version:this.version
+
+}
+
+);
+
+
+}
+
+
 };
-globalThis.IdService = IdService;
+
+
+
+
+globalThis.IdService =
+IdService;
+
+
+Logger.log(
+"IdService READY v"
++
+IdService.version
+);

@@ -1,76 +1,161 @@
 console.log("EntityConstants");
 
 
-
 const EntityConstants = {
 
 
-
-version:"0.5.0",
-
+version:"0.6.0",
 
 
-
-CLIENT:"CLIENT",
-
-TRIP:"TRIP",
-
-PAYMENT:"PAYMENT",
-
-VEHICLE:"VEHICLE",
-
-DRIVER:"DRIVER",
-
-EMPLOYEE:"EMPLOYEE",
-
-CLIENT_FINANCE_PROFILE:
-"CLIENT_FINANCE_PROFILE",
-
-TABLES:{
+entities:{
 
 
-CLIENT:"Clients",
+    ORGANIZATION:{
+        name:"Organizations",
+        prefix:"ORG"
+    },
 
-TRIP:"Trips",
 
-PAYMENT:"Payments",
+    CLIENT:{
+        name:"Clients",
+        prefix:"CLI"
+    },
 
-VEHICLE:"Vehicles",
 
-DRIVER:"Drivers",
+    CLIENT_FINANCE_PROFILE:{
+        name:"ClientFinanceProfiles",
+        prefix:"CFP"
+    },
 
-EMPLOYEE:"Employees",
 
-CLIENT_FINANCE_PROFILE:
-"CLIENT_FINANCE_PROFILE"
+    TRIP:{
+        name:"Trips",
+        prefix:"TRP"
+    },
+
+
+    FINANCIAL_TRANSACTION:{
+        name:"FinancialTransactions",
+        prefix:"FIN"
+    },
+
+
+    KPI:{
+        name:"KPIMetrics",
+        prefix:"KPI"
+    },
+
+
+    AUDIT:{
+        name:"AuditLog",
+        prefix:"AUD"
+    },
+
+
+    EVENT:{
+        name:"EventLog",
+        prefix:"EVT"
+    }
+
+
 },
 
 
 
 
-IDS:{
+
+get(key){
 
 
-CLIENT:"ClientID",
+    return this.entities[key]
+    ||
+    null;
 
-TRIP:"TripID",
 
-PAYMENT:"PaymentID",
+},
 
-VEHICLE:"VehicleID",
 
-DRIVER:"DriverID",
 
-EMPLOYEE:"EmployeeID",
-CLIENT_FINANCE_PROFILE:
-"CLIENT_FINANCE_PROFILE"
 
+
+getPrefix(key){
+
+
+    const entity =
+        this.get(key);
+
+
+    return entity
+    ?
+    entity.prefix
+    :
+    null;
+
+
+},
+
+
+
+
+
+getSheet(key){
+
+
+    const entity =
+        this.get(key);
+
+
+    return entity
+    ?
+    entity.name
+    :
+    null;
+
+
+},
+
+
+
+
+
+list(){
+
+
+    return Object.keys(
+        this.entities
+    );
+
+
+},
+
+
+
+
+
+health(){
+
+
+    return HealthContract.create(
+
+        "EntityConstants",
+
+        "OK",
+
+        {
+
+            version:this.version,
+
+            entities:this.list()
+
+        }
+
+    );
 
 }
 
 
-
 };
+
 
 
 
@@ -80,7 +165,7 @@ EntityConstants;
 
 
 
-console.log(
+Logger.log(
 "EntityConstants READY v"
 +
 EntityConstants.version
