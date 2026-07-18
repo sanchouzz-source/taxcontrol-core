@@ -1,10 +1,10 @@
-console.log("ClientEventHandler");
+console.log("ClientEventHandler v0.6");
 
 
 const ClientEventHandler = {
 
 
-version:"0.5.0",
+version:"0.6.0",
 
 
 initialized:false,
@@ -22,10 +22,19 @@ entity:null,
 
 
 
+subscriptions:[],
+
+
+
+
+/*
+====================================
+INIT
+====================================
+*/
 
 
 init(){
-
 
 
 if(this.initialized){
@@ -49,14 +58,11 @@ if(
 typeof EntityRegistry==="undefined"
 ){
 
-
 throw new Error(
-"EntityRegistry unavailable"
+"ClientEventHandler: EntityRegistry unavailable"
 );
 
-
 }
-
 
 
 
@@ -70,16 +76,13 @@ this.entityName
 
 
 
-
-if(
-typeof EventBus==="undefined"
-){
-
+if(!this.entity){
 
 throw new Error(
-"EventBus unavailable"
+"ClientEventHandler: ENTITY NOT FOUND "
++
+this.entityName
 );
-
 
 }
 
@@ -88,47 +91,57 @@ throw new Error(
 
 
 
-EventBus.subscribe(
+if(
+typeof EventBus==="undefined"
+){
+
+throw new Error(
+"ClientEventHandler: EventBus unavailable"
+);
+
+}
+
+
+
+
+
+
+
+this.subscribe(
 
 this.entity.events.created,
 
-this.onCreated.bind(this)
+this.onCreated
 
 );
 
 
 
-
-
-EventBus.subscribe(
+this.subscribe(
 
 this.entity.events.updated,
 
-this.onUpdated.bind(this)
+this.onUpdated
 
 );
 
 
 
-
-
-EventBus.subscribe(
+this.subscribe(
 
 this.entity.events.deleted,
 
-this.onDeleted.bind(this)
+this.onDeleted
 
 );
 
 
 
-
-
-EventBus.subscribe(
+this.subscribe(
 
 this.entity.events.restored,
 
-this.onRestored.bind(this)
+this.onRestored
 
 );
 
@@ -165,6 +178,80 @@ return true;
 
 
 
+/*
+====================================
+SUBSCRIBE WRAPPER
+====================================
+*/
+
+
+subscribe(
+event,
+handler
+){
+
+
+
+if(!event){
+
+return;
+
+}
+
+
+
+
+const bound =
+handler.bind(this);
+
+
+
+bound.handlerName =
+"ClientEventHandler_"
++
+handler.name;
+
+
+
+
+
+EventBus.subscribe(
+
+event,
+
+bound
+
+);
+
+
+
+this.subscriptions.push({
+
+event,
+
+handler:bound.handlerName
+
+});
+
+
+
+
+
+},
+
+
+
+
+
+
+
+/*
+====================================
+EXTRACT EVENT DATA
+====================================
+*/
+
+
 extract(payload){
 
 
@@ -178,10 +265,13 @@ return null;
 
 
 
-
 return (
 
 payload.after
+
+??
+
+payload.data
 
 ??
 
@@ -199,10 +289,20 @@ payload
 
 
 
-getId(client){
+/*
+====================================
+GET ID
+====================================
+*/
 
 
-if(!client){
+getId(
+payload
+){
+
+
+
+if(!payload){
 
 return "";
 
@@ -210,11 +310,41 @@ return "";
 
 
 
-return client[
+
+
+if(
+payload.entityId
+){
+
+return payload.entityId;
+
+}
+
+
+
+
+const entity =
+this.extract(payload);
+
+
+
+if(!entity){
+
+return "";
+
+}
+
+
+
+
+return entity[
 this.entity.idField
 ]
+
 ||
+
 "";
+
 
 
 },
@@ -225,6 +355,13 @@ this.entity.idField
 
 
 
+/*
+====================================
+LOG EVENT
+====================================
+*/
+
+
 log(
 action,
 payload
@@ -232,21 +369,25 @@ payload
 
 
 
-const client =
-this.extract(
+const id =
+this.getId(
 payload
 );
 
 
 
 
-if(!client){
+
+
+if(!id){
 
 
 Logger.debug(
-"CLIENT EVENT WITHOUT DATA "
+
+"CLIENT EVENT WITHOUT ID "
 +
 action
+
 );
 
 
@@ -254,6 +395,7 @@ return;
 
 
 }
+
 
 
 
@@ -267,7 +409,7 @@ action
 +
 " EVENT "
 +
-this.getId(client)
+id
 
 );
 
@@ -281,8 +423,14 @@ this.getId(client)
 
 
 
-onCreated(event){
+/*
+====================================
+HANDLERS
+====================================
+*/
 
+
+onCreated(event){
 
 
 try{
@@ -296,18 +444,19 @@ event
 
 }
 
-catch(e){
+catch(error){
 
 
 Logger.error(
-"ClientEventHandler CREATE ERROR "
+
+"ClientEventHandler CREATED ERROR "
 +
-e.message
+error.message
+
 );
 
 
 }
-
 
 
 },
@@ -316,10 +465,7 @@ e.message
 
 
 
-
-
 onUpdated(event){
-
 
 
 try{
@@ -333,18 +479,19 @@ event
 
 }
 
-catch(e){
+catch(error){
 
 
 Logger.error(
-"ClientEventHandler UPDATE ERROR "
+
+"ClientEventHandler UPDATED ERROR "
 +
-e.message
+error.message
+
 );
 
 
 }
-
 
 
 },
@@ -354,9 +501,7 @@ e.message
 
 
 
-
 onDeleted(event){
-
 
 
 try{
@@ -370,18 +515,19 @@ event
 
 }
 
-catch(e){
+catch(error){
 
 
 Logger.error(
-"ClientEventHandler DELETE ERROR "
+
+"ClientEventHandler DELETED ERROR "
 +
-e.message
+error.message
+
 );
 
 
 }
-
 
 
 },
@@ -390,10 +536,7 @@ e.message
 
 
 
-
-
 onRestored(event){
-
 
 
 try{
@@ -407,18 +550,19 @@ event
 
 }
 
-catch(e){
+catch(error){
 
 
 Logger.error(
-"ClientEventHandler RESTORE ERROR "
+
+"ClientEventHandler RESTORED ERROR "
 +
-e.message
+error.message
+
 );
 
 
 }
-
 
 
 },
@@ -427,6 +571,13 @@ e.message
 
 
 
+
+
+/*
+====================================
+HEALTH
+====================================
+*/
 
 
 health(){
@@ -453,11 +604,14 @@ this.ready
 version:this.version,
 
 
-entity:
-this.entityName,
+entity:this.entityName,
 
 
-initialized:this.initialized
+initialized:this.initialized,
+
+
+subscriptions:
+this.subscriptions.length
 
 
 }
@@ -477,13 +631,17 @@ initialized:this.initialized
 
 
 
+
 globalThis.ClientEventHandler =
 ClientEventHandler;
 
 
 
+
 Logger.log(
+
 "ClientEventHandler READY v"
 +
 ClientEventHandler.version
+
 );
