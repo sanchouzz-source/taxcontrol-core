@@ -1,33 +1,24 @@
 console.log("EntityMetadata");
 
 
-
 const EntityMetadata = {
-
 
 
 version:"0.2.0",
 
 
-
-
 CLIENT:{
-
 
 entity:"CLIENT",
 
 table:"Clients",
-
 
 id:"ClientID",
 
 idPrefix:"CLIENT",
 
 
-
-
 permissions:{
-
 
 create:"CLIENT_CREATE",
 
@@ -39,14 +30,10 @@ delete:"CLIENT_DELETE",
 
 restore:"CLIENT_RESTORE"
 
-
 },
 
 
-
-
 events:{
-
 
 created:"CLIENT_CREATED",
 
@@ -60,12 +47,7 @@ restored:"CLIENT_RESTORED"
 },
 
 
-
-
-
-
 fields:[
-
 
 {
 name:"ClientID",
@@ -153,14 +135,18 @@ type:"BOOLEAN"
 
 },
 
-
-
+AUDIT:{
+    entity:"AUDIT",
+    table:"AuditLog",
+    idField:"AuditID",
+    prefix:"AUD",
+    timestamps:true
+}
 
 
 
 
 TRIP:{
-
 
 entity:"TRIP",
 
@@ -172,37 +158,32 @@ id:"TripID",
 idPrefix:"TRIP",
 
 
-
-
 permissions:{
 
 
-create:"TRIP_CREATE",
+            create:"TRIP_CREATE",
 
-read:"TRIP_READ",
+            read:"TRIP_READ",
 
-update:"TRIP_UPDATE",
+            update:"TRIP_UPDATE",
 
-delete:"TRIP_DELETE",
+            delete:"TRIP_DELETE",
 
-restore:"TRIP_RESTORE"
+            restore:"TRIP_RESTORE"
 
 
 },
 
 
-
-
 events:{
 
+        created:"TRIP_CREATED",
 
-created:"TRIP_CREATED",
+        updated:"TRIP_UPDATED",
 
-updated:"TRIP_UPDATED",
+        deleted:"TRIP_DELETED",
 
-deleted:"TRIP_DELETED",
-
-restored:"TRIP_RESTORED"
+        restored:"TRIP_RESTORED"
 
 
 },
@@ -214,237 +195,231 @@ restored:"TRIP_RESTORED"
 
 fields:[
 
-
-{
-name:"TripID",
-type:"ID",
-required:true
-},
-
-
-{
-name:"OrganizationID",
-type:"REFERENCE",
-required:true
-},
+        {
+        name:"TripID",
+        type:"ID",
+        required:true
+        },
 
 
-{
-name:"ClientID",
-type:"REFERENCE",
-required:true
-},
+        {
+        name:"OrganizationID",
+        type:"REFERENCE",
+        required:true
+        },
 
 
-{
-name:"VehicleID",
-type:"REFERENCE"
-},
+        {
+        name:"ClientID",
+        type:"REFERENCE",
+        required:true
+        },
 
 
-{
-name:"DriverID",
-type:"REFERENCE"
-},
+        {
+        name:"VehicleID",
+        type:"REFERENCE"
+        },
 
 
-{
-name:"ManagerID",
-type:"REFERENCE"
-},
+        {
+        name:"DriverID",
+        type:"REFERENCE"
+        },
 
 
-{
-name:"LoadingPoint",
-type:"STRING"
-},
+        {
+        name:"ManagerID",
+        type:"REFERENCE"
+        },
 
 
-{
-name:"UnloadingPoint",
-type:"STRING"
-},
+        {
+        name:"LoadingPoint",
+        type:"STRING"
+        },
 
 
-{
-name:"Distance",
-type:"NUMBER"
-},
+        {
+        name:"UnloadingPoint",
+        type:"STRING"
+        },
 
 
-{
-name:"Cargo",
-type:"STRING"
-},
+        {
+        name:"Distance",
+        type:"NUMBER"
+        },
 
 
-{
-name:"Revenue",
-type:"MONEY"
-},
+        {
+        name:"Cargo",
+        type:"STRING"
+        },
 
 
-{
-name:"PlannedCost",
-type:"MONEY"
-},
+        {
+        name:"Revenue",
+        type:"MONEY"
+        },
 
 
-{
-name:"ActualCost",
-type:"MONEY"
-},
+        {
+        name:"PlannedCost",
+        type:"MONEY"
+        },
 
 
-{
-name:"Margin",
-type:"MONEY",
-calculated:true
-},
+        {
+        name:"ActualCost",
+        type:"MONEY"
+        },
 
 
-{
-name:"Status",
-type:"ENUM",
-default:"NEW"
-},
+        {
+        name:"Margin",
+        type:"MONEY",
+        calculated:true
+        },
 
 
-{
-name:"CreatedAt",
-type:"DATETIME"
-},
+        {
+        name:"Status",
+        type:"ENUM",
+        default:"NEW"
+        },
 
 
-{
-name:"UpdatedAt",
-type:"DATETIME"
-},
+        {
+        name:"CreatedAt",
+        type:"DATETIME"
+        },
 
 
-{
-name:"Deleted",
-type:"BOOLEAN"
-}
+        {
+        name:"UpdatedAt",
+        type:"DATETIME"
+        },
+
+
+        {
+        name:"Deleted",
+        type:"BOOLEAN"
+        }
 
 
 ]
 
 },
-
-
-
-
-
 
 
 CLIENT_FINANCE_PROFILE:{
 
 
-entity:"CLIENT_FINANCE_PROFILE",
+                    entity:"CLIENT_FINANCE_PROFILE",
 
-table:"ClientFinanceProfiles",
-
-
-id:"FinanceProfileID",
-
-idPrefix:"FP",
+                    table:"ClientFinanceProfiles",
 
 
+                    id:"FinanceProfileID",
 
-
-permissions:{
-
-
-create:"CLIENT_FINANCE_CREATE",
-
-read:"CLIENT_FINANCE_READ",
-
-update:"CLIENT_FINANCE_UPDATE",
-
-delete:"CLIENT_FINANCE_DELETE",
-
-restore:"CLIENT_FINANCE_RESTORE"
-
-
-},
+                    idPrefix:"FP",
 
 
 
 
-events:{
+        permissions:{
 
 
-created:"CLIENT_FINANCE_PROFILE_CREATED",
+                    create:"CLIENT_FINANCE_CREATE",
 
-updated:"CLIENT_FINANCE_PROFILE_UPDATED",
+                    read:"CLIENT_FINANCE_READ",
 
-deleted:"CLIENT_FINANCE_PROFILE_DELETED",
+                    update:"CLIENT_FINANCE_UPDATE",
 
-restored:"CLIENT_FINANCE_PROFILE_RESTORED"
+                    delete:"CLIENT_FINANCE_DELETE",
 
-
-},
-
+                    restore:"CLIENT_FINANCE_RESTORE"
 
 
+        },
 
 
 
-fields:[
+
+        events:{
 
 
-{
-name:"FinanceProfileID",
-type:"ID",
-required:true
-},
+                created:"CLIENT_FINANCE_PROFILE_CREATED",
+
+                updated:"CLIENT_FINANCE_PROFILE_UPDATED",
+
+                deleted:"CLIENT_FINANCE_PROFILE_DELETED",
+
+                restored:"CLIENT_FINANCE_PROFILE_RESTORED"
 
 
-{
-name:"OrganizationID",
-type:"REFERENCE",
-required:true
-},
+        },
 
 
-{
-name:"ClientID",
-type:"REFERENCE",
-required:true
-},
 
 
-{
-name:"Balance",
-type:"MONEY",
-default:0
-},
 
 
-{
-name:"CreditLimit",
-type:"MONEY",
-default:0
-},
+        fields:[
 
 
-{
-name:"Status",
-type:"ENUM",
-default:"ACTIVE"
-},
+        {
+        name:"FinanceProfileID",
+        type:"ID",
+        required:true
+        },
 
 
-{
-name:"CreatedAt",
-type:"DATETIME"
-}
+        {
+        name:"OrganizationID",
+        type:"REFERENCE",
+        required:true
+        },
 
 
-]
+        {
+        name:"ClientID",
+        type:"REFERENCE",
+        required:true
+        },
 
-}
+
+        {
+        name:"Balance",
+        type:"MONEY",
+        default:0
+        },
+
+
+        {
+        name:"CreditLimit",
+        type:"MONEY",
+        default:0
+        },
+
+
+        {
+        name:"Status",
+        type:"ENUM",
+        default:"ACTIVE"
+        },
+
+
+        {
+        name:"CreatedAt",
+        type:"DATETIME"
+        }
+
+
+        ]
+
+        }
 
 
 
@@ -477,23 +452,12 @@ null;
 };
 
 
-
-
-
-
 EntityMetadata.has=function(entity){
 
 
 return !!this[entity];
 
-
 };
-
-
-
-
-
-
 
 EntityMetadata.list=function(){
 
