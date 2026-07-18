@@ -1,178 +1,176 @@
 console.log("EntityService");
 
 
+const EntityService={
 
-const EntityService = {
 
+version:"3.1.0",
 
-    version:"3.0.0",
 
+ready:false,
 
-    ready:false,
 
 
 
 
+init(){
 
-    /*
-    ====================================
-    INIT
-    ====================================
-    */
 
+this.ready=true;
 
-    init(){
 
+Logger.log(
+"EntityService READY v"
++
+this.version
+);
 
-        if(this.ready){
 
+},
 
-            Logger.log(
-                "EntityService ALREADY READY"
-            );
 
 
-            return;
 
 
-        }
+create(entity,data={}){
 
 
+entity =
+EntityRegistry.resolve(entity);
 
-        this.ready=true;
 
 
+const meta =
+EntityRegistry.get(entity);
 
-        Logger.log(
-            "EntityService READY v"
-            +
-            this.version
-        );
 
 
-    },
 
 
+SecurityGuard.check(
+meta.permissions?.create
+);
 
 
 
 
-    /*
-    ====================================
-    CREATE
-    ====================================
-    */
 
+if(
+meta.idField &&
+!data[meta.idField]
+){
 
-    create(entity,data={}){
 
+data[meta.idField]=
+IdService.generate(entity);
 
 
-        const meta =
-            this.getMetadata(entity);
+}
 
 
 
 
 
+const result =
+RepositoryFactory
+.get(entity)
+.create(data);
 
-        SecurityGuard.check(
 
-            meta.permissions.create
 
-        );
 
 
+this.publish(
 
+meta.events.created,
 
+{
 
+entity,
 
-        /*
-        Генерация ID
-        только через EntityRegistry
-        */
+entityId:
+data[meta.idField],
 
+data
 
-        if(
-            meta.idField &&
-            !data[meta.idField]
-        ){
+}
 
+);
 
-            data[meta.idField] =
 
-                IdService.generate(
-                    entity
-                );
 
 
-        }
 
+return result;
 
 
+},
 
 
 
 
-        const repository =
 
-            RepositoryFactory
-            .get(entity);
 
 
+update(entity,id,data){
 
 
 
+entity =
+EntityRegistry.resolve(entity);
 
 
-        const result =
 
-            repository.create(
-                data
-            );
+const meta =
+EntityRegistry.get(entity);
 
 
 
+const before =
+this.findById(
+entity,
+id
+);
 
 
 
-        /*
-        Событие только после INSERT
-        */
+const result =
+RepositoryFactory
+.get(entity)
+.update(
+id,
+data
+);
 
 
-        this.publishEvent(
 
-            meta.events.created,
 
-            {
 
-                entity,
+this.publish(
 
-                entityId:
-                    data[meta.idField],
+meta.events.updated,
 
-                action:
-                    "CREATE",
+{
 
-                before:null,
+entity,
 
-                after:data,
+entityId:id,
 
-                data
+before,
 
-            }
+after:result
 
-        );
+}
 
+);
 
 
 
 
-        return result;
+return result;
 
 
-    },
+},
 
 
 
@@ -180,768 +178,127 @@ const EntityService = {
 
 
 
+findById(entity,id){
 
 
-    /*
-    ====================================
-    READ ONE
-    ====================================
-    */
+entity =
+EntityRegistry.resolve(entity);
 
 
-    findById(entity,id){
+return RepositoryFactory
+.get(entity)
+.findById(id);
 
 
+},
 
-        const meta =
-            this.getMetadata(entity);
 
 
 
 
 
-        SecurityGuard.check(
 
-            meta.permissions.read
+delete(entity,id){
 
-        );
 
+entity =
+EntityRegistry.resolve(entity);
 
 
 
+const meta =
+EntityRegistry.get(entity);
 
-        return RepositoryFactory
 
-            .get(entity)
 
-            .findById(id);
+const result =
+RepositoryFactory
+.get(entity)
+.delete(id);
 
 
 
-    },
 
+this.publish(
 
+meta.events.deleted,
 
+{
 
+entity,
 
+entityId:id,
 
+after:result
 
+}
 
+);
 
 
 
-    /*
-    ====================================
-    READ ALL
-    ====================================
-    */
+return result;
 
 
-    findAll(entity,filters={}){
+},
 
 
 
-        const meta =
-            this.getMetadata(entity);
 
 
 
 
+publish(event,payload){
 
-        SecurityGuard.check(
 
-            meta.permissions.read
+if(!event){
 
-        );
+return;
 
+}
 
 
 
+EventBus.publish(
 
+event,
 
-        return RepositoryFactory
+payload
 
-            .get(entity)
+);
 
-            .findAll(filters);
 
+},
 
 
-    },
 
 
 
 
 
+health(){
 
 
+return HealthContract.create(
 
+"EntityService",
 
+this.ready
+?
+"OK"
+:
+"WARNING",
 
+{
 
-    /*
-    ====================================
-    UPDATE
-    ====================================
-    */
+version:this.version
 
+}
 
-    update(entity,id,data){
+);
 
 
-
-        const meta =
-            this.getMetadata(entity);
-
-
-
-
-
-
-        SecurityGuard.check(
-
-            meta.permissions.update
-
-        );
-
-
-
-
-
-
-
-        const repository =
-
-            RepositoryFactory
-            .get(entity);
-
-
-
-
-
-
-
-        const before =
-
-            repository.findById(
-                id
-            );
-
-
-
-
-
-
-
-        const result =
-
-            repository.update(
-
-                id,
-
-                data
-
-            );
-
-
-
-
-
-
-
-
-        this.publishEvent(
-
-            meta.events.updated,
-
-            {
-
-
-                entity,
-
-
-                entityId:id,
-
-
-                action:
-                    "UPDATE",
-
-
-
-                before,
-
-
-
-                after:
-                    result,
-
-
-
-                data:
-                    result
-
-
-            }
-
-
-        );
-
-
-
-
-
-
-        return result;
-
-
-    },
-
-
-
-
-
-
-
-
-
-
-
-    /*
-    ====================================
-    DELETE SOFT
-    ====================================
-    */
-
-
-    delete(entity,id){
-
-
-
-        const meta =
-            this.getMetadata(entity);
-
-
-
-
-
-
-        SecurityGuard.check(
-
-            meta.permissions.delete
-
-        );
-
-
-
-
-
-
-
-
-        const repository =
-
-            RepositoryFactory
-            .get(entity);
-
-
-
-
-
-
-        const before =
-
-            repository.findById(
-                id
-            );
-
-
-
-
-
-
-        const result =
-
-            repository.delete(
-                id
-            );
-
-
-
-
-
-
-
-        this.publishEvent(
-
-            meta.events.deleted,
-
-
-            {
-
-
-                entity,
-
-
-                entityId:id,
-
-
-                action:
-                    "DELETE",
-
-
-                before,
-
-
-                after:
-                    result,
-
-
-                data:
-                    result
-
-
-            }
-
-
-
-        );
-
-
-
-
-
-
-
-        return result;
-
-
-
-    },
-
-
-
-
-
-
-
-
-
-
-
-    /*
-    ====================================
-    RESTORE
-    ====================================
-    */
-
-
-    restore(entity,id){
-
-
-
-        const meta =
-            this.getMetadata(entity);
-
-
-
-
-
-
-        SecurityGuard.check(
-
-            meta.permissions.restore
-
-        );
-
-
-
-
-
-
-
-        const repository =
-
-            RepositoryFactory
-            .get(entity);
-
-
-
-
-
-
-
-        const before =
-
-            repository.findById(
-                id
-            );
-
-
-
-
-
-
-        const result =
-
-            repository.restore(
-                id
-            );
-
-
-
-
-
-
-
-        this.publishEvent(
-
-            meta.events.restored,
-
-
-            {
-
-
-                entity,
-
-
-                entityId:id,
-
-
-                action:
-                    "RESTORE",
-
-
-                before,
-
-
-                after:
-                    result,
-
-
-                data:
-                    result
-
-
-            }
-
-
-        );
-
-
-
-
-
-
-        return result;
-
-
-    },
-
-
-
-
-
-
-
-
-
-    /*
-    ====================================
-    EXISTS
-    ====================================
-    */
-
-
-    exists(entity,id){
-
-
-
-        return RepositoryFactory
-
-            .get(entity)
-
-            .exists(id);
-
-
-    },
-
-
-
-
-
-
-
-
-
-    /*
-    ====================================
-    REPOSITORY ACCESS
-    ====================================
-    */
-
-
-    repository(entity){
-
-
-        return RepositoryFactory
-
-            .get(entity);
-
-
-    },
-
-
-
-
-
-
-
-
-
-    /*
-    ====================================
-    EVENT CONTRACT v3
-    ====================================
-    */
-
-
-    publishEvent(eventName,payload){
-
-
-
-        if(!eventName){
-
-
-            return;
-
-
-        }
-
-
-
-
-
-
-        if(
-            !EventBus
-            ||
-            !EventBus.publish
-        ){
-
-
-
-            throw new Error(
-
-                "EventBus unavailable"
-
-            );
-
-
-        }
-
-
-
-
-
-
-
-
-        const event = {
-
-
-            eventId:
-
-                Utilities
-                .getUuid(),
-
-
-
-            eventName,
-
-
-
-            entity:
-
-                payload.entity,
-
-
-
-            entityId:
-
-                payload.entityId,
-
-
-
-            action:
-
-                payload.action,
-
-
-
-            before:
-
-                payload.before || null,
-
-
-
-            after:
-
-                payload.after || null,
-
-
-
-            data:
-
-                payload.data || null,
-
-
-
-            timestamp:
-
-                new Date()
-                .toISOString()
-
-
-
-        };
-
-
-
-
-
-
-
-
-        EventBus.publish(
-
-            eventName,
-
-            event
-
-        );
-
-
-
-
-        Logger.log(
-
-            "EVENT PUBLISHED "
-            +
-            eventName
-            +
-            " "
-            +
-            event.entityId
-
-        );
-
-
-
-    },
-
-
-
-
-
-
-
-
-
-    /*
-    ====================================
-    METADATA
-    ====================================
-    */
-
-
-    getMetadata(entity){
-
-
-
-        if(
-            !EntityRegistry.has(entity)
-        ){
-
-
-            throw new Error(
-
-                "Unknown entity: "
-                +
-                entity
-
-            );
-
-
-        }
-
-
-
-
-
-
-        return EntityRegistry.get(entity);
-
-
-
-    },
-
-
-
-
-
-
-
-
-
-    /*
-    ====================================
-    HEALTH
-    ====================================
-    */
-
-
-    health(){
-
-
-
-        return HealthContract.create(
-
-            "EntityService",
-
-
-            this.ready
-            ?
-            "OK"
-            :
-            "WARNING",
-
-
-            {
-
-                version:
-                    this.version,
-
-
-                registry:
-                    !!globalThis.EntityRegistry,
-
-
-                repositoryFactory:
-                    !!globalThis.RepositoryFactory,
-
-
-                eventBus:
-                    !!globalThis.EventBus
-
-
-            }
-
-
-        );
-
-
-    }
-
+}
 
 
 };
@@ -950,19 +307,5 @@ const EntityService = {
 
 
 
-
-
 globalThis.EntityService =
 EntityService;
-
-
-
-
-
-Logger.log(
-
-"EntityService READY v"
-+
-EntityService.version
-
-);

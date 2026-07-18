@@ -1,452 +1,508 @@
 console.log("EntityRegistry");
 
+
 const EntityRegistry = {
 
-    version: "2.0.0",
 
-    ready: false,
+version:"2.1.0",
 
-    /*
-    ====================================================
-    CORE
-    ====================================================
-    */
 
-    CLIENT: {
+ready:false,
 
-        entity: "CLIENT",
 
-        module: "core",
+aliases:{
 
-        table: "Clients",
 
-        idField: "ClientID",
+    ClientFinanceProfiles:
+        "CLIENT_FINANCE_PROFILE",
 
-        idPrefix: "CLI",
 
-        metadata: "CLIENT",
+    FinancialTransactions:
+        "FINANCIAL_TRANSACTION",
 
-        repository: "ClientRepository",
 
-        validator: "ClientValidator",
+    AuditLogs:
+        "AUDIT",
 
-        audit: true,
 
-        versioning: true,
+    Versions:
+        "VERSION"
 
-        softDelete: true,
 
-        timestamps: true,
+},
 
-        permissions: {
 
-            create: PERMISSION_CLIENT_CREATE,
-            read: PERMISSION_CLIENT_READ,
-            update: PERMISSION_CLIENT_UPDATE,
-            delete: PERMISSION_CLIENT_DELETE,
-            restore: PERMISSION_CLIENT_RESTORE
 
-        },
+CLIENT:{
 
-        events: {
 
-            created: "CLIENT_CREATED",
-            updated: "CLIENT_UPDATED",
-            deleted: "CLIENT_DELETED",
-            restored: "CLIENT_RESTORED"
+entity:"CLIENT",
 
-        }
+module:"core",
 
-    },
+table:"Clients",
 
-    TRIP: {
+idField:"ClientID",
 
-        entity: "TRIP",
+idPrefix:"CLI",
 
-        module: "core",
+repository:"ClientRepository",
 
-        table: "Trips",
+audit:true,
 
-        idField: "TripID",
+softDelete:true,
 
-        idPrefix: "TRP",
+timestamps:true,
 
-        metadata: "TRIP",
 
-        repository: "TripRepository",
+events:{
 
-        validator: "TripValidator",
 
-        audit: true,
+created:"CLIENT_CREATED",
 
-        versioning: true,
+updated:"CLIENT_UPDATED",
 
-        softDelete: true,
+deleted:"CLIENT_DELETED",
 
-        timestamps: true,
+restored:"CLIENT_RESTORED"
 
-        permissions: {
 
-            create: PERMISSION_TRIP_CREATE,
-            read: PERMISSION_TRIP_READ,
-            update: PERMISSION_TRIP_UPDATE,
-            delete: PERMISSION_TRIP_DELETE,
-            restore: PERMISSION_TRIP_RESTORE
+}
 
-        },
 
-        events: {
+},
 
-            created: "TRIP_CREATED",
-            updated: "TRIP_UPDATED",
-            deleted: "TRIP_DELETED",
-            restored: "TRIP_RESTORED"
 
-        }
 
-    },
 
-    /*
-    ====================================================
-    FINANCE
-    ====================================================
-    */
 
-    CLIENT_FINANCE_PROFILE: {
+TRIP:{
 
-        entity: "CLIENT_FINANCE_PROFILE",
 
-        module: "finance",
+entity:"TRIP",
 
-        table: "ClientFinanceProfiles",
+module:"core",
 
-        idField: "FinanceProfileID",
+table:"Trips",
 
-        idPrefix: "FP",
+idField:"TripID",
 
-        metadata: "CLIENT_FINANCE_PROFILE",
+idPrefix:"TRP",
 
-        repository: "ClientFinanceProfileRepository",
+repository:"TripRepository",
 
-        audit: true,
+audit:true,
 
-        versioning: true,
+softDelete:true,
 
-        softDelete: true,
+timestamps:true,
 
-        timestamps: true,
 
-        permissions: {
+events:{
 
-            create: PERMISSION_CLIENT_CREATE,
-            read: PERMISSION_CLIENT_READ,
-            update: PERMISSION_CLIENT_UPDATE,
-            delete: PERMISSION_CLIENT_DELETE,
-            restore: PERMISSION_CLIENT_RESTORE
 
-        },
+created:"TRIP_CREATED",
 
-        events: {
+updated:"TRIP_UPDATED",
 
-            created: "CLIENT_FINANCE_PROFILE_CREATED",
-            updated: "CLIENT_FINANCE_PROFILE_UPDATED",
-            deleted: "CLIENT_FINANCE_PROFILE_DELETED",
-            restored: "CLIENT_FINANCE_PROFILE_RESTORED"
+deleted:"TRIP_DELETED",
 
-        }
+restored:"TRIP_RESTORED"
 
-    },
 
-    FINANCIAL_TRANSACTION: {
+}
 
-        entity: "FINANCIAL_TRANSACTION",
 
-        module: "finance",
+},
 
-        table: "FinancialTransactions",
 
-        idField: "TransactionID",
 
-        idPrefix: "FIN",
 
-        metadata: "FINANCIAL_TRANSACTION",
 
-        repository: "FinancialTransactionRepository",
+CLIENT_FINANCE_PROFILE:{
 
-        audit: false,
 
-        versioning: false,
+entity:"CLIENT_FINANCE_PROFILE",
 
-        softDelete: false,
+module:"finance",
 
-        timestamps: true,
+table:"ClientFinanceProfiles",
 
-        permissions: {},
+idField:"FinanceProfileID",
 
-        events: {}
+idPrefix:"FP",
 
-    },
+repository:
+"ClientFinanceProfileRepository",
 
-    /*
-    ====================================================
-    AUDIT
-    ====================================================
-    */
+audit:true,
 
-    AUDIT: {
+softDelete:true,
 
-        entity: "AUDIT",
+timestamps:true,
 
-        module: "system",
 
-        table: "AuditLog",
+events:{
 
-        idField: "AuditID",
 
-        idPrefix: "AUD",
+created:
+"CLIENT_FINANCE_PROFILE_CREATED",
 
-        metadata: "AUDIT",
 
-        repository: "AuditRepository",
+updated:
+"CLIENT_FINANCE_PROFILE_UPDATED",
 
-        audit: false,
 
-        versioning: false,
+deleted:
+"CLIENT_FINANCE_PROFILE_DELETED",
 
-        softDelete: false,
 
-        timestamps: true,
+restored:
+"CLIENT_FINANCE_PROFILE_RESTORED"
 
-        permissions: {},
 
-        events: {}
+}
 
-    },
 
-    /*
-    ====================================================
-    VERSION
-    ====================================================
-    */
+},
 
-    VERSION: {
 
-        entity: "VERSION",
 
-        module: "system",
 
-        table: "Versions",
 
-        idField: "VersionID",
+FINANCIAL_TRANSACTION:{
 
-        idPrefix: "VER",
 
-        metadata: "VERSION",
+entity:
+"FINANCIAL_TRANSACTION",
 
-        repository: "VersionRepository",
 
-        audit: false,
+module:
+"finance",
 
-        versioning: false,
 
-        softDelete: false,
+table:
+"FinancialTransactions",
 
-        timestamps: true,
 
-        permissions: {},
+idField:
+"TransactionID",
 
-        events: {}
 
-    },
+idPrefix:
+"FIN",
 
-    /*
-    ====================================================
-    KPI
-    ====================================================
-    */
 
-    KPI: {
+repository:
+"FinancialTransactionRepository",
 
-        entity: "KPI",
 
-        module: "analytics",
+audit:true,
 
-        table: "KPI",
 
-        idField: "KPIID",
+events:{
 
-        idPrefix: "KPI",
 
-        metadata: "KPI",
+created:
+"FINANCIAL_TRANSACTION_CREATED",
 
-        repository: "KPIRepository",
 
-        audit: false,
+updated:
+"FINANCIAL_TRANSACTION_UPDATED",
 
-        versioning: false,
 
-        softDelete: false,
+deleted:
+"FINANCIAL_TRANSACTION_DELETED"
 
-        timestamps: true,
 
-        permissions: {},
+}
 
-        events: {}
 
-    }
+},
 
-};
-EntityRegistry.get = function(entity) {
 
-    const meta = this[entity];
 
-    if (!meta || !meta.entity) {
 
-        throw new Error(
-            "Entity not registered: " + entity
-        );
 
-    }
+AUDIT:{
 
-    return meta;
+
+entity:"AUDIT",
+
+module:"core",
+
+table:"AuditLog",
+
+idField:"AuditID",
+
+idPrefix:"AUD",
+
+repository:"AuditRepository",
+
+audit:false,
+
+
+events:{}
+
+
+},
+
+
+
+
+
+VERSION:{
+
+
+entity:"VERSION",
+
+module:"core",
+
+table:"Versions",
+
+idField:"VersionID",
+
+idPrefix:"VER",
+
+repository:"VersionRepository",
+
+audit:true,
+
+
+events:{}
+
+
+},
+
+
+
+
+
+KPI:{
+
+
+entity:"KPI",
+
+module:"analytics",
+
+table:"KPIs",
+
+idField:"KPIID",
+
+idPrefix:"KPI",
+
+repository:"KPIRepository",
+
+audit:true,
+
+
+events:{
+
+
+created:"KPI_CREATED",
+
+updated:"KPI_UPDATED"
+
+
+}
+
+
+}
 
 };
 
-EntityRegistry.has = function(entity) {
 
-    return !!(
-        this[entity] &&
-        this[entity].entity
-    );
 
-};
 
-EntityRegistry.list = function() {
 
-    return Object.keys(this).filter(key => {
+/*
+==============================
+API
+==============================
+*/
 
-        const item = this[key];
 
-        return (
-            item &&
-            typeof item === "object" &&
-            item.entity
-        );
+EntityRegistry.resolve=function(entity){
 
-    });
 
-};
+if(this.has(entity)){
 
-EntityRegistry.getTable = function(entity) {
+return entity;
 
-    return this.get(entity).table;
+}
 
-};
 
-EntityRegistry.getIdField = function(entity) {
 
-    return this.get(entity).idField;
+if(
+this.aliases[entity]
+){
 
-};
+return this.aliases[entity];
 
-EntityRegistry.getIdPrefix = function(entity) {
+}
 
-    return this.get(entity).idPrefix;
+
+
+throw new Error(
+"Unknown entity: "
++
+entity
+);
+
 
 };
 
-EntityRegistry.getRepository = function(entity) {
 
-    return this.get(entity).repository;
 
-};
 
-EntityRegistry.getValidator = function(entity) {
 
-    return this.get(entity).validator;
+EntityRegistry.get=function(entity){
 
-};
 
-EntityRegistry.getEvents = function(entity) {
+entity =
+this.resolve(entity);
 
-    return this.get(entity).events;
 
-};
+const meta =
+this[entity];
 
-EntityRegistry.getPermissions = function(entity) {
 
-    return this.get(entity).permissions;
+if(!meta){
 
-};
+throw new Error(
+"Entity metadata missing: "
++
+entity
+);
 
-EntityRegistry.isAudited = function(entity) {
+}
 
-    return !!this.get(entity).audit;
 
-};
+return meta;
 
-EntityRegistry.isVersioned = function(entity) {
-
-    return !!this.get(entity).versioning;
 
 };
 
-EntityRegistry.supportSoftDelete = function(entity) {
 
-    return !!this.get(entity).softDelete;
 
-};
 
-EntityRegistry.supportTimestamps = function(entity) {
 
-    return !!this.get(entity).timestamps;
 
-};
+EntityRegistry.has=function(entity){
 
-EntityRegistry.register = function(name, config) {
 
-    if (this.has(name)) {
+return !!(
+this[entity]
+&&
+this[entity].entity
+);
 
-        throw new Error(
-            "Entity already registered: " + name
-        );
-
-    }
-
-    this[name] = config;
-
-    Logger.log(
-        "ENTITY REGISTERED " + name
-    );
 
 };
 
-EntityRegistry.health = function() {
 
-    return HealthContract.create(
 
-        "EntityRegistry",
 
-        this.ready ? "OK" : "WARNING",
 
-        {
 
-            version: this.version,
+EntityRegistry.list=function(){
 
-            entities: this.list(),
 
-            count: this.list().length
+return Object.keys(this)
+.filter(key=>{
 
-        }
 
-    );
+const item=this[key];
+
+
+return (
+item &&
+typeof item==="object" &&
+item.entity
+);
+
+
+});
+
 
 };
-EntityRegistry.ready = true;
 
-globalThis.EntityRegistry = EntityRegistry;
+
+
+
+
+EntityRegistry.getRepository=function(entity){
+
+return this.get(entity).repository;
+
+};
+
+
+
+
+
+EntityRegistry.getTable=function(entity){
+
+return this.get(entity).table;
+
+};
+
+
+
+
+
+EntityRegistry.getIdPrefix=function(entity){
+
+return this.get(entity).idPrefix;
+
+};
+
+
+
+
+
+EntityRegistry.health=function(){
+
+
+return HealthContract.create(
+
+"EntityRegistry",
+
+this.ready
+?
+"OK"
+:
+"WARNING",
+
+{
+
+version:this.version,
+
+entities:this.list(),
+
+count:this.list().length
+
+}
+
+);
+
+
+};
+
+
+
+
+
+EntityRegistry.ready=true;
+
+
+globalThis.EntityRegistry =
+EntityRegistry;
+
+
 
 Logger.log(
-    "EntityRegistry READY v" +
-    EntityRegistry.version
+"EntityRegistry READY v"
++
+EntityRegistry.version
 );
