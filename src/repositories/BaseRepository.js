@@ -692,6 +692,12 @@ publishEvent(
     }
 
 
+    const entityId =
+        this.extractEntityId(
+            entity,
+            after
+        );
+
 
     EventBus.emit(
 
@@ -699,42 +705,23 @@ publishEvent(
 
         {
 
+            entity,
 
-        eventId:
-            IdService.generate(
-                "EVENT"
-            ),
+            entityId,
 
+            action,
 
-        entity,
+            before,
 
+            after,
 
-        entityId:
-            this.extractEntityId(
-                entity,
-                after
-            ),
+            source:
+                "BaseRepository",
 
 
-
-        action,
-
-
-        before,
-
-
-        after,
-
-
-        source:
-            "BaseRepository",
-
-
-
-        timestamp:
-            new Date()
-            .toISOString()
-
+            timestamp:
+                new Date()
+                .toISOString()
 
         }
 
