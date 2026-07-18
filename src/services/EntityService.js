@@ -1,10 +1,11 @@
 console.log("EntityService");
 
 
-const EntityService={
+const EntityService = {
 
 
-version:"3.2.0",
+version:"4.0.0",
+
 
 ready:false,
 
@@ -27,16 +28,67 @@ this.version
 
 
 
+resolve(entity){
+
+
+return EntityRegistry.resolve(entity);
+
+
+},
+
+
+
+getMeta(entity){
+
+
+return EntityRegistry.get(
+this.resolve(entity)
+);
+
+
+},
+
+
+
+getRepository(entity){
+
+
+const name=this.resolve(entity);
+
+
+const repo=
+RepositoryFactory.get(name);
+
+
+
+if(!repo){
+
+
+throw new Error(
+"No repository registered for "
++
+name
+);
+
+
+}
+
+
+return repo;
+
+
+},
+
+
+
 
 create(entity,data={}){
 
 
-entity =
-EntityRegistry.resolve(entity);
+entity=this.resolve(entity);
 
 
-const meta =
-EntityRegistry.get(entity);
+const meta=this.getMeta(entity);
 
 
 
@@ -46,50 +98,29 @@ meta.permissions?.create
 
 
 
-
-
 if(
 meta.idField &&
 !data[meta.idField]
 ){
 
-data[meta.idField]=
+
+data[meta.idField]
+=
 IdService.generate(entity);
 
-}
-
-
-
-
-const repository =
-RepositoryFactory.get(entity);
-
-
-
-if(!repository){
-
-throw new Error(
-"No repository for "
-+
-entity
-);
 
 }
 
 
 
-
-const result =
-repository.create(data);
-
-
+const result=
+this.getRepository(entity)
+.create(data);
 
 
 
 this.publish(
-
 meta.events.created,
-
 {
 
 entity,
@@ -100,9 +131,7 @@ data[meta.idField],
 data
 
 }
-
 );
-
 
 
 
@@ -112,6 +141,62 @@ return result;
 },
 
 
+
+
+update(entity,id,data){
+
+
+entity=this.resolve(entity);
+
+
+const meta=this.getMeta(entity);
+
+
+
+SecurityGuard.check(
+meta.permissions?.update
+);
+
+
+
+const before=
+this.findById(
+entity,
+id
+);
+
+
+
+const result=
+this.getRepository(entity)
+.update(
+id,
+data
+);
+
+
+
+this.publish(
+meta.events.updated,
+{
+
+entity,
+
+entityId:id,
+
+before,
+
+after:result
+
+}
+);
+
+
+
+return result;
+
+
+},
 
 
 
@@ -120,12 +205,7 @@ return result;
 findById(entity,id){
 
 
-entity =
-EntityRegistry.resolve(entity);
-
-
-return RepositoryFactory
-.get(entity)
+return this.getRepository(entity)
 .findById(id);
 
 
@@ -135,61 +215,11 @@ return RepositoryFactory
 
 
 
+findAll(entity){
 
 
-update(entity,id,data){
-
-
-entity =
-EntityRegistry.resolve(entity);
-
-
-const meta =
-EntityRegistry.get(entity);
-
-
-
-const before =
-this.findById(
-entity,
-id
-);
-
-
-
-const result =
-RepositoryFactory
-.get(entity)
-.update(
-id,
-data
-);
-
-
-
-
-
-this.publish(
-
-meta.events.updated,
-
-{
-
-entity,
-
-entityId:id,
-
-before,
-
-after:result
-
-}
-
-);
-
-
-
-return result;
+return this.getRepository(entity)
+.findAll();
 
 
 },
@@ -198,154 +228,43 @@ return result;
 
 
 
+findWhere(entity,criteria={}){
 
 
-delete(entity,id){
-
-
-entity =
-EntityRegistry.resolve(entity);
-
-
-
-const meta =
-EntityRegistry.get(entity);
+const repo=
+this.getRepository(entity);
 
 
 
-const result =
-RepositoryFactory
-.get(entity)
-.delete(id);
+if(repo.findWhere){
 
 
+return repo.findWhere(criteria);
 
-
-
-this.publish(
-
-meta.events.deleted,
-
-{
-
-entity,
-
-entityId:id,
-
-after:result
 
 }
 
+
+
+const rows=
+repo.findAll();
+
+
+
+return rows.filter(item=>{
+
+
+return Object.keys(criteria)
+.every(
+key =>
+item[key]===criteria[key]
 );
 
 
-
-
-return result;
+});
 
 
 },
-
-
-
-
-
-
-
-restore(entity,id){
-
-
-entity =
-EntityRegistry.resolve(entity);
-
-
-
-const meta =
-EntityRegistry.get(entity);
-
-
-
-
-
-if(
-!meta.softDelete
-){
-
-throw new Error(
-
-entity+
-" does not support restore"
-
-);
-
-}
-
-
-
-
-
-const repository =
-RepositoryFactory.get(entity);
-
-
-
-if(!repository.restore){
-
-throw new Error(
-
-"Repository restore missing for "
-+
-entity
-
-);
-
-}
-
-
-
-
-
-const before =
-repository.findById(id);
-
-
-
-
-
-const result =
-repository.restore(id);
-
-
-
-
-
-this.publish(
-
-meta.events.restored,
-
-{
-
-entity,
-
-entityId:id,
-
-before,
-
-after:result
-
-}
-
-);
-
-
-
-
-return result;
-
-
-},
-
-
 
 
 
@@ -354,19 +273,198 @@ return result;
 exists(entity,id){
 
 
-entity =
-EntityRegistry.resolve(entity);
+const result=
+this.findById(
+entity,
+id
+);
 
 
-
-return !!RepositoryFactory
-.get(entity)
-.findById(id);
+return !!result;
 
 
 },
 
 
+
+
+
+count(entity,criteria={}){
+
+
+return this.findWhere(
+entity,
+criteria
+)
+.length;
+
+
+},
+
+
+
+
+
+delete(entity,id){
+
+
+entity=this.resolve(entity);
+
+
+const meta=this.getMeta(entity);
+
+
+
+SecurityGuard.check(
+meta.permissions?.delete
+);
+
+
+
+const before=
+this.findById(
+entity,
+id
+);
+
+
+
+const result=
+this.getRepository(entity)
+.delete(id);
+
+
+
+this.publish(
+meta.events.deleted,
+{
+
+entity,
+
+entityId:id,
+
+before,
+
+after:result
+
+}
+);
+
+
+
+return result;
+
+
+},
+
+
+
+
+
+restore(entity,id){
+
+
+entity=this.resolve(entity);
+
+
+const meta=this.getMeta(entity);
+
+
+
+SecurityGuard.check(
+meta.permissions?.restore
+);
+
+
+
+const result=
+this.getRepository(entity)
+.restore(id);
+
+
+
+this.publish(
+meta.events.restored,
+{
+
+entity,
+
+entityId:id,
+
+data:result
+
+}
+);
+
+
+
+return result;
+
+
+},
+
+
+
+
+
+bulkCreate(entity,list=[]){
+
+
+const result=[];
+
+
+
+list.forEach(item=>{
+
+
+result.push(
+this.create(
+entity,
+item
+)
+);
+
+
+});
+
+
+
+return result;
+
+
+},
+
+
+
+
+
+bulkUpdate(entity,ids,data){
+
+
+const result=[];
+
+
+
+ids.forEach(id=>{
+
+
+result.push(
+this.update(
+entity,
+id,
+data
+)
+);
+
+
+});
+
+
+
+return result;
+
+
+},
 
 
 
@@ -383,22 +481,9 @@ return;
 
 
 
-if(
-typeof EventBus==="undefined"
-){
-
-return;
-
-}
-
-
-
 EventBus.publish(
-
 event,
-
 payload
-
 );
 
 
@@ -407,10 +492,34 @@ payload
 
 
 
+transaction(callback){
+
+
+if(
+typeof TransactionManager!=="undefined"
+){
+
+
+return TransactionManager.run(
+callback
+);
+
+
+}
+
+
+
+return callback();
+
+
+},
+
+
 
 
 
 health(){
+
 
 
 return HealthContract.create(
@@ -427,7 +536,19 @@ this.ready
 
 version:this.version,
 
-ready:this.ready
+features:[
+
+"CRUD",
+
+"SEARCH",
+
+"BULK",
+
+"RESTORE",
+
+"TRANSACTION_READY"
+
+]
 
 }
 
@@ -446,13 +567,3 @@ ready:this.ready
 
 globalThis.EntityService =
 EntityService;
-
-
-
-Logger.log(
-
-"EntityService READY v"
-+
-EntityService.version
-
-);
