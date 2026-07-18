@@ -6,22 +6,11 @@ const EntityService={
 
 version:"3.2.0",
 
-
 ready:false,
 
 
 
-
-
 init(){
-
-
-if(this.ready){
-
-    return;
-
-}
-
 
 
 this.ready=true;
@@ -39,9 +28,6 @@ this.version
 
 
 
-
-
-
 create(entity,data={}){
 
 
@@ -49,17 +35,29 @@ entity =
 EntityRegistry.resolve(entity);
 
 
-
 const meta =
 EntityRegistry.get(entity);
-
-
 
 
 
 SecurityGuard.check(
 meta.permissions?.create
 );
+
+
+
+
+
+if(
+meta.idField &&
+!data[meta.idField]
+){
+
+data[meta.idField]=
+IdService.generate(entity);
+
+}
+
 
 
 
@@ -70,11 +68,11 @@ RepositoryFactory.get(entity);
 
 if(!repository){
 
-    throw new Error(
-        "Repository not found: "
-        +
-        entity
-    );
+throw new Error(
+"No repository for "
++
+entity
+);
 
 }
 
@@ -82,9 +80,7 @@ if(!repository){
 
 
 const result =
-repository.create(
-    data
-);
+repository.create(data);
 
 
 
@@ -98,109 +94,14 @@ meta.events.created,
 
 entity,
 
-
 entityId:
-this.extractId(
-entity,
-result
-),
+data[meta.idField],
 
-
-data:result
-
-}
-
-);
-
-
-
-
-
-return result;
-
-
-},
-
-
-
-
-
-
-
-update(entity,id,data){
-
-
-
-entity =
-EntityRegistry.resolve(entity);
-
-
-
-const meta =
-EntityRegistry.get(entity);
-
-
-
-
-const repository =
-RepositoryFactory.get(entity);
-
-
-
-if(!repository){
-
-throw new Error(
-"Repository not found: "
-+
-entity
-);
-
-}
-
-
-
-
-const before =
-this.findById(
-entity,
-id
-);
-
-
-
-
-
-const result =
-repository.update(
-id,
 data
-);
-
-
-
-
-
-
-this.publish(
-
-meta.events.updated,
-
-{
-
-entity,
-
-entityId:id,
-
-
-before,
-
-
-after:result
 
 }
 
 );
-
 
 
 
@@ -223,15 +124,9 @@ entity =
 EntityRegistry.resolve(entity);
 
 
-
-const repository =
-RepositoryFactory.get(entity);
-
-
-
-return repository.findById(
-id
-);
+return RepositoryFactory
+.get(entity)
+.findById(id);
 
 
 },
@@ -242,22 +137,59 @@ id
 
 
 
-findAll(entity,filters={}){
+update(entity,id,data){
 
 
 entity =
 EntityRegistry.resolve(entity);
 
 
-
-const repository =
-RepositoryFactory.get(entity);
-
+const meta =
+EntityRegistry.get(entity);
 
 
-return repository.findAll(
-filters
+
+const before =
+this.findById(
+entity,
+id
 );
+
+
+
+const result =
+RepositoryFactory
+.get(entity)
+.update(
+id,
+data
+);
+
+
+
+
+
+this.publish(
+
+meta.events.updated,
+
+{
+
+entity,
+
+entityId:id,
+
+before,
+
+after:result
+
+}
+
+);
+
+
+
+return result;
 
 
 },
@@ -281,26 +213,10 @@ EntityRegistry.get(entity);
 
 
 
-
-const repository =
-RepositoryFactory.get(entity);
-
-
-
-const existing =
-this.findById(
-entity,
-id
-);
-
-
-
-
 const result =
-repository.delete(
-id
-);
-
+RepositoryFactory
+.get(entity)
+.delete(id);
 
 
 
@@ -315,10 +231,6 @@ meta.events.deleted,
 entity,
 
 entityId:id,
-
-
-before:existing,
-
 
 after:result
 
@@ -354,17 +266,16 @@ EntityRegistry.get(entity);
 
 
 
-const repository =
-RepositoryFactory.get(entity);
 
-
-
-if(!repository){
+if(
+!meta.softDelete
+){
 
 throw new Error(
-"Repository not found: "
-+
-entity
+
+entity+
+" does not support restore"
+
 );
 
 }
@@ -372,23 +283,38 @@ entity
 
 
 
-if(
-typeof repository.restore==="function"
-){
+
+const repository =
+RepositoryFactory.get(entity);
+
+
+
+if(!repository.restore){
+
+throw new Error(
+
+"Repository restore missing for "
++
+entity
+
+);
+
+}
+
+
+
 
 
 const before =
-this.findById(
-entity,
-id
-);
+repository.findById(id);
+
+
 
 
 
 const result =
-repository.restore(
-id
-);
+repository.restore(id);
+
 
 
 
@@ -403,9 +329,7 @@ entity,
 
 entityId:id,
 
-
 before,
-
 
 after:result
 
@@ -415,23 +339,8 @@ after:result
 
 
 
+
 return result;
-
-
-}
-
-
-
-
-
-return BaseRepository.restore(
-
-entity,
-
-id
-
-);
-
 
 
 },
@@ -450,10 +359,9 @@ EntityRegistry.resolve(entity);
 
 
 
-return !!this.findById(
-entity,
-id
-);
+return !!RepositoryFactory
+.get(entity)
+.findById(id);
 
 
 },
@@ -502,37 +410,6 @@ payload
 
 
 
-extractId(entity,record){
-
-
-if(!record){
-
-return "";
-
-}
-
-
-
-const meta =
-EntityRegistry.get(entity);
-
-
-
-return record[
-meta.idField
-]
-||
-"";
-
-
-},
-
-
-
-
-
-
-
 health(){
 
 
@@ -548,7 +425,9 @@ this.ready
 
 {
 
-version:this.version
+version:this.version,
+
+ready:this.ready
 
 }
 
@@ -556,6 +435,7 @@ version:this.version
 
 
 }
+
 
 
 };
@@ -566,3 +446,13 @@ version:this.version
 
 globalThis.EntityService =
 EntityService;
+
+
+
+Logger.log(
+
+"EntityService READY v"
++
+EntityService.version
+
+);
