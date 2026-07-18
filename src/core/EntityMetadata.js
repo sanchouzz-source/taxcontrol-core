@@ -135,13 +135,27 @@ type:"BOOLEAN"
 
 },
 
-AUDIT:{
-    entity:"AUDIT",
-    table:"AuditLog",
-    idField:"AuditID",
-    prefix:"AUD",
-    timestamps:true
-},
+    AUDIT: {
+        entity: "AUDIT",
+        table: "AuditLog",
+        id: "AuditID",           // было idField
+        idPrefix: "AUD",         // было prefix
+        permissions: {           // добавлено для единообразия
+            create: "AUDIT_CREATE",
+            read: "AUDIT_READ",
+            update: "AUDIT_UPDATE",
+            delete: "AUDIT_DELETE",
+            restore: "AUDIT_RESTORE"
+        },
+        events: {                // добавлено для единообразия
+            created: "AUDIT_CREATED",
+            updated: "AUDIT_UPDATED",
+            deleted: "AUDIT_DELETED",
+            restored: "AUDIT_RESTORED"
+        },
+        fields: [],              // можно оставить пустым или описать поля аудита
+        timestamps: true         // дополнительное поле, сохранено
+    },   // ← запятая обязательна
 
 
 
