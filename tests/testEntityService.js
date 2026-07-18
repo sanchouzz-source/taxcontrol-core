@@ -5,16 +5,13 @@ console.log("testEntityService");
 function testEntityService(){
 
 
-
 Logger.log(
 "========== ENTITY SERVICE TEST START =========="
 );
 
 
 
-
 try{
-
 
 
 Logger.log(
@@ -27,6 +24,36 @@ SystemInit.init();
 
 
 
+Logger.log(
+"===== STEP 0: SYSTEM HEALTH ====="
+);
+
+
+
+Logger.log(
+JSON.stringify(
+EntityRegistry.health()
+)
+);
+
+
+
+Logger.log(
+JSON.stringify(
+RepositoryFactory.list()
+)
+);
+
+
+
+
+
+
+/*
+====================================
+CREATE
+====================================
+*/
 
 
 Logger.log(
@@ -35,9 +62,8 @@ Logger.log(
 
 
 
-
-
-const client = EntityService.create(
+const client =
+EntityService.create(
 
 
 "CLIENT",
@@ -96,11 +122,15 @@ Deleted:false
 
 
 Logger.log(
-
-"CREATED CLIENT: "
+"CREATED CLIENT ID: "
 +
 client.ClientID
+);
 
+
+
+Logger.log(
+JSON.stringify(client,null,2)
 );
 
 
@@ -108,7 +138,11 @@ client.ClientID
 
 
 
-
+/*
+====================================
+READ
+====================================
+*/
 
 
 Logger.log(
@@ -117,29 +151,29 @@ Logger.log(
 
 
 
-
 const found =
 EntityService.findById(
 
-
 "CLIENT",
-
 
 client.ClientID
 
-
 );
-
-
 
 
 
 Logger.log(
+"FOUND CLIENT:"
+);
 
-"FOUND CLIENT: "
-+
-JSON.stringify(found)
 
+
+Logger.log(
+JSON.stringify(
+found,
+null,
+2
+)
 );
 
 
@@ -148,7 +182,11 @@ JSON.stringify(found)
 
 
 
-
+/*
+====================================
+UPDATE
+====================================
+*/
 
 
 Logger.log(
@@ -157,13 +195,10 @@ Logger.log(
 
 
 
-
 const updated =
 EntityService.update(
 
-
 "CLIENT",
-
 
 client.ClientID,
 
@@ -181,20 +216,23 @@ Email:
 
 }
 
-
-
 );
-
 
 
 
 
 Logger.log(
+"UPDATED CLIENT:"
+);
 
-"UPDATED CLIENT: "
-+
-JSON.stringify(updated)
 
+
+Logger.log(
+JSON.stringify(
+updated,
+null,
+2
+)
 );
 
 
@@ -204,6 +242,11 @@ JSON.stringify(updated)
 
 
 
+/*
+====================================
+DELETE
+====================================
+*/
 
 
 Logger.log(
@@ -212,30 +255,29 @@ Logger.log(
 
 
 
-
-
 const deleted =
 EntityService.delete(
 
-
 "CLIENT",
-
 
 client.ClientID
 
-
 );
-
-
 
 
 
 Logger.log(
+"DELETED CLIENT:"
+);
 
-"DELETED CLIENT: "
-+
-JSON.stringify(deleted)
 
+
+Logger.log(
+JSON.stringify(
+deleted,
+null,
+2
+)
 );
 
 
@@ -244,7 +286,11 @@ JSON.stringify(deleted)
 
 
 
-
+/*
+====================================
+RESTORE
+====================================
+*/
 
 
 Logger.log(
@@ -253,30 +299,29 @@ Logger.log(
 
 
 
-
-
 const restored =
 EntityService.restore(
 
-
 "CLIENT",
-
 
 client.ClientID
 
-
 );
-
-
 
 
 
 Logger.log(
+"RESTORED CLIENT:"
+);
 
-"RESTORED CLIENT: "
-+
-JSON.stringify(restored)
 
+
+Logger.log(
+JSON.stringify(
+restored,
+null,
+2
+)
 );
 
 
@@ -285,6 +330,12 @@ JSON.stringify(restored)
 
 
 
+
+/*
+====================================
+FINAL
+====================================
+*/
 
 
 Logger.log(
@@ -293,35 +344,96 @@ Logger.log(
 
 
 
-
-
 const finalClient =
 EntityService.findById(
 
-
 "CLIENT",
-
 
 client.ClientID
 
+);
 
+
+
+Logger.log(
+"FINAL CLIENT STATE:"
+);
+
+
+
+Logger.log(
+JSON.stringify(
+finalClient,
+null,
+2
+)
 );
 
 
 
 
 
+
+
+
+/*
+====================================
+AUDIT CHECK
+====================================
+*/
+
+
 Logger.log(
-
-"FINAL CLIENT STATE: "
-+
-JSON.stringify(finalClient,null,2)
-
+"===== STEP 7: AUDIT CHECK ====="
 );
 
 
 
+if(
+typeof AuditLog !== "undefined"
+){
 
+
+Logger.log(
+JSON.stringify(
+AuditLog.health()
+)
+);
+
+
+}
+
+
+
+
+
+
+/*
+====================================
+VERSIONING CHECK
+====================================
+*/
+
+
+Logger.log(
+"===== STEP 8: VERSION CHECK ====="
+);
+
+
+
+if(
+typeof Versioning !== "undefined"
+){
+
+
+Logger.log(
+JSON.stringify(
+Versioning.health()
+)
+);
+
+
+}
 
 
 
@@ -329,7 +441,7 @@ JSON.stringify(finalClient,null,2)
 
 
 Logger.log(
-"========== ENTITY SERVICE TEST COMPLETE =========="
+"========== ENTITY SERVICE TEST SUCCESS =========="
 );
 
 
@@ -345,6 +457,12 @@ Logger.error(
 +
 error.message
 
+);
+
+
+
+Logger.error(
+error.stack
 );
 
 

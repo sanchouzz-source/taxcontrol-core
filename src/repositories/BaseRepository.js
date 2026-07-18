@@ -4,20 +4,13 @@ console.log("BaseRepository");
 const BaseRepository = {
 
 
-version:"2.2.0",
+version:"2.3.0",
 
-
-
-/*
-=================================
-CREATE
-=================================
-*/
 
 
 create(
     entity,
-    data
+    data={}
 ){
 
 
@@ -52,6 +45,7 @@ create(
 
 
 
+
     if(meta.timestamps){
 
 
@@ -60,10 +54,12 @@ create(
             .toISOString();
 
 
+
         data.CreatedAt =
             data.CreatedAt
             ??
             now;
+
 
 
         data.UpdatedAt =
@@ -71,6 +67,7 @@ create(
 
 
     }
+
 
 
 
@@ -84,11 +81,12 @@ create(
 
 
         data.OrganizationID =
+            data.OrganizationID
+            ??
             OrganizationContext.get();
 
 
     }
-
 
 
 
@@ -102,7 +100,6 @@ create(
             data
 
         );
-
 
 
 
@@ -125,7 +122,6 @@ create(
 
 
 
-
     return result;
 
 
@@ -134,13 +130,6 @@ create(
 
 
 
-
-
-/*
-=================================
-READ
-=================================
-*/
 
 
 findById(
@@ -170,6 +159,7 @@ findById(
 
 
 },
+
 
 
 
@@ -211,13 +201,6 @@ findAll(
 
 
 
-/*
-=================================
-UPDATE
-=================================
-*/
-
-
 update(
     entity,
     id,
@@ -248,16 +231,13 @@ update(
 
 
 
+
     if(!existing){
 
-
         throw new Error(
-
             entity+
             " not found"
-
         );
-
 
     }
 
@@ -265,8 +245,9 @@ update(
 
 
 
+
     if(
-        typeof Versioning !== "undefined"
+        typeof Versioning!=="undefined"
     ){
 
 
@@ -288,6 +269,7 @@ update(
 
 
 
+
     const updated = {
 
 
@@ -299,6 +281,8 @@ update(
 
 
     };
+
+
 
 
 
@@ -334,6 +318,8 @@ update(
 
 
 
+
+
     this.emitEvent(
 
         entity,
@@ -355,7 +341,6 @@ update(
     return result;
 
 
-
 },
 
 
@@ -363,12 +348,6 @@ update(
 
 
 
-
-/*
-=================================
-DELETE
-=================================
-*/
 
 
 delete(
@@ -390,6 +369,7 @@ delete(
 
 
 
+
     const existing =
         Database.find(
 
@@ -401,16 +381,13 @@ delete(
 
 
 
+
     if(!existing){
 
-
         throw new Error(
-
             entity+
             " not found"
-
         );
-
 
     }
 
@@ -457,8 +434,8 @@ delete(
             );
 
 
-    }
 
+    }
     else{
 
 
@@ -473,6 +450,7 @@ delete(
 
 
     }
+
 
 
 
@@ -496,8 +474,8 @@ delete(
 
 
 
-    return result;
 
+    return result;
 
 
 },
@@ -506,14 +484,6 @@ delete(
 
 
 
-
-
-
-/*
-=================================
-RESTORE
-=================================
-*/
 
 
 restore(
@@ -534,6 +504,25 @@ restore(
 
 
 
+
+
+    if(!meta.softDelete){
+
+
+        throw new Error(
+
+            entity+
+            " does not support restore"
+
+        );
+
+    }
+
+
+
+
+
+
     const existing =
         Database.find(
 
@@ -542,6 +531,8 @@ restore(
             id
 
         );
+
+
 
 
 
@@ -557,6 +548,7 @@ restore(
 
 
     }
+
 
 
 
@@ -582,7 +574,6 @@ restore(
             UpdatedAt:
                 new Date()
                 .toISOString()
-
 
 
             }
@@ -616,7 +607,6 @@ restore(
     return result;
 
 
-
 },
 
 
@@ -624,12 +614,6 @@ restore(
 
 
 
-
-/*
-=================================
-EVENT
-=================================
-*/
 
 
 emitEvent(
@@ -644,6 +628,8 @@ emitEvent(
 
     if(
         typeof EventBus==="undefined"
+        ||
+        !event
     ){
 
         return;
@@ -708,7 +694,6 @@ emitEvent(
             .toISOString()
 
 
-
         }
 
 
@@ -722,12 +707,6 @@ emitEvent(
 
 
 
-
-/*
-=================================
-ENTITY ID
-=================================
-*/
 
 
 extractEntityId(
@@ -763,6 +742,7 @@ extractEntityId(
 
 
 
+
 exists(
     entity,
     id
@@ -791,27 +771,21 @@ exists(
 
 
 
+
 health(){
 
 
 return HealthContract.create(
 
-
 "BaseRepository",
-
 
 "OK",
 
-
 {
 
-
-version:
-this.version
-
+version:this.version
 
 }
-
 
 );
 
@@ -826,15 +800,14 @@ this.version
 
 
 
+
 globalThis.BaseRepository =
 BaseRepository;
 
 
 
 Logger.log(
-
 "BaseRepository READY v"
 +
 BaseRepository.version
-
 );
