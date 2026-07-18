@@ -1,74 +1,57 @@
-console.log("EventBus");
+console.log("EventBus v2.0");
+
 
 
 const EventBus = {
 
 
-version:"1.2.0",
+
+version:"2.0.0",
+
 
 
 events:{},
 
 
 
-subscribe(
-    event,
-    handler
-){
+history:[],
 
 
-    if(!event){
 
-        throw new Error(
-            "Event name required"
+ready:false,
+
+
+
+
+
+/*
+====================================
+INIT
+====================================
+*/
+
+
+init(){
+
+
+    if(this.ready){
+
+        Logger.log(
+            "EventBus ALREADY READY"
         );
 
-    }
-
-
-    if(
-        typeof handler !== "function"
-    ){
-
-        throw new Error(
-            "Event handler must be function"
-        );
+        return;
 
     }
 
 
+    this.ready=true;
 
 
-    if(
-        !this.events[event]
-    ){
-
-        this.events[event]=[];
-
-    }
-
-
-
-
-
-    if(
-        this.events[event]
-        .indexOf(handler)
-        ===
-        -1
-    ){
-
-        this.events[event]
-        .push(handler);
-
-    }
-
-
-
-    Logger.debug(
-        "SUBSCRIBED: "
+    Logger.log(
+        "EventBus READY v"
         +
-        event
+        this.version
     );
 
 
@@ -78,20 +61,137 @@ subscribe(
 
 
 
+
+
 /*
-=================================
-BACKWARD COMPATIBILITY
-=================================
+====================================
+SUBSCRIBE
+====================================
+*/
+
+
+subscribe(
+    eventName,
+    handler
+){
+
+
+
+    if(!eventName){
+
+        throw new Error(
+            "EventBus event required"
+        );
+
+    }
+
+
+
+
+
+    if(
+        typeof handler !== "function"
+    ){
+
+        throw new Error(
+            "EventBus handler must function"
+        );
+
+    }
+
+
+
+
+
+
+    if(
+        !this.events[eventName]
+    ){
+
+        this.events[eventName]=[];
+
+    }
+
+
+
+
+
+
+    const exists =
+        this.events[eventName]
+        .some(
+            item =>
+                item.handler === handler
+        );
+
+
+
+
+
+    if(!exists){
+
+
+
+        this.events[eventName]
+        .push({
+
+            handler,
+
+            createdAt:
+                new Date()
+                .toISOString()
+
+        });
+
+
+    }
+
+
+
+
+
+    Logger.debug(
+
+        "SUBSCRIBED "
+        +
+        eventName
+
+    );
+
+
+
+
+    return {
+
+        event:eventName,
+
+        handler
+
+    };
+
+
+},
+
+
+
+
+
+
+
+/*
+====================================
+ALIASES
+====================================
 */
 
 
 on(
-    event,
+    eventName,
     handler
 ){
 
     return this.subscribe(
-        event,
+        eventName,
         handler
     );
 
@@ -102,38 +202,52 @@ on(
 
 
 
+
+/*
+====================================
+ONCE
+====================================
+*/
+
+
 once(
-    event,
+    eventName,
     handler
 ){
 
 
     const wrapper =
-    (payload)=>{
+    payload=>{
 
 
         try{
 
+
             handler(payload);
+
 
         }
         finally{
 
+
             this.off(
-                event,
+                eventName,
                 wrapper
             );
 
+
         }
+
 
     };
 
 
 
     return this.subscribe(
-        event,
+        eventName,
         wrapper
     );
+
 
 
 },
@@ -144,14 +258,22 @@ once(
 
 
 
+/*
+====================================
+UNSUBSCRIBE
+====================================
+*/
+
+
 off(
-    event,
+    eventName,
     handler
 ){
 
 
+
     if(
-        !this.events[event]
+        !this.events[eventName]
     ){
 
         return;
@@ -160,20 +282,26 @@ off(
 
 
 
-    this.events[event] =
-        this.events[event]
+
+
+
+    this.events[eventName] =
+        this.events[eventName]
         .filter(
-            h =>
-            h !== handler
+            item =>
+                item.handler !== handler
         );
 
 
 
 
+
     Logger.debug(
-        "UNSUBSCRIBED: "
+
+        "UNSUBSCRIBED "
         +
-        event
+        eventName
+
     );
 
 
@@ -182,6 +310,14 @@ off(
 
 
 
+
+
+
+/*
+====================================
+PUBLISH
+====================================
+*/
 
 
 publish(
@@ -190,20 +326,12 @@ publish(
 ){
 
 
-    if(
-        !this.events[eventName]
-    ){
 
+    if(!eventName){
 
-        Logger.debug(
-            "NO HANDLERS FOR "
-            +
-            eventName
+        throw new Error(
+            "Event name required"
         );
-
-
-        return;
-
 
     }
 
@@ -211,25 +339,124 @@ publish(
 
 
 
-    Logger.debug(
-        "EVENT: "
-        +
-        eventName
+
+    const envelope = {
+
+
+        event:
+            eventName,
+
+
+
+        timestamp:
+            new Date()
+            .toISOString(),
+
+
+
+
+        data:
+            payload.data
+            ||
+            payload,
+
+
+
+        entity:
+            payload.entity
+            ||
+            null,
+
+
+
+        entityId:
+            payload.entityId
+            ||
+            null,
+
+
+
+        before:
+            payload.before
+            ||
+            null,
+
+
+
+        after:
+            payload.after
+            ||
+            null,
+
+
+
+        metadata:
+            payload.metadata
+            ||
+            {
+
+                source:"ERP"
+
+            }
+
+
+
+    };
+
+
+
+
+
+
+
+
+    this.history.push(
+
+        {
+
+            event:eventName,
+
+            timestamp:
+                envelope.timestamp
+
+        }
+
     );
 
 
 
-    const handlers =
+
+
+
+
+    const listeners =
         [
-            ...this.events[eventName]
+            ...(this.events[eventName] || [])
         ];
 
 
 
+
+
+
     Logger.debug(
-        "HANDLERS: "
+
+        "EVENT "
         +
-        handlers.length
+        eventName
+
+    );
+
+
+
+
+
+    Logger.debug(
+
+        "HANDLERS "
+        +
+        listeners.length
+
     );
 
 
@@ -237,26 +464,32 @@ publish(
 
 
 
-    handlers.forEach(
-        handler=>{
+
+    listeners.forEach(
+        item=>{
 
 
             try{
 
 
-                handler(
-                    payload
+                item.handler(
+                    Object.freeze(
+                        envelope
+                    )
                 );
 
 
             }
-            catch(e){
+            catch(error){
+
 
 
                 Logger.error(
+
                     "EVENT HANDLER ERROR "
                     +
-                    e.message
+                    error.message
+
                 );
 
 
@@ -268,6 +501,7 @@ publish(
 
 
 
+
 },
 
 
@@ -275,15 +509,24 @@ publish(
 
 
 
+
+/*
+====================================
+ALIASES
+====================================
+*/
+
+
 emit(
     eventName,
-    payload
+    payload={}
 ){
 
     return this.publish(
         eventName,
         payload
     );
+
 
 },
 
@@ -294,13 +537,14 @@ emit(
 
 dispatch(
     eventName,
-    payload
+    payload={}
 ){
 
     return this.publish(
         eventName,
         payload
     );
+
 
 },
 
@@ -309,7 +553,16 @@ dispatch(
 
 
 
+
+/*
+====================================
+INFO
+====================================
+*/
+
+
 list(){
+
 
     return Object.keys(
         this.events
@@ -322,13 +575,17 @@ list(){
 
 
 
-clear(){
 
-    this.events={};
+listeners(eventName){
 
-    Logger.debug(
-        "EVENT BUS CLEARED"
-    );
+
+    return (
+        this.events[eventName]
+        ||
+        []
+    )
+    .length;
+
 
 },
 
@@ -336,32 +593,105 @@ clear(){
 
 
 
+
+
+clear(){
+
+
+
+    this.events={};
+
+
+
+    Logger.debug(
+        "EVENT BUS CLEARED"
+    );
+
+
+},
+
+
+
+
+
+
+
+clearHistory(){
+
+
+    this.history=[];
+
+
+},
+
+
+
+
+
+
+
+/*
+====================================
+HEALTH
+====================================
+*/
+
+
 health(){
+
 
 
 return HealthContract.create(
 
-"EventBus",
 
-"OK",
+    "EventBus",
 
-{
 
-version:this.version,
+    this.ready
+    ?
+    "OK"
+    :
+    "WARNING",
 
-events:this.list(),
 
-handlers:
-Object.values(this.events)
-.reduce(
-(sum,array)=>
-sum+array.length,
-0
-)
 
-}
+    {
+
+
+        version:
+            this.version,
+
+
+
+        events:
+            this.list(),
+
+
+
+        handlers:
+            Object.values(
+                this.events
+            )
+            .reduce(
+                (
+                    total,
+                    list
+                )=>
+                    total+list.length,
+                0
+            ),
+
+
+
+        history:
+            this.history.length
+
+
+    }
+
 
 );
+
 
 
 }
@@ -373,13 +703,13 @@ sum+array.length,
 
 
 
+
+
 globalThis.EventBus =
 EventBus;
 
 
 
 Logger.log(
-"EventBus READY v"
-+
-EventBus.version
+"EventBus READY v2.0.0"
 );

@@ -6,15 +6,13 @@ const AuditLog = {
 
 
 
-version:"1.1.0",
+version:"2.0.0",
 
 
-
-table:
-    "AuditLog",
+table:"AuditLog",
 
 
-
+entity:"AUDIT",
 
 
 ready:false,
@@ -23,17 +21,71 @@ ready:false,
 
 
 
+
+/*
+====================================
+INIT
+====================================
+*/
+
+
 init(){
+
+
+
+    if(this.ready){
+
+
+        Logger.log(
+            "AuditLog ALREADY READY"
+        );
+
+
+        return;
+
+
+    }
+
+
+
+
+
+    if(
+        !EntityRegistry.has(
+            this.entity
+        )
+    ){
+
+
+        throw new Error(
+
+            "AuditLog entity not registered: "
+            +
+            this.entity
+
+        );
+
+
+    }
+
+
+
+
+
 
 
     this.ready=true;
 
 
+
     Logger.log(
+
         "AuditLog READY v"
         +
         this.version
+
     );
+
 
 
 },
@@ -42,87 +94,215 @@ init(){
 
 
 
+
+
+/*
+====================================
+WRITE
+ЕДИНАЯ ТОЧКА АУДИТА
+====================================
+*/
+
+
 write(data){
 
 
 
     if(!data){
 
+
         throw new Error(
+
             "Audit data missing"
+
         );
 
+
     }
+
+
+
+
+
+
+
+    const meta =
+
+        EntityRegistry.get(
+            this.entity
+        );
+
+
+
+
 
 
 
     const record = {
 
 
+
+        /*
+        ID через EntityRegistry
+        */
+
+
         AuditID:
+
             IdService.generate(
-                "AUDIT"
+                this.entity
             ),
+
+
+
+
+
+
+
+        OrganizationID:
+
+            this.getOrganizationID(),
+
+
+
+
 
 
 
         Entity:
-            data.entity || "",
+
+            data.entity
+            ||
+            "",
+
+
+
+
 
 
 
         EntityID:
-            data.entityId || "",
+
+            data.entityId
+            ||
+            "",
+
+
+
+
 
 
 
         Action:
-            data.action || "SYSTEM",
 
-
-
-        UserID:
-            data.userId || 
-            UserSession?.userId ||
+            data.action
+            ||
             "SYSTEM",
 
 
 
-        OldValue:
+
+
+
+
+
+        UserID:
+
+            this.getUserID(),
+
+
+
+
+
+
+
+        EventID:
+
+            data.eventId
+            ||
+            "",
+
+
+
+
+
+
+
+        Before:
+
             this.serialize(
-                data.oldValue
+                data.before
             ),
 
 
 
-        NewValue:
+
+
+
+
+        After:
+
             this.serialize(
-                data.newValue
+                data.after
             ),
 
 
 
-        Event:
-            data.event || "",
+
 
 
 
         Source:
-            data.source || "ERP",
+
+            data.source
+            ||
+            "ERP",
 
 
 
-        CreatedAt:
-            new Date()
-            .toISOString(),
+
 
 
 
         Version:
-            data.version || 1
+
+            Number(
+                data.version
+                ||
+                1
+            ),
+
+
+
+
+
+
+
+
+        EntityVersion:
+
+            Number(
+                data.entityVersion
+                ||
+                1
+            ),
+
+
+
+
+
+
+
+        CreatedAt:
+
+            new Date()
+            .toISOString()
+
 
 
     };
+
+
 
 
 
@@ -132,7 +312,10 @@ write(data){
 
 
 
+
+
     return record;
+
 
 
 },
@@ -142,6 +325,14 @@ write(data){
 
 
 
+
+/*
+====================================
+DATABASE INSERT
+====================================
+*/
+
+
 insert(record){
 
 
@@ -149,22 +340,43 @@ insert(record){
     try{
 
 
+
+
+
         if(
-            Database &&
-            Database.insert
+            !Database
+            ||
+            !Database.insert
         ){
 
 
-            Database.insert(
+            throw new Error(
 
-                this.table,
-
-                record
+                "Database unavailable"
 
             );
 
 
         }
+
+
+
+
+
+
+
+        Database.insert(
+
+            this.table,
+
+            record
+
+        );
+
+
+
+
+
 
 
         Logger.log(
@@ -185,19 +397,26 @@ insert(record){
 
 
 
+
+
     }
     catch(e){
 
 
+
         Logger.log(
 
-            "AUDIT WRITE ERROR: "
+            "AUDIT WRITE ERROR "
             +
             e.message
 
         );
 
 
+
+        throw e;
+
+
     }
 
 
@@ -210,54 +429,29 @@ insert(record){
 
 
 
-serialize(value){
-
-
-
-    if(
-        value === undefined ||
-        value === null
-    ){
-
-        return "";
-
-    }
-
-
-
-    if(
-        typeof value === "string"
-    ){
-
-        return value;
-
-    }
-
-
-
-    return JSON.stringify(
-        value
-    );
-
-
-
-},
-
-
-
-
-
+/*
+====================================
+SEARCH
+====================================
+*/
 
 
 findByEntity(entity,id){
 
 
 
-    if(!Database?.find){
+    if(
+        !Database?.find
+    ){
+
 
         return [];
 
+
     }
+
+
+
 
 
 
@@ -267,12 +461,116 @@ findByEntity(entity,id){
 
         {
 
-            Entity:entity,
 
-            EntityID:id
+            Entity:
+                entity,
+
+
+            EntityID:
+                id
+
 
         }
 
+    );
+
+
+
+},
+
+
+
+
+
+
+
+findByEvent(eventId){
+
+
+
+    if(
+        !Database?.find
+    ){
+
+
+        return [];
+
+
+    }
+
+
+
+
+
+
+
+    return Database.find(
+
+        this.table,
+
+        {
+
+            EventID:eventId
+
+        }
+
+    );
+
+
+
+},
+
+
+
+
+
+
+
+/*
+====================================
+SERIALIZE
+====================================
+*/
+
+
+serialize(value){
+
+
+
+    if(
+        value===undefined
+        ||
+        value===null
+    ){
+
+
+        return "";
+
+
+    }
+
+
+
+
+
+
+    if(
+        typeof value==="string"
+    ){
+
+
+        return value;
+
+
+    }
+
+
+
+
+
+
+    return JSON.stringify(
+        value
     );
 
 
@@ -284,28 +582,135 @@ findByEntity(entity,id){
 
 
 
+/*
+====================================
+CONTEXT
+====================================
+*/
+
+
+getOrganizationID(){
+
+
+
+    if(
+        globalThis.OrganizationContext
+    ){
+
+
+        return OrganizationContext.get();
+
+
+    }
+
+
+
+
+    return "DEFAULT";
+
+
+
+},
+
+
+
+
+
+
+
+getUserID(){
+
+
+
+    if(
+        globalThis.UserSession
+    ){
+
+
+
+        if(
+            UserSession.current
+        ){
+
+
+            return (
+                UserSession.current.UserID
+                ||
+                "SYSTEM"
+            );
+
+
+        }
+
+
+
+
+        if(
+            UserSession.userId
+        ){
+
+
+            return UserSession.userId;
+
+
+        }
+
+
+
+    }
+
+
+
+
+    return "SYSTEM";
+
+
+
+},
+
+
+
+
+
+
+
+/*
+====================================
+HEALTH
+====================================
+*/
+
+
 health(){
 
 
 
 return HealthContract.create(
 
-
     "AuditLog",
 
 
     this.ready
-        ?"OK"
-        :"NOT_READY",
+    ?
+    "OK"
+    :
+    "WARNING",
+
 
 
     {
 
 
-        version:this.version,
+        version:
+            this.version,
 
 
-        table:this.table
+        table:
+            this.table,
+
+
+        entity:
+            this.entity
 
 
     }
@@ -325,5 +730,21 @@ return HealthContract.create(
 
 
 
+
+
 globalThis.AuditLog =
-    AuditLog;
+AuditLog;
+
+
+
+
+
+
+
+Logger.log(
+
+    "AuditLog READY v"
+    +
+    AuditLog.version
+
+);

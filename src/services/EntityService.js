@@ -1,30 +1,46 @@
 console.log("EntityService");
 
 
+
 const EntityService = {
 
 
-    version:"2.1.0",
+    version:"3.0.0",
 
 
     ready:false,
 
 
 
+
+
+    /*
+    ====================================
+    INIT
+    ====================================
+    */
+
+
     init(){
 
+
         if(this.ready){
+
 
             Logger.log(
                 "EntityService ALREADY READY"
             );
 
+
             return;
+
 
         }
 
 
+
         this.ready=true;
+
 
 
         Logger.log(
@@ -33,78 +49,154 @@ const EntityService = {
             this.version
         );
 
+
     },
 
 
 
 
 
-create(entity,data){
+
+    /*
+    ====================================
+    CREATE
+    ====================================
+    */
 
 
-const meta =
-this.getMetadata(entity);
-
-
-
-SecurityGuard.check(
-meta.permissions.create
-);
-
-
-
-if(
-meta.idField &&
-meta.idPrefix &&
-!data[meta.idField]
-){
-
-
-data[meta.idField]=
-IdService.generate(
-meta.idPrefix
-);
-
-
-}
+    create(entity,data={}){
 
 
 
-const result =
-RepositoryFactory
-.get(entity)
-.create(data);
-
-
-
-this.publishEvent(
-meta.events.created,
-{
-entity:entity,
-entityId:data[meta.idField],
-data:data
-}
-);
-
-
-
-return result;
-
-
-},
+        const meta =
+            this.getMetadata(entity);
 
 
 
 
 
 
+        SecurityGuard.check(
+
+            meta.permissions.create
+
+        );
+
+
+
+
+
+
+        /*
+        Генерация ID
+        только через EntityRegistry
+        */
+
+
+        if(
+            meta.idField &&
+            !data[meta.idField]
+        ){
+
+
+            data[meta.idField] =
+
+                IdService.generate(
+                    entity
+                );
+
+
+        }
+
+
+
+
+
+
+
+        const repository =
+
+            RepositoryFactory
+            .get(entity);
+
+
+
+
+
+
+
+        const result =
+
+            repository.create(
+                data
+            );
+
+
+
+
+
+
+        /*
+        Событие только после INSERT
+        */
+
+
+        this.publishEvent(
+
+            meta.events.created,
+
+            {
+
+                entity,
+
+                entityId:
+                    data[meta.idField],
+
+                action:
+                    "CREATE",
+
+                before:null,
+
+                after:data,
+
+                data
+
+            }
+
+        );
+
+
+
+
+
+        return result;
+
+
+    },
+
+
+
+
+
+
+
+
+
+    /*
+    ====================================
+    READ ONE
+    ====================================
+    */
 
 
     findById(entity,id){
 
 
+
         const meta =
             this.getMetadata(entity);
+
+
 
 
 
@@ -116,9 +208,14 @@ return result;
 
 
 
+
+
         return RepositoryFactory
+
             .get(entity)
+
             .findById(id);
+
 
 
     },
@@ -128,13 +225,26 @@ return result;
 
 
 
+
+
+
+
+
+    /*
+    ====================================
+    READ ALL
+    ====================================
+    */
 
 
     findAll(entity,filters={}){
 
 
+
         const meta =
             this.getMetadata(entity);
+
+
 
 
 
@@ -146,9 +256,15 @@ return result;
 
 
 
+
+
+
         return RepositoryFactory
+
             .get(entity)
+
             .findAll(filters);
+
 
 
     },
@@ -159,6 +275,15 @@ return result;
 
 
 
+
+
+
+
+    /*
+    ====================================
+    UPDATE
+    ====================================
+    */
 
 
     update(entity,id,data){
@@ -167,6 +292,8 @@ return result;
 
         const meta =
             this.getMetadata(entity);
+
+
 
 
 
@@ -180,13 +307,45 @@ return result;
 
 
 
-        const result =
+
+
+
+        const repository =
+
             RepositoryFactory
-            .get(entity)
-            .update(
-                id,
-                data
+            .get(entity);
+
+
+
+
+
+
+
+        const before =
+
+            repository.findById(
+                id
             );
+
+
+
+
+
+
+
+        const result =
+
+            repository.update(
+
+                id,
+
+                data
+
+            );
+
+
+
+
 
 
 
@@ -195,11 +354,39 @@ return result;
 
             meta.events.updated,
 
-            result,
+            {
 
-            "UPDATE"
+
+                entity,
+
+
+                entityId:id,
+
+
+                action:
+                    "UPDATE",
+
+
+
+                before,
+
+
+
+                after:
+                    result,
+
+
+
+                data:
+                    result
+
+
+            }
+
 
         );
+
+
 
 
 
@@ -215,6 +402,15 @@ return result;
 
 
 
+
+
+
+
+    /*
+    ====================================
+    DELETE SOFT
+    ====================================
+    */
 
 
     delete(entity,id){
@@ -226,6 +422,9 @@ return result;
 
 
 
+
+
+
         SecurityGuard.check(
 
             meta.permissions.delete
@@ -234,10 +433,40 @@ return result;
 
 
 
-        const result =
+
+
+
+
+
+        const repository =
+
             RepositoryFactory
-            .get(entity)
-            .delete(id);
+            .get(entity);
+
+
+
+
+
+
+        const before =
+
+            repository.findById(
+                id
+            );
+
+
+
+
+
+
+        const result =
+
+            repository.delete(
+                id
+            );
+
+
+
 
 
 
@@ -246,15 +475,45 @@ return result;
 
             meta.events.deleted,
 
-            result,
 
-            "DELETE"
+            {
+
+
+                entity,
+
+
+                entityId:id,
+
+
+                action:
+                    "DELETE",
+
+
+                before,
+
+
+                after:
+                    result,
+
+
+                data:
+                    result
+
+
+            }
+
+
 
         );
 
 
 
+
+
+
+
         return result;
+
 
 
     },
@@ -266,11 +525,25 @@ return result;
 
 
 
+
+
+
+    /*
+    ====================================
+    RESTORE
+    ====================================
+    */
+
+
     restore(entity,id){
+
 
 
         const meta =
             this.getMetadata(entity);
+
+
+
 
 
 
@@ -282,10 +555,40 @@ return result;
 
 
 
-        const result =
+
+
+
+
+        const repository =
+
             RepositoryFactory
-            .get(entity)
-            .restore(id);
+            .get(entity);
+
+
+
+
+
+
+
+        const before =
+
+            repository.findById(
+                id
+            );
+
+
+
+
+
+
+        const result =
+
+            repository.restore(
+                id
+            );
+
+
+
 
 
 
@@ -294,11 +597,38 @@ return result;
 
             meta.events.restored,
 
-            result,
 
-            "RESTORE"
+            {
+
+
+                entity,
+
+
+                entityId:id,
+
+
+                action:
+                    "RESTORE",
+
+
+                before,
+
+
+                after:
+                    result,
+
+
+                data:
+                    result
+
+
+            }
+
 
         );
+
+
+
 
 
 
@@ -315,11 +645,21 @@ return result;
 
 
 
+    /*
+    ====================================
+    EXISTS
+    ====================================
+    */
+
+
     exists(entity,id){
 
 
+
         return RepositoryFactory
+
             .get(entity)
+
             .exists(id);
 
 
@@ -333,10 +673,18 @@ return result;
 
 
 
+    /*
+    ====================================
+    REPOSITORY ACCESS
+    ====================================
+    */
+
+
     repository(entity){
 
 
         return RepositoryFactory
+
             .get(entity);
 
 
@@ -350,62 +698,115 @@ return result;
 
 
 
-    generateId(entity,meta){
+    /*
+    ====================================
+    EVENT CONTRACT v3
+    ====================================
+    */
 
 
-        /*
-            ВАЖНО:
-            используем metadata.idPrefix
-
-        */
-
-
-        let prefix =
-            meta.idPrefix;
-
-
-
-        if(!prefix){
-
-
-            prefix =
-                entity
-                .toUpperCase()
-                .substring(
-                    0,
-                    3
-                );
-
-
-        }
-
-
-
-
-        return IdService.generate(
-            prefix
-        );
-
-
-    },
-
-
-
-
-
-
-
-
-
-    publishEvent(eventName,data,action){
+    publishEvent(eventName,payload){
 
 
 
         if(!eventName){
 
+
             return;
 
+
         }
+
+
+
+
+
+
+        if(
+            !EventBus
+            ||
+            !EventBus.publish
+        ){
+
+
+
+            throw new Error(
+
+                "EventBus unavailable"
+
+            );
+
+
+        }
+
+
+
+
+
+
+
+
+        const event = {
+
+
+            eventId:
+
+                Utilities
+                .getUuid(),
+
+
+
+            eventName,
+
+
+
+            entity:
+
+                payload.entity,
+
+
+
+            entityId:
+
+                payload.entityId,
+
+
+
+            action:
+
+                payload.action,
+
+
+
+            before:
+
+                payload.before || null,
+
+
+
+            after:
+
+                payload.after || null,
+
+
+
+            data:
+
+                payload.data || null,
+
+
+
+            timestamp:
+
+                new Date()
+                .toISOString()
+
+
+
+        };
+
+
+
 
 
 
@@ -415,13 +816,22 @@ return result;
 
             eventName,
 
-            {
+            event
 
-                action,
+        );
 
-                entity:data
 
-            }
+
+
+        Logger.log(
+
+            "EVENT PUBLISHED "
+            +
+            eventName
+            +
+            " "
+            +
+            event.entityId
 
         );
 
@@ -437,16 +847,20 @@ return result;
 
 
 
+    /*
+    ====================================
+    METADATA
+    ====================================
+    */
+
+
     getMetadata(entity){
 
 
 
-        const meta =
-            EntityRegistry[entity];
-
-
-
-        if(!meta){
+        if(
+            !EntityRegistry.has(entity)
+        ){
 
 
             throw new Error(
@@ -462,7 +876,11 @@ return result;
 
 
 
-        return meta;
+
+
+
+        return EntityRegistry.get(entity);
+
 
 
     },
@@ -475,6 +893,13 @@ return result;
 
 
 
+    /*
+    ====================================
+    HEALTH
+    ====================================
+    */
+
+
     health(){
 
 
@@ -483,18 +908,34 @@ return result;
 
             "EntityService",
 
+
             this.ready
             ?
             "OK"
             :
             "WARNING",
 
+
             {
 
                 version:
-                    this.version
+                    this.version,
+
+
+                registry:
+                    !!globalThis.EntityRegistry,
+
+
+                repositoryFactory:
+                    !!globalThis.RepositoryFactory,
+
+
+                eventBus:
+                    !!globalThis.EventBus
+
 
             }
+
 
         );
 
@@ -509,11 +950,19 @@ return result;
 
 
 
+
+
 globalThis.EntityService =
-    EntityService;
+EntityService;
+
+
 
 
 
 Logger.log(
-    "EntityService READY v2.1.0"
+
+"EntityService READY v"
++
+EntityService.version
+
 );

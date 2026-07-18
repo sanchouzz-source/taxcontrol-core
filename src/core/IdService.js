@@ -4,170 +4,459 @@ console.log("IdService");
 const IdService = {
 
 
-version:"2.1.0",
+    version:"3.0.0",
+
+
+    ready:false,
 
 
 
-generate(entity){
+    /*
+    ====================================
+    INIT
+    ====================================
+    */
 
 
-    if(!entity){
+    init(){
 
-        throw new Error(
-            "IdService entity missing"
+
+        if(this.ready){
+
+
+            Logger.log(
+                "IdService ALREADY READY"
+            );
+
+
+            return;
+
+        }
+
+
+
+        this.ready=true;
+
+
+
+        Logger.log(
+            "IdService READY v"
+            +
+            this.version
         );
 
-    }
+
+    },
 
 
-
-    let config = null;
 
 
 
     /*
-        ENTITY NAME
+    ====================================
+    GENERATE ID
+    ONLY EntityRegistry
+    ====================================
     */
 
-    if(
-        EntityRegistry.has(entity)
-    ){
 
-        config =
+    generate(entity){
+
+
+
+        if(!entity){
+
+
+            throw new Error(
+                "IdService entity missing"
+            );
+
+
+        }
+
+
+
+
+
+
+        /*
+        Проверяем EntityRegistry
+        */
+
+
+        if(
+            !globalThis.EntityRegistry
+        ){
+
+
+            throw new Error(
+                "IdService EntityRegistry missing"
+            );
+
+
+        }
+
+
+
+
+
+
+        /*
+        Получаем Entity metadata
+        */
+
+
+        const meta =
             EntityRegistry.get(entity);
 
-    }
 
 
 
-    /*
-        PREFIX INPUT
-        CLI
-        TRIP
-        FP
-    */
 
 
-    if(!config){
+        if(
+            !meta.idPrefix
+        ){
 
 
-        const found =
-            EntityRegistry
-            .list()
-            .find(
-                key => {
+            throw new Error(
 
-                    const item =
-                        EntityRegistry[key];
+                "Entity prefix missing: "
+                +
+                entity
 
-                    return (
-                        item.idPrefix === entity
-                    );
+            );
 
-                }
+
+        }
+
+
+
+
+
+
+
+        const prefix =
+            meta.idPrefix;
+
+
+
+
+
+
+        /*
+        Потокобезопасный счетчик
+        */
+
+
+        const lock =
+            LockService
+            .getScriptLock();
+
+
+
+
+        try {
+
+
+
+            lock.waitLock(
+                5000
             );
 
 
 
-        if(found){
 
-            config =
-                EntityRegistry.get(found);
+
+            const props =
+                PropertiesService
+                .getScriptProperties();
+
+
+
+
+
+            const key =
+                "ID_COUNTER_"
+                +
+                prefix;
+
+
+
+
+
+
+            let counter =
+                Number(
+                    props.getProperty(key)
+                )
+                ||
+                0;
+
+
+
+
+
+
+            counter++;
+
+
+
+
+
+
+
+            props.setProperty(
+
+                key,
+
+                String(counter)
+
+            );
+
+
+
+
+
+
+
+
+            return this.format(
+
+                prefix,
+
+                counter
+
+            );
+
+
+
+        }
+        catch(e){
+
+
+
+            Logger.log(
+
+                "IdService ERROR: "
+                +
+                e.message
+
+            );
+
+
+
+            throw e;
+
+
+        }
+        finally{
+
+
+
+            lock.releaseLock();
+
 
         }
 
-    }
+
+
+
+    },
 
 
 
 
 
-    if(!config){
 
-        throw new Error(
-            "IdService unknown entity: "
+
+
+
+    /*
+    ====================================
+    FORMAT
+    PREFIX000001
+    ====================================
+    */
+
+
+    format(prefix,counter){
+
+
+
+        return (
+
+            prefix
+
             +
-            entity
+
+            String(counter)
+            .padStart(
+                6,
+                "0"
+            )
+
         );
 
-    }
+
+    },
 
 
 
 
-    const prefix =
-        config.idPrefix;
 
 
 
 
-    const props =
+
+    /*
+    ====================================
+    RESET COUNTER
+    ADMIN ONLY
+    ====================================
+    */
+
+
+    reset(entity){
+
+
+
+        const meta =
+            EntityRegistry.get(entity);
+
+
+
+
+        const prefix =
+            meta.idPrefix;
+
+
+
+
+
         PropertiesService
-        .getScriptProperties();
+        .getScriptProperties()
+        .deleteProperty(
+
+            "ID_COUNTER_"
+            +
+            prefix
+
+        );
 
 
 
-    const key =
-        "ID_COUNTER_"+prefix;
+        Logger.log(
+
+            "ID COUNTER RESET "
+            +
+            entity
+
+        );
+
+
+    },
 
 
 
-    let counter =
-        Number(
-            props.getProperty(key)
+
+
+
+
+
+
+    /*
+    ====================================
+    CURRENT VALUE
+    ====================================
+    */
+
+
+    current(entity){
+
+
+
+        const meta =
+            EntityRegistry.get(entity);
+
+
+
+
+        const prefix =
+            meta.idPrefix;
+
+
+
+
+
+
+        return Number(
+
+            PropertiesService
+            .getScriptProperties()
+            .getProperty(
+
+                "ID_COUNTER_"
+                +
+                prefix
+
+            )
+
         )
         ||
         0;
 
 
-
-    counter++;
-
-
-
-    props.setProperty(
-        key,
-        counter
-    );
-
-
-
-
-    return (
-
-        prefix
-        +
-        String(counter)
-        .padStart(6,"0")
-
-    );
-
-
-},
+    },
 
 
 
 
 
-health(){
 
 
-return HealthContract.create(
-
-"IdService",
-
-"OK",
-
-{
-
-version:this.version
-
-}
-
-);
 
 
-}
+    /*
+    ====================================
+    HEALTH
+    ====================================
+    */
+
+
+    health(){
+
+
+
+        return HealthContract.create(
+
+            "IdService",
+
+            this.ready
+            ?
+            "OK"
+            :
+            "WARNING",
+
+            {
+
+
+                version:
+                    this.version,
+
+
+                registry:
+                    !!globalThis.EntityRegistry
+
+
+            }
+
+
+        );
+
+
+    }
+
 
 
 
@@ -176,12 +465,18 @@ version:this.version
 
 
 
+
 globalThis.IdService =
 IdService;
 
 
+
+
+
 Logger.log(
-"IdService READY v"
-+
-IdService.version
+
+    "IdService READY v"
+    +
+    IdService.version
+
 );
