@@ -4,16 +4,22 @@ console.log("ClientEventHandler");
 const ClientEventHandler = {
 
 
-version:"0.4.0",
-
+version:"0.5.0",
 
 
 initialized:false,
 
 
+ready:false,
 
-entity:
-EntityRegistry.CLIENT,
+
+
+entityName:"CLIENT",
+
+
+
+entity:null,
+
 
 
 
@@ -21,15 +27,64 @@ EntityRegistry.CLIENT,
 init(){
 
 
+
 if(this.initialized){
+
 
 Logger.log(
 "ClientEventHandler ALREADY READY"
 );
 
+
 return true;
 
+
 }
+
+
+
+
+
+if(
+typeof EntityRegistry==="undefined"
+){
+
+
+throw new Error(
+"EntityRegistry unavailable"
+);
+
+
+}
+
+
+
+
+
+this.entity =
+EntityRegistry.get(
+this.entityName
+);
+
+
+
+
+
+
+if(
+typeof EventBus==="undefined"
+){
+
+
+throw new Error(
+"EventBus unavailable"
+);
+
+
+}
+
+
+
 
 
 
@@ -43,6 +98,8 @@ this.onCreated.bind(this)
 
 
 
+
+
 EventBus.subscribe(
 
 this.entity.events.updated,
@@ -50,6 +107,8 @@ this.entity.events.updated,
 this.onUpdated.bind(this)
 
 );
+
+
 
 
 
@@ -63,6 +122,8 @@ this.onDeleted.bind(this)
 
 
 
+
+
 EventBus.subscribe(
 
 this.entity.events.restored,
@@ -73,7 +134,14 @@ this.onRestored.bind(this)
 
 
 
+
+
+
 this.initialized=true;
+
+this.ready=true;
+
+
 
 
 
@@ -87,7 +155,10 @@ this.version
 
 return true;
 
+
+
 },
+
 
 
 
@@ -97,6 +168,7 @@ return true;
 extract(payload){
 
 
+
 if(!payload){
 
 return null;
@@ -104,7 +176,19 @@ return null;
 }
 
 
-return payload.after || payload;
+
+
+
+return (
+
+payload.after
+
+??
+
+payload
+
+);
+
 
 
 },
@@ -113,18 +197,65 @@ return payload.after || payload;
 
 
 
-log(action,payload){
 
 
-const client=this.extract(payload);
+getId(client){
+
+
+if(!client){
+
+return "";
+
+}
+
+
+
+return client[
+this.entity.idField
+]
+||
+"";
+
+
+},
+
+
+
+
+
+
+
+log(
+action,
+payload
+){
+
+
+
+const client =
+this.extract(
+payload
+);
+
 
 
 
 if(!client){
 
+
+Logger.debug(
+"CLIENT EVENT WITHOUT DATA "
++
+action
+);
+
+
 return;
 
+
 }
+
+
 
 
 
@@ -136,13 +267,15 @@ action
 +
 " EVENT "
 +
-client[this.entity.idField]
+this.getId(client)
 
 );
 
 
 
 },
+
+
 
 
 
@@ -150,45 +283,148 @@ client[this.entity.idField]
 
 onCreated(event){
 
+
+
+try{
+
+
 this.log(
 "CREATED",
 event
 );
 
+
+}
+
+catch(e){
+
+
+Logger.error(
+"ClientEventHandler CREATE ERROR "
++
+e.message
+);
+
+
+}
+
+
+
 },
 
 
 
+
+
+
+
 onUpdated(event){
+
+
+
+try{
+
 
 this.log(
 "UPDATED",
 event
 );
 
+
+}
+
+catch(e){
+
+
+Logger.error(
+"ClientEventHandler UPDATE ERROR "
++
+e.message
+);
+
+
+}
+
+
+
 },
 
 
 
+
+
+
+
 onDeleted(event){
+
+
+
+try{
+
 
 this.log(
 "DELETED",
 event
 );
 
+
+}
+
+catch(e){
+
+
+Logger.error(
+"ClientEventHandler DELETE ERROR "
++
+e.message
+);
+
+
+}
+
+
+
 },
 
 
 
+
+
+
+
 onRestored(event){
+
+
+
+try{
+
 
 this.log(
 "RESTORED",
 event
 );
 
+
+}
+
+catch(e){
+
+
+Logger.error(
+"ClientEventHandler RESTORE ERROR "
++
+e.message
+);
+
+
+}
+
+
+
 },
+
+
+
 
 
 
@@ -196,11 +432,20 @@ event
 health(){
 
 
+
 return HealthContract.create(
+
 
 "ClientEventHandler",
 
-"OK",
+
+this.ready
+?
+"OK"
+:
+"WARNING",
+
+
 
 {
 
@@ -208,10 +453,16 @@ return HealthContract.create(
 version:this.version,
 
 
-entity:this.entity.entity
+entity:
+this.entityName,
+
+
+initialized:this.initialized
 
 
 }
+
+
 
 );
 
@@ -225,5 +476,14 @@ entity:this.entity.entity
 
 
 
+
 globalThis.ClientEventHandler =
 ClientEventHandler;
+
+
+
+Logger.log(
+"ClientEventHandler READY v"
++
+ClientEventHandler.version
+);
