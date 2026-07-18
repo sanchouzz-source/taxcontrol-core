@@ -156,7 +156,21 @@ id
 
 },
 
+get(id){
 
+    return this.findById(id);
+
+},
+
+
+exists(id){
+
+    return BaseRepository.exists(
+        this.table,
+        id
+    );
+
+},
 
 
 health(){
