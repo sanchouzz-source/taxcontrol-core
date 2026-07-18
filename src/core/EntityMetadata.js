@@ -141,7 +141,7 @@ AUDIT:{
     idField:"AuditID",
     prefix:"AUD",
     timestamps:true
-}
+},
 
 
 
