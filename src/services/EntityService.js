@@ -4,7 +4,7 @@ console.log("EntityService");
 const EntityService={
 
 
-version:"3.1.0",
+version:"3.2.0",
 
 
 ready:false,
@@ -14,6 +14,14 @@ ready:false,
 
 
 init(){
+
+
+if(this.ready){
+
+    return;
+
+}
+
 
 
 this.ready=true;
@@ -27,6 +35,8 @@ this.version
 
 
 },
+
+
 
 
 
@@ -53,28 +63,28 @@ meta.permissions?.create
 
 
 
+const repository =
+RepositoryFactory.get(entity);
 
 
-if(
-meta.idField &&
-!data[meta.idField]
-){
 
+if(!repository){
 
-data[meta.idField]=
-IdService.generate(entity);
-
+    throw new Error(
+        "Repository not found: "
+        +
+        entity
+    );
 
 }
 
 
 
 
-
 const result =
-RepositoryFactory
-.get(entity)
-.create(data);
+repository.create(
+    data
+);
 
 
 
@@ -88,10 +98,15 @@ meta.events.created,
 
 entity,
 
-entityId:
-data[meta.idField],
 
-data
+entityId:
+this.extractId(
+entity,
+result
+),
+
+
+data:result
 
 }
 
@@ -126,6 +141,25 @@ EntityRegistry.get(entity);
 
 
 
+
+const repository =
+RepositoryFactory.get(entity);
+
+
+
+if(!repository){
+
+throw new Error(
+"Repository not found: "
++
+entity
+);
+
+}
+
+
+
+
 const before =
 this.findById(
 entity,
@@ -134,13 +168,14 @@ id
 
 
 
+
+
 const result =
-RepositoryFactory
-.get(entity)
-.update(
+repository.update(
 id,
 data
 );
+
 
 
 
@@ -156,13 +191,16 @@ entity,
 
 entityId:id,
 
+
 before,
+
 
 after:result
 
 }
 
 );
+
 
 
 
@@ -185,9 +223,41 @@ entity =
 EntityRegistry.resolve(entity);
 
 
-return RepositoryFactory
-.get(entity)
-.findById(id);
+
+const repository =
+RepositoryFactory.get(entity);
+
+
+
+return repository.findById(
+id
+);
+
+
+},
+
+
+
+
+
+
+
+findAll(entity,filters={}){
+
+
+entity =
+EntityRegistry.resolve(entity);
+
+
+
+const repository =
+RepositoryFactory.get(entity);
+
+
+
+return repository.findAll(
+filters
+);
 
 
 },
@@ -211,10 +281,27 @@ EntityRegistry.get(entity);
 
 
 
+
+const repository =
+RepositoryFactory.get(entity);
+
+
+
+const existing =
+this.findById(
+entity,
+id
+);
+
+
+
+
 const result =
-RepositoryFactory
-.get(entity)
-.delete(id);
+repository.delete(
+id
+);
+
+
 
 
 
@@ -229,6 +316,97 @@ entity,
 
 entityId:id,
 
+
+before:existing,
+
+
+after:result
+
+}
+
+);
+
+
+
+
+return result;
+
+
+},
+
+
+
+
+
+
+
+restore(entity,id){
+
+
+entity =
+EntityRegistry.resolve(entity);
+
+
+
+const meta =
+EntityRegistry.get(entity);
+
+
+
+
+const repository =
+RepositoryFactory.get(entity);
+
+
+
+if(!repository){
+
+throw new Error(
+"Repository not found: "
++
+entity
+);
+
+}
+
+
+
+
+if(
+typeof repository.restore==="function"
+){
+
+
+const before =
+this.findById(
+entity,
+id
+);
+
+
+
+const result =
+repository.restore(
+id
+);
+
+
+
+
+this.publish(
+
+meta.events.restored,
+
+{
+
+entity,
+
+entityId:id,
+
+
+before,
+
+
 after:result
 
 }
@@ -238,6 +416,44 @@ after:result
 
 
 return result;
+
+
+}
+
+
+
+
+
+return BaseRepository.restore(
+
+entity,
+
+id
+
+);
+
+
+
+},
+
+
+
+
+
+
+
+exists(entity,id){
+
+
+entity =
+EntityRegistry.resolve(entity);
+
+
+
+return !!this.findById(
+entity,
+id
+);
 
 
 },
@@ -259,6 +475,16 @@ return;
 
 
 
+if(
+typeof EventBus==="undefined"
+){
+
+return;
+
+}
+
+
+
 EventBus.publish(
 
 event,
@@ -266,6 +492,37 @@ event,
 payload
 
 );
+
+
+},
+
+
+
+
+
+
+
+extractId(entity,record){
+
+
+if(!record){
+
+return "";
+
+}
+
+
+
+const meta =
+EntityRegistry.get(entity);
+
+
+
+return record[
+meta.idField
+]
+||
+"";
 
 
 },
