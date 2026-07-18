@@ -1,159 +1,97 @@
-console.log("FinanceEngine");
+console.log("FinanceEngine v1.0");
 
 
 const FinanceEngine = {
 
 
-version:"0.3.0",
+version:"1.0.0",
 
 
-initialized:false,
-
-
-
-
-
-health(){
-
-
-return HealthContract.create(
-
-"FinanceEngine",
-
-this.initialized
-?
-"OK"
-:
-"WARNING",
-
-{
-
-version:this.version,
-
-
-initialized:this.initialized,
-
-
-dependencies:{
-
-
-EventBus:
-!!globalThis.EventBus,
-
-
-Database:
-!!globalThis.Database,
-
-
-IdService:
-!!globalThis.IdService
-
-
-}
-
-}
-
-);
-
-
-},
-
-
-
-
+ready:false,
 
 
 
 init(){
 
 
+    if(this.ready){
 
-if(this.initialized){
+        Logger.log(
+            "FinanceEngine ALREADY READY"
+        );
 
+        return;
 
-Logger.log(
-
-"FinanceEngine ALREADY READY"
-
-);
-
-
-return;
-
-
-}
+    }
 
 
 
+    if(!globalThis.EntityService){
+
+        throw new Error(
+            "FinanceEngine requires EntityService"
+        );
+
+    }
 
 
 
-if(!globalThis.EventBus){
+    if(!globalThis.EventBus){
 
+        throw new Error(
+            "FinanceEngine requires EventBus"
+        );
 
-throw new Error(
-
-"FinanceEngine: EventBus missing"
-
-);
-
-
-}
+    }
 
 
 
 
 
-EventBus.on(
+    EventBus.subscribe(
 
-"TRIP_COMPLETED",
+        "CLIENT_CREATED",
 
-trip=>{
+        event=>{
 
+            this.createClientFinanceProfile(
+                event
+            );
 
-this.calculateTripProfit(trip);
+        }
 
-
-}
-
-);
-
-
+    );
 
 
 
 
 
-EventBus.on(
+    EventBus.subscribe(
 
-"CLIENT_CREATED",
+        "TRIP_COMPLETED",
 
-client=>{
+        event=>{
 
+            this.createTripTransaction(
+                event
+            );
 
-this.initClientFinance(client);
+        }
 
-
-}
-
-);
-
-
+    );
 
 
 
 
-this.initialized=true;
+    this.ready=true;
 
 
 
-Logger.log(
-
-"FinanceEngine READY v"
-+
-this.version
-
-);
+    Logger.log(
+        "FinanceEngine READY v"
+        +
+        this.version
+    );
 
 
 },
@@ -164,174 +102,184 @@ this.version
 
 
 
-calculateTripProfit(trip){
+/*
+====================================
+CLIENT FINANCE PROFILE
+====================================
+*/
+
+
+createClientFinanceProfile(event){
 
 
 
-if(!trip){
+try{
 
 
-Logger.log(
+    const client =
+        event.after
+        ||
+        event.data
+        ||
+        event.entity
+        ||
+        event;
 
-"FINANCE EMPTY TRIP"
-
-);
 
 
-return null;
+
+    if(!client.ClientID){
+
+
+        Logger.log(
+            "FINANCE CLIENT ID MISSING"
+        );
+
+
+        return null;
+
+    }
+
+
+
+
+
+    const exists =
+        EntityService
+        .findAll(
+
+            "CLIENT_FINANCE_PROFILE",
+
+            {
+
+                ClientID:
+                    client.ClientID
+
+            }
+
+        );
+
+
+
+
+
+    if(
+        exists &&
+        exists.length
+    ){
+
+
+        Logger.log(
+
+            "FINANCE PROFILE EXISTS "
+            +
+            client.ClientID
+
+        );
+
+
+        return exists[0];
+
+
+    }
+
+
+
+
+
+
+
+
+    const profile = {
+
+
+        OrganizationID:
+            client.OrganizationID
+            ||
+            this.getOrganizationID(),
+
+
+
+        ClientID:
+            client.ClientID,
+
+
+
+        ClientName:
+            client.Name,
+
+
+
+        Balance:0,
+
+
+
+        CreditLimit:0,
+
+
+
+        Currency:"RUB",
+
+
+
+        Status:"ACTIVE"
+
+
+
+    };
+
+
+
+
+
+
+
+    const result =
+        EntityService.create(
+
+            "CLIENT_FINANCE_PROFILE",
+
+            profile
+
+        );
+
+
+
+
+
+
+
+    Logger.log(
+
+        "FINANCE PROFILE CREATED "
+        +
+        result.FinanceProfileID
+
+    );
+
+
+
+
+
+    return result;
+
 
 
 }
+catch(error){
 
 
 
+    Logger.error(
 
+        "FINANCE PROFILE ERROR "
+        +
+        error.message
 
+    );
 
-const revenue = Number(
-
-trip.Revenue || 0
-
-);
-
-
-
-
-
-const cost = Number(
-
-trip.ActualCost || 0
-
-);
-
-
-
-
-
-const profit =
-revenue - cost;
-
-
-
-
-
-
-
-const transaction={
-
-
-
-TransactionID:
-
-IdService.generate(
-"FIN"
-),
-
-
-
-OrganizationID:
-
-this.getOrganizationID(),
-
-
-
-Type:
-
-"TRIP_PROFIT",
-
-
-
-Entity:
-
-"TRIP",
-
-
-
-EntityID:
-
-trip.TripID,
-
-
-
-Revenue:
-
-revenue,
-
-
-
-Cost:
-
-cost,
-
-
-
-Profit:
-
-profit,
-
-
-
-CreatedAt:
-
-new Date()
-.toISOString()
-
-
-
-};
-
-
-
-
-
-
-
-Database.insert(
-
-"FinancialTransactions",
-
-transaction
-
-);
-
-
-
-
-
-
-
-
-EventBus.emit(
-
-"TRIP_PROFIT_CALCULATED",
-
-{
-
-transaction,
-
-profit
 
 }
-
-);
-
-
-
-
-
-
-Logger.log(
-
-"FINANCE CREATED: "
-+
-transaction.TransactionID
-
-);
-
-
-
-
-return transaction;
 
 
 
@@ -343,88 +291,183 @@ return transaction;
 
 
 
-initClientFinance(client){
+/*
+====================================
+TRIP TRANSACTION
+====================================
+*/
+
+
+createTripTransaction(event){
 
 
 
-if(!client){
+try{
 
 
-Logger.log(
+    const trip =
+        event.after
+        ||
+        event.data
+        ||
+        event;
 
-"FINANCE CLIENT EMPTY"
-
-);
 
 
-return null;
+
+
+    if(!trip.TripID){
+
+
+        return null;
+
+    }
+
+
+
+
+
+
+    const revenue =
+        Number(
+            trip.Revenue || 0
+        );
+
+
+
+
+    const cost =
+        Number(
+            trip.ActualCost || 0
+        );
+
+
+
+
+
+    const transaction = {
+
+
+
+        OrganizationID:
+            this.getOrganizationID(),
+
+
+
+        Type:
+            "TRIP_PROFIT",
+
+
+
+        Entity:
+            "TRIP",
+
+
+
+        EntityID:
+            trip.TripID,
+
+
+
+        Revenue:
+            revenue,
+
+
+
+        Cost:
+            cost,
+
+
+
+        Profit:
+            revenue-cost,
+
+
+
+        Status:
+            "POSTED"
+
+
+
+    };
+
+
+
+
+
+
+
+    const result =
+        EntityService.create(
+
+            "FINANCIAL_TRANSACTION",
+
+            transaction
+
+        );
+
+
+
+
+
+
+
+
+    EventBus.publish(
+
+        "TRIP_PROFIT_CALCULATED",
+
+        {
+
+            after:result,
+
+            entity:
+                "FINANCIAL_TRANSACTION",
+
+            entityId:
+                result.TransactionID
+
+        }
+
+    );
+
+
+
+
+
+    Logger.log(
+
+        "FINANCE TRANSACTION CREATED "
+        +
+        result.TransactionID
+
+    );
+
+
+
+
+    return result;
+
+
+
+}
+catch(error){
+
+
+    Logger.error(
+
+        "FINANCE TRANSACTION ERROR "
+        +
+        error.message
+
+    );
 
 
 }
 
 
 
-
-
-
-const profile={
-
-
-
-FinanceProfileID:
-
-IdService.generate(
-"FP"
-),
-
-
-
-OrganizationID:
-
-client.OrganizationID
-||
-this.getOrganizationID(),
-
-
-
-ClientID:
-
-client.ClientID,
-
-
-
-ClientName:
-
-client.Name,
-
-
-
-Balance:
-
-0,
-
-
-
-CreditLimit:
-
-0,
-
-
-
-Status:
-
-"ACTIVE",
-
-
-
-CreatedAt:
-
-new Date()
-.toISOString()
-
-
-
-};
+},
 
 
 
@@ -432,39 +475,52 @@ new Date()
 
 
 
-Database.insert(
+/*
+====================================
+BALANCE OPERATIONS
+====================================
+*/
 
-"ClientFinanceProfiles",
 
-profile
+addTransaction(
+    clientId,
+    amount,
+    type
+){
+
+
+
+return EntityService.create(
+
+    "FINANCIAL_TRANSACTION",
+
+    {
+
+
+        ClientID:
+            clientId,
+
+
+        Amount:
+            amount,
+
+
+        Type:
+            type,
+
+
+        Status:
+            "POSTED"
+
+
+    }
+
 
 );
-
-
-
-
-
-
-
-
-Logger.log(
-
-"FINANCE PROFILE CREATED: "
-+
-profile.FinanceProfileID
-
-);
-
-
-
-
-
-return profile;
 
 
 
 },
-
 
 
 
@@ -477,33 +533,61 @@ getOrganizationID(){
 
 
 if(
-
 globalThis.OrganizationContext
-
 ){
 
-
-
-return OrganizationContext.get();
-
+    return OrganizationContext.get();
 
 }
-
-
-
 
 
 return "DEFAULT";
 
 
+
+},
+
+
+
+
+
+
+
+health(){
+
+
+return HealthContract.create(
+
+
+"FinanceEngine",
+
+
+this.ready
+?
+"OK"
+:
+"NOT_READY",
+
+
+{
+
+
+version:this.version
+
+
 }
 
 
 
+);
+
+
+
+}
+
 
 
 };
-
 
 
 
