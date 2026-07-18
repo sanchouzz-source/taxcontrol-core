@@ -4,7 +4,7 @@ console.log("EntityService");
 const EntityService = {
 
 
-version:"4.0.0",
+version:"4.0.1",
 
 
 ready:false,
@@ -24,7 +24,11 @@ this.version
 );
 
 
+return true;
+
+
 },
+
 
 
 
@@ -35,6 +39,7 @@ return EntityRegistry.resolve(entity);
 
 
 },
+
 
 
 
@@ -50,13 +55,16 @@ this.resolve(entity)
 
 
 
+
 getRepository(entity){
 
 
-const name=this.resolve(entity);
+const name =
+this.resolve(entity);
 
 
-const repo=
+
+const repo =
 RepositoryFactory.get(name);
 
 
@@ -74,10 +82,46 @@ name
 }
 
 
+
 return repo;
 
 
 },
+
+
+
+
+checkPermission(meta,action){
+
+
+if(
+typeof SecurityGuard==="undefined"
+){
+
+return;
+
+}
+
+
+
+const permission =
+meta.permissions?.[action];
+
+
+
+if(permission){
+
+
+SecurityGuard.check(
+permission
+);
+
+
+}
+
+
+},
+
 
 
 
@@ -88,18 +132,23 @@ create(entity,data={}){
 entity=this.resolve(entity);
 
 
-const meta=this.getMeta(entity);
+
+const meta =
+this.getMeta(entity);
 
 
 
-SecurityGuard.check(
-meta.permissions?.create
+this.checkPermission(
+meta,
+"create"
 );
 
 
 
+
 if(
-meta.idField &&
+meta.idField
+&&
 !data[meta.idField]
 ){
 
@@ -113,32 +162,22 @@ IdService.generate(entity);
 
 
 
-const result=
-this.getRepository(entity)
+
+
+/*
+Repository:
+- save data
+- emit CREATED event
+- audit
+*/
+
+
+return this.getRepository(entity)
 .create(data);
 
 
-
-this.publish(
-meta.events.created,
-{
-
-entity,
-
-entityId:
-data[meta.idField],
-
-data
-
-}
-);
-
-
-
-return result;
-
-
 },
+
 
 
 
@@ -149,17 +188,21 @@ update(entity,id,data){
 entity=this.resolve(entity);
 
 
-const meta=this.getMeta(entity);
+
+const meta =
+this.getMeta(entity);
 
 
 
-SecurityGuard.check(
-meta.permissions?.update
+this.checkPermission(
+meta,
+"update"
 );
 
 
 
-const before=
+
+const before =
 this.findById(
 entity,
 id
@@ -167,33 +210,37 @@ id
 
 
 
-const result=
-this.getRepository(entity)
+
+if(!before){
+
+
+throw new Error(
+entity+
+" not found: "
++
+id
+);
+
+
+}
+
+
+
+
+
+/*
+Repository:
+- version save
+- update
+- emit UPDATED
+*/
+
+
+return this.getRepository(entity)
 .update(
 id,
 data
 );
-
-
-
-this.publish(
-meta.events.updated,
-{
-
-entity,
-
-entityId:id,
-
-before,
-
-after:result
-
-}
-);
-
-
-
-return result;
 
 
 },
@@ -231,7 +278,7 @@ return this.getRepository(entity)
 findWhere(entity,criteria={}){
 
 
-const repo=
+const repo =
 this.getRepository(entity);
 
 
@@ -246,7 +293,9 @@ return repo.findWhere(criteria);
 
 
 
-const rows=
+
+
+const rows =
 repo.findAll();
 
 
@@ -273,14 +322,10 @@ item[key]===criteria[key]
 exists(entity,id){
 
 
-const result=
-this.findById(
+return !!this.findById(
 entity,
 id
 );
-
-
-return !!result;
 
 
 },
@@ -311,17 +356,22 @@ delete(entity,id){
 entity=this.resolve(entity);
 
 
-const meta=this.getMeta(entity);
+
+const meta =
+this.getMeta(entity);
 
 
 
-SecurityGuard.check(
-meta.permissions?.delete
+this.checkPermission(
+meta,
+"delete"
 );
 
 
 
-const before=
+
+
+const before =
 this.findById(
 entity,
 id
@@ -329,30 +379,32 @@ id
 
 
 
-const result=
-this.getRepository(entity)
-.delete(id);
+if(!before){
 
 
-
-this.publish(
-meta.events.deleted,
-{
-
-entity,
-
-entityId:id,
-
-before,
-
-after:result
-
-}
+throw new Error(
+entity+
+" not found: "
++
+id
 );
 
 
+}
 
-return result;
+
+
+
+/*
+Repository:
+- soft delete
+- emit DELETED
+- audit
+*/
+
+
+return this.getRepository(entity)
+.delete(id);
 
 
 },
@@ -367,38 +419,31 @@ restore(entity,id){
 entity=this.resolve(entity);
 
 
-const meta=this.getMeta(entity);
+
+const meta =
+this.getMeta(entity);
 
 
 
-SecurityGuard.check(
-meta.permissions?.restore
+this.checkPermission(
+meta,
+"restore"
 );
 
 
 
-const result=
-this.getRepository(entity)
+
+
+/*
+Repository:
+- Deleted=false
+- emit RESTORED
+- audit
+*/
+
+
+return this.getRepository(entity)
 .restore(id);
-
-
-
-this.publish(
-meta.events.restored,
-{
-
-entity,
-
-entityId:id,
-
-data:result
-
-}
-);
-
-
-
-return result;
 
 
 },
@@ -410,26 +455,16 @@ return result;
 bulkCreate(entity,list=[]){
 
 
-const result=[];
+return list.map(item=>{
 
 
-
-list.forEach(item=>{
-
-
-result.push(
-this.create(
+return this.create(
 entity,
 item
-)
 );
 
 
 });
-
-
-
-return result;
 
 
 },
@@ -441,53 +476,21 @@ return result;
 bulkUpdate(entity,ids,data){
 
 
-const result=[];
+return ids.map(id=>{
 
 
-
-ids.forEach(id=>{
-
-
-result.push(
-this.update(
+return this.update(
 entity,
 id,
 data
-)
 );
 
 
 });
 
 
-
-return result;
-
-
 },
 
-
-
-
-
-publish(event,payload){
-
-
-if(!event){
-
-return;
-
-}
-
-
-
-EventBus.publish(
-event,
-payload
-);
-
-
-},
 
 
 
@@ -497,6 +500,8 @@ transaction(callback){
 
 if(
 typeof TransactionManager!=="undefined"
+&&
+TransactionManager.run
 ){
 
 
@@ -521,7 +526,6 @@ return callback();
 health(){
 
 
-
 return HealthContract.create(
 
 "EntityService",
@@ -534,23 +538,45 @@ this.ready
 
 {
 
+
 version:this.version,
+
+
+architecture:
+
+"Repository Driven Lifecycle",
+
+
 
 features:[
 
+
 "CRUD",
+
 
 "SEARCH",
 
+
 "BULK",
+
+
+"SOFT_DELETE",
+
 
 "RESTORE",
 
+
+"EVENTBUS",
+
+
 "TRANSACTION_READY"
+
 
 ]
 
+
 }
+
 
 );
 
