@@ -4,6 +4,7 @@ const BaseRepository = {
 
   version: "3.0.0",
 
+  // ---------- CREATE ----------
   create(entity, data = {}) {
     const meta = this.getMeta(entity);
     this.checkPermission(meta, "create");
@@ -30,32 +31,68 @@ const BaseRepository = {
     return result;
   },
 
-  findById(entity, id) {
+  // ---------- FIND BY ID (с учётом soft delete) ----------
+  findById(entity, id, options = { includeDeleted: false }) {
     const meta = this.getMeta(entity);
     this.checkPermission(meta, "read");
-    return Database.find(meta.table, id);
+
+    const record = Database.find(meta.table, id);
+    if (!record) return null;
+
+    if (meta.softDelete !== false) {
+      const fields = this.getSoftDeleteFields(meta);
+      const isDeleted = record[fields.deleted] === true;
+      if (isDeleted && !options.includeDeleted) {
+        return null;
+      }
+    }
+
+    return record;
   },
 
-  findAll(entity, filters = {}) {
+  // ---------- FIND ALL (с фильтрацией удалённых) ----------
+  findAll(entity, filters = {}, options = { includeDeleted: false }) {
     const meta = this.getMeta(entity);
     this.checkPermission(meta, "read");
-    return Database.query(meta.table, filters);
+
+    let records = Database.query(meta.table, filters);
+
+    if (meta.softDelete !== false && !options.includeDeleted) {
+      const fields = this.getSoftDeleteFields(meta);
+      records = records.filter(rec => rec[fields.deleted] !== true);
+    }
+
+    return records;
   },
 
-  count(entity, filters = {}) {
-    const records = this.findAll(entity, filters);
+  // ---------- COUNT ----------
+  count(entity, filters = {}, options = { includeDeleted: false }) {
+    const records = this.findAll(entity, filters, options);
     return records ? records.length : 0;
   },
 
+  // ---------- EXISTS (по ID) ----------
+  exists(entity, id, options = { includeDeleted: false }) {
+    return !!this.findById(entity, id, options);
+  },
+
+  // ---------- EXISTS BY (по полю) ----------
+  existsBy(entity, field, value, options = { includeDeleted: false }) {
+    const rows = this.findAll(entity, { [field]: value }, options);
+    return rows.length > 0;
+  },
+
+  // ---------- UPDATE ----------
   update(entity, id, data = {}) {
     const meta = this.getMeta(entity);
     this.checkPermission(meta, "update");
 
-    const existing = Database.find(meta.table, id);
+    const existing = this.findById(entity, id, { includeDeleted: false });
     if (!existing) {
       throw new Error(entity + " not found");
     }
 
+    // 1. Сохраняем версию ДО изменения
     if (typeof Versioning !== "undefined") {
       Versioning.save(entity, id, existing);
     }
@@ -69,9 +106,12 @@ const BaseRepository = {
 
     this.applySystemFields(meta, updated, true);
 
+    // 2. Обновляем в БД
     const result = Database.update(meta.table, id, updated);
 
     this.afterUpdate(entity, existing, result, meta);
+
+    // 3. Публикуем событие (внутри EventBus.emit + Audit)
     this.publishEvent(
       entity,
       meta.events?.updated,
@@ -83,6 +123,7 @@ const BaseRepository = {
     return result;
   },
 
+  // ---------- SOFT DELETE FIELDS ----------
   getSoftDeleteFields(meta) {
     return {
       deleted: meta.deleteField || "Deleted",
@@ -91,11 +132,12 @@ const BaseRepository = {
     };
   },
 
+  // ---------- DELETE ----------
   delete(entity, id) {
     const meta = this.getMeta(entity);
     this.checkPermission(meta, "delete");
 
-    const existing = Database.find(meta.table, id);
+    const existing = this.findById(entity, id, { includeDeleted: false });
     if (!existing) {
       throw new Error(entity + " not found");
     }
@@ -105,6 +147,11 @@ const BaseRepository = {
     let result;
 
     if (meta.softDelete !== false) {
+      // 1. Сохраняем версию ДО изменения (soft delete = update)
+      if (typeof Versioning !== "undefined") {
+        Versioning.save(entity, id, existing);
+      }
+
       const fields = this.getSoftDeleteFields(meta);
       const deleted = {
         ...existing,
@@ -112,12 +159,17 @@ const BaseRepository = {
         [fields.deletedAt]: new Date().toISOString(),
         [fields.deletedBy]: this.getCurrentUser()
       };
+
+      // 2. Обновляем в БД
       result = Database.update(meta.table, id, deleted);
     } else {
+      // Жёсткое удаление – версионирование не нужно
       result = Database.delete(meta.table, id);
     }
 
     this.afterDelete(entity, existing, result, meta);
+
+    // 3. Публикуем событие
     this.publishEvent(
       entity,
       meta.events?.deleted,
@@ -129,6 +181,7 @@ const BaseRepository = {
     return result;
   },
 
+  // ---------- RESTORE ----------
   restore(entity, id) {
     const meta = this.getMeta(entity);
     this.checkPermission(meta, "restore");
@@ -137,29 +190,46 @@ const BaseRepository = {
       throw new Error("Restore is not supported for this entity (softDelete disabled)");
     }
 
-    const existing = Database.find(meta.table, id);
+    // Ищем запись ВКЛЮЧАЯ удалённые
+    const existing = this.findById(entity, id, { includeDeleted: true });
     if (!existing) {
       throw new Error(entity + " not found");
     }
 
     const fields = this.getSoftDeleteFields(meta);
+    if (existing[fields.deleted] !== true) {
+      throw new Error(entity + " is not deleted, restore not needed");
+    }
+
     const restored = {
       ...existing,
       [fields.deleted]: false,
       [fields.deletedAt]: null,
-      [fields.deletedBy]: null,
-      UpdatedAt: new Date().toISOString()
+      [fields.deletedBy]: null
     };
 
-    Logger.log("RESTORE DEBUG " + JSON.stringify(restored));
+    this.applySystemFields(meta, restored, true);
 
-    const result = Database.update(meta.table, id, restored);
+    Logger.log("RESTORE DEBUG: " + JSON.stringify(restored));
 
+    // 1. Сохраняем версию ДО восстановления
     if (typeof Versioning !== "undefined") {
       Versioning.save(entity, id, existing);
     }
 
+    this.beforeUpdate(entity, existing, restored, meta);
+
+    // 2. Обновляем в БД
+    const updateResult = Database.update(meta.table, id, restored);
+
+    const result = Database.find(meta.table, id);
+    if (!result) {
+      throw new Error(entity + " restore failed – record not found after update");
+    }
+
     this.afterUpdate(entity, existing, result, meta);
+
+    // 3. Публикуем событие
     this.publishEvent(
       entity,
       meta.events?.restored,
@@ -168,19 +238,10 @@ const BaseRepository = {
       result
     );
 
-    return result || restored;
+    return result;
   },
 
-  exists(entity, id) {
-    const meta = this.getMeta(entity);
-    return !!Database.find(meta.table, id);
-  },
-
-  existsBy(entity, field, value) {
-    const rows = this.findAll(entity, { [field]: value });
-    return rows.length > 0;
-  },
-
+  // ---------- GET META ----------
   getMeta(entity) {
     const meta = EntityRegistry.get(entity);
     if (!meta) {
@@ -189,6 +250,7 @@ const BaseRepository = {
     return meta;
   },
 
+  // ---------- CHECK PERMISSION ----------
   checkPermission(meta, action) {
     if (typeof SecurityGuard === "undefined") return;
     const permission = meta.permissions?.[action];
@@ -197,6 +259,7 @@ const BaseRepository = {
     }
   },
 
+  // ---------- APPLY SYSTEM FIELDS ----------
   applySystemFields(meta, data, update = false) {
     if (meta.timestamps) {
       const now = new Date().toISOString();
@@ -206,14 +269,12 @@ const BaseRepository = {
       data.UpdatedAt = now;
     }
 
-    if (
-      meta.organization !== false &&
-      typeof OrganizationContext !== "undefined"
-    ) {
+    if (meta.organization !== false && typeof OrganizationContext !== "undefined") {
       data.OrganizationID = data.OrganizationID || OrganizationContext.get();
     }
   },
 
+  // ---------- PUBLISH EVENT (EventBus + Audit) ----------
   publishEvent(entity, event, action, before, after) {
     if (typeof EventBus === "undefined" || !event) return;
     const entityId = this.extractEntityId(entity, after);
@@ -226,14 +287,17 @@ const BaseRepository = {
       source: "BaseRepository",
       timestamp: new Date().toISOString()
     });
+    // Audit уже передаётся через action, можно дополнительно логировать отдельно при необходимости
   },
 
+  // ---------- EXTRACT ENTITY ID ----------
   extractEntityId(entity, record) {
     if (!record) return "";
     const meta = this.getMeta(entity);
     return record[meta.idField || entity + "ID"] || "";
   },
 
+  // ---------- GET CURRENT USER ----------
   getCurrentUser() {
     if (typeof UserSession !== "undefined" && UserSession.getCurrent) {
       return UserSession.getCurrent();
@@ -241,6 +305,7 @@ const BaseRepository = {
     return "SYSTEM";
   },
 
+  // ---------- LIFECYCLE HOOKS ----------
   beforeCreate(entity, data, meta) {},
   afterCreate(entity, result, meta) {},
   beforeUpdate(entity, oldData, newData, meta) {},
@@ -248,6 +313,7 @@ const BaseRepository = {
   beforeDelete(entity, data, meta) {},
   afterDelete(entity, oldData, result, meta) {},
 
+  // ---------- HEALTH ----------
   health() {
     return HealthContract.create("BaseRepository", "OK", {
       version: this.version,
@@ -258,7 +324,8 @@ const BaseRepository = {
         "Restore",
         "LifecycleHooks",
         "EventBus",
-        "Versioning"
+        "Versioning",
+        "IncludeDeletedFilter"
       ]
     });
   }
