@@ -1,116 +1,163 @@
-console.log("TestEntityLifecycleMatrix");
+function getEntityId(entityName,data){
+
+
+const map={
+
+CLIENT:"ClientID",
+TRIP:"TripID",
+KPI:"KPIID",
+CLIENT_FINANCE_PROFILE:"ProfileID",
+FINANCIAL_TRANSACTION:"TransactionID"
+
+};
+
+
+return data[map[entityName]];
+
+
+}
+
 
 
 const TestEntityLifecycleMatrix = {
 
 
-  run(entity, repository, factoryData) {
-
-    Logger.log(
-      "===== ENTITY TEST START: " + entity + " ====="
-    );
+run(entityName, repository, testData){
 
 
-    let created;
-    let updated;
-    let restored;
+Logger.log(
+"===== ENTITY TEST START: "
++entityName+
+" ====="
+);
 
 
-    // CREATE
-    created = repository.create(factoryData);
 
-    if (!created) {
-      throw new Error(entity + " CREATE FAILED");
-    }
+const created =
+repository.create(testData);
 
 
-    Logger.log(
-      "CREATE OK: " + created[entity + "ID"]
-    );
+
+if(!created){
+
+throw new Error(
+entityName+" CREATE FAILED"
+);
+
+}
 
 
-    // READ
 
-    const read = repository.findById(
-      created[entity + "ID"]
-    );
+Logger.log("CREATE OK");
 
 
-    if (!read) {
-      throw new Error(entity + " READ FAILED");
-    }
+
+const id =
+getEntityId(
+entityName,
+created
+);
 
 
-    Logger.log("READ OK");
+
+const read =
+repository.findById(id);
 
 
-    // UPDATE
 
-    updated = repository.update(
-      created[entity + "ID"],
-      {
-        TestField:"UPDATED"
-      }
-    );
+if(!read){
 
+throw new Error(
+entityName+" READ FAILED"
+);
 
-    if (!updated) {
-      throw new Error(entity + " UPDATE FAILED");
-    }
+}
 
 
-    Logger.log("UPDATE OK");
+Logger.log("READ OK");
 
 
-    // DELETE
 
-    repository.delete(
-      created[entity + "ID"]
-    );
-
-
-    const deleted =
-      repository.findById(
-        created[entity + "ID"]
-      );
+const updated =
+repository.update(
+id,
+{
+TestField:"UPDATED"
+}
+);
 
 
-    if (deleted) {
-      throw new Error(entity + " DELETE FAILED");
-    }
+
+if(!updated){
+
+throw new Error(
+entityName+" UPDATE FAILED"
+);
+
+}
 
 
-    Logger.log("DELETE OK");
+Logger.log("UPDATE OK");
 
 
-    // RESTORE
 
-    restored =
-      repository.restore(
-        created[entity + "ID"]
-      );
+repository.delete(id);
 
 
-    if (!restored) {
-      throw new Error(entity + " RESTORE FAILED");
-    }
+
+const deleted =
+repository.findById(id);
 
 
-    Logger.log("RESTORE OK");
+
+if(deleted){
+
+throw new Error(
+entityName+" DELETE FAILED"
+);
+
+}
 
 
-    Logger.log(
-      "===== ENTITY TEST SUCCESS: "
-      + entity
-      + " ====="
-    );
+Logger.log("DELETE OK");
 
 
-    return true;
-  }
+
+repository.restore(id);
+
+
+
+const restored =
+repository.findById(id);
+
+
+
+if(!restored){
+
+throw new Error(
+entityName+" RESTORE FAILED"
+);
+
+}
+
+
+Logger.log("RESTORE OK");
+
+
+
+Logger.log(
+"===== ENTITY TEST SUCCESS: "
++entityName+
+" ====="
+);
+
+
+
+return true;
+
+
+}
+
 
 };
 
-
-globalThis.TestEntityLifecycleMatrix =
-TestEntityLifecycleMatrix;
