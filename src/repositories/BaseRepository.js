@@ -4,12 +4,15 @@ const BaseRepository = {
 
   version: "3.0.0",
 
-  // ---------- НОРМАЛИЗАЦИЯ BOOLEAN ----------
+  // ---------- НОРМАЛИЗАЦИЯ BOOLEAN (учитывает строки) ----------
   normalizeBoolean(value) {
+    if (typeof value === "string") {
+      const lower = value.toLowerCase();
+      if (lower === "true") return true;
+      if (lower === "false" || lower === "") return false;
+    }
     return (
       value === true ||
-      value === "true" ||
-      value === "TRUE" ||
       value === 1 ||
       value === "1"
     );
@@ -166,8 +169,9 @@ const BaseRepository = {
       }
 
       const fields = this.getSoftDeleteFields(meta);
+      // Используем строку "true" для совместимости с БД
       const deleted = {
-        [fields.deleted]: true,
+        [fields.deleted]: "true",
         [fields.deletedAt]: new Date().toISOString(),
         [fields.deletedBy]: this.getCurrentUser()
       };
@@ -216,14 +220,13 @@ const BaseRepository = {
       throw new Error(entity + " is not deleted, restore not needed");
     }
 
-    // Готовим только поля восстановления (без UpdatedAt вручную)
+    // Используем строку "false" для совместимости с БД
     const updateData = {
-      [fields.deleted]: false,
+      [fields.deleted]: "false",
       [fields.deletedAt]: null,
       [fields.deletedBy]: null
     };
 
-    // ✅ Применяем системные поля (теперь UpdatedAt добавится автоматически, если нужно)
     this.applySystemFields(meta, updateData, true);
 
     Logger.log(`RESTORE DEBUG: ${entity} ${id} -> ${JSON.stringify(updateData)}`);
@@ -243,6 +246,13 @@ const BaseRepository = {
     if (!restored) {
       throw new Error(`Restore failed – record not found after update for ${entity} ${id}`);
     }
+
+    // Проверяем, что запись теперь видна без includeDeleted
+    const verifyAvailable = this.findById(entity, id, { includeDeleted: false });
+    if (!verifyAvailable) {
+      throw new Error(`Restore succeeded in DB but record is still not visible without includeDeleted for ${entity} ${id}`);
+    }
+    Logger.log(`RESTORE VERIFY: ${entity} ${id} is now visible without includeDeleted`);
 
     this.afterUpdate(entity, existing, restored, meta);
     this.publishEvent(
