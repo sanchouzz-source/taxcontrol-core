@@ -451,14 +451,48 @@ restore(
     );
 
 
-    if(meta.softDelete === false){
+if(meta.softDelete !== false){
 
-        throw new Error(
-            entity+
-            " restore unavailable"
+    const fields =
+        this.getSoftDeleteFields(meta);
+
+
+    const deleted = {
+
+        ...existing,
+
+        [fields.deleted]:true,
+
+        [fields.deletedAt]:
+            new Date()
+            .toISOString(),
+
+        [fields.deletedBy]:
+            this.getCurrentUser()
+
+    };
+
+
+    result =
+        Database.update(
+            meta.table,
+            id,
+            deleted
         );
 
-    }
+
+}
+else{
+
+
+    result =
+        Database.delete(
+            meta.table,
+            id
+        );
+
+
+}
 
 
     const existing =
@@ -503,7 +537,10 @@ const restored = {
         .toISOString()
 
 };
-
+Logger.log(
+    "RESTORE DEBUG " +
+    JSON.stringify(restored)
+);
 
 
     const result =
@@ -513,7 +550,25 @@ const restored = {
             restored
         );
 
+if(
+    typeof Versioning !== "undefined"
+){
 
+    Versioning.save(
+        entity,
+        id,
+        existing
+    );
+
+}
+
+
+this.afterUpdate(
+    entity,
+    existing,
+    result,
+    meta
+);
 
     this.publishEvent(
         entity,
