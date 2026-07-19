@@ -281,7 +281,28 @@ update(
 },
 
 
+getSoftDeleteFields(meta){
 
+    return {
+
+        deleted:
+            meta.deleteField
+            ||
+            "Deleted",
+
+        deletedAt:
+            meta.deleteDateField
+            ||
+            "DeletedAt",
+
+        deletedBy:
+            meta.deleteUserField
+            ||
+            "DeletedBy"
+
+    };
+
+},
 
 
 delete(
@@ -343,25 +364,32 @@ delete(
 
                 id,
 
-                {
+ const fields =
+    this.getSoftDeleteFields(meta);
 
 
-                ...existing,
+const deleted = {
+
+    ...existing,
+
+    [fields.deleted]:true,
+
+    [fields.deletedAt]:
+        new Date()
+        .toISOString(),
+
+    [fields.deletedBy]:
+        this.getCurrentUser()
+
+};
 
 
-                Deleted:true,
-
-
-                DeletedAt:
-                    new Date()
-                    .toISOString(),
-
-
-                DeletedBy:
-                    this.getCurrentUser()
-
-
-                }
+result =
+Database.update(
+    meta.table,
+    id,
+    deleted
+);
 
             );
 
@@ -408,7 +436,6 @@ delete(
 
 
 
-
 restore(
     entity,
     id
@@ -418,12 +445,10 @@ restore(
         this.getMeta(entity);
 
 
-
     this.checkPermission(
         meta,
         "restore"
     );
-
 
 
     if(meta.softDelete === false){
@@ -436,13 +461,11 @@ restore(
     }
 
 
-
     const existing =
         Database.find(
             meta.table,
             id
         );
-
 
 
     if(!existing){
@@ -456,39 +479,39 @@ restore(
 
 
 
+const fields =
+    this.getSoftDeleteFields(meta);
+
+
+
+const restored = {
+
+    ...existing,
+
+
+    [fields.deleted]:false,
+
+
+    [fields.deletedAt]:null,
+
+
+    [fields.deletedBy]:null,
+
+
+    UpdatedAt:
+        new Date()
+        .toISOString()
+
+};
+
+
 
     const result =
         Database.update(
-
             meta.table,
-
             id,
-
-            {
-
-
-            ...existing,
-
-
-            Deleted:false,
-
-
-            DeletedAt:"",
-
-
-            DeletedBy:"",
-
-
-            UpdatedAt:
-                new Date()
-                .toISOString()
-
-
-            }
-
+            restored
         );
-
-
 
 
 
@@ -502,7 +525,7 @@ restore(
 
 
 
-    return result;
+    return result || restored;
 
 },
 
