@@ -18,6 +18,16 @@ const BaseRepository = {
     );
   },
 
+  // ---------- НОРМАЛИЗАЦИЯ ЗАПИСИ (приведение Deleted к булеву) ----------
+  normalizeRecord(record, meta) {
+    if (!record) return record;
+    const fields = this.getSoftDeleteFields(meta);
+    if (fields && fields.deleted && record[fields.deleted] !== undefined) {
+      record[fields.deleted] = this.normalizeBoolean(record[fields.deleted]);
+    }
+    return record;
+  },
+
   // ---------- CREATE ----------
   create(entity, data = {}) {
     const meta = this.getMeta(entity);
@@ -32,17 +42,19 @@ const BaseRepository = {
     this.applySystemFields(meta, data);
 
     const result = Database.insert(meta.table, data);
+    // Нормализуем результат перед возвратом
+    const normalized = this.normalizeRecord(result, meta);
 
-    this.afterCreate(entity, result, meta);
+    this.afterCreate(entity, normalized, meta);
     this.publishEvent(
       entity,
       meta.events?.created,
       AuditConstants.ACTION_CREATE,
       null,
-      result
+      normalized
     );
 
-    return result;
+    return normalized;
   },
 
   // ---------- FIND BY ID ----------
@@ -61,7 +73,8 @@ const BaseRepository = {
       }
     }
 
-    return record;
+    // Нормализуем запись перед возвратом
+    return this.normalizeRecord(record, meta);
   },
 
   // ---------- FIND ALL ----------
@@ -79,7 +92,8 @@ const BaseRepository = {
       });
     }
 
-    return records;
+    // Нормализуем каждую запись
+    return records.map(rec => this.normalizeRecord(rec, meta));
   },
 
   // ---------- COUNT ----------
@@ -128,16 +142,17 @@ const BaseRepository = {
       throw new Error(`Update failed – record not found after update for ${entity} ${id}`);
     }
 
-    this.afterUpdate(entity, existing, updated, meta);
+    const normalized = this.normalizeRecord(updated, meta);
+    this.afterUpdate(entity, existing, normalized, meta);
     this.publishEvent(
       entity,
       meta.events?.updated,
       AuditConstants.ACTION_UPDATE,
       existing,
-      updated
+      normalized
     );
 
-    return updated;
+    return normalized;
   },
 
   // ---------- SOFT DELETE FIELDS ----------
@@ -169,7 +184,7 @@ const BaseRepository = {
       }
 
       const fields = this.getSoftDeleteFields(meta);
-      // Используем строку "true" для совместимости с БД
+      // В БД пишем строку "true"
       const deleted = {
         [fields.deleted]: "true",
         [fields.deletedAt]: new Date().toISOString(),
@@ -189,16 +204,23 @@ const BaseRepository = {
       result = Database.delete(meta.table, id);
     }
 
-    this.afterDelete(entity, existing, result, meta);
+    // После удаления возвращаем результат (может быть объект или true)
+    // Для мягкого удаления – нормализуем запись, если она есть
+    let normalizedResult = result;
+    if (meta.softDelete !== false && result && typeof result === 'object') {
+      normalizedResult = this.normalizeRecord(result, meta);
+    }
+
+    this.afterDelete(entity, existing, normalizedResult, meta);
     this.publishEvent(
       entity,
       meta.events?.deleted,
       AuditConstants.ACTION_DELETE,
       existing,
-      result
+      normalizedResult
     );
 
-    return result;
+    return normalizedResult;
   },
 
   // ---------- RESTORE ----------
@@ -220,7 +242,7 @@ const BaseRepository = {
       throw new Error(entity + " is not deleted, restore not needed");
     }
 
-    // Используем строку "false" для совместимости с БД
+    // В БД пишем строку "false"
     const updateData = {
       [fields.deleted]: "false",
       [fields.deletedAt]: null,
@@ -254,16 +276,19 @@ const BaseRepository = {
     }
     Logger.log(`RESTORE VERIFY: ${entity} ${id} is now visible without includeDeleted`);
 
-    this.afterUpdate(entity, existing, restored, meta);
+    // Нормализуем запись перед возвратом
+    const normalized = this.normalizeRecord(restored, meta);
+
+    this.afterUpdate(entity, existing, normalized, meta);
     this.publishEvent(
       entity,
       meta.events?.restored,
       AuditConstants.ACTION_RESTORE,
       existing,
-      restored
+      normalized
     );
 
-    return restored;
+    return normalized;
   },
 
   // ---------- GET META ----------
