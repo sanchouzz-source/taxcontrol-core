@@ -280,12 +280,11 @@ events:{}
 
 KPI:{
 
-
 entity:"KPI",
 
 module:"analytics",
 
-table:"KPIs",
+table:"KPIMetrics",
 
 idField:"KPIID",
 
@@ -295,20 +294,20 @@ repository:"KPIRepository",
 
 audit:true,
 
+softDelete:true,
+
+timestamps:true,
+
 
 events:{
-
 
 created:"KPI_CREATED",
 
 updated:"KPI_UPDATED"
 
-
 }
 
-
 }
-
 };
 
 
