@@ -207,10 +207,12 @@ EntityMetadata.register = function (definition) {
     const fieldNames = definition.fields;
     definition.fields = fieldNames.map(name => {
       const field = { name, type: "STRING" };
-      if (name === entity + "ID" || name === "OrganizationID" || name === "ClientID") {
-        field.type = "REFERENCE";
-        field.required = true;
-      }
+    if (
+ name.endsWith("ID")
+)
+{
+ field.type="REFERENCE";
+}
       if (name === "CreatedAt" || name === "UpdatedAt") {
         field.type = "DATETIME";
       }
@@ -251,44 +253,55 @@ EntityMetadata.register = function (definition) {
 
 // ----- РЕГИСТРАЦИЯ НОВЫХ СУЩНОСТЕЙ -----
 
-// 1. TRANSPORT_ORDER (как в примере)
+// 1. TRANSPORT_ORDER
+
 EntityMetadata.register({
-  entity: "TRANSPORT_ORDER",
-  table: "TransportOrders",
-  id: "TransportOrderID",
-  idPrefix: "TO",
-  permissions: {
-    create: "TRANSPORT_ORDER_CREATE",
-    read: "TRANSPORT_ORDER_READ",
-    update: "TRANSPORT_ORDER_UPDATE",
-    delete: "TRANSPORT_ORDER_DELETE",
-    restore: "TRANSPORT_ORDER_RESTORE"
-  },
-  events: {
-    created: "TRANSPORT_ORDER_CREATED",
-    updated: "TRANSPORT_ORDER_UPDATED",
-    deleted: "TRANSPORT_ORDER_DELETED",
-    restored: "TRANSPORT_ORDER_RESTORED"
-  },
-  // Можно передать массив строк – метод register преобразует их в объекты
-  fields: [
+  entity:"TRANSPORT_ORDER",
+
+  repository:"TransportOrderRepository",
+
+  table:"TransportOrders",
+
+  id:"TransportOrderID",
+
+  idPrefix:"TO",
+
+  fields:[
     "TransportOrderID",
     "OrganizationID",
     "ClientID",
+    "CarrierID",
+    "RouteID",
+    "CargoID",
+    "DriverID",
+    "VehicleID",
     "OrderNumber",
     "LoadingAddress",
     "DeliveryAddress",
     "CargoWeight",
     "Status",
     "CreatedAt",
-    "UpdatedAt"
+    "UpdatedAt",
+    "Deleted"
   ]
 });
 
-// 2. CARRIER (дополнительно, чтобы были все из списка EntityConstants)
+
+// 2. CARRIER
+
 EntityMetadata.register({
-  entity: "CARRIER",
-  fields: [
+
+  entity:"CARRIER",
+
+  repository:"CarrierRepository",
+
+  table:"Carriers",
+
+  id:"CarrierID",
+
+  idPrefix:"CAR",
+
+  fields:[
     "CarrierID",
     "OrganizationID",
     "Name",
@@ -297,68 +310,131 @@ EntityMetadata.register({
     "Email",
     "Status",
     "CreatedAt",
-    "UpdatedAt"
+    "UpdatedAt",
+    "Deleted"
   ]
+
 });
 
-// 3. DRIVER
+
+// 3 DRIVER
+
 EntityMetadata.register({
-  entity: "DRIVER",
-  fields: [
-    "DriverID",
-    "OrganizationID",
-    "Name",
-    "Phone",
-    "LicenseNumber",
-    "Status",
-    "CreatedAt",
-    "UpdatedAt"
-  ]
+
+ entity:"DRIVER",
+
+ repository:"DriverRepository",
+
+ table:"Drivers",
+
+ id:"DriverID",
+
+ idPrefix:"DRV",
+
+ fields:[
+  "DriverID",
+  "OrganizationID",
+  "CarrierID",
+  "Name",
+  "Phone",
+  "LicenseNumber",
+  "Status",
+  "CreatedAt",
+  "UpdatedAt",
+  "Deleted"
+ ]
+
 });
 
-// 4. VEHICLE
+
+// 4 VEHICLE
+
+
 EntityMetadata.register({
-  entity: "VEHICLE",
-  fields: [
-    "VehicleID",
-    "OrganizationID",
-    "PlateNumber",
-    "Model",
-    "Capacity",
-    "Status",
-    "CreatedAt",
-    "UpdatedAt"
-  ]
+
+entity:"VEHICLE",
+
+repository:"VehicleRepository",
+
+table:"Vehicles",
+
+id:"VehicleID",
+
+idPrefix:"VEH",
+
+fields:[
+ "VehicleID",
+ "OrganizationID",
+ "CarrierID",
+ "PlateNumber",
+ "Model",
+ "Capacity",
+ "Status",
+ "CreatedAt",
+ "UpdatedAt",
+ "Deleted"
+]
+
 });
 
-// 5. ROUTE
+
+// 5 ROUTE
+
+
 EntityMetadata.register({
-  entity: "ROUTE",
-  fields: [
-    "RouteID",
-    "OrganizationID",
-    "StartPoint",
-    "EndPoint",
-    "Distance",
-    "Duration",
-    "CreatedAt",
-    "UpdatedAt"
-  ]
+
+entity:"ROUTE",
+
+repository:"RouteRepository",
+
+table:"Routes",
+
+id:"RouteID",
+
+idPrefix:"RTE",
+
+fields:[
+ "RouteID",
+ "OrganizationID",
+ "StartPoint",
+ "EndPoint",
+ "Distance",
+ "Duration",
+ "CreatedAt",
+ "UpdatedAt",
+ "Deleted"
+]
+
 });
 
-// 6. CARGO
+
+// 6 CARGO
+
+
 EntityMetadata.register({
-  entity: "CARGO",
-  fields: [
-    "CargoID",
-    "OrganizationID",
-    "Name",
-    "Weight",
-    "Volume",
-    "Type",
-    "CreatedAt",
-    "UpdatedAt"
-  ]
+
+entity:"CARGO",
+
+repository:"CargoRepository",
+
+table:"Cargoes",
+
+id:"CargoID",
+
+idPrefix:"CRG",
+
+fields:[
+ "CargoID",
+ "OrganizationID",
+ "Name",
+ "Weight",
+ "Volume",
+ "Type",
+ "CreatedAt",
+ "UpdatedAt",
+ "Deleted"
+]
+
 });
 
 // ----- ГЛОБАЛИЗАЦИЯ -----
