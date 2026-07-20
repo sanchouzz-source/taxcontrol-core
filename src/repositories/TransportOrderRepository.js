@@ -111,13 +111,23 @@ const TransportOrderRepository = {
 
 };
 
-
-
 globalThis.TransportOrderRepository =
     TransportOrderRepository;
 
 
 Logger.debug(
- "TransportOrderRepository READY v"
- + TransportOrderRepository.version
+ "TransportOrderRepository READY v1.0.0"
 );
+
+
+// поздняя регистрация
+if (
+    typeof RepositoryFactory !== "undefined"
+) {
+
+    RepositoryFactory.register(
+        "TRANSPORT_ORDER",
+        TransportOrderRepository
+    );
+
+}

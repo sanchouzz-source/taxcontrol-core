@@ -1,11 +1,11 @@
 console.log("RepositoryFactory");
 
-
 const RepositoryFactory = {
-
-  version: "1.3.0",
+  version: "1.4.0",
 
   repositories: {},
+
+  pending: {},
 
   initialized: false,
 
@@ -62,24 +62,23 @@ const RepositoryFactory = {
         globalThis[meta.repository];
 
 
-      if (repository) {
+if (repository) {
+
+    this.register(
+        entity,
+        repository
+    );
+
+} else {
+
+    Logger.debug(
+        "WAITING REPOSITORY: " + entity
+    );
 
 
-        this.register(
-          entity,
-          repository
-        );
-
-
-      } else {
-
-
-        Logger.debug(
-          "WAITING REPOSITORY: "
-          + entity
-        );
-
-      }
+    this.pending[entity] =
+        meta.repository;
+}
 
 
     });
@@ -195,29 +194,46 @@ const RepositoryFactory = {
   },
 
 
+  registerLoaded(name, repository) {
 
-  get(name){
+    if (!repository) {
+      throw new Error(
+        "Cannot register empty repository: " + name
+      );
+    }
 
+    this.register(name, repository);
+    delete this.pending[name];
+
+    Logger.debug(
+      "LOADED REPOSITORY REGISTERED: " + name
+    );
+  },
+
+
+get(name) {
 
     const repository =
-      this.repositories[name];
+        this.repositories[name];
 
 
-    if(!repository){
+    if (!repository) {
+
+        Logger.error(
+            "Repository missing: " + name +
+            " Pending: " +
+            JSON.stringify(this.pending)
+        );
 
 
-      throw new Error(
-        "Repository not registered: "
-        + name
-      );
-
+        throw new Error(
+            "Repository not registered: " + name
+        );
     }
 
 
     return repository;
-
-
-  },
+},
 
 
 

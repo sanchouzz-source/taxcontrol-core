@@ -240,7 +240,18 @@ globalThis.CarrierRepository =
     CarrierRepository;
 
 
-Logger.log(
- "CarrierRepository READY v"+
- CarrierRepository.version
+Logger.debug(
+ "CarrierRepository READY v1.0.0"
 );
+
+
+if (
+    typeof RepositoryFactory !== "undefined"
+) {
+
+    RepositoryFactory.registerLoaded(
+        "CARRIER",
+        CarrierRepository
+    );
+
+}
