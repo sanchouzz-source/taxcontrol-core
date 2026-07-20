@@ -33,6 +33,7 @@ const TestEntityLifecycleMatrix = {
     Logger.log("========== TEST CLIENT ==========");
 
     let client = EntityService.create("CLIENT", {
+      OrganizationID: OrganizationContext.get(),
       Name: "Matrix Client",
       INN: "7777777777",
       Phone: "+79990000001",
@@ -62,6 +63,7 @@ const TestEntityLifecycleMatrix = {
     Logger.log("========== TEST TRIP ==========");
 
     let trip = EntityService.create("TRIP", {
+       OrganizationID: OrganizationContext.get(),
       ClientID: "CLI000029",
       VehicleID: "VEH000001",
       DriverID: "DRV000001",
@@ -93,6 +95,7 @@ const TestEntityLifecycleMatrix = {
     Logger.log("========== TEST KPI ==========");
 
     let kpi = EntityService.create("KPI", {
+      OrganizationID: OrganizationContext.get(),
       Name: "Revenue",
       Value: 100000,
       Period: "2026-07",
