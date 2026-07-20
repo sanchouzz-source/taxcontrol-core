@@ -435,8 +435,8 @@ CLIENT_FINANCE_PROFILE:{
 
         },
 
-KPI:{
 
+KPI:{
 
 entity:"KPI",
 
@@ -448,7 +448,6 @@ idPrefix:"KPI",
 
 
 permissions:{
-
 
 create:"KPI_CREATE",
 
@@ -465,17 +464,18 @@ restore:"KPI_RESTORE"
 
 events:{
 
-
 created:"KPI_CREATED",
 
-updated:"KPI_UPDATED"
+updated:"KPI_UPDATED",
 
+deleted:"KPI_DELETED",
+
+restored:"KPI_RESTORED"
 
 },
 
 
 fields:[
-
 
 {
 name:"KPIID",
@@ -492,15 +492,21 @@ required:true
 
 
 {
-name:"Name",
+name:"MetricType",
 type:"STRING",
 required:true
 },
 
 
 {
-name:"Value",
-type:"NUMBER"
+name:"Entity",
+type:"STRING"
+},
+
+
+{
+name:"EntityID",
+type:"REFERENCE"
 },
 
 
@@ -511,9 +517,26 @@ type:"STRING"
 
 
 {
-name:"Status",
-type:"ENUM",
-default:"ACTIVE"
+name:"Revenue",
+type:"MONEY"
+},
+
+
+{
+name:"Cost",
+type:"MONEY"
+},
+
+
+{
+name:"Profit",
+type:"MONEY"
+},
+
+
+{
+name:"Margin",
+type:"NUMBER"
 },
 
 
@@ -526,14 +549,17 @@ type:"DATETIME"
 {
 name:"UpdatedAt",
 type:"DATETIME"
-}
+},
 
+
+{
+name:"Deleted",
+type:"BOOLEAN"
+}
 
 ]
 
-
-}        
-
+}
 
 
 
