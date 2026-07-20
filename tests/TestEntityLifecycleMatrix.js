@@ -4,89 +4,211 @@ console.log("TestEntityLifecycleMatrix");
 const TestEntityLifecycleMatrix = {
 
 
-version:"1.0.0",
+version:"1.1.0",
 
 
 
-runEntity(entityName, repository, data){
+run(){
 
 
 Logger.log(
-"========== TEST ENTITY "+entityName+" =========="
+"========== ENTITY MATRIX START =========="
 );
 
 
 
-let created;
+this.boot();
+
+
+
+let result={
+CLIENT:null,
+TRIP:null,
+KPI:null
+};
 
 
 
 try{
 
 
-// CREATE
-
-Logger.log(
-"CREATE "+entityName
-);
+result.CLIENT =
+this.testClient();
 
 
-created =
-EntityService.create(
-entityName,
-data
-);
+}
+catch(e){
 
-
-
-if(!created){
-
-throw new Error(
-"CREATE FAILED"
+Logger.error(
+"CLIENT FAILED "
++e.message
 );
 
 }
 
 
+
+try{
+
+
+result.TRIP =
+this.testTrip(
+result.CLIENT
+);
+
+
+}
+catch(e){
+
+Logger.error(
+"TRIP FAILED "
++e.message
+);
+
+}
+
+
+
+try{
+
+
+result.KPI =
+this.testKPI();
+
+
+}
+catch(e){
+
+Logger.error(
+"KPI FAILED "
++e.message
+);
+
+}
+
+
+
+
+
 Logger.log(
-"CREATE OK "+
-JSON.stringify(created)
+JSON.stringify(
+result,
+null,
+2
+)
 );
 
 
 
-
-
-// READ
-
 Logger.log(
-"READ "+entityName
+"========== ENTITY MATRIX COMPLETE =========="
 );
 
 
-const id =
-created.ID ||
-created.ClientID ||
-created.TripID ||
-created.KPIID;
+
+return result;
+
+
+},
+
+
+
+
+boot(){
+
+
+Logger.log(
+"SYSTEM BOOT"
+);
+
+
+
+if(
+typeof Bootstrap!=="undefined"
+){
+
+
+Bootstrap.start();
+
+
+}
+
+
+
+Logger.log(
+"ERP SYSTEM READY"
+);
+
+
+
+},
+
+
+
+
+
+testClient(){
+
+
+Logger.log(
+"========== TEST CLIENT =========="
+);
+
+
+
+const client =
+EntityService.create(
+"CLIENT",
+{
+
+
+Name:
+"Matrix Client",
+
+
+INN:
+"7777777777",
+
+
+Phone:
+"+79990000001",
+
+
+Email:
+"matrix@test.ru",
+
+
+Status:
+"ACTIVE"
+
+
+}
+);
+
+
+
+Logger.log(
+"CREATE OK "
++
+JSON.stringify(client)
+);
+
 
 
 
 const read =
-EntityService.get(
-entityName,
-id
+EntityService.findById(
+"CLIENT",
+client.ClientID
 );
 
 
 
-if(!read){
-
+if(!read)
 throw new Error(
-"READ FAILED"
+"CLIENT READ FAILED"
 );
 
-}
 
 
 Logger.log(
@@ -96,40 +218,16 @@ Logger.log(
 
 
 
-
-// UPDATE
-
-
-Logger.log(
-"UPDATE "+entityName
-);
-
-
-
-const updateData =
-{
-...data,
-UpdatedBy:"TEST"
-};
-
-
-
 const updated =
 EntityService.update(
-entityName,
-id,
-updateData
-);
+"CLIENT",
+client.ClientID,
+{
 
-
-
-if(!updated){
-
-throw new Error(
-"UPDATE FAILED"
-);
+Status:"UPDATED"
 
 }
+);
 
 
 
@@ -140,31 +238,10 @@ Logger.log(
 
 
 
-
-// DELETE
-
-
-Logger.log(
-"DELETE "+entityName
-);
-
-
-
-const deleted =
 EntityService.delete(
-entityName,
-id
+"CLIENT",
+client.ClientID
 );
-
-
-
-if(!deleted){
-
-throw new Error(
-"DELETE FAILED"
-);
-
-}
 
 
 
@@ -176,75 +253,221 @@ Logger.log(
 
 
 
-
-// RESTORE
-
-
-if(EntityService.restore){
-
-
-Logger.log(
-"RESTORE "+entityName
-);
-
-
-
-const restored =
 EntityService.restore(
-entityName,
-id
+"CLIENT",
+client.ClientID
 );
 
 
-
-if(restored){
 
 Logger.log(
 "RESTORE OK"
 );
 
-}
+
+
+return client;
+
+
+},
+
+
+
+
+
+
+
+testTrip(client){
+
+
+Logger.log(
+"========== TEST TRIP =========="
+);
+
+
+
+
+const trip =
+EntityService.create(
+"TRIP",
+{
+
+
+ClientID:
+client.ClientID,
+
+
+Status:
+"NEW",
+
+
+Destination:
+"TEST"
+
 
 }
+);
+
+
 
 
 
 Logger.log(
-"ENTITY TEST SUCCESS "+entityName
+"TRIP CREATE "
++
+trip.TripID
 );
 
 
 
-return true;
 
 
-
-}
-catch(e){
-
-
-Logger.error(
-"ENTITY TEST FAILED "+
-entityName+
-" : "+
-e.message
+const read =
+EntityService.findById(
+"TRIP",
+trip.TripID
 );
 
 
 
-return false;
+if(!read)
+throw new Error(
+"TRIP READ FAILED"
+);
+
+
+
+EntityService.update(
+"TRIP",
+trip.TripID,
+{
+
+Status:"DONE"
+
+}
+);
+
+
+
+Logger.log(
+"TRIP UPDATE OK"
+);
+
+
+
+
+EntityService.delete(
+"TRIP",
+trip.TripID
+);
+
+
+
+Logger.log(
+"TRIP DELETE OK"
+);
+
+
+
+
+
+EntityService.restore(
+"TRIP",
+trip.TripID
+);
+
+
+
+Logger.log(
+"TRIP RESTORE OK"
+);
+
+
+
+
+return trip;
+
+
+},
+
+
+
+
+
+
+
+testKPI(){
+
+
+Logger.log(
+"========== TEST KPI =========="
+);
+
+
+
+
+const kpi =
+EntityService.create(
+"KPI",
+{
+
+
+Name:
+"Test KPI",
+
+
+Value:
+100,
+
+
+Category:
+"TEST"
+
+
+}
+);
+
+
+
+Logger.log(
+"KPI CREATE "
++
+JSON.stringify(kpi)
+);
+
+
+
+
+const read =
+EntityService.findById(
+"KPI",
+kpi.KPIID
+);
+
+
+
+if(!read)
+throw new Error(
+"KPI READ FAILED"
+);
+
+
+
+Logger.log(
+"KPI READ OK"
+);
+
+
+
+
+return kpi;
 
 
 }
 
 
-
-
-}
 
 };
-
-
 
 
 
@@ -253,6 +476,7 @@ globalThis.TestEntityLifecycleMatrix =
 TestEntityLifecycleMatrix;
 
 
+
 Logger.log(
-"TestEntityLifecycleMatrix READY v1.0.0"
+"TestEntityLifecycleMatrix READY v1.1.0"
 );
