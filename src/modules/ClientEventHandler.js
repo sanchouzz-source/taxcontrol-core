@@ -8,11 +8,6 @@ const ClientEventHandler = {
   entity: null,
   subscriptions: [],
 
-  /*
-  ====================================
-  INIT
-  ====================================
-  */
   init() {
     if (this.initialized) {
       Logger.log("ClientEventHandler ALREADY READY");
@@ -39,46 +34,23 @@ const ClientEventHandler = {
 
     this.initialized = true;
     this.ready = true;
-
     Logger.log("ClientEventHandler READY v" + this.version);
     return true;
   },
 
-  /*
-  ====================================
-  SUBSCRIBE WRAPPER
-  ====================================
-  */
   subscribe(event, handler) {
     if (!event) return;
     const bound = handler.bind(this);
     bound.handlerName = "ClientEventHandler_" + handler.name;
     EventBus.subscribe(event, bound);
-    this.subscriptions.push({
-      event,
-      handler: bound.handlerName
-    });
+    this.subscriptions.push({ event, handler: bound.handlerName });
   },
 
-  /*
-  ====================================
-  EXTRACT EVENT DATA
-  ====================================
-  */
   extract(payload) {
     if (!payload) return null;
-    return (
-      payload.after ??
-      payload.data ??
-      payload
-    );
+    return payload.after ?? payload.data ?? payload;
   },
 
-  /*
-  ====================================
-  GET ID
-  ====================================
-  */
   getId(payload) {
     if (!payload) return "";
     if (payload.entityId) return payload.entityId;
@@ -87,11 +59,6 @@ const ClientEventHandler = {
     return entity[this.entity.idField] || "";
   },
 
-  /*
-  ====================================
-  LOG EVENT
-  ====================================
-  */
   log(action, payload) {
     const id = this.getId(payload);
     if (!id) {
@@ -101,18 +68,9 @@ const ClientEventHandler = {
     Logger.log("CLIENT " + action + " EVENT " + id);
   },
 
-  /*
-  ====================================
-  HANDLERS
-  ====================================
-  */
+  // ---------- ИСПРАВЛЕННЫЕ ОБРАБОТЧИКИ (без переиздания) ----------
   onCreated(event) {
     try {
-      const client = this.extract(event);
-      if (!client) {
-        throw new Error("CLIENT CREATED EMPTY PAYLOAD");
-      }
-      EventBus.emit("CLIENT_CREATED", client);
       this.log("CREATED", event);
     } catch (error) {
       Logger.error("ClientEventHandler CREATED ERROR " + error.message);
@@ -143,11 +101,6 @@ const ClientEventHandler = {
     }
   },
 
-  /*
-  ====================================
-  HEALTH
-  ====================================
-  */
   health() {
     return HealthContract.create(
       "ClientEventHandler",
