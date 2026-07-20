@@ -10,7 +10,6 @@ const FinanceEngine = {
     EventBus.subscribe(
       "CLIENT_CREATED",
       event => {
-        // Извлекаем клиента из события
         const client = event.after ?? event.data ?? event;
         this.createProfile(client);
       }
@@ -28,7 +27,7 @@ const FinanceEngine = {
   },
 
   createProfile(client) {
-    // ВРЕМЕННОЕ ЛОГИРОВАНИЕ ВХОДНЫХ ДАННЫХ
+    // Временное логирование для отладки
     Logger.log("FINANCE INPUT: " + JSON.stringify(client));
 
     try {
@@ -37,7 +36,7 @@ const FinanceEngine = {
         {
           OrganizationID: client.OrganizationID,
           ClientID: client.ClientID,
-          // ClientName: client.Name,   // УДАЛЕНО
+          // ClientName: client.Name,   // ✅ УДАЛЕНО (поля нет в схеме)
           Balance: 0,
           CreditLimit: 0,
           Status: "ACTIVE"

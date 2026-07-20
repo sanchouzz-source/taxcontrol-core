@@ -1,530 +1,117 @@
 console.log("AuditEventHandler v3.0");
 
-
-
 const AuditEventHandler = {
+  version: "3.0.0",
+  ready: false,
+  processing: false, // Защита от реентерабельности
 
+  // ---------- ИНИЦИАЛИЗАЦИЯ ----------
+  init() {
+    if (this.ready) {
+      Logger.log("AuditEventHandler ALREADY READY");
+      return;
+    }
 
-version:"3.0.0",
+    if (typeof EventBus === "undefined") {
+      throw new Error("AuditEventHandler: EventBus unavailable");
+    }
 
+    // Подписываемся на ВСЕ события через "*"
+    EventBus.subscribe("*", this.onAnyEvent.bind(this), {
+      name: "AuditEventHandler_Global"
+    });
 
-ready:false,
+    this.ready = true;
+    Logger.log("AuditEventHandler READY v" + this.version);
+  },
 
+  // ---------- ФИЛЬТР СИСТЕМНЫХ СУЩНОСТЕЙ ----------
+  shouldAudit(entityName) {
+    const ignored = ["AUDIT", "VERSION"];
+    return !ignored.includes(entityName);
+  },
 
-subscriptions:new Map(),
+  // ---------- ОБРАБОТЧИК ВСЕХ СОБЫТИЙ ----------
+  onAnyEvent(envelope) {
+    // Защита от повторного входа (циклов)
+    if (this.processing) {
+      Logger.debug("AUDIT SKIP REENTRY");
+      return;
+    }
 
+    this.processing = true;
 
+    try {
+      // Извлекаем имя события и сущность
+      const eventName = envelope.event;
+      const entity = envelope.entity || envelope.Entity;
 
-
-/*
-====================================
-INIT
-====================================
-*/
-
-
-init(){
-
-
-    if(this.ready){
-
-
-        Logger.log(
-            "AuditEventHandler ALREADY READY"
-        );
-
-
+      // Если нет сущности или она системная – пропускаем
+      if (!entity) {
+        Logger.debug("AUDIT SKIP: no entity in event " + eventName);
         return;
+      }
 
-    }
-
-
-
-    this.subscribeAll();
-
-
-
-    this.ready=true;
-
-
-
-    Logger.log(
-        "AuditEventHandler READY v"
-        +
-        this.version
-    );
-
-
-},
-
-
-
-
-
-/*
-====================================
-AUTO SUBSCRIBE ALL ENTITIES
-====================================
-*/
-
-
-subscribeAll(){
-
-
-
-    if(
-        !globalThis.EntityRegistry
-    ){
-
-
-        throw new Error(
-            "AuditEventHandler: EntityRegistry missing"
-        );
-
-
-    }
-
-
-
-    EntityRegistry
-        .list()
-        .forEach(entity=>{
-
-
-            const meta =
-                EntityRegistry.get(entity);
-
-
-
-            if(
-                !meta.events
-            ){
-
-                return;
-
-            }
-
-
-
-
-            Object.values(meta.events)
-            .forEach(eventName=>{
-
-
-                if(
-                    !eventName
-                ){
-
-                    return;
-
-                }
-
-
-
-                this.subscribe(
-                    eventName
-                );
-
-
-            });
-
-
-
-            Logger.log(
-                "AUDIT REGISTERED ENTITY "
-                +
-                entity
-            );
-
-
-
-        });
-
-
-
-},
-
-
-
-
-
-
-
-/*
-====================================
-SAFE SUBSCRIBE
-====================================
-*/
-
-
-subscribe(eventName){
-
-
-    if(
-        this.subscriptions.has(eventName)
-    ){
-
-        Logger.debug(
-            "AUDIT SKIP DUPLICATE "
-            +
-            eventName
-        );
-
-
+      if (!this.shouldAudit(entity)) {
+        Logger.debug("AUDIT SKIP: system entity " + entity);
         return;
+      }
 
+      // Создаём запись аудита
+      this.createAudit(envelope);
+    } catch (error) {
+      Logger.error("AUDIT EVENT ERROR " + error.message);
+    } finally {
+      this.processing = false;
     }
-
-
-
-
-    const handler =
-
-        event=>{
-
-            this.handle(
-                eventName,
-                event
-            );
-
-        };
-
-
-
-
-
-    EventBus.subscribe(
-
-        eventName,
-
-        handler,
-
-        {
-
-            name:
-            "AuditEventHandler_"+eventName
-
-        }
-
-    );
-
-
-
-
-
-    this.subscriptions.set(
-
-        eventName,
-
-        handler
-
-    );
-
-
-
-
-
-    Logger.log(
-
-        "AUDIT SUBSCRIBED "
-        +
-        eventName
-
-    );
-
-
-},
-
-
-
-
-
-
-
-/*
-====================================
-EVENT HANDLER
-====================================
-*/
-
-
-handle(eventName,event){
-
-
-
-    try{
-
-
-        if(!event){
-
-
-            Logger.log(
-                "AUDIT EMPTY EVENT "
-                +
-                eventName
-            );
-
-
-            return;
-
-        }
-
-
-
-
-
-        const entity =
-            event.entity ||
-            event.Entity ||
-            "UNKNOWN";
-
-
-
-
-
-        const entityId =
-            event.entityId ||
-            event.EntityID ||
-            "";
-
-
-
-
-
-
-        const auditData={
-
-
-
-            entity,
-
-
-            entityId,
-
-
-
-            action:
-                this.resolveAction(
-                    eventName
-                ),
-
-
-
-            organizationId:
-                event.metadata?.organizationId
-                ||
-                event.OrganizationID
-                ||
-                "DEFAULT",
-
-
-
-            userId:
-                event.metadata?.userId
-                ||
-                "SYSTEM",
-
-
-
-
-            event:
-                eventName,
-
-
-
-            source:
-                event.metadata?.source
-                ||
-                "ERP",
-
-
-
-
-            before:
-                event.before
-                ||
-                null,
-
-
-
-            after:
-                event.after
-                ||
-                null,
-
-
-
-            version:
-                event.version
-                ||
-                1
-
-
-        };
-
-
-
-
-
-
-        AuditLog.write(
-            auditData
-        );
-
-
-
-
-
+  },
+
+  // ---------- СОЗДАНИЕ ЗАПИСИ АУДИТА ----------
+  createAudit(envelope) {
+    const auditData = {
+      entity: envelope.entity || "UNKNOWN",
+      entityId: envelope.entityId || "",
+      action: this.resolveAction(envelope.event),
+      organizationId: envelope.metadata?.organizationId || envelope.OrganizationID || "DEFAULT",
+      userId: envelope.metadata?.userId || "SYSTEM",
+      event: envelope.event,
+      source: envelope.metadata?.source || "ERP",
+      before: envelope.before || null,
+      after: envelope.after || null,
+      version: envelope.version || 1,
+      timestamp: envelope.timestamp || new Date().toISOString()
+    };
+
+    // Используем AuditLog для записи (если доступен)
+    if (typeof AuditLog !== "undefined" && AuditLog.write) {
+      AuditLog.write(auditData);
+    } else {
+      Logger.warn("AuditLog.write not available, skipping audit for " + envelope.event);
     }
-    catch(error){
+  },
 
-
-        Logger.log(
-
-            "AUDIT EVENT ERROR "
-            +
-            error.message
-
-        );
-
-
-    }
-
-
-
-},
-
-
-
-
-
-
-
-/*
-====================================
-ACTION MAP
-====================================
-*/
-
-
-resolveAction(event){
-
-
-
-    if(
-        event.includes("CREATED")
-    ){
-
-        return "CREATE";
-
-    }
-
-
-
-    if(
-        event.includes("UPDATED")
-    ){
-
-        return "UPDATE";
-
-    }
-
-
-
-
-    if(
-        event.includes("DELETED")
-    ){
-
-        return "DELETE";
-
-    }
-
-
-
-
-    if(
-        event.includes("RESTORED")
-    ){
-
-        return "RESTORE";
-
-    }
-
-
-
+  // ---------- ОПРЕДЕЛЕНИЕ ДЕЙСТВИЯ ПО ИМЕНИ СОБЫТИЯ ----------
+  resolveAction(eventName) {
+    if (eventName.includes("CREATED")) return "CREATE";
+    if (eventName.includes("UPDATED")) return "UPDATE";
+    if (eventName.includes("DELETED")) return "DELETE";
+    if (eventName.includes("RESTORED")) return "RESTORE";
     return "SYSTEM";
+  },
 
-
-},
-
-
-
-
-
-
-
-/*
-====================================
-HEALTH
-====================================
-*/
-
-
-health(){
-
-
-
-return HealthContract.create(
-
-
-    "AuditEventHandler",
-
-
-    this.ready
-        ?
-        "OK"
-        :
-        "NOT_READY",
-
-
-
-    {
-
-
-        version:
-            this.version,
-
-
-
-        subscriptions:
-            this.subscriptions.size
-
-
-
-    }
-
-
-);
-
-
-
-}
-
-
-
+  // ---------- HEALTH ----------
+  health() {
+    return HealthContract.create(
+      "AuditEventHandler",
+      this.ready ? "OK" : "NOT_READY",
+      {
+        version: this.version,
+        subscriptions: 1, // подписка на "*"
+        processing: this.processing
+      }
+    );
+  }
 };
 
-
-
-
-
-
-globalThis.AuditEventHandler =
-AuditEventHandler;
-
-
-
-Logger.log(
-"AuditEventHandler LOADED v3.1.0"
-);
+globalThis.AuditEventHandler = AuditEventHandler;
+Logger.log("AuditEventHandler LOADED v3.1.0");
