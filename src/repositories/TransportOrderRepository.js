@@ -3,127 +3,110 @@ console.log("TransportOrderRepository");
 
 const TransportOrderRepository = {
 
-    version:"1.0.0",
-
-    entity:"TRANSPORT_ORDER",
-
-    table:"TransportOrders",
+version:"1.1.0",
 
 
-    create(data){
+create(data){
 
-        data.TransportOrderID =
-            data.TransportOrderID ||
-            IdService.generate("TO");
+    return BaseRepository.create(
+        "TRANSPORT_ORDER",
+        data
+    );
 
-
-        data.CreatedAt =
-            new Date().toISOString();
-
-
-        data.UpdatedAt =
-            data.CreatedAt;
+},
 
 
-        data.Deleted = false;
+findById(id){
+
+    return BaseRepository.findById(
+        "TRANSPORT_ORDER",
+        id
+    );
+
+},
 
 
-        return BaseRepository.create(
-            this.table,
-            data
-        );
-    },
+findAll(filters = {}){
+
+    return BaseRepository.findAll(
+        "TRANSPORT_ORDER",
+        filters
+    );
+
+},
 
 
-    findById(id){
+update(id,data){
 
-        return BaseRepository.findById(
-            this.table,
-            id,
-            "TransportOrderID"
-        );
-    },
+    return BaseRepository.update(
+        "TRANSPORT_ORDER",
+        id,
+        data
+    );
 
-
-    findAll(){
-
-        return BaseRepository.findAll(
-            this.table
-        );
-    },
+},
 
 
-    update(id,data){
+delete(id){
 
-        data.UpdatedAt =
-            new Date().toISOString();
+    return BaseRepository.delete(
+        "TRANSPORT_ORDER",
+        id
+    );
 
-
-        return BaseRepository.update(
-            this.table,
-            id,
-            data,
-            "TransportOrderID"
-        );
-    },
+},
 
 
-    delete(id,user){
+restore(id){
 
-        return BaseRepository.delete(
-            this.table,
-            id,
-            user,
-            "TransportOrderID"
-        );
-    },
+    return BaseRepository.restore(
+        "TRANSPORT_ORDER",
+        id
+    );
 
-
-    restore(id){
-
-        return BaseRepository.restore(
-            this.table,
-            id,
-            "TransportOrderID"
-        );
-    },
+},
 
 
-    exists(id){
+exists(id){
 
-        const item=this.findById(id);
+    return BaseRepository.exists(
+        "TRANSPORT_ORDER",
+        id
+    );
 
-        return !!item;
-    },
+},
 
 
-    health(){
+health(){
 
-        return HealthContract.create(
-            "TransportOrderRepository",
-            "OK",
-            {
-                version:this.version,
-                table:this.table
-            }
-        );
-    }
+    return HealthContract.create(
+        "TransportOrderRepository",
+        "OK",
+        {
+            version:this.version,
+            entity:"TRANSPORT_ORDER"
+        }
+    );
+
+}
 
 };
+
+
 
 globalThis.TransportOrderRepository =
     TransportOrderRepository;
 
 
 Logger.debug(
- "TransportOrderRepository READY v1.0.0"
+"[DEBUG] TransportOrderRepository READY v"
++ TransportOrderRepository.version
 );
 
 
-// поздняя регистрация
-if (
-    typeof RepositoryFactory !== "undefined"
-) {
+// регистрация после загрузки
+
+if(typeof RepositoryFactory !== "undefined"){
 
     RepositoryFactory.register(
         "TRANSPORT_ORDER",

@@ -261,6 +261,7 @@ EntityMetadata.register({
   repository:"TransportOrderRepository",
 
   table:"TransportOrders",
+  idField:"TransportOrderID",
 
   id:"TransportOrderID",
 
@@ -296,6 +297,7 @@ EntityMetadata.register({
   repository:"CarrierRepository",
 
   table:"Carriers",
+  idField:"CarrierID",
 
   id:"CarrierID",
 
