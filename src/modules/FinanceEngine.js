@@ -9,7 +9,9 @@ const FinanceEngine = {
 
     EventBus.subscribe(
       "CLIENT_CREATED",
-      client => {
+      event => {
+        // Извлекаем клиента из события
+        const client = event.after ?? event.data ?? event;
         this.createProfile(client);
       }
     );
