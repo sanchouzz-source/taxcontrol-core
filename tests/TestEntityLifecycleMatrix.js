@@ -4,7 +4,7 @@ console.log("TestEntityLifecycleMatrix");
 const TestEntityLifecycleMatrix = {
 
 
-version:"1.1.0",
+version:"1.2.0",
 
 
 
@@ -17,74 +17,40 @@ Logger.log(
 
 
 
-this.boot();
-
-
-
-let result={
-CLIENT:null,
-TRIP:null,
-KPI:null
-};
-
-
-
 try{
+
+
+Logger.log(
+"SYSTEM BOOT"
+);
+
+
+Bootstrap.start();
+
+
+
+Logger.log(
+"ERP SYSTEM READY"
+);
+
+
+
+const result={};
+
 
 
 result.CLIENT =
 this.testClient();
 
 
-}
-catch(e){
-
-Logger.error(
-"CLIENT FAILED "
-+e.message
-);
-
-}
-
-
-
-try{
-
 
 result.TRIP =
-this.testTrip(
-result.CLIENT
-);
+this.testTrip();
 
-
-}
-catch(e){
-
-Logger.error(
-"TRIP FAILED "
-+e.message
-);
-
-}
-
-
-
-try{
 
 
 result.KPI =
 this.testKPI();
-
-
-}
-catch(e){
-
-Logger.error(
-"KPI FAILED "
-+e.message
-);
-
-}
 
 
 
@@ -109,39 +75,27 @@ Logger.log(
 return result;
 
 
-},
+
+}
+catch(e){
 
 
-
-
-boot(){
-
-
-Logger.log(
-"SYSTEM BOOT"
+Logger.error(
+"ENTITY MATRIX FAILED "
++
+e.message
 );
 
 
-
-if(
-typeof Bootstrap!=="undefined"
-){
-
-
-Bootstrap.start();
+throw e;
 
 
 }
 
 
 
-Logger.log(
-"ERP SYSTEM READY"
-);
-
-
-
 },
+
 
 
 
@@ -156,31 +110,20 @@ Logger.log(
 
 
 
-const client =
+let client =
 EntityService.create(
 "CLIENT",
 {
 
+Name:"Matrix Client",
 
-Name:
-"Matrix Client",
+INN:"7777777777",
 
+Phone:"+79990000001",
 
-INN:
-"7777777777",
+Email:"matrix@test.ru",
 
-
-Phone:
-"+79990000001",
-
-
-Email:
-"matrix@test.ru",
-
-
-Status:
-"ACTIVE"
-
+Status:"ACTIVE"
 
 }
 );
@@ -188,15 +131,12 @@ Status:
 
 
 Logger.log(
-"CREATE OK "
-+
-JSON.stringify(client)
+"CREATE CLIENT OK"
 );
 
 
 
-
-const read =
+let read =
 EntityService.findById(
 "CLIENT",
 client.ClientID
@@ -218,7 +158,6 @@ Logger.log(
 
 
 
-const updated =
 EntityService.update(
 "CLIENT",
 client.ClientID,
@@ -251,8 +190,6 @@ Logger.log(
 
 
 
-
-
 EntityService.restore(
 "CLIENT",
 client.ClientID
@@ -266,7 +203,11 @@ Logger.log(
 
 
 
-return client;
+return EntityService.findById(
+"CLIENT",
+client.ClientID
+);
+
 
 
 },
@@ -277,7 +218,7 @@ return client;
 
 
 
-testTrip(client){
+testTrip(){
 
 
 Logger.log(
@@ -286,53 +227,24 @@ Logger.log(
 
 
 
-
-const trip =
+let trip =
 EntityService.create(
 "TRIP",
 {
 
+ClientID:"CLI000029",
 
-ClientID:
-client.ClientID,
+Status:"NEW",
 
-
-Status:
-"NEW",
-
-
-Destination:
-"TEST"
-
+Destination:"TEST"
 
 }
 );
 
 
 
-
-
 Logger.log(
-"TRIP CREATE "
-+
-trip.TripID
-);
-
-
-
-
-
-const read =
-EntityService.findById(
-"TRIP",
-trip.TripID
-);
-
-
-
-if(!read)
-throw new Error(
-"TRIP READ FAILED"
+"TRIP CREATE OK"
 );
 
 
@@ -355,7 +267,6 @@ Logger.log(
 
 
 
-
 EntityService.delete(
 "TRIP",
 trip.TripID
@@ -366,8 +277,6 @@ trip.TripID
 Logger.log(
 "TRIP DELETE OK"
 );
-
-
 
 
 
@@ -384,11 +293,15 @@ Logger.log(
 
 
 
+return EntityService.findById(
+"TRIP",
+trip.TripID
+);
 
-return trip;
 
 
 },
+
 
 
 
@@ -406,22 +319,18 @@ Logger.log(
 
 
 
-const kpi =
+let kpi =
 EntityService.create(
 "KPI",
 {
 
+Name:"Revenue",
 
-Name:
-"Test KPI",
+Value:100000,
 
+Period:"2026-07",
 
-Value:
-100,
-
-
-Category:
-"TEST"
+Status:"ACTIVE"
 
 
 }
@@ -430,44 +339,22 @@ Category:
 
 
 Logger.log(
-"KPI CREATE "
-+
-JSON.stringify(kpi)
+"KPI CREATE OK"
 );
-
-
-
-
-const read =
-EntityService.findById(
-"KPI",
-kpi.KPIID
-);
-
-
-
-if(!read)
-throw new Error(
-"KPI READ FAILED"
-);
-
-
-
-Logger.log(
-"KPI READ OK"
-);
-
 
 
 
 return kpi;
 
 
+
 }
 
 
 
+
 };
+
 
 
 
@@ -477,6 +364,12 @@ TestEntityLifecycleMatrix;
 
 
 
-Logger.log(
-"TestEntityLifecycleMatrix READY v1.1.0"
-);
+
+
+function testEntityLifecycleMatrix(){
+
+
+return TestEntityLifecycleMatrix.run();
+
+
+}

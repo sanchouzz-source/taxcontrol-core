@@ -2,31 +2,67 @@ console.log("TestRunner");
 
 
 
-function testEntityLifecycleMatrix(){
+const TestRunner={
+
+
+
+version:"1.0.0",
+
+
+
+runAll(){
 
 
 Logger.log(
-"START ENTITY LIFECYCLE MATRIX TEST"
+"========== TEST RUNNER START =========="
 );
 
 
 
-if(
-typeof TestEntityLifecycleMatrix==="undefined"
-){
+const result={};
 
 
-throw new Error(
-"TestEntityLifecycleMatrix not loaded"
+
+try{
+
+
+result.EntityLifecycle =
+TestEntityLifecycleMatrix.run();
+
+
+
+Logger.log(
+"ENTITY TEST PASS"
 );
+
+
+
+}
+catch(e){
+
+
+Logger.error(
+"ENTITY TEST FAIL "
++
+e.message
+);
+
+
+
+result.error=e.message;
 
 
 }
 
 
 
+Logger.log(
+"========== TEST RUNNER COMPLETE =========="
+);
 
-return TestEntityLifecycleMatrix.run();
+
+
+return result;
 
 
 
@@ -34,11 +70,21 @@ return TestEntityLifecycleMatrix.run();
 
 
 
-globalThis.testEntityLifecycleMatrix =
-testEntityLifecycleMatrix;
+};
 
 
 
-Logger.log(
-"testEntityLifecycleMatrix READY"
-);
+
+globalThis.TestRunner =
+TestRunner;
+
+
+
+
+function runTests(){
+
+
+return TestRunner.runAll();
+
+
+}
