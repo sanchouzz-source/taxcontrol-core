@@ -28,9 +28,15 @@ const BaseRepository = {
     return record;
   },
 
-  // ---------- CREATE ----------
+  // ---------- CREATE (с валидацией) ----------
   create(entity, data = {}) {
     const meta = this.getMeta(entity);
+
+    // Валидация данных перед созданием
+    if (typeof EntityValidator !== "undefined") {
+      EntityValidator.validate(entity, data);
+    }
+
     this.checkPermission(meta, "create");
     this.beforeCreate(entity, data, meta);
 
@@ -42,7 +48,6 @@ const BaseRepository = {
     this.applySystemFields(meta, data);
 
     const result = Database.insert(meta.table, data);
-    // Нормализуем результат перед возвратом
     const normalized = this.normalizeRecord(result, meta);
 
     this.afterCreate(entity, normalized, meta);
@@ -73,7 +78,6 @@ const BaseRepository = {
       }
     }
 
-    // Нормализуем запись перед возвратом
     return this.normalizeRecord(record, meta);
   },
 
@@ -92,7 +96,6 @@ const BaseRepository = {
       });
     }
 
-    // Нормализуем каждую запись
     return records.map(rec => this.normalizeRecord(rec, meta));
   },
 
@@ -113,7 +116,7 @@ const BaseRepository = {
     return rows.length > 0;
   },
 
-  // ---------- UPDATE ----------
+  // ---------- UPDATE (с валидацией) ----------
   update(entity, id, data = {}) {
     const meta = this.getMeta(entity);
     this.checkPermission(meta, "update");
@@ -121,6 +124,11 @@ const BaseRepository = {
     const existing = this.findById(entity, id, { includeDeleted: false });
     if (!existing) {
       throw new Error(entity + " not found");
+    }
+
+    // Валидация данных перед обновлением
+    if (typeof EntityValidator !== "undefined") {
+      EntityValidator.validate(entity, data);
     }
 
     if (typeof Versioning !== "undefined") {
@@ -184,7 +192,6 @@ const BaseRepository = {
       }
 
       const fields = this.getSoftDeleteFields(meta);
-      // В БД пишем строку "true"
       const deleted = {
         [fields.deleted]: "true",
         [fields.deletedAt]: new Date().toISOString(),
@@ -204,8 +211,6 @@ const BaseRepository = {
       result = Database.delete(meta.table, id);
     }
 
-    // После удаления возвращаем результат (может быть объект или true)
-    // Для мягкого удаления – нормализуем запись, если она есть
     let normalizedResult = result;
     if (meta.softDelete !== false && result && typeof result === 'object') {
       normalizedResult = this.normalizeRecord(result, meta);
@@ -242,7 +247,6 @@ const BaseRepository = {
       throw new Error(entity + " is not deleted, restore not needed");
     }
 
-    // В БД пишем строку "false"
     const updateData = {
       [fields.deleted]: "false",
       [fields.deletedAt]: null,
@@ -269,14 +273,12 @@ const BaseRepository = {
       throw new Error(`Restore failed – record not found after update for ${entity} ${id}`);
     }
 
-    // Проверяем, что запись теперь видна без includeDeleted
     const verifyAvailable = this.findById(entity, id, { includeDeleted: false });
     if (!verifyAvailable) {
       throw new Error(`Restore succeeded in DB but record is still not visible without includeDeleted for ${entity} ${id}`);
     }
     Logger.log(`RESTORE VERIFY: ${entity} ${id} is now visible without includeDeleted`);
 
-    // Нормализуем запись перед возвратом
     const normalized = this.normalizeRecord(restored, meta);
 
     this.afterUpdate(entity, existing, normalized, meta);
@@ -375,7 +377,8 @@ const BaseRepository = {
         "EventBus",
         "Versioning",
         "IncludeDeletedFilter",
-        "BooleanNormalization"
+        "BooleanNormalization",
+        "EntityValidator"
       ]
     });
   }
