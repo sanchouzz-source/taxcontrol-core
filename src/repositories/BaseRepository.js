@@ -1,24 +1,17 @@
 console.log("BaseRepository");
 
 const BaseRepository = {
-
   version: "3.0.0",
 
-  // ---------- НОРМАЛИЗАЦИЯ BOOLEAN (учитывает строки) ----------
   normalizeBoolean(value) {
     if (typeof value === "string") {
       const lower = value.toLowerCase();
       if (lower === "true") return true;
       if (lower === "false" || lower === "") return false;
     }
-    return (
-      value === true ||
-      value === 1 ||
-      value === "1"
-    );
+    return value === true || value === 1 || value === "1";
   },
 
-  // ---------- НОРМАЛИЗАЦИЯ ЗАПИСИ (приведение Deleted к булеву) ----------
   normalizeRecord(record, meta) {
     if (!record) return record;
     const fields = this.getSoftDeleteFields(meta);
@@ -28,11 +21,10 @@ const BaseRepository = {
     return record;
   },
 
-  // ---------- CREATE (с валидацией) ----------
+  // ---------- CREATE ----------
   create(entity, data = {}) {
     const meta = this.getMeta(entity);
 
-    // Валидация данных перед созданием
     if (typeof EntityValidator !== "undefined") {
       EntityValidator.validate(entity, data);
     }
@@ -116,7 +108,7 @@ const BaseRepository = {
     return rows.length > 0;
   },
 
-  // ---------- UPDATE (с валидацией) ----------
+  // ---------- UPDATE (исправлена валидация) ----------
   update(entity, id, data = {}) {
     const meta = this.getMeta(entity);
     this.checkPermission(meta, "update");
@@ -126,9 +118,10 @@ const BaseRepository = {
       throw new Error(entity + " not found");
     }
 
-    // Валидация данных перед обновлением
+    // ✅ Валидируем полный объект (existing + data)
+    const fullData = { ...existing, ...data };
     if (typeof EntityValidator !== "undefined") {
-      EntityValidator.validate(entity, data);
+      EntityValidator.validate(entity, fullData);
     }
 
     if (typeof Versioning !== "undefined") {
@@ -280,7 +273,6 @@ const BaseRepository = {
     Logger.log(`RESTORE VERIFY: ${entity} ${id} is now visible without includeDeleted`);
 
     const normalized = this.normalizeRecord(restored, meta);
-
     this.afterUpdate(entity, existing, normalized, meta);
     this.publishEvent(
       entity,
@@ -385,5 +377,4 @@ const BaseRepository = {
 };
 
 globalThis.BaseRepository = BaseRepository;
-
 Logger.log("BaseRepository READY v" + BaseRepository.version);
