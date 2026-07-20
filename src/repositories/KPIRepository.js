@@ -1,87 +1,122 @@
 console.log("KPIRepository");
 
+
 const KPIRepository = {
-  version: "1.0.0",
-  table: "KPIMetrics",
-  entity: "KPI",
-  
-  create(data) {
-    return BaseRepository.create(
-      this.table,
-      data,
-      this.entity,
-      this.permission
-    );
-  },
 
-  findById(id) {
-    return BaseRepository.findById(
-      this.table,
-      id,
-      this.entity,
-      this.permission
-    );
-  },
+    version:"1.1.0",
 
-  get(id) {
-    return this.findById(id);
-  },
+    entity:"KPI",
 
-  exists(id) {
-    return BaseRepository.exists(
-      this.table,
-      id
-    );
-  },
 
-  findAll(filters = {}) {
-    return BaseRepository.findAll(
-      this.table,
-      filters,
-      this.entity,
-      this.permission
-    );
-  },
+    create(data){
 
-  update(id, data) {
-    return BaseRepository.update(
-      this.table,
-      id,
-      data,
-      this.entity,
-      this.permission
-    );
-  },
+        return BaseRepository.create(
+            this.entity,
+            data
+        );
 
-  delete(id) {
-    return BaseRepository.delete(
-      this.table,
-      id,
-      this.entity,
-      this.permission
-    );
-  },
+    },
 
-  restore(id) {
-    return BaseRepository.restore(
-      this.table,
-      id,
-      this.entity,
-      this.permission
-    );
-  },
 
-  health() {
-    return HealthContract.create(
-      "KPIRepository",
-      "OK",
-      {
-        version: this.version,
-        table: this.table,
-        entity: this.entity
-      }
-    );
-  }
+    findById(id){
+
+        return BaseRepository.findById(
+            this.entity,
+            id
+        );
+
+    },
+
+
+    get(id){
+
+        return this.findById(id);
+
+    },
+
+
+    exists(id){
+
+        return BaseRepository.exists(
+            this.entity,
+            id
+        );
+
+    },
+
+
+    findAll(filters={}){
+
+        return BaseRepository.findAll(
+            this.entity,
+            filters
+        );
+
+    },
+
+
+    update(id,data){
+
+        return BaseRepository.update(
+            this.entity,
+            id,
+            data
+        );
+
+    },
+
+
+    delete(id){
+
+        return BaseRepository.delete(
+            this.entity,
+            id
+        );
+
+    },
+
+
+    restore(id){
+
+        return BaseRepository.restore(
+            this.entity,
+            id
+        );
+
+    },
+
+
+    health(){
+
+        return HealthContract.create(
+
+            "KPIRepository",
+
+            "OK",
+
+            {
+
+                version:this.version,
+
+                entity:this.entity
+
+            }
+
+        );
+
+    }
+
+
 };
 
-globalThis.KPIRepository = KPIRepository;
+
+
+globalThis.KPIRepository =
+KPIRepository;
+
+
+Logger.log(
+"KPIRepository READY v"
++
+KPIRepository.version
+);
