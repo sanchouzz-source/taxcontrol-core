@@ -1,55 +1,123 @@
+console.log("TransportOrderRepository");
+
+
 const TransportOrderRepository = {
+
+    version:"1.0.0",
+
+    entity:"TRANSPORT_ORDER",
+
+    table:"TransportOrders",
+
 
     create(data){
 
-        return Database.insert(
-            "TRANSPORT_ORDER",
+        data.TransportOrderID =
+            data.TransportOrderID ||
+            IdService.generate("TO");
+
+
+        data.CreatedAt =
+            new Date().toISOString();
+
+
+        data.UpdatedAt =
+            data.CreatedAt;
+
+
+        data.Deleted = false;
+
+
+        return BaseRepository.create(
+            this.table,
             data
         );
-
     },
 
 
-    get(id){
+    findById(id){
 
-        return Database.findById(
-            "TRANSPORT_ORDER",
-            id
+        return BaseRepository.findById(
+            this.table,
+            id,
+            "TransportOrderID"
         );
+    },
 
+
+    findAll(){
+
+        return BaseRepository.findAll(
+            this.table
+        );
     },
 
 
     update(id,data){
 
-        return Database.update(
-            "TRANSPORT_ORDER",
-            id,
-            data
-        );
+        data.UpdatedAt =
+            new Date().toISOString();
 
+
+        return BaseRepository.update(
+            this.table,
+            id,
+            data,
+            "TransportOrderID"
+        );
     },
 
 
-    delete(id){
+    delete(id,user){
 
-        return Database.softDelete(
-            "TRANSPORT_ORDER",
-            id
+        return BaseRepository.delete(
+            this.table,
+            id,
+            user,
+            "TransportOrderID"
         );
+    },
 
+
+    restore(id){
+
+        return BaseRepository.restore(
+            this.table,
+            id,
+            "TransportOrderID"
+        );
+    },
+
+
+    exists(id){
+
+        const item=this.findById(id);
+
+        return !!item;
+    },
+
+
+    health(){
+
+        return HealthContract.create(
+            "TransportOrderRepository",
+            "OK",
+            {
+                version:this.version,
+                table:this.table
+            }
+        );
     }
 
 };
+
+
+
 globalThis.TransportOrderRepository =
-TransportOrderRepository;
+    TransportOrderRepository;
 
 
-if(globalThis.RepositoryFactory){
-
-    RepositoryFactory.register(
-        "TRANSPORT_ORDER",
-        TransportOrderRepository
-    );
-
-}
+Logger.debug(
+ "TransportOrderRepository READY v"
+ + TransportOrderRepository.version
+);
