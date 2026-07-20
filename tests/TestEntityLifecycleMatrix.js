@@ -1,115 +1,258 @@
-console.log("testEntityLifecycleMatrix");
+console.log("TestEntityLifecycleMatrix");
 
-function testEntityLifecycleMatrix() {
-  console.log("========== ENTITY MATRIX START ==========");
 
-  // ---------- SYSTEM INIT (bootstrap) ----------
-  if (typeof SystemStartupTest !== "undefined") {
-    SystemStartupTest.run();
-  } else {
-    console.log("Manual ERP INIT");
-    if (typeof SchemaManager !== "undefined" && SchemaManager.init) {
-      SchemaManager.init();
-    }
-    if (typeof Database !== "undefined" && Database.init) {
-      Database.init?.();
-    }
-    if (typeof CoreRegistry !== "undefined" && CoreRegistry.load) {
-      CoreRegistry.load?.();
-    }
-    if (typeof EventBus !== "undefined" && EventBus.init) {
-      EventBus.init?.();
-    }
-    if (typeof AuditEventHandler !== "undefined" && AuditEventHandler.init) {
-      AuditEventHandler.init?.();
-    }
-    if (typeof RepositoryFactory !== "undefined" && RepositoryFactory.init) {
-      RepositoryFactory.init?.();
-    }
-    if (typeof EntityService !== "undefined" && EntityService.init) {
-      EntityService.init?.();
-    }
-    if (typeof ModuleLoader !== "undefined" && ModuleLoader.init) {
-      ModuleLoader.init?.();
-    }
-  }
+const TestEntityLifecycleMatrix = {
 
-  console.log("ERP SYSTEM READY");
 
-  // ---------- МАТРИЦА СУЩНОСТЕЙ ----------
-  const ENTITY_MATRIX = [
-    {
-      entity: "CLIENT",
-      repository: "ClientRepository",
-      events: [
-        "CLIENT_CREATED",
-        "CLIENT_UPDATED",
-        "CLIENT_DELETED",
-        "CLIENT_RESTORED"
-      ],
-      factoryData: {
-        Name: "Matrix Test Client",
-        INN: "7777777777",
-        Phone: "+79990000001",
-        Email: "matrix@test.ru",
-        Status: "ACTIVE"
-      }
-    },
-    {
-      entity: "TRIP",
-      repository: "TripRepository",
-      events: [
-        "TRIP_CREATED",
-        "TRIP_UPDATED",
-        "TRIP_DELETED",
-        "TRIP_RESTORED"
-      ],
-      factoryData: {
-        ClientID: "CLI000001",  // должен существовать в БД
-        Status: "NEW",
-        Destination: "Test Destination"
-      }
-    },
-    {
-      entity: "KPI",
-      repository: "KPIRepository",
-      events: [
-        "KPI_CREATED",
-        "KPI_UPDATED"
-        // KPI не поддерживает restore, поэтому событий RESTORED нет
-      ],
-      factoryData: {
-        Name: "Test KPI",
-        Value: 100,
-        Category: "Test"
-      }
-    }
-  ];
+version:"1.0.0",
 
-  // ---------- ЦИКЛ ПО СУЩНОСТЯМ ----------
-  let allPassed = true;
-  for (const entry of ENTITY_MATRIX) {
-    const { entity, repository: repoName, factoryData } = entry;
-    const repository = globalThis[repoName];
-    if (!repository) {
-      Logger.warn(`Repository ${repoName} not found, skipping ${entity}`);
-      continue;
-    }
-    try {
-      TestEntityLifecycleMatrix.run(entity, repository, factoryData);
-    } catch (err) {
-      Logger.error(`❌ Test failed for ${entity}: ${err.message}`);
-      allPassed = false;
-      // Продолжаем с остальными сущностями (можно прервать, если нужно)
-    }
-  }
 
-  if (allPassed) {
-    console.log("========== ENTITY MATRIX SUCCESS ==========");
-  } else {
-    console.log("========== ENTITY MATRIX COMPLETED WITH ERRORS ==========");
-  }
+
+runEntity(entityName, repository, data){
+
+
+Logger.log(
+"========== TEST ENTITY "+entityName+" =========="
+);
+
+
+
+let created;
+
+
+
+try{
+
+
+// CREATE
+
+Logger.log(
+"CREATE "+entityName
+);
+
+
+created =
+EntityService.create(
+entityName,
+data
+);
+
+
+
+if(!created){
+
+throw new Error(
+"CREATE FAILED"
+);
+
 }
 
-globalThis.testEntityLifecycleMatrix = testEntityLifecycleMatrix;
-Logger.log("testEntityLifecycleMatrix READY");
+
+Logger.log(
+"CREATE OK "+
+JSON.stringify(created)
+);
+
+
+
+
+
+// READ
+
+Logger.log(
+"READ "+entityName
+);
+
+
+const id =
+created.ID ||
+created.ClientID ||
+created.TripID ||
+created.KPIID;
+
+
+
+const read =
+EntityService.get(
+entityName,
+id
+);
+
+
+
+if(!read){
+
+throw new Error(
+"READ FAILED"
+);
+
+}
+
+
+Logger.log(
+"READ OK"
+);
+
+
+
+
+
+// UPDATE
+
+
+Logger.log(
+"UPDATE "+entityName
+);
+
+
+
+const updateData =
+{
+...data,
+UpdatedBy:"TEST"
+};
+
+
+
+const updated =
+EntityService.update(
+entityName,
+id,
+updateData
+);
+
+
+
+if(!updated){
+
+throw new Error(
+"UPDATE FAILED"
+);
+
+}
+
+
+
+Logger.log(
+"UPDATE OK"
+);
+
+
+
+
+
+// DELETE
+
+
+Logger.log(
+"DELETE "+entityName
+);
+
+
+
+const deleted =
+EntityService.delete(
+entityName,
+id
+);
+
+
+
+if(!deleted){
+
+throw new Error(
+"DELETE FAILED"
+);
+
+}
+
+
+
+Logger.log(
+"DELETE OK"
+);
+
+
+
+
+
+
+// RESTORE
+
+
+if(EntityService.restore){
+
+
+Logger.log(
+"RESTORE "+entityName
+);
+
+
+
+const restored =
+EntityService.restore(
+entityName,
+id
+);
+
+
+
+if(restored){
+
+Logger.log(
+"RESTORE OK"
+);
+
+}
+
+}
+
+
+
+Logger.log(
+"ENTITY TEST SUCCESS "+entityName
+);
+
+
+
+return true;
+
+
+
+}
+catch(e){
+
+
+Logger.error(
+"ENTITY TEST FAILED "+
+entityName+
+" : "+
+e.message
+);
+
+
+
+return false;
+
+
+}
+
+
+
+
+}
+
+};
+
+
+
+
+
+
+globalThis.TestEntityLifecycleMatrix =
+TestEntityLifecycleMatrix;
+
+
+Logger.log(
+"TestEntityLifecycleMatrix READY v1.0.0"
+);
