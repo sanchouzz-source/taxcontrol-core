@@ -1,5 +1,4 @@
-function installSystem() {
-
+function installSystem(){
 
 Logger.log(
 "ERP INSTALL START"

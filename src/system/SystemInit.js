@@ -1,9 +1,10 @@
 const SystemInit = {
 
-
 version:"0.6.0",
 
 initialized:false,
+
+modules:{},
 
 
 init(){
@@ -22,7 +23,35 @@ return true;
 
 
 Logger.log(
-"ERP SYSTEM INIT START"
+"===== ERP SYSTEM INIT START ====="
+);
+
+
+
+this.initModule(
+"SchemaManager",
+()=>SchemaManager.init()
+);
+
+
+
+this.initModule(
+"Database",
+()=>Database.init()
+);
+
+
+
+this.initModule(
+"Registry",
+()=>Registry.init?.()
+);
+
+
+
+this.initModule(
+"EventBus",
+()=>EventBus.init()
 );
 
 
@@ -30,136 +59,100 @@ Logger.log(
 
 
 /*
-=================================
-CORE INFRASTRUCTURE
-=================================
-*/
-
-
-SchemaManager.init();
-
-Database.init();
-
-Registry.init();
-
-EventBus.init();
-
-
-
-
-
-/*
-=================================
-MODULE LOADER
-=================================
-*/
-
-
-if(
-typeof ModuleLoader !== "undefined"
-){
-
-ModuleLoader.loadCore();
-
-ModuleLoader.initAll();
-
-}
-
-
-
-
-
-/*
-=================================
+==============================
 EVENT HANDLERS
-=================================
+==============================
 */
 
 
-if(
-typeof TransportOrderEventHandler !== "undefined"
-){
-
-TransportOrderEventHandler.init();
-
-}
+this.initModule(
+"ClientEventHandler",
+()=>ClientEventHandler.init?.()
+);
 
 
 
-if(
-typeof TripEventHandler !== "undefined"
-){
+this.initModule(
+"TripEventHandler",
+()=>TripEventHandler.init?.()
+);
 
-TripEventHandler.init();
 
-}
+
+this.initModule(
+"TransportOrderEventHandler",
+()=>TransportOrderEventHandler.init?.()
+);
 
 
 
 
 
 /*
-=================================
-EVENT SUBSCRIPTIONS
-=================================
-*/
-
-
-if(
-typeof LogisticsEventSubscriptions !== "undefined"
-){
-
-LogisticsEventSubscriptions.init();
-
-}
-
-
-
-if(
-typeof EventSubscriptions !== "undefined"
-){
-
-EventSubscriptions.initEventSubscriptions();
-
-}
-
-
-
-
-
-/*
-=================================
+==============================
 BUSINESS ENGINES
-=================================
+==============================
 */
 
 
-if(
-typeof FinanceEngine !== "undefined"
-){
-
-FinanceEngine.init();
-
-}
-
-
-if(
-typeof KPIEngine !== "undefined"
-){
-
-KPIEngine.init();
-
-}
+this.initModule(
+"FinanceEngine",
+()=>FinanceEngine.init?.()
+);
 
 
 
-if(
-typeof DashboardEngine !== "undefined"
-){
+this.initModule(
+"KPIEngine",
+()=>KPIEngine.init?.()
+);
 
-DashboardEngine.init?.();
 
-}
+
+this.initModule(
+"DashboardEngine",
+()=>DashboardEngine.init?.()
+);
+
+
+
+
+
+/*
+==============================
+SUBSCRIPTIONS
+==============================
+*/
+
+
+this.initModule(
+"LogisticsEventSubscriptions",
+()=>LogisticsEventSubscriptions.init?.()
+);
+
+
+
+this.initModule(
+"EventSubscriptions",
+()=>EventSubscriptions.initEventSubscriptions?.()
+);
+
+
+
+
+
+
+/*
+==============================
+MODULES
+==============================
+*/
+
+
+this.initModule(
+"ModuleLoader",
+()=>ModuleLoader.initAll?.()
+);
 
 
 
@@ -170,8 +163,9 @@ this.initialized=true;
 
 
 Logger.log(
-"ERP SYSTEM READY v"+
-this.version
+"===== ERP SYSTEM READY v"+
+this.version+
+" ====="
 );
 
 
@@ -180,6 +174,54 @@ return true;
 
 
 },
+
+
+
+
+
+initModule(name,callback){
+
+
+try{
+
+
+if(
+typeof callback==="function"
+){
+
+callback();
+
+this.modules[name]="READY";
+
+
+Logger.log(
+"MODULE READY "+name
+);
+
+
+}
+
+
+}
+catch(e){
+
+
+this.modules[name]="ERROR";
+
+
+Logger.error(
+"MODULE FAILED "+
+name+
+" "+
+e.message
+);
+
+
+}
+
+
+},
+
 
 
 
@@ -198,42 +240,28 @@ this.initialized
 :
 "WARNING",
 
-
 {
-
 
 version:this.version,
 
-
-initialized:this.initialized,
-
-
+modules:this.modules,
 
 dependencies:{
 
 
 Database:
-typeof Database !== "undefined",
+typeof Database!=="undefined",
 
 
 EventBus:
-typeof EventBus !== "undefined",
+typeof EventBus!=="undefined",
 
 
 Registry:
-typeof Registry !== "undefined",
-
-
-ModuleLoader:
-typeof ModuleLoader !== "undefined",
-
-
-TransportOrderEventHandler:
-typeof TransportOrderEventHandler !== "undefined"
+typeof Registry!=="undefined"
 
 
 }
-
 
 
 }
@@ -243,7 +271,6 @@ typeof TransportOrderEventHandler !== "undefined"
 
 
 }
-
 
 
 };

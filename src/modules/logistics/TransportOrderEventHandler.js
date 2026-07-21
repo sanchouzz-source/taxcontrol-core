@@ -27,21 +27,20 @@ const TransportOrderEventHandler = {
       throw new Error("TransportOrderEventHandler: EventBus unavailable");
     }
 
-    // ВРЕМЕННЫЕ ЛОГИ ДЛЯ ОТЛАДКИ
+    // ВРЕМЕННЫЕ ЛОГИ ДЛЯ ОТЛАДКИ – можно удалить позже
     Logger.log("ENTITY EVENT CREATED=" + this.entity.events.created);
     Logger.log("STATIC EVENT CREATED=" + EntityEvents.TRANSPORT_ORDER.CREATED);
 
-    this.subscribe(this.entity.events.created, this.onCreated);
-    this.subscribe(this.entity.events.updated, this.onUpdated);
-    this.subscribe(this.entity.events.deleted, this.onDeleted);
-    this.subscribe(this.entity.events.restored, this.onRestored);
+    // ----- ИСПРАВЛЕНО: используем явные строки событий -----
+    this.subscribe("TRANSPORT_ORDER_CREATED", this.onCreated);
+    this.subscribe("TRANSPORT_ORDER_UPDATED", this.onUpdated);
+    this.subscribe("TRANSPORT_ORDER_DELETED", this.onDeleted);
+    this.subscribe("TRANSPORT_ORDER_RESTORED", this.onRestored);
 
     this.initialized = true;
     this.ready = true;
 
-    // ----- ДОБАВЛЕНО: лог подписок -----
     Logger.log("TransportOrder subscriptions: " + JSON.stringify(this.subscriptions));
-
     Logger.log("TransportOrderEventHandler READY v" + this.version);
     return true;
   },
@@ -50,10 +49,7 @@ const TransportOrderEventHandler = {
     if (!event) return;
     const bound = handler.bind(this);
     bound.handlerName = "TransportOrderEventHandler_" + handler.name;
-
-    // ----- ИСПРАВЛЕНО: передаём опцию name -----
     EventBus.subscribe(event, bound, { name: bound.handlerName });
-
     this.subscriptions.push({ event: event, handler: bound.handlerName });
   },
 
