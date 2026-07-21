@@ -17,7 +17,7 @@ LogisticsEventSubscriptions.init();
 
 
     TripEventHandler.init();
-
+    TransportOrderEventHandler.init();
     FinanceEngine.init();
     KPIEngine.init();
 

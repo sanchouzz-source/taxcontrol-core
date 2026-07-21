@@ -117,8 +117,8 @@ const EventBus = {
 
     const listeners = [...(this.events[eventName] || [])];
 
-    Logger.debug("EVENT " + eventName);
-    Logger.debug("HANDLERS " + listeners.length);
+    // ----- ЗАМЕНА ДВУХ DEBUG-ЛОГОВ НА ОДИН LOG -----
+    Logger.log("EVENT " + eventName + " HANDLERS " + listeners.length);
 
     let executed = 0;
     listeners.forEach(item => {
