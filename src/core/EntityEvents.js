@@ -1,14 +1,25 @@
 console.log("EntityEvents");
 
 
+
 const EntityEvents = {
 
 
-version:"0.5.0",
 
+version:"0.6.0",
+
+
+
+
+/*
+=====================================
+CLIENT
+=====================================
+*/
 
 
 CLIENT:{
+
 
 CREATED:
 "CLIENT_CREATED",
@@ -22,12 +33,24 @@ DELETED:
 RESTORED:
 "CLIENT_RESTORED"
 
+
 },
 
 
 
 
+
+
+
+/*
+=====================================
+TRIP
+=====================================
+*/
+
+
 TRIP:{
+
 
 CREATED:
 "TRIP_CREATED",
@@ -41,12 +64,24 @@ DELETED:
 RESTORED:
 "TRIP_RESTORED"
 
+
 },
 
 
 
 
+
+
+
+/*
+=====================================
+TRANSPORT ORDER
+=====================================
+*/
+
+
 TRANSPORT_ORDER:{
+
 
 CREATED:
 "TRANSPORT_ORDER_CREATED",
@@ -60,12 +95,24 @@ DELETED:
 RESTORED:
 "TRANSPORT_ORDER_RESTORED"
 
+
 },
 
 
 
 
+
+
+
+/*
+=====================================
+CARRIER
+=====================================
+*/
+
+
 CARRIER:{
+
 
 CREATED:
 "CARRIER_CREATED",
@@ -79,12 +126,24 @@ DELETED:
 RESTORED:
 "CARRIER_RESTORED"
 
+
 },
 
 
 
 
+
+
+
+/*
+=====================================
+DRIVER
+=====================================
+*/
+
+
 DRIVER:{
+
 
 CREATED:
 "DRIVER_CREATED",
@@ -98,12 +157,24 @@ DELETED:
 RESTORED:
 "DRIVER_RESTORED"
 
+
 },
 
 
 
 
+
+
+
+/*
+=====================================
+VEHICLE
+=====================================
+*/
+
+
 VEHICLE:{
+
 
 CREATED:
 "VEHICLE_CREATED",
@@ -117,12 +188,24 @@ DELETED:
 RESTORED:
 "VEHICLE_RESTORED"
 
+
 },
 
 
 
 
+
+
+
+/*
+=====================================
+ROUTE
+=====================================
+*/
+
+
 ROUTE:{
+
 
 CREATED:
 "ROUTE_CREATED",
@@ -136,12 +219,24 @@ DELETED:
 RESTORED:
 "ROUTE_RESTORED"
 
+
 },
 
 
 
 
+
+
+
+/*
+=====================================
+CARGO
+=====================================
+*/
+
+
 CARGO:{
+
 
 CREATED:
 "CARGO_CREATED",
@@ -155,7 +250,112 @@ DELETED:
 RESTORED:
 "CARGO_RESTORED"
 
+
+},
+
+
+
+
+
+
+
+/*
+=====================================
+HELPERS
+=====================================
+*/
+
+
+list(){
+
+
+return [
+
+"CLIENT",
+
+"TRIP",
+
+"TRANSPORT_ORDER",
+
+"CARRIER",
+
+"DRIVER",
+
+"VEHICLE",
+
+"ROUTE",
+
+"CARGO"
+
+
+];
+
+
+},
+
+
+
+
+
+
+all(){
+
+
+const events=[];
+
+
+this.list()
+.forEach(entity=>{
+
+
+    const group=this[entity];
+
+
+    Object.keys(group)
+    .forEach(action=>{
+
+
+        events.push(
+            group[action]
+        );
+
+
+    });
+
+
+});
+
+
+return events;
+
+
+},
+
+
+
+
+
+
+
+lifecycle(entity){
+
+
+if(!this[entity]){
+
+
+    return [];
+
 }
+
+
+return Object.values(
+    this[entity]
+);
+
+
+}
+
+
 
 
 
@@ -163,8 +363,15 @@ RESTORED:
 
 
 
+
+
+
+
 globalThis.EntityEvents =
 EntityEvents;
+
+
+
 
 
 Logger.log(

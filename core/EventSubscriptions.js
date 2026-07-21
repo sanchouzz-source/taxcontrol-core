@@ -3,11 +3,12 @@ console.log("EventSubscriptions");
 
 const EventSubscriptions = {
 
-    version: "0.2.0",
 
-    initialized: false,
+    version:"0.3.0",
 
-    subscriptions: [],
+    initialized:false,
+
+    subscriptions:[],
 
 
 
@@ -17,10 +18,11 @@ const EventSubscriptions = {
     =====================================
     */
 
-    initEventSubscriptions() {
+
+    initEventSubscriptions(){
 
 
-        if (this.initialized) {
+        if(this.initialized){
 
 
             Logger.log(
@@ -30,7 +32,9 @@ const EventSubscriptions = {
 
             return;
 
+
         }
+
 
 
 
@@ -40,49 +44,119 @@ const EventSubscriptions = {
 
 
 
-        /*
-        =============================
-        DASHBOARD EVENTS
-        =============================
-        */
 
 
         this.registerDashboardEvents([
 
 
-            // CLIENT
+            /*
+            CLIENT
+            */
 
-            EntityEvents.CLIENT.CREATED,
+            EntityEvents?.CLIENT?.CREATED,
 
-            EntityEvents.CLIENT.UPDATED,
+            EntityEvents?.CLIENT?.UPDATED,
 
-            EntityEvents.CLIENT.DELETED,
+            EntityEvents?.CLIENT?.DELETED,
 
-            EntityEvents.CLIENT.RESTORED,
-
-
-
-            // TRIP
-
-            EntityEvents.TRIP.CREATED,
-
-            EntityEvents.TRIP.UPDATED,
-
-            EntityEvents.TRIP.DELETED,
-
-            EntityEvents.TRIP.RESTORED,
+            EntityEvents?.CLIENT?.RESTORED,
 
 
 
-            // TRANSPORT ORDER
+            /*
+            TRIP
+            */
 
-            EntityEvents.TRANSPORT_ORDER.CREATED,
+            EntityEvents?.TRIP?.CREATED,
 
-            EntityEvents.TRANSPORT_ORDER.UPDATED,
+            EntityEvents?.TRIP?.UPDATED,
 
-            EntityEvents.TRANSPORT_ORDER.DELETED,
+            EntityEvents?.TRIP?.DELETED,
 
-            EntityEvents.TRANSPORT_ORDER.RESTORED
+            EntityEvents?.TRIP?.RESTORED,
+
+
+
+
+            /*
+            TRANSPORT ORDER
+            */
+
+
+            EntityEvents?.TRANSPORT_ORDER?.CREATED,
+
+            EntityEvents?.TRANSPORT_ORDER?.UPDATED,
+
+            EntityEvents?.TRANSPORT_ORDER?.DELETED,
+
+            EntityEvents?.TRANSPORT_ORDER?.RESTORED,
+
+
+
+
+            /*
+            CARRIER
+            */
+
+
+            EntityEvents?.CARRIER?.CREATED,
+
+            EntityEvents?.CARRIER?.UPDATED,
+
+            EntityEvents?.CARRIER?.DELETED,
+
+
+
+
+
+            /*
+            DRIVER
+            */
+
+
+            EntityEvents?.DRIVER?.CREATED,
+
+            EntityEvents?.DRIVER?.UPDATED,
+
+
+
+
+
+            /*
+            VEHICLE
+            */
+
+
+            EntityEvents?.VEHICLE?.CREATED,
+
+            EntityEvents?.VEHICLE?.UPDATED,
+
+
+
+
+
+            /*
+            ROUTE
+            */
+
+
+            EntityEvents?.ROUTE?.CREATED,
+
+            EntityEvents?.ROUTE?.UPDATED,
+
+
+
+
+
+            /*
+            CARGO
+            */
+
+
+            EntityEvents?.CARGO?.CREATED,
+
+            EntityEvents?.CARGO?.UPDATED
+
 
 
 
@@ -92,12 +166,13 @@ const EventSubscriptions = {
 
 
 
-        this.initialized = true;
+        this.initialized=true;
 
 
 
         Logger.log(
-            "EVENT SUBSCRIPTIONS READY"
+            "EVENT SUBSCRIPTIONS READY v"+
+            this.version
         );
 
 
@@ -117,6 +192,8 @@ const EventSubscriptions = {
 
 
 
+
+
     /*
     =====================================
     REGISTER DASHBOARD EVENTS
@@ -124,13 +201,14 @@ const EventSubscriptions = {
     */
 
 
-    registerDashboardEvents(events) {
+    registerDashboardEvents(events){
 
 
-        events.forEach(event => {
+
+        events.forEach(event=>{
 
 
-            if (!event) {
+            if(!event){
 
 
                 Logger.warn(
@@ -140,22 +218,39 @@ const EventSubscriptions = {
 
                 return;
 
+
             }
+
 
 
 
             this.subscribe(
 
+
                 event,
 
-                this.dashboardRefreshHandler,
+
+                (payload)=>{
+
+
+                    this.dashboardRefreshHandler(payload);
+
+
+                },
+
 
                 {
+
+
                     name:
                     "Dashboard_"+event
+
+
                 }
 
+
             );
+
 
 
         });
@@ -170,18 +265,19 @@ const EventSubscriptions = {
 
 
 
+
     /*
     =====================================
-    GENERIC SUBSCRIBE
+    SUBSCRIBE
     =====================================
     */
 
 
-    subscribe(event, handler, options={}) {
+    subscribe(event,handler,options={}){
 
 
 
-        if (!event || !handler) {
+        if(!event || !handler){
 
 
             Logger.error(
@@ -191,35 +287,43 @@ const EventSubscriptions = {
 
             return false;
 
+
         }
 
 
 
 
 
-        /*
-        защита дублей
-        */
-
 
         const exists =
-            this.subscriptions.some(item =>
-                item.event === event
-            );
+
+        this.subscriptions.some(
+
+            item=>
+
+            item.event===event
+
+        );
 
 
 
-        if (exists) {
+
+
+        if(exists){
+
 
 
             Logger.debug(
+
                 "SUBSCRIPTION EXISTS: "+
                 event
+
             );
 
 
             return false;
 
+
         }
 
 
@@ -227,9 +331,9 @@ const EventSubscriptions = {
 
 
 
-        if (
-            typeof EventBus === "undefined"
-        ) {
+        if(
+            typeof EventBus==="undefined"
+        ){
 
 
             Logger.error(
@@ -239,8 +343,8 @@ const EventSubscriptions = {
 
             return false;
 
-        }
 
+        }
 
 
 
@@ -255,14 +359,18 @@ const EventSubscriptions = {
 
             {
 
+
                 name:
+
                 options.name ||
+
                 "EventSubscriptions_"+event
+
 
             }
 
-        );
 
+        );
 
 
 
@@ -276,18 +384,25 @@ const EventSubscriptions = {
 
 
             handler:
-            options.name || handler.name || "anonymous",
+
+            options.name ||
+
+            handler.name ||
+
+            "anonymous",
+
 
 
             status:"ACTIVE",
 
 
+
             createdAt:
+
             new Date().toISOString()
 
 
         });
-
 
 
 
@@ -315,32 +430,40 @@ const EventSubscriptions = {
 
 
 
+
     /*
     =====================================
-    HANDLERS
+    DASHBOARD HANDLER
     =====================================
     */
 
 
-    dashboardRefreshHandler(event) {
+    dashboardRefreshHandler(payload){
 
 
 
         Logger.debug(
 
             "DASHBOARD EVENT "+
-            event.event+
+
+            payload.event+
+
             " ENTITY "+
-            event.entityId
+
+            payload.entityId
 
         );
+
+
 
 
 
         this.refreshDashboard();
 
 
+
     },
+
 
 
 
@@ -356,40 +479,39 @@ const EventSubscriptions = {
     */
 
 
-    refreshDashboard() {
+    refreshDashboard(){
 
 
-        try {
+        try{
 
 
-            if (
+            if(
 
-                typeof DashboardEngine !== "undefined"
+                typeof DashboardEngine!=="undefined"
 
                 &&
 
-                typeof DashboardEngine.render === "function"
+                typeof DashboardEngine.render==="function"
 
-            ) {
-
+            ){
 
 
                 DashboardEngine.render(true);
 
 
-
             }
+
 
 
         }
 
-        catch(error) {
+        catch(error){
 
 
             Logger.error(
 
-                "DASHBOARD REFRESH ERROR: "
-                +
+                "DASHBOARD REFRESH ERROR: "+
+
                 error.message
 
             );
@@ -415,8 +537,7 @@ const EventSubscriptions = {
     */
 
 
-    health() {
-
+    health(){
 
 
         return HealthContract.create(
@@ -426,10 +547,15 @@ const EventSubscriptions = {
 
 
             this.initialized
+
             ?
+
             "OK"
+
             :
+
             "WARNING",
+
 
 
 
@@ -442,12 +568,17 @@ const EventSubscriptions = {
                 initialized:this.initialized,
 
 
-                subscriptions:this.subscriptions.length,
+                subscriptions:
+                this.subscriptions.length,
+
 
 
                 events:
+
                 this.subscriptions.map(
+
                     s=>s.event
+
                 )
 
 
@@ -471,7 +602,11 @@ globalThis.EventSubscriptions =
 EventSubscriptions;
 
 
+
+
 Logger.log(
+
 "EventSubscriptions READY v"+
 EventSubscriptions.version
+
 );
