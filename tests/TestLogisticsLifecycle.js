@@ -14,6 +14,11 @@ function testLogisticsLifecycle() {
 
   Logger.log("ORDER CREATED " + order.TransportOrderID);
 
+  // ----- ДОБАВЛЕННЫЕ ЛОГИ ДЛЯ ОТЛАДКИ -----
+  Logger.log(JSON.stringify(order));
+  Logger.log(JSON.stringify(Database.query("TransportOrders")));
+  // -----------------------------------------
+
   // READ
   const found = EntityService.findById("TRANSPORT_ORDER", order.TransportOrderID);
   if (!found) throw new Error("READ FAILED");

@@ -58,7 +58,7 @@ const Database = {
     return data;
   },
 
-  // ---------- ИСПРАВЛЕННЫЙ МЕТОД find с логом ----------
+  // ---------- УСИЛЕННЫЙ find (trim + проверка индекса) ----------
   find(sheetName, id) {
     this.init();
 
@@ -67,7 +67,6 @@ const Database = {
     const headers = values[0];
     const idField = SchemaRegistry.getIdField(sheetName);
 
-    // ----- ДОБАВЛЕННЫЙ ЛОГ -----
     Logger.log(
       "FIND TABLE=" + sheetName +
       " IDFIELD=" + idField +
@@ -75,9 +74,13 @@ const Database = {
     );
 
     const index = headers.indexOf(idField);
+    if (index === -1) {
+      throw new Error("ID field '" + idField + "' not found in sheet " + sheetName);
+    }
 
     for (let i = 1; i < values.length; i++) {
-      if (String(values[i][index]) === String(id)) {
+      // ----- УСИЛЕННОЕ СРАВНЕНИЕ С trim() -----
+      if (String(values[i][index]).trim() === String(id).trim()) {
         let obj = {};
         headers.forEach((h, j) => {
           obj[h] = values[i][j];
@@ -124,7 +127,7 @@ const Database = {
     const idIndex = headers.indexOf(idField);
 
     for (let i = 1; i < values.length; i++) {
-      if (String(values[i][idIndex]) === String(id)) {
+      if (String(values[i][idIndex]).trim() === String(id).trim()) {
         let row = values[i];
         headers.forEach((h, j) => {
           if (data[h] !== undefined) {
