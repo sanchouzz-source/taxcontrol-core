@@ -5,6 +5,15 @@ function installSystem() {
     SchemaManager.init();
 
     Registry.init();
+    EventBus.init();
+
+
+LogisticsSubscriptions.init();
+
+
+TripEventHandler.init();
+
+FinanceEngine.init();
 
     SystemInit.init();
 
