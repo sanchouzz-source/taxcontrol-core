@@ -4,21 +4,32 @@ console.log("SchemaRegistry");
 const SchemaRegistry = {
 
 
-version:"2.0.0",
-
-
 getIdField(sheet){
 
 
-const entity =
-    Object.values(globalThis.EntityMetadata || {})
-    .find(meta =>
-        meta.table === sheet
-    );
+    if(typeof EntityMetadata === "undefined"){
+        throw new Error(
+          "EntityMetadata not loaded"
+        );
+    }
 
-    if(entity){
 
-        return entity.id;
+    const entities =
+        EntityMetadata.list();
+
+
+    for(const entity of entities){
+
+
+        const meta =
+            EntityMetadata.get(entity);
+
+
+        if(meta.table === sheet){
+
+            return meta.id;
+
+        }
 
     }
 
@@ -28,36 +39,32 @@ const entity =
 },
 
 
-
-getTable(entity){
-
-
-    const meta =
-        EntityMetadata.get(entity);
+getEntityByTable(sheet){
 
 
-    return meta
-        ?
-        meta.table
-        :
-        null;
+    const entities =
+        EntityMetadata.list();
 
 
-},
+    for(const entity of entities){
+
+        const meta =
+            EntityMetadata.get(entity);
 
 
+        if(meta.table===sheet){
 
-health(){
+            return entity;
 
-return HealthContract.create(
-    "SchemaRegistry",
-    "OK",
-    {
-        version:this.version
+        }
+
     }
-);
+
+
+    return null;
 
 }
+
 
 
 };
@@ -66,3 +73,8 @@ return HealthContract.create(
 
 globalThis.SchemaRegistry =
 SchemaRegistry;
+
+
+Logger.log(
+"SchemaRegistry READY v2.0.0"
+);
