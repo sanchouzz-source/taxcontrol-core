@@ -10,12 +10,11 @@ version:"2.0.0",
 getIdField(sheet){
 
 
-    const entity =
-        Object.values(EntityMetadata)
-        .find(meta =>
-            meta.table === sheet
-        );
-
+const entity =
+    Object.values(globalThis.EntityMetadata || {})
+    .find(meta =>
+        meta.table === sheet
+    );
 
     if(entity){
 
