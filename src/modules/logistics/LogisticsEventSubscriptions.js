@@ -6,48 +6,92 @@ const LogisticsEventSubscriptions = {
 
 init(){
 
-
 Logger.log(
-"LOGISTICS EVENTS INIT"
+"REGISTER LOGISTICS EVENTS"
 );
-
-
-
-if(
-typeof AuditEventHandler !== "undefined"
-){
 
 
 EventBus.subscribe(
 "TRANSPORT_ORDER_CREATED",
-(event)=>
-AuditEventHandler.handle(event)
+this.transportOrderCreated,
+{
+name:"LogisticsOrderCreatedHandler"
+}
 );
 
 
 EventBus.subscribe(
 "TRANSPORT_ORDER_UPDATED",
-(event)=>
-AuditEventHandler.handle(event)
+this.transportOrderUpdated,
+{
+name:"LogisticsOrderUpdatedHandler"
+}
 );
 
 
 EventBus.subscribe(
 "TRANSPORT_ORDER_DELETED",
-(event)=>
-AuditEventHandler.handle(event)
+this.transportOrderDeleted,
+{
+name:"LogisticsOrderDeletedHandler"
+}
+);
+
+
+EventBus.subscribe(
+"TRANSPORT_ORDER_RESTORED",
+this.transportOrderRestored,
+{
+name:"LogisticsOrderRestoredHandler"
+}
 );
 
 
 Logger.log(
-"AUDIT EVENTS CONNECTED"
+"LogisticsEventSubscriptions READY"
 );
 
 
-}
+},
 
 
 
+transportOrderCreated(event){
+
+Logger.log(
+"LOGISTICS EVENT CREATE "+
+event.entityId
+);
+
+},
+
+
+transportOrderUpdated(event){
+
+Logger.log(
+"LOGISTICS EVENT UPDATE "+
+event.entityId
+);
+
+},
+
+
+transportOrderDeleted(event){
+
+Logger.log(
+"LOGISTICS EVENT DELETE "+
+event.entityId
+);
+
+},
+
+
+transportOrderRestored(event){
+
+Logger.log(
+"LOGISTICS EVENT RESTORE "+
+event.entityId
+);
 
 
 }
@@ -56,11 +100,5 @@ Logger.log(
 };
 
 
-
 globalThis.LogisticsEventSubscriptions =
 LogisticsEventSubscriptions;
-
-
-Logger.log(
-"LogisticsEventSubscriptions READY"
-);
