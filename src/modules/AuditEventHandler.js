@@ -1,12 +1,9 @@
-console.log("AuditEventHandler v3.2");
-
+console.log("AuditEventHandler v3.3");
 
 
 const AuditEventHandler = {
 
-
-
-version:"3.2.0",
+version:"3.3.0",
 
 ready:false,
 
@@ -15,519 +12,279 @@ processing:false,
 subscriptions:[],
 
 
-
-
-
-/*
-=====================================
-INIT
-=====================================
-*/
-
-
 init(){
 
+    if(this.ready){
+        Logger.log(
+        "AuditEventHandler ALREADY READY");
+        return;
+    }
 
-if(this.ready){
 
+    if(typeof EventBus==="undefined"){
+        throw new Error(
+        "AuditEventHandler: EventBus unavailable");
+    }
 
-Logger.log(
-"AuditEventHandler ALREADY READY"
-);
 
+    this.registerEntityEvents();
 
-return;
 
+    this.ready=true;
 
-}
 
+    Logger.log(
+    "AuditEventHandler READY v"+
+    this.version+
+    " SUBS="+
+    this.subscriptions.length);
 
+},
 
 
 
-if(typeof EventBus==="undefined"){
+registerEntityEvents(){
 
+    const entities =
+    Object.keys(EntityEvents);
 
-throw new Error(
-"AuditEventHandler: EventBus unavailable"
-);
 
+    entities.forEach(entity=>{
 
-}
 
+        const events =
+        EntityEvents[entity];
 
 
+        Object.keys(events)
+        .forEach(action=>{
 
 
-if(typeof EntityEvents==="undefined"){
+            const eventName =
+            events[action];
 
 
-throw new Error(
-"AuditEventHandler: EntityEvents unavailable"
-);
+            const handler =
+            this.onEvent.bind(this);
 
 
-}
+            EventBus.subscribe(
+                eventName,
+                handler,
+                {
+                    name:
+                    "Audit_"+eventName
+                }
+            );
 
 
+            this.subscriptions.push(
+            eventName);
 
+        });
 
 
-
-
-Logger.log(
-"AUDIT EVENT HANDLER INIT START"
-);
-
-
-
-
-
-
-
-/*
-Подписка на все ERP события
-*/
-
-
-EntityEvents.all()
-.forEach(event=>{
-
-
-const result =
-EventBus.subscribe(
-
-
-event,
-
-
-this.onEvent.bind(this),
-
-
-{
-
-name:
-"Audit_"+event
-
-}
-
-
-);
-
-
-
-
-this.subscriptions.push({
-
-event:event,
-
-status:"ACTIVE"
-
-
-});
-
-
-
-});
-
-
-
-
-
-
-
-
-
-this.ready=true;
-
-
-
-Logger.log(
-"AuditEventHandler READY v"+
-this.version
-);
-
-
-Logger.log(
-JSON.stringify(
-this.subscriptions
-)
-);
-
+    });
 
 },
 
 
 
 
+onEvent(event){
 
 
+    if(this.processing)
+        return;
 
-/*
-=====================================
-EVENT HANDLER
-=====================================
-*/
 
+    this.processing=true;
 
-onEvent(envelope){
 
+    try{
 
 
-if(this.processing){
+        if(!event)
+            return;
 
 
+        const entity =
+        event.entity ||
+        this.resolveEntity(event.event);
 
-Logger.debug(
-"AUDIT SKIP REENTRY"
-);
 
 
+        if(!entity)
+            return;
 
-return;
 
 
-}
+        if(
+        entity==="AUDIT" ||
+        entity==="VERSION")
+            return;
 
 
 
-this.processing=true;
+        this.createAudit(event);
 
 
 
-try{
+    }
+    catch(e){
 
+        Logger.error(
+        "AUDIT ERROR "+
+        e.message);
 
+    }
+    finally{
 
-const entity =
-envelope.entity;
+        this.processing=false;
 
-
-
-if(!entity){
-
-
-
-Logger.debug(
-"AUDIT SKIP NO ENTITY"
-);
-
-
-
-return;
-
-
-}
-
-
-
-
-
-
-if(!this.shouldAudit(entity)){
-
-
-return;
-
-
-}
-
-
-
-
-
-
-this.createAudit(envelope);
-
-
-
-
-
-}
-
-
-
-catch(error){
-
-
-
-Logger.error(
-"AUDIT ERROR "+
-error.message
-);
-
-
-
-}
-
-
-
-finally{
-
-
-this.processing=false;
-
-
-}
-
-
-
+    }
 
 },
 
 
 
 
+resolveEntity(eventName){
 
 
-
-/*
-=====================================
-FILTER
-=====================================
-*/
+    for(
+    const entity in EntityEvents)
+    {
 
 
-shouldAudit(entity){
+        const events =
+        EntityEvents[entity];
 
 
-const ignored=[
-
-"AUDIT",
-
-"VERSION"
-
-];
+        for(
+        const key in events)
+        {
 
 
-return !ignored.includes(entity);
+            if(
+            events[key]===eventName)
+                return entity;
 
+
+        }
+
+    }
+
+
+    return null;
 
 },
 
 
 
 
+createAudit(event){
 
 
-
-/*
-=====================================
-WRITE AUDIT
-=====================================
-*/
-
-
-createAudit(envelope){
-
-
-
-const audit={
+const data={
 
 
 entity:
-envelope.entity,
+event.entity ||
+this.resolveEntity(event.event),
 
 
 entityId:
-envelope.entityId || "",
+event.entityId || "",
 
 
 action:
-this.resolveAction(
-envelope.event
-),
-
+this.resolveAction(event.event),
 
 
 event:
-envelope.event,
-
-
-
-organizationId:
-envelope.metadata?.organizationId
-||
-envelope.OrganizationID
-||
-"DEFAULT",
-
-
-
-userId:
-envelope.metadata?.userId
-||
-"SYSTEM",
-
-
-
-source:
-envelope.metadata?.source
-||
-"ERP",
-
-
-
-before:
-envelope.before || null,
-
-
-
-after:
-envelope.after || null,
-
+event.event,
 
 
 timestamp:
-envelope.timestamp
-||
-new Date().toISOString()
+event.timestamp ||
+new Date().toISOString(),
+
+
+before:
+event.before || null,
+
+
+after:
+event.after || null,
+
+
+source:
+"ERP"
 
 
 };
 
 
 
-
-
-
-
 if(
-typeof AuditLog!=="undefined"
-&&
-typeof AuditLog.write==="function"
+typeof AuditLog!=="undefined" &&
+AuditLog.write)
+{
 
-){
-
-
-
-AuditLog.write(audit);
-
-
-
-Logger.debug(
-"AUDIT SAVED "+
-envelope.event
-);
-
-
+AuditLog.write(data);
 
 }
-
-else{
-
-
-Logger.warn(
-"AuditLog unavailable"
-);
-
-
-}
-
-
-
-
 
 },
 
 
 
 
+resolveAction(name){
 
 
-
-/*
-=====================================
-ACTION
-=====================================
-*/
-
-
-resolveAction(event){
-
-
-if(event.includes("CREATED"))
+if(name.includes("CREATED"))
 return "CREATE";
 
 
-if(event.includes("UPDATED"))
+if(name.includes("UPDATED"))
 return "UPDATE";
 
 
-if(event.includes("DELETED"))
+if(name.includes("DELETED"))
 return "DELETE";
 
 
-if(event.includes("RESTORED"))
+if(name.includes("RESTORED"))
 return "RESTORE";
 
 
 return "SYSTEM";
 
-
 },
 
 
 
 
-
-
-
-/*
-=====================================
-HEALTH
-=====================================
-*/
-
-
 health(){
 
-
 return HealthContract.create(
-
-
 "AuditEventHandler",
-
-
-this.ready
-?
-"OK"
-:
-"WARNING",
-
-
-
+this.ready?"OK":"WARNING",
 {
-
 
 version:this.version,
 
-
 subscriptions:
-this.subscriptions.length,
+this.subscriptions.length
 
-
-processing:
-this.processing
-
+});
 
 }
-
-
-
-);
-
-
-
-}
-
 
 
 };
-
-
-
-
 
 
 
@@ -535,7 +292,5 @@ globalThis.AuditEventHandler =
 AuditEventHandler;
 
 
-
 Logger.log(
-"AuditEventHandler LOADED v3.2.0"
-);
+"AuditEventHandler LOADED v3.3.0");
