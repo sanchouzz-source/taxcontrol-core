@@ -117,7 +117,6 @@ const EventBus = {
 
     const listeners = [...(this.events[eventName] || [])];
 
-    // ----- ЗАМЕНА ДВУХ DEBUG-ЛОГОВ НА ОДИН LOG -----
     Logger.log("EVENT " + eventName + " HANDLERS " + listeners.length);
 
     let executed = 0;
@@ -163,6 +162,11 @@ const EventBus = {
     this.events = {};
     this._processing.clear();
     Logger.debug("EVENT BUS CLEARED");
+  },
+
+  // ----- НОВЫЙ МЕТОД DEBUG -----
+  debug() {
+    Logger.log(JSON.stringify(this.events, null, 2));
   },
 
   health() {
