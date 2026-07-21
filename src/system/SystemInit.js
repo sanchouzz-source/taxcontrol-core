@@ -1,10 +1,11 @@
 const SystemInit = {
 
+
 version:"0.6.0",
 
 initialized:false,
 
-modules:{},
+startedAt:null,
 
 
 init(){
@@ -13,215 +14,159 @@ init(){
 if(this.initialized){
 
 Logger.log(
-"ERP SYSTEM ALREADY INITIALIZED"
+"ERP SYSTEM ALREADY RUNNING"
 );
 
-return true;
+return this.health();
 
 }
 
 
 
 Logger.log(
-"===== ERP SYSTEM INIT START ====="
+"===== ERP SYSTEM START ====="
 );
 
 
 
-this.initModule(
-"SchemaManager",
-()=>SchemaManager.init()
-);
+try{
+
+
+// 1. Database layer
+
+if(typeof SchemaManager !== "undefined"){
+
+SchemaManager.init();
+
+}
 
 
 
-this.initModule(
-"Database",
-()=>Database.init()
-);
+if(typeof Database !== "undefined"){
+
+Database.init();
+
+}
 
 
 
-this.initModule(
-"Registry",
-()=>Registry.init?.()
-);
+// 2. Core registry
+
+if(typeof Registry !== "undefined"){
+
+Registry.init();
+
+}
 
 
 
-this.initModule(
-"EventBus",
-()=>EventBus.init()
-);
+// 3. Event system
+
+if(
+typeof EventBus !== "undefined"
+){
+
+EventBus.init();
+
+}
 
 
 
+// 4. Load modules
 
+if(
+typeof ModuleLoader !== "undefined"
+){
 
-/*
-==============================
-EVENT HANDLERS
-==============================
-*/
+ModuleLoader.loadCore();
 
+ModuleLoader.initAll();
 
-this.initModule(
-"ClientEventHandler",
-()=>ClientEventHandler.init?.()
-);
-
-
-
-this.initModule(
-"TripEventHandler",
-()=>TripEventHandler.init?.()
-);
-
-
-
-this.initModule(
-"TransportOrderEventHandler",
-()=>TransportOrderEventHandler.init?.()
-);
-
-
-
-
-
-/*
-==============================
-BUSINESS ENGINES
-==============================
-*/
-
-
-this.initModule(
-"FinanceEngine",
-()=>FinanceEngine.init?.()
-);
-
-
-
-this.initModule(
-"KPIEngine",
-()=>KPIEngine.init?.()
-);
-
-
-
-this.initModule(
-"DashboardEngine",
-()=>DashboardEngine.init?.()
-);
+}
 
 
 
 
+// 5. Business engines
 
-/*
-==============================
-SUBSCRIPTIONS
-==============================
-*/
-
-
-this.initModule(
-"LogisticsEventSubscriptions",
-()=>LogisticsEventSubscriptions.init?.()
-);
-
-
-
-this.initModule(
-"EventSubscriptions",
-()=>EventSubscriptions.initEventSubscriptions?.()
-);
-
-
-
-
-
-
-/*
-==============================
-MODULES
-==============================
-*/
-
-
-this.initModule(
-"ModuleLoader",
-()=>ModuleLoader.initAll?.()
-);
-
+this.initEngines();
 
 
 
 
 this.initialized=true;
 
+this.startedAt=new Date().toISOString();
+
 
 
 Logger.log(
-"===== ERP SYSTEM READY v"+
-this.version+
-" ====="
+"===== ERP SYSTEM READY v"+this.version+" ====="
 );
 
 
 
-return true;
+}
+catch(error){
+
+
+Logger.log(
+"ERP SYSTEM FAILED: "+
+error.message
+);
+
+
+throw error;
+
+
+}
+
+
+
+return this.health();
 
 
 },
 
 
 
+initEngines(){
 
 
-initModule(name,callback){
+const engines=[
+
+"FinanceEngine",
+"KPIEngine",
+"DashboardEngine"
+
+];
 
 
-try{
+engines.forEach(name=>{
 
 
 if(
-typeof callback==="function"
+typeof globalThis[name] !== "undefined"
+&&
+typeof globalThis[name].init==="function"
 ){
 
-callback();
 
-this.modules[name]="READY";
+globalThis[name].init();
 
 
 Logger.log(
-"MODULE READY "+name
+name+" STARTED"
 );
 
 
 }
 
 
-}
-catch(e){
-
-
-this.modules[name]="ERROR";
-
-
-Logger.error(
-"MODULE FAILED "+
-name+
-" "+
-e.message
-);
-
-
-}
+});
 
 
 },
-
 
 
 
@@ -234,19 +179,30 @@ return HealthContract.create(
 
 "SystemInit",
 
+
 this.initialized
 ?
 "OK"
 :
 "WARNING",
 
+
 {
 
 version:this.version,
 
-modules:this.modules,
+
+initialized:this.initialized,
+
+
+startedAt:this.startedAt,
+
 
 dependencies:{
+
+
+SchemaManager:
+typeof SchemaManager!=="undefined",
 
 
 Database:
@@ -257,8 +213,16 @@ EventBus:
 typeof EventBus!=="undefined",
 
 
-Registry:
-typeof Registry!=="undefined"
+ModuleLoader:
+typeof ModuleLoader!=="undefined",
+
+
+EntityRegistry:
+typeof EntityRegistry!=="undefined",
+
+
+RepositoryFactory:
+typeof RepositoryFactory!=="undefined"
 
 
 }
@@ -271,6 +235,7 @@ typeof Registry!=="undefined"
 
 
 }
+
 
 
 };
