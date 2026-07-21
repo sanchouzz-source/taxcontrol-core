@@ -58,14 +58,33 @@ const Database = {
     return data;
   },
 
-  // ---------- УСИЛЕННЫЙ find (trim + проверка индекса) ----------
+  // ---------- find (с fallback через EntityMetadata) ----------
   find(sheetName, id) {
     this.init();
 
     const sheet = this.getSheetOrThrow(sheetName);
     const values = sheet.getDataRange().getValues();
     const headers = values[0];
-    const idField = SchemaRegistry.getIdField(sheetName);
+
+    // 1. Пробуем получить idField через SchemaRegistry
+    let idField = SchemaRegistry.getIdField(sheetName);
+
+    // 2. Если не найдено – ищем через EntityMetadata
+    if (!idField) {
+      Logger.debug("SchemaRegistry.getIdField returned null for " + sheetName + ", trying EntityMetadata");
+      if (typeof EntityMetadata !== "undefined") {
+        const meta = Object.values(EntityMetadata).find(e => e.table === sheetName);
+        if (meta && meta.id) {
+          idField = meta.id;
+          Logger.debug("Found idField via EntityMetadata: " + idField);
+        }
+      }
+    }
+
+    // 3. Если всё равно нет – ошибка
+    if (!idField) {
+      throw new Error("ID FIELD NOT FOUND FOR " + sheetName);
+    }
 
     Logger.log(
       "FIND TABLE=" + sheetName +
@@ -79,7 +98,6 @@ const Database = {
     }
 
     for (let i = 1; i < values.length; i++) {
-      // ----- УСИЛЕННОЕ СРАВНЕНИЕ С trim() -----
       if (String(values[i][index]).trim() === String(id).trim()) {
         let obj = {};
         headers.forEach((h, j) => {

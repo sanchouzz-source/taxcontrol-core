@@ -4,39 +4,61 @@ console.log("SchemaRegistry");
 const SchemaRegistry = {
 
 
+version:"2.0.0",
+
+
 getIdField(sheet){
 
 
-const map={
+    const entity =
+        Object.values(EntityMetadata)
+        .find(meta =>
+            meta.table === sheet
+        );
 
 
-EventLog:"EventID",
+    if(entity){
 
-AuditLog:"AuditID",
+        return entity.id;
 
-Organizations:"OrganizationID",
-
-Clients:"ClientID",
-
-Vehicles:"VehicleID",
-
-Trips:"TripID",
-
-Payments:"PaymentID",
-
-FinancialTransactions:"TransactionID",
-
-KPIMetrics:"KPIID"
+    }
 
 
-};
+    return null;
+
+},
 
 
-return map[sheet];
 
+getTable(entity){
+
+
+    const meta =
+        EntityMetadata.get(entity);
+
+
+    return meta
+        ?
+        meta.table
+        :
+        null;
+
+
+},
+
+
+
+health(){
+
+return HealthContract.create(
+    "SchemaRegistry",
+    "OK",
+    {
+        version:this.version
+    }
+);
 
 }
-
 
 
 };
