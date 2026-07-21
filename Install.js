@@ -1,32 +1,17 @@
 function installSystem() {
 
-    Logger.log("ERP INSTALL START");
 
-    SchemaManager.init();
+Logger.log(
+"ERP INSTALL START"
+);
 
-    Registry.init();
-    EventBus.init();
 
-if(
-typeof LogisticsEventSubscriptions !== "undefined"
-){
+SystemInit.init();
 
-LogisticsEventSubscriptions.init();
+
+Logger.log(
+"ERP INSTALL COMPLETE"
+);
+
 
 }
-
-
-    TripEventHandler.init();
-    TransportOrderEventHandler.init();
-    FinanceEngine.init();
-    KPIEngine.init();
-
-    SystemInit.init();
-
-    Logger.log("ERP INSTALL COMPLETE");
-
-}
-
-
-
-
