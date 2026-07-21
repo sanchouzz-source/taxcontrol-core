@@ -7,16 +7,26 @@ function installSystem() {
     Registry.init();
     EventBus.init();
 
+if(
+typeof LogisticsEventSubscriptions !== "undefined"
+){
 
-LogisticsSubscriptions.init();
+LogisticsEventSubscriptions.init();
+
+}
 
 
-TripEventHandler.init();
+    TripEventHandler.init();
 
-FinanceEngine.init();
+    FinanceEngine.init();
+    KPIEngine.init();
 
     SystemInit.init();
 
     Logger.log("ERP INSTALL COMPLETE");
 
 }
+
+
+
+
