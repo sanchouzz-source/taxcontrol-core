@@ -1,161 +1,91 @@
-console.log("SystemInit v0.8.0");
+console.log("SystemInit v0.9.0");
 
 
 const SystemInit = {
 
-  version: "0.8.0",
-  initialized:false,
-  startedAt:null,
-  modulesStarted:[],
+  version: "0.9.0",
+
+  initialized: false,
+  startedAt: null,
 
 
-  init(){
+  init() {
 
-    if(this.initialized){
-
-      Logger.log(
-        "ERP SYSTEM ALREADY RUNNING"
-      );
-
+    if (this.initialized) {
+      Logger.log("ERP SYSTEM ALREADY RUNNING");
       return this.health();
     }
 
 
-    Logger.log(
-      "===== ERP SYSTEM START v" +
-      this.version +
-      " ====="
-    );
+    Logger.log("===== ERP SYSTEM START =====");
 
 
-    try{
+    try {
 
 
-      // ============================
-      // 1 DATABASE
-      // ============================
+      // ==========================
+      // 1. CORE DATABASE
+      // ==========================
 
-      this.start(
-        "SchemaManager"
-      );
-
-
-      this.start(
-        "Database"
-      );
+      this.initCore();
 
 
 
-      // ============================
-      // 2 CORE
-      // ============================
+      // ==========================
+      // 2. EVENT SYSTEM
+      // ==========================
 
-      this.start(
-        "Registry"
-      );
-
-
-      this.start(
-        "EntityRegistry"
-      );
-
-
-      // ============================
-      // 3 EVENTS
-      // ============================
-
-      this.start(
-        "EventBus"
-      );
-
-this.start(
- "BusinessEventProcessor"
-);
-
-      // ============================
-      // 4 MODULES
-      // ============================
-
-      if(
-        typeof ModuleLoader !== "undefined"
-      ){
-
-        ModuleLoader.loadCore();
-
-        ModuleLoader.initAll();
-
-        this.modulesStarted.push(
-          "ModuleLoader"
-        );
-
-      }
+      this.initEvents();
 
 
 
-      // ============================
-      // 5 EVENT HANDLERS
-      // ============================
+      // ==========================
+      // 3. MODULES
+      // ==========================
 
-
-      const handlers=[
-
-        "AuditEventHandler",
-        "ClientEventHandler",
-        "TransportOrderEventHandler",
-        "TripEventHandler",
-        "LogisticsEventSubscriptions"
-
-      ];
-
-
-      handlers.forEach(
-        h=>this.start(h)
-      );
+      this.initModules();
 
 
 
-      // ============================
-      // 6 BUSINESS ENGINES
-      // ============================
+      // ==========================
+      // 4. BUSINESS PIPELINE
+      // ==========================
 
-
-      [
-        "FinanceEngine",
-        "KPIEngine",
-        "DashboardEngine"
-
-      ].forEach(
-        e=>this.start(e)
-      );
+      this.initPipeline();
 
 
 
-      this.initialized=true;
+      // ==========================
+      // 5. SERVICES
+      // ==========================
 
-      this.startedAt=
-        new Date().toISOString();
+      this.initServices();
+
+
+
+      this.initialized = true;
+      this.startedAt = new Date().toISOString();
 
 
 
       Logger.log(
-        "===== ERP SYSTEM READY v"+
-        this.version+
-        " ====="
+        "===== ERP SYSTEM READY v" 
+        + this.version 
+        + " ====="
       );
 
 
     }
-
     catch(e){
 
       Logger.log(
-        "ERP SYSTEM FAILED "+
-        e.message
+        "ERP SYSTEM FAILED "
+        + e.message
       );
 
       throw e;
-    }
 
+    }
 
 
     return this.health();
@@ -165,44 +95,161 @@ this.start(
 
 
 
-  start(name){
+  initCore(){
+
+
+    const core=[
+      "SchemaManager",
+      "Database",
+      "Registry"
+    ];
+
+
+    core.forEach(name=>{
+
+      if(
+        typeof globalThis[name] !== "undefined" &&
+        typeof globalThis[name].init==="function"
+      ){
+
+        globalThis[name].init();
+
+        Logger.log(
+          name+" STARTED"
+        );
+
+      }
+
+    });
+
+
+  },
+
+
+
+
+  initEvents(){
+
 
     if(
-      typeof globalThis[name]==="undefined"
+      typeof EventBus!=="undefined"
     ){
 
+      EventBus.init();
+
       Logger.log(
-        "SKIP "+name+
-        " NOT FOUND"
+        "EventBus STARTED"
       );
 
-      return false;
     }
 
 
-    const obj=
-      globalThis[name];
+  },
+
+
+
+
+  initModules(){
 
 
     if(
-      typeof obj.init==="function"
+      typeof ModuleLoader!=="undefined"
     ){
 
-      obj.init();
+      ModuleLoader.loadCore();
 
-      this.modulesStarted.push(name);
+      ModuleLoader.initAll();
 
 
       Logger.log(
-        name+
-        " STARTED"
+        "MODULES READY"
       );
 
-      return true;
     }
 
 
-    return false;
+  },
+
+
+
+
+  initPipeline(){
+
+
+    const pipeline=[
+
+      "BusinessEventProcessor",
+
+      "TransportOrderEventHandler",
+
+      "TripEventHandler"
+
+    ];
+
+
+
+    pipeline.forEach(name=>{
+
+
+      if(
+        typeof globalThis[name]!=="undefined" &&
+        typeof globalThis[name].init==="function"
+      ){
+
+        globalThis[name].init();
+
+
+        Logger.log(
+          name+" PIPELINE READY"
+        );
+
+      }
+
+
+    });
+
+
+  },
+
+
+
+
+
+  initServices(){
+
+
+    const services=[
+
+
+      "FinanceEngine",
+      "KPIEngine",
+      "DashboardEngine"
+
+
+    ];
+
+
+
+    services.forEach(name=>{
+
+
+      if(
+        typeof globalThis[name]!=="undefined" &&
+        typeof globalThis[name].init==="function"
+      ){
+
+        globalThis[name].init();
+
+
+        Logger.log(
+          name+" READY"
+        );
+
+      }
+
+
+    });
+
 
   },
 
@@ -226,42 +273,61 @@ this.start(
 
       {
 
+
         version:this.version,
+
+
+        initialized:this.initialized,
+
 
         startedAt:this.startedAt,
 
 
-        modules:
-          this.modulesStarted,
+        pipeline:{
+
+
+          BusinessEventProcessor:
+          typeof BusinessEventProcessor!=="undefined",
+
+
+          TransportOrderEventHandler:
+          typeof TransportOrderEventHandler!=="undefined",
+
+
+          TripEventHandler:
+          typeof TripEventHandler!=="undefined"
+
+
+        },
 
 
         dependencies:{
-
-
-          SchemaManager:
-          typeof SchemaManager!=="undefined",
 
 
           Database:
           typeof Database!=="undefined",
 
 
-          EntityRegistry:
-          typeof EntityRegistry!=="undefined",
-
-
           EventBus:
           typeof EventBus!=="undefined",
+
+
+          EntityRegistry:
+          typeof EntityRegistry!=="undefined",
 
 
           RepositoryFactory:
           typeof RepositoryFactory!=="undefined"
 
+
         }
+
 
       }
 
+
     );
+
 
   }
 
@@ -274,6 +340,7 @@ globalThis.SystemInit=SystemInit;
 
 
 Logger.log(
-"SystemInit READY v"+
+"SystemInit READY v"
++
 SystemInit.version
 );
