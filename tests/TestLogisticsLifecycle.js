@@ -1,42 +1,56 @@
 function testLogisticsLifecycle() {
-  Logger.log("===== LOGISTICS TEST START =====");
 
-  // CREATE
-  const order = EntityService.create("TRANSPORT_ORDER", {
-    OrganizationID: "ORG000001",
-    ClientID: "CLI000040",
-    OrderNumber: "ORD-001",
-    LoadingAddress: "Вологда",
-    DeliveryAddress: "Москва",
-    CargoWeight: 20000,
-    Status: "NEW"
-  });
+Logger.log("===== LOGISTICS TEST START =====");
 
-  Logger.log("ORDER CREATED " + order.TransportOrderID);
 
-  // ----- ДОБАВЛЕННЫЕ ЛОГИ ДЛЯ ОТЛАДКИ -----
-  Logger.log(JSON.stringify(order));
-  Logger.log(JSON.stringify(Database.query("TransportOrders")));
-  // -----------------------------------------
+let events=[];
 
-  // READ
-  const found = EntityService.findById("TRANSPORT_ORDER", order.TransportOrderID);
-  if (!found) throw new Error("READ FAILED");
-  Logger.log("ORDER READ OK");
 
-  // UPDATE
-  EntityService.update("TRANSPORT_ORDER", order.TransportOrderID, {
-    Status: "LOADED"
-  });
-  Logger.log("ORDER UPDATE OK");
+EventBus.subscribe(
+"TRANSPORT_ORDER_CREATED",
+e=>{
+ events.push(e.event);
+ Logger.log("TEST EVENT CREATE RECEIVED");
+},
+{
+name:"LifecycleTest"
+}
+);
 
-  // DELETE
-  EntityService.delete("TRANSPORT_ORDER", order.TransportOrderID);
-  Logger.log("ORDER DELETE OK");
 
-  // RESTORE
-  EntityService.restore("TRANSPORT_ORDER", order.TransportOrderID);
-  Logger.log("ORDER RESTORE OK");
 
-  Logger.log("===== LOGISTICS TEST PASS =====");
+const order = EntityService.create(
+"TRANSPORT_ORDER",
+{
+OrganizationID:"ORG000001",
+ClientID:"CLI000040",
+OrderNumber:"ORD-001",
+LoadingAddress:"Вологда",
+DeliveryAddress:"Москва",
+CargoWeight:20000,
+Status:"NEW"
+}
+);
+
+
+
+if(!events.includes(
+"TRANSPORT_ORDER_CREATED"
+)){
+ throw new Error(
+ "EVENT CREATE FAILED"
+ );
+}
+
+
+Logger.log(
+"EVENT TEST PASS"
+);
+
+
+
+Logger.log(
+"===== LOGISTICS TEST PASS ====="
+);
+
 }

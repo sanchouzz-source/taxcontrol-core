@@ -1,140 +1,413 @@
-console.log("TransportOrderEventHandler v1.0");
+console.log("TransportOrderEventHandler v1.1");
+
 
 const TransportOrderEventHandler = {
-  version: "1.0.0",
+
+  version: "1.1.0",
+
   initialized: false,
   ready: false,
+
   entityName: "TRANSPORT_ORDER",
+
   entity: null,
+
   subscriptions: [],
 
+
   init() {
+
+
     if (this.initialized) {
-      Logger.log("TransportOrderEventHandler ALREADY READY");
+
+      Logger.log(
+        "TransportOrderEventHandler ALREADY INITIALIZED"
+      );
+
       return true;
     }
 
+
     if (typeof EntityRegistry === "undefined") {
-      throw new Error("TransportOrderEventHandler: EntityRegistry unavailable");
+
+      throw new Error(
+        "TransportOrderEventHandler EntityRegistry unavailable"
+      );
+
     }
 
-    this.entity = EntityRegistry.get(this.entityName);
+
+    this.entity =
+      EntityRegistry.get(this.entityName);
+
+
     if (!this.entity) {
-      throw new Error("TransportOrderEventHandler ENTITY NOT FOUND " + this.entityName);
+
+      throw new Error(
+        "ENTITY NOT FOUND " + this.entityName
+      );
+
     }
+
+
 
     if (typeof EventBus === "undefined") {
-      throw new Error("TransportOrderEventHandler: EventBus unavailable");
+
+      throw new Error(
+        "EventBus unavailable"
+      );
+
     }
 
-    // ВРЕМЕННЫЕ ЛОГИ ДЛЯ ОТЛАДКИ – можно удалить позже
-    Logger.log("ENTITY EVENT CREATED=" + this.entity.events.created);
-    Logger.log("STATIC EVENT CREATED=" + EntityEvents.TRANSPORT_ORDER.CREATED);
 
-    // ----- ИСПРАВЛЕНО: используем явные строки событий -----
-    this.subscribe("TRANSPORT_ORDER_CREATED", this.onCreated);
-    this.subscribe("TRANSPORT_ORDER_UPDATED", this.onUpdated);
-    this.subscribe("TRANSPORT_ORDER_DELETED", this.onDeleted);
-    this.subscribe("TRANSPORT_ORDER_RESTORED", this.onRestored);
+
+    this.registerEvents();
+
+
 
     this.initialized = true;
     this.ready = true;
 
-    Logger.log("TransportOrder subscriptions: " + JSON.stringify(this.subscriptions));
-    Logger.log("TransportOrderEventHandler READY v" + this.version);
+
+
+    Logger.log(
+      "TransportOrderEventHandler READY v" +
+      this.version
+    );
+
+
+    Logger.log(
+      "SUBSCRIPTIONS " +
+      JSON.stringify(this.subscriptions)
+    );
+
+
     return true;
+
   },
 
-  subscribe(event, handler) {
-    if (!event) return;
-    const bound = handler.bind(this);
-    bound.handlerName = "TransportOrderEventHandler_" + handler.name;
-    EventBus.subscribe(event, bound, { name: bound.handlerName });
-    this.subscriptions.push({ event: event, handler: bound.handlerName });
+
+
+  registerEvents(){
+
+
+    this.subscribe(
+      EntityEvents.TRANSPORT_ORDER.CREATED,
+      this.onCreated
+    );
+
+
+    this.subscribe(
+      EntityEvents.TRANSPORT_ORDER.UPDATED,
+      this.onUpdated
+    );
+
+
+    this.subscribe(
+      EntityEvents.TRANSPORT_ORDER.DELETED,
+      this.onDeleted
+    );
+
+
+    this.subscribe(
+      EntityEvents.TRANSPORT_ORDER.RESTORED,
+      this.onRestored
+    );
+
+
   },
 
-  extract(payload) {
-    if (!payload) return null;
-    return payload.after ?? payload.data ?? payload;
-  },
 
-  getId(payload) {
-    const entity = this.extract(payload);
-    if (!entity) return "";
-    return entity.TransportOrderID || "";
-  },
 
-  onCreated(event) {
-    try {
-      const order = this.extract(event);
-      Logger.log("TRANSPORT ORDER CREATED " + this.getId(event));
-      this.notifyBusiness("CREATED", order);
-    } catch (e) {
-      Logger.error("TransportOrder CREATED ERROR " + e.message);
-    }
-  },
+  subscribe(event, handler){
 
-  onUpdated(event) {
-    try {
-      Logger.log("TRANSPORT ORDER UPDATED " + this.getId(event));
-      this.notifyBusiness("UPDATED", this.extract(event));
-    } catch (e) {
-      Logger.error("TransportOrder UPDATED ERROR " + e.message);
-    }
-  },
 
-  onDeleted(event) {
-    try {
-      Logger.log("TRANSPORT ORDER DELETED " + this.getId(event));
-      this.notifyBusiness("DELETED", this.extract(event));
-    } catch (e) {
-      Logger.error("TransportOrder DELETED ERROR " + e.message);
-    }
-  },
+    if (!event || !handler)
+      return;
 
-  onRestored(event) {
-    try {
-      Logger.log("TRANSPORT ORDER RESTORED " + this.getId(event));
-      this.notifyBusiness("RESTORED", this.extract(event));
-    } catch (e) {
-      Logger.error("TransportOrder RESTORED ERROR " + e.message);
-    }
-  },
 
-  notifyBusiness(action, data) {
-    const event = {
-      entity: this.entityName,
-      action: action,
-      data: data,
-      timestamp: new Date()
-    };
 
-    if (typeof AuditEventHandler !== "undefined") {
-      AuditEventHandler.handle?.(event);
-    }
-    if (typeof KPIEngine !== "undefined") {
-      KPIEngine.process?.(event);
-    }
-    if (typeof FinanceEngine !== "undefined") {
-      FinanceEngine.process?.(event);
-    }
-    if (typeof DashboardEngine !== "undefined") {
-      DashboardEngine.process?.(event);
-    }
-  },
+    const name =
+      "TransportOrderEventHandler_" +
+      handler.name;
 
-  health() {
-    return HealthContract.create(
-      "TransportOrderEventHandler",
-      this.ready ? "OK" : "WARNING",
+
+
+    const bound =
+      handler.bind(this);
+
+
+
+    EventBus.subscribe(
+      event,
+      bound,
       {
-        version: this.version,
-        entity: this.entityName,
-        subscriptions: this.subscriptions.length
+        name:name
       }
     );
+
+
+
+    this.subscriptions.push({
+
+      event:event,
+
+      handler:name
+
+    });
+
+
+  },
+
+
+
+  extract(event){
+
+
+    if (!event)
+      return null;
+
+
+    return (
+      event.after ??
+      event.data ??
+      event
+    );
+
+  },
+
+
+
+  getId(event){
+
+
+    return (
+
+      event.entityId ||
+
+      this.extract(event)
+        ?.TransportOrderID ||
+
+      ""
+
+    );
+
+  },
+
+
+
+  onCreated(event){
+
+
+    this.process(
+      "CREATED",
+      event
+    );
+
+
+  },
+
+
+
+  onUpdated(event){
+
+
+    this.process(
+      "UPDATED",
+      event
+    );
+
+
+  },
+
+
+
+  onDeleted(event){
+
+
+    this.process(
+      "DELETED",
+      event
+    );
+
+
+  },
+
+
+
+  onRestored(event){
+
+
+    this.process(
+      "RESTORED",
+      event
+    );
+
+
+  },
+
+
+
+  process(action,event){
+
+
+    try {
+
+
+      const data =
+        this.extract(event);
+
+
+
+      Logger.log(
+
+        "TRANSPORT_ORDER " +
+        action +
+        " " +
+        this.getId(event)
+
+      );
+
+
+
+      const businessEvent = {
+
+
+        entity:
+          this.entityName,
+
+
+        action,
+
+
+        entityId:
+          this.getId(event),
+
+
+        data,
+
+
+        source:
+          "TransportOrderEventHandler",
+
+
+        timestamp:
+          new Date()
+
+
+
+      };
+
+
+
+      this.notifyBusiness(
+        businessEvent
+      );
+
+
+    }
+
+    catch(e){
+
+
+      Logger.error(
+
+        "TransportOrder EVENT ERROR " +
+        e.message
+
+      );
+
+
+    }
+
+
+  },
+
+
+
+  notifyBusiness(event){
+
+
+
+    if(typeof AuditEventHandler!=="undefined"){
+
+      AuditEventHandler.handle?.(
+        event
+      );
+
+    }
+
+
+
+    if(typeof KPIEngine!=="undefined"){
+
+      KPIEngine.process?.(
+        event
+      );
+
+    }
+
+
+
+    if(typeof FinanceEngine!=="undefined"){
+
+      FinanceEngine.process?.(
+        event
+      );
+
+    }
+
+
+
+    if(typeof DashboardEngine!=="undefined"){
+
+      DashboardEngine.process?.(
+        event
+      );
+
+    }
+
+
+  },
+
+
+
+  health(){
+
+
+    return HealthContract.create(
+
+      "TransportOrderEventHandler",
+
+      this.ready
+      ?"OK"
+      :"WARNING",
+
+      {
+
+        version:this.version,
+
+        entity:this.entityName,
+
+        subscriptions:
+          this.subscriptions.length
+
+      }
+
+    );
+
+
   }
+
+
 };
 
-globalThis.TransportOrderEventHandler = TransportOrderEventHandler;
-Logger.log("TransportOrderEventHandler READY v" + TransportOrderEventHandler.version);
+
+
+globalThis.TransportOrderEventHandler =
+TransportOrderEventHandler;
+
+
+Logger.log(
+"TransportOrderEventHandler READY v1.1.0"
+);
