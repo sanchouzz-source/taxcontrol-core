@@ -1,50 +1,17 @@
-function installSystem(){
+function installSystem() {
 
+SchemaManager.init();
 
-Logger.log(
-"ERP INSTALL START"
-);
+Registry.init();
 
-
-
-SystemInit.init();
-
-
-
-if(
-typeof LogisticsEventSubscriptions!=="undefined"
-){
-
-LogisticsEventSubscriptions.init();
-
-}
-
-
-
-if(
-typeof TripEventHandler!=="undefined"
-){
-
-TripEventHandler.init();
-
-}
-
-
-
-if(
-typeof TransportOrderEventHandler!=="undefined"
-){
+EventBus.init();
 
 TransportOrderEventHandler.init();
 
-}
+LogisticsEventSubscriptions.init();
 
+TripEventHandler.init();
 
-
-Logger.log(
-"ERP INSTALL COMPLETE"
-);
-
-
+FinanceEngine.init();
 
 }
