@@ -210,7 +210,6 @@ EntityMetadata.register = function (definition) {
   // 1. Заполняем отсутствующие поля значениями по умолчанию
   if (!definition.table) definition.table = entity + "s";
   if (!definition.id) definition.id = entity + "ID";
-  // ----- УЛУЧШЕНИЕ: явно устанавливаем idField из id -----
   if (!definition.idField) definition.idField = definition.id;
   if (!definition.idPrefix) definition.idPrefix = entity.substring(0, 3);
   if (!definition.permissions) {
@@ -420,6 +419,44 @@ EntityMetadata.register({
     "EventID",
     "Entity",
     "Type",
+    "Payload",
+    "Error",
+    "RetryCount",
+    "Status",
+    "CreatedAt",
+    "UpdatedAt"
+  ]
+});
+
+// ----- НОВЫЕ РЕГИСТРАЦИИ ПО ЗАПРОСУ -----
+EntityMetadata.register({
+  entity: "EVENT_EXECUTION_LOG",
+  table: "EventExecutionLog",
+  id: "ExecutionID",
+  idPrefix: "ELOG",
+  repository: "EventExecutionLog",
+  fields: [
+    "ExecutionID",
+    "EventID",
+    "Entity",
+    "EventType",
+    "Status",
+    "Processor",
+    "Error",
+    "Timestamp"
+  ]
+});
+
+EntityMetadata.register({
+  entity: "FAILED_EVENT",
+  table: "FailedEvents",
+  id: "FailedEventID",
+  idPrefix: "FAIL",
+  repository: "FailedEventRepository",
+  fields: [
+    "FailedEventID",
+    "EventID",
+    "Entity",
     "Payload",
     "Error",
     "RetryCount",
