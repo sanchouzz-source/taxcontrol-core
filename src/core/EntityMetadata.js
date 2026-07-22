@@ -1,7 +1,7 @@
 console.log("EntityMetadata");
 
 const EntityMetadata = {
-  version: "0.2.0",
+  version: "0.6.0",
 
   // ----- СУЩЕСТВУЮЩИЕ СУЩНОСТИ (CLIENT, TRIP, CLIENT_FINANCE_PROFILE, KPI, AUDIT) -----
   CLIENT: {
@@ -175,10 +175,18 @@ EntityMetadata.has = function (entity) {
   return !!this[entity];
 };
 
+// ----- ИСПРАВЛЕННЫЙ МЕТОД list() -----
 EntityMetadata.list = function () {
-  return Object.keys(this).filter(
-    key => typeof this[key] === "object" && this[key].fields
-  );
+  return Object.keys(this).filter(key => {
+    const item = this[key];
+    return (
+      item &&
+      typeof item === "object" &&
+      item.entity &&
+      item.table &&
+      Array.isArray(item.fields)
+    );
+  });
 };
 
 EntityMetadata.health = function () {
@@ -192,7 +200,7 @@ EntityMetadata.health = function () {
   );
 };
 
-// ----- МЕТОД REGISTER (исправлен: ID → "ID", остальные *ID → "REFERENCE") -----
+// ----- МЕТОД REGISTER -----
 EntityMetadata.register = function (definition) {
   if (!definition || !definition.entity) {
     throw new Error("EntityMetadata.register: entity name required");
@@ -202,6 +210,7 @@ EntityMetadata.register = function (definition) {
   // 1. Заполняем отсутствующие поля значениями по умолчанию
   if (!definition.table) definition.table = entity + "s";
   if (!definition.id) definition.id = entity + "ID";
+  // ----- УЛУЧШЕНИЕ: явно устанавливаем idField из id -----
   if (!definition.idField) definition.idField = definition.id;
   if (!definition.idPrefix) definition.idPrefix = entity.substring(0, 3);
   if (!definition.permissions) {
@@ -375,6 +384,48 @@ EntityMetadata.register({
     "CreatedAt",
     "UpdatedAt",
     "Deleted"
+  ]
+});
+
+// 7. EVENT EXECUTION LOG
+EntityMetadata.register({
+  entity: "EVENT_EXECUTION",
+  repository: "EventExecutionLogRepository",
+  table: "EventExecutionLog",
+  id: "ExecutionID",
+  idField: "ExecutionID",
+  idPrefix: "EXEC",
+  fields: [
+    "ExecutionID",
+    "EventID",
+    "Entity",
+    "Type",
+    "Status",
+    "Processor",
+    "Error",
+    "CreatedAt"
+  ]
+});
+
+// 8. FAILED EVENTS
+EntityMetadata.register({
+  entity: "FAILED_EVENT",
+  repository: "FailedEventRepository",
+  table: "FailedEvents",
+  id: "FailedEventID",
+  idField: "FailedEventID",
+  idPrefix: "FAIL",
+  fields: [
+    "FailedEventID",
+    "EventID",
+    "Entity",
+    "Type",
+    "Payload",
+    "Error",
+    "RetryCount",
+    "Status",
+    "CreatedAt",
+    "UpdatedAt"
   ]
 });
 
