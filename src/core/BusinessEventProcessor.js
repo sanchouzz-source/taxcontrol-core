@@ -1,203 +1,142 @@
-console.log("BusinessEventProcessor v1.0");
+console.log("BusinessEventProcessor v1.1");
 
 
 const BusinessEventProcessor = {
 
+version:"1.1.0",
 
-  version:"1.0.0",
+ready:false,
 
-  initialized:false,
-
-  processors:[],
-
-
-  init(){
+processed:0,
 
 
-    if(this.initialized){
+init(){
 
-      Logger.log(
-        "BusinessEventProcessor ALREADY READY"
-      );
-
-      return true;
-    }
-
-
-    this.registerProcessors();
-
-
-    this.initialized=true;
-
+    this.ready=true;
 
     Logger.log(
-      "BusinessEventProcessor READY v"+
-      this.version
-    );
+    "BusinessEventProcessor READY v"+
+    this.version);
 
-
-    return true;
-
-  },
+},
 
 
 
-  registerProcessors(){
+process(event){
+
+    try{
 
 
-    this.processors=[];
-
-
-    const services=[
-
-
-      {
-        name:"AuditEventHandler",
-        method:"handle"
-      },
-
-
-      {
-        name:"KPIEngine",
-        method:"process"
-      },
-
-
-      {
-        name:"FinanceEngine",
-        method:"process"
-      },
-
-
-      {
-        name:"DashboardEngine",
-        method:"process"
-      }
-
-
-    ];
-
-
-
-    services.forEach(service=>{
-
-
-      if(
-        typeof globalThis[service.name]!=="undefined"
-        &&
-        typeof globalThis[service.name][service.method]
-        ==="function"
-      ){
-
-
-        this.processors.push(service);
+        if(!event){
+            throw new Error(
+            "EMPTY ERP EVENT");
+        }
 
 
         Logger.log(
-          "EVENT PROCESSOR REGISTERED "+
-          service.name
-        );
-
-      }
-
-
-    });
+        "BUSINESS EVENT PROCESS "+
+        event.entity+
+        " "+
+        event.type);
 
 
-  },
+        this.processEntity(event);
 
 
+        this.processAudit(event);
 
 
-
-  process(event){
-
-
-    if(!event)
-      return;
+        this.processed++;
 
 
+    }
+    catch(e){
 
-    Logger.log(
-      "BUSINESS EVENT PROCESS "+
-      event.entity+
-      " "+
-      event.action
-    );
+        Logger.error(
+        "BUSINESS PROCESS ERROR "+
+        e.message);
 
+    }
 
-
-    this.processors.forEach(
-      processor=>{
-
-
-        try{
-
-
-          globalThis[
-            processor.name
-          ][
-            processor.method
-          ](event);
-
-
-
-        }
-        catch(e){
-
-
-          Logger.log(
-
-            "PROCESSOR ERROR "+
-            processor.name+
-            " "+
-            e.message
-
-          );
-
-
-        }
-
-
-      }
-    );
-
-
-  },
+},
 
 
 
 
-
-  health(){
-
-
-    return HealthContract.create(
-
-      "BusinessEventProcessor",
-
-      this.initialized
-      ?
-      "OK"
-      :
-      "WARNING",
+processEntity(event){
 
 
-      {
-
-        version:this.version,
-
-        processors:
-        this.processors.map(
-          p=>p.name
-        )
-
-      }
-
-    );
+    switch(event.entity){
 
 
-  }
+        case "TRANSPORT_ORDER":
+
+            Logger.log(
+            "TRANSPORT ORDER BUSINESS FLOW "+
+            event.type);
+
+            break;
+
+
+
+        case "TRIP":
+
+            Logger.log(
+            "TRIP BUSINESS FLOW "+
+            event.type);
+
+            break;
+
+
+
+        default:
+
+            Logger.warn(
+            "UNKNOWN BUSINESS ENTITY "+
+            event.entity);
+
+    }
+
+
+},
+
+
+
+
+processAudit(event){
+
+
+    if(
+    typeof AuditEventHandler!=="undefined")
+    {
+
+        AuditEventHandler.onEvent(event);
+
+    }
+
+
+},
+
+
+
+
+health(){
+
+return HealthContract.create(
+
+"BusinessEventProcessor",
+
+this.ready?"OK":"WARNING",
+
+{
+
+version:this.version,
+
+processed:this.processed
+
+});
+
+}
 
 
 };
@@ -209,5 +148,4 @@ BusinessEventProcessor;
 
 
 Logger.log(
-"BusinessEventProcessor LOADED v1.0.0"
-);
+"BusinessEventProcessor LOADED v1.1.0");

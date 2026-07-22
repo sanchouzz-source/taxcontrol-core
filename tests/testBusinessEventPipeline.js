@@ -10,41 +10,24 @@ Logger.log(
 const event =
 ERPEventContract.create({
 
-entity:
-"TRANSPORT_ORDER",
+entity:"TRANSPORT_ORDER",
 
+type:"CREATED",
 
-type:
-"CREATED",
-
-
-entityId:
-"TO-TEST",
-
+entityId:"TO-TEST",
 
 before:null,
 
 
 after:{
-
-
-TransportOrderID:
-"TO-TEST",
-
-
-status:
-"NEW"
-
-
+TransportOrderID:"TO-TEST",
+status:"NEW"
 },
 
 
-source:
-"TEST",
+source:"TEST",
 
-
-user:
-"TESTER"
+user:"TESTER"
 
 
 });
@@ -52,15 +35,29 @@ user:
 
 
 Logger.log(
-"ERP EVENT CREATED "+
+"ERP TEST EVENT "+
 JSON.stringify(event)
 );
 
 
 
-BusinessEventProcessor.process(
-event
+const validation =
+ERPEventContract.validate(event);
+
+
+
+if(!validation.valid){
+
+throw new Error(
+"ERP EVENT INVALID "+
+validation.error
 );
+
+}
+
+
+
+BusinessEventProcessor.process(event);
 
 
 
