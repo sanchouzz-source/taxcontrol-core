@@ -1,92 +1,219 @@
-console.log("ERPEventContract v1.0");
+console.log("ERPEventContract v1.1");
 
 
 const ERPEventContract = {
 
 
-version:"1.0.0",
+version:"1.1.0",
 
+sequence:0,
+
+
+init(){
+
+    Logger.log(
+    "ERPEventContract READY v"+
+    this.version);
+
+},
+
+
+
+// --------------------------------
+// Генерация ID события
+// --------------------------------
+
+generateId(){
+
+    this.sequence++;
+
+    const time =
+    new Date()
+    .getTime()
+    .toString()
+    .slice(-8);
+
+
+    return (
+        "EVT" +
+        time +
+        this.sequence
+        .toString()
+        .padStart(3,"0")
+    );
+
+},
+
+
+
+
+// --------------------------------
+// Создание ERP Event
+// --------------------------------
 
 create(params){
 
 
-return {
-
-id:
-params.id ||
-IdService?.generate("EVT") ||
-("EVT-"+Date.now()),
+    if(!params){
+        throw new Error(
+        "ERPEventContract: params required");
+    }
 
 
-entity:
-params.entity || "",
+
+    const event={
 
 
-type:
-params.type || "UNKNOWN",
+        id:
+        params.id ||
+        this.generateId(),
 
 
-entityId:
-params.entityId || "",
+
+        entity:
+        params.entity || "",
 
 
-before:
-params.before || null,
+
+        type:
+        params.type || "UNKNOWN",
 
 
-after:
-params.after || null,
+
+        entityId:
+        params.entityId || "",
 
 
-source:
-params.source || "ERP",
+
+        before:
+        params.before || null,
 
 
-user:
-params.user || null,
+
+        after:
+        params.after || null,
 
 
-timestamp:
-params.timestamp ||
-new Date().toISOString()
 
-};
+        source:
+        params.source || "ERP",
+
+
+
+        user:
+        params.user || null,
+
+
+
+        timestamp:
+        params.timestamp ||
+        new Date()
+        .toISOString()
+
+
+    };
+
+
+
+    const check =
+    this.validate(event);
+
+
+
+    if(!check.valid){
+
+        throw new Error(
+        "INVALID ERP EVENT: "+
+        check.error
+        );
+
+    }
+
+
+    return event;
+
+},
+
+
+
+
+// --------------------------------
+// Валидация
+// --------------------------------
+
+validate(event){
+
+
+    const required=[
+
+        "id",
+        "entity",
+        "type",
+        "timestamp"
+
+    ];
+
+
+
+    for(
+    const field of required
+    ){
+
+        if(
+        !event[field]
+        ){
+
+            return {
+
+                valid:false,
+
+                error:
+                "Missing "+field
+
+            };
+
+        }
+
+    }
+
+
+
+    return {
+
+        valid:true
+
+    };
 
 
 },
 
 
 
-validate(event){
 
+// --------------------------------
+// Health
+// --------------------------------
 
-const required=[
-"id",
-"entity",
-"type",
-"timestamp"
-];
+health(){
 
+return HealthContract.create(
 
-for(const field of required){
+"ERPEventContract",
 
-if(!event[field])
+"OK",
+
 {
-return {
-valid:false,
-error:"Missing "+field
-};
-}
+
+version:this.version,
+
+sequence:this.sequence
 
 }
 
-
-return {
-valid:true
-};
-
+);
 
 }
+
 
 
 };
@@ -97,5 +224,4 @@ globalThis.ERPEventContract =
 ERPEventContract;
 
 
-Logger.log(
-"ERPEventContract READY v1.0.0");
+ERPEventContract.init();

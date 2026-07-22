@@ -7,85 +7,56 @@ Logger.log(
 
 
 
-if(
-typeof BusinessEventProcessor === "undefined"
-){
+const event =
+ERPEventContract.create({
 
-throw new Error(
-"BusinessEventProcessor unavailable"
-);
-
-}
+entity:
+"TRANSPORT_ORDER",
 
 
-
-if(
-typeof ERPEventContract === "undefined"
-){
-
-throw new Error(
-"ERPEventContract unavailable"
-);
-
-}
+type:
+"CREATED",
 
 
+entityId:
+"TO-TEST",
 
-
-// создаём настоящее ERP событие
-
-const event = ERPEventContract.create({
-
-entity:"TRANSPORT_ORDER",
-
-type:"CREATED",
-
-entityId:"TO-TEST-0001",
 
 before:null,
 
 
 after:{
 
-TransportOrderID:"TO-TEST-0001",
 
-OrganizationID:"ORG000001",
+TransportOrderID:
+"TO-TEST",
 
-OrderNumber:"TEST-ORDER",
 
-LoadingAddress:"Вологда",
+status:
+"NEW"
 
-DeliveryAddress:"Москва",
-
-CargoWeight:20000,
-
-Status:"NEW"
 
 },
 
 
-source:"TEST",
+source:
+"TEST",
 
-user:null,
 
+user:
+"TESTER"
 
-timestamp:
-new Date().toISOString()
 
 });
 
 
 
-
 Logger.log(
-"ERP EVENT CREATED " +
+"ERP EVENT CREATED "+
 JSON.stringify(event)
 );
 
 
-
-
-// отправляем в бизнес процессор
 
 BusinessEventProcessor.process(
 event
@@ -93,11 +64,9 @@ event
 
 
 
-
 Logger.log(
 "===== BUSINESS PIPELINE TEST PASS ====="
 );
-
 
 
 }
