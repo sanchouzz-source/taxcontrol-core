@@ -1,149 +1,412 @@
-console.log("TransportOrderEventHandler v1.1");
+console.log("TransportOrderEventHandler v1.2");
+
 
 const TransportOrderEventHandler = {
-  version: "1.1.0",
-  initialized: false,
-  ready: false,
-  entityName: "TRANSPORT_ORDER",
-  entity: null,
-  subscriptions: [],
 
-  init() {
-    if (this.initialized) {
-      Logger.log("TransportOrderEventHandler ALREADY INITIALIZED");
-      return true;
-    }
 
-    if (typeof EntityRegistry === "undefined") {
-      throw new Error("TransportOrderEventHandler EntityRegistry unavailable");
-    }
+version:"1.2.0",
 
-    this.entity = EntityRegistry.get(this.entityName);
-    if (!this.entity) {
-      throw new Error("ENTITY NOT FOUND " + this.entityName);
-    }
+initialized:false,
 
-    if (typeof EventBus === "undefined") {
-      throw new Error("EventBus unavailable");
-    }
+ready:false,
 
-    this.registerEvents();
+retryLimit:3,
 
-    this.initialized = true;
-    this.ready = true;
+errorQueue:[],
 
-    Logger.log("TransportOrderEventHandler READY v" + this.version);
-    Logger.log("SUBSCRIPTIONS " + JSON.stringify(this.subscriptions));
 
-    return true;
-  },
+entityName:"TRANSPORT_ORDER",
 
-  registerEvents() {
-    this.subscribe(
-      EntityEvents.TRANSPORT_ORDER.CREATED,
-      this.onCreated
-    );
-    this.subscribe(
-      EntityEvents.TRANSPORT_ORDER.UPDATED,
-      this.onUpdated
-    );
-    this.subscribe(
-      EntityEvents.TRANSPORT_ORDER.DELETED,
-      this.onDeleted
-    );
-    this.subscribe(
-      EntityEvents.TRANSPORT_ORDER.RESTORED,
-      this.onRestored
-    );
-  },
+entity:null,
 
-  subscribe(event, handler) {
-    if (!event || !handler) return;
+subscriptions:[],
 
-    const name = "TransportOrderEventHandler_" + handler.name;
-    const bound = handler.bind(this);
 
-    EventBus.subscribe(event, bound, { name: name });
-    this.subscriptions.push({ event: event, handler: name });
-  },
 
-  extract(event) {
-    if (!event) return null;
-    return event.after ?? event.data ?? event;
-  },
+init(){
 
-  getId(event) {
-    return (
-      event.entityId ||
-      this.extract(event)?.TransportOrderID ||
-      ""
-    );
-  },
 
-  onCreated(event) {
-    this.process("CREATED", event);
-  },
+if(this.initialized)
+{
+Logger.log(
+"TransportOrderEventHandler ALREADY INITIALIZED");
+return true;
+}
 
-  onUpdated(event) {
-    this.process("UPDATED", event);
-  },
 
-  onDeleted(event) {
-    this.process("DELETED", event);
-  },
 
-  onRestored(event) {
-    this.process("RESTORED", event);
-  },
+if(typeof EntityRegistry==="undefined")
+throw new Error(
+"EntityRegistry unavailable");
 
-  process(action, event) {
-    try {
-      const data = this.extract(event);
 
-      Logger.log(
-        "TRANSPORT_ORDER " +
-        action +
-        " " +
-        this.getId(event)
-      );
 
-      const businessEvent = {
-        entity: this.entityName,
-        action: action,
-        entityId: this.getId(event),
-        data: data,
-        source: "TransportOrderEventHandler",
-        timestamp: new Date()
-      };
+this.entity =
+EntityRegistry.get(this.entityName);
 
-      this.notifyBusiness(businessEvent);
-    } catch (e) {
-      Logger.error("TransportOrder EVENT ERROR " + e.message);
-    }
-  },
 
-  // ----- ОБНОВЛЁННЫЙ МЕТОД notifyBusiness -----
-  notifyBusiness(event) {
-    // Единая точка входа – BusinessEventProcessor
-    if (typeof BusinessEventProcessor !== "undefined") {
-      BusinessEventProcessor.process(event);
-    } else {
-      Logger.warn("BusinessEventProcessor not found, event not processed");
-    }
-  },
 
-  health() {
-    return HealthContract.create(
-      "TransportOrderEventHandler",
-      this.ready ? "OK" : "WARNING",
-      {
-        version: this.version,
-        entity: this.entityName,
-        subscriptions: this.subscriptions.length
-      }
-    );
-  }
+if(!this.entity)
+throw new Error(
+"ENTITY NOT FOUND "+this.entityName);
+
+
+
+if(typeof EventBus==="undefined")
+throw new Error(
+"EventBus unavailable");
+
+
+
+this.registerEvents();
+
+
+
+this.initialized=true;
+
+this.ready=true;
+
+
+
+Logger.log(
+"TransportOrderEventHandler READY v"+
+this.version);
+
+
+
+return true;
+
+},
+
+
+
+registerEvents(){
+
+
+this.subscribe(
+EntityEvents.TRANSPORT_ORDER.CREATED,
+this.onCreated
+);
+
+
+this.subscribe(
+EntityEvents.TRANSPORT_ORDER.UPDATED,
+this.onUpdated
+);
+
+
+this.subscribe(
+EntityEvents.TRANSPORT_ORDER.DELETED,
+this.onDeleted
+);
+
+
+this.subscribe(
+EntityEvents.TRANSPORT_ORDER.RESTORED,
+this.onRestored
+);
+
+
+
+},
+
+
+
+
+subscribe(event,handler){
+
+
+const name=
+"TransportOrder_"+handler.name;
+
+
+
+const bound=
+handler.bind(this);
+
+
+
+EventBus.subscribe(
+event,
+bound,
+{
+name:name
+});
+
+
+
+this.subscriptions.push({
+event:event,
+handler:name
+});
+
+
+},
+
+
+
+
+
+onCreated(event){
+
+this.process(
+"CREATED",
+event);
+
+},
+
+
+onUpdated(event){
+
+this.process(
+"UPDATED",
+event);
+
+},
+
+
+onDeleted(event){
+
+this.process(
+"DELETED",
+event);
+
+},
+
+
+onRestored(event){
+
+this.process(
+"RESTORED",
+event);
+
+},
+
+
+
+
+
+process(type,event){
+
+
+let attempt=0;
+
+
+
+while(attempt<this.retryLimit){
+
+
+try{
+
+
+const erpEvent =
+this.createERPEvent(
+type,
+event
+);
+
+
+
+const validation =
+ERPEventContract.validate(
+erpEvent);
+
+
+
+if(!validation.valid)
+throw new Error(
+validation.error);
+
+
+
+this.notifyBusiness(
+erpEvent);
+
+
+
+return;
+
+
+
+}
+catch(e){
+
+
+attempt++;
+
+
+Logger.warn(
+"TransportOrder EVENT RETRY "+
+attempt+
+" "+
+e.message);
+
+
+
+if(attempt>=this.retryLimit)
+{
+
+this.errorQueue.push({
+
+event:event,
+
+type:type,
+
+error:e.message,
+
+timestamp:new Date()
+
+});
+
+
+Logger.error(
+"EVENT MOVED TO ERROR QUEUE");
+
+}
+
+
+}
+
+
+
+}
+
+
+
+},
+
+
+
+
+
+createERPEvent(type,event){
+
+
+return ERPEventContract.create({
+
+
+entity:
+this.entityName,
+
+
+type:type,
+
+
+entityId:
+this.getId(event),
+
+
+before:
+event.before || null,
+
+
+after:
+event.after || this.extract(event),
+
+
+source:
+"TransportOrderEventHandler",
+
+
+user:
+event.user || null
+
+
+});
+
+
+},
+
+
+
+
+extract(event){
+
+return event.after ??
+event.data ??
+event;
+
+},
+
+
+
+
+getId(event){
+
+
+return (
+event.entityId ||
+this.extract(event)?.TransportOrderID ||
+""
+);
+
+
+},
+
+
+
+
+
+notifyBusiness(event){
+
+
+if(typeof BusinessEventProcessor!=="undefined")
+{
+
+
+BusinessEventProcessor.process(
+event);
+
+
+}
+else{
+
+
+throw new Error(
+"BusinessEventProcessor unavailable");
+
+
+}
+
+
+},
+
+
+
+
+health(){
+
+
+return HealthContract.create(
+"TransportOrderEventHandler",
+
+this.ready?
+"OK":
+"WARNING",
+
+{
+
+version:this.version,
+
+subscriptions:
+this.subscriptions.length,
+
+errorQueue:
+this.errorQueue.length
+
+});
+
+
+}
+
+
 };
 
-globalThis.TransportOrderEventHandler = TransportOrderEventHandler;
-Logger.log("TransportOrderEventHandler READY v1.1.0");
+
+
+globalThis.TransportOrderEventHandler =
+TransportOrderEventHandler;
+
+
+Logger.log(
+"TransportOrderEventHandler READY v1.2.0");
