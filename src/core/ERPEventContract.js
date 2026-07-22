@@ -148,6 +148,8 @@ validate(event){
 
         "id",
         "entity",
+        "entityId",
+        "source",
         "type",
         "timestamp"
 
