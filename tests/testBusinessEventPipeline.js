@@ -1,35 +1,103 @@
 function testBusinessEventPipeline(){
 
 
- Logger.log(
- "===== BUSINESS PIPELINE TEST START ====="
- );
+Logger.log(
+"===== BUSINESS PIPELINE TEST START ====="
+);
 
 
 
- const event={
+if(
+typeof BusinessEventProcessor === "undefined"
+){
 
-   entity:"TRANSPORT_ORDER",
+throw new Error(
+"BusinessEventProcessor unavailable"
+);
 
-   action:"CREATED",
-
-   data:{
-     TransportOrderID:"TO-TEST"
-   },
-
-   timestamp:new Date()
-
- };
+}
 
 
 
- BusinessEventProcessor.process(event);
+if(
+typeof ERPEventContract === "undefined"
+){
+
+throw new Error(
+"ERPEventContract unavailable"
+);
+
+}
 
 
 
- Logger.log(
- "===== BUSINESS PIPELINE TEST PASS ====="
- );
+
+// создаём настоящее ERP событие
+
+const event = ERPEventContract.create({
+
+entity:"TRANSPORT_ORDER",
+
+type:"CREATED",
+
+entityId:"TO-TEST-0001",
+
+before:null,
+
+
+after:{
+
+TransportOrderID:"TO-TEST-0001",
+
+OrganizationID:"ORG000001",
+
+OrderNumber:"TEST-ORDER",
+
+LoadingAddress:"Вологда",
+
+DeliveryAddress:"Москва",
+
+CargoWeight:20000,
+
+Status:"NEW"
+
+},
+
+
+source:"TEST",
+
+user:null,
+
+
+timestamp:
+new Date().toISOString()
+
+});
+
+
+
+
+Logger.log(
+"ERP EVENT CREATED " +
+JSON.stringify(event)
+);
+
+
+
+
+// отправляем в бизнес процессор
+
+BusinessEventProcessor.process(
+event
+);
+
+
+
+
+Logger.log(
+"===== BUSINESS PIPELINE TEST PASS ====="
+);
+
 
 
 }

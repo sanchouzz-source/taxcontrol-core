@@ -1,109 +1,602 @@
-console.log("TripEventHandler");
+console.log("TripEventHandler v1.1");
+
 
 const TripEventHandler = {
-  version: "0.2.0",
-  entity: null, // будет заполнено в init
+
+  version: "1.1.0",
+
+  initialized: false,
+  ready: false,
+
+  entityName: "TRIP",
+  entity: null,
+
+  subscriptions: [],
+
+  errorQueue: [],
+
+  retryLimit: 3,
+
+
+  // ==============================
+  // INIT
+  // ==============================
 
   init() {
+
+    if (this.initialized) {
+
+      Logger.log(
+        "TripEventHandler ALREADY INITIALIZED"
+      );
+
+      return true;
+    }
+
+
     if (typeof EntityRegistry === "undefined") {
-      throw new Error("TripEventHandler: EntityRegistry unavailable");
+
+      throw new Error(
+        "TripEventHandler: EntityRegistry unavailable"
+      );
+
     }
-    this.entity = EntityRegistry.TRIP;
+
+
+    this.entity =
+      EntityRegistry.get(this.entityName);
+
+
     if (!this.entity) {
-      throw new Error("TripEventHandler: ENTITY TRIP not found");
+
+      throw new Error(
+        "TripEventHandler: ENTITY TRIP not found"
+      );
+
     }
+
 
     if (typeof EventBus === "undefined") {
-      throw new Error("TripEventHandler: EventBus unavailable");
+
+      throw new Error(
+        "TripEventHandler: EventBus unavailable"
+      );
+
     }
 
-    EventBus.subscribe(
-      this.entity.events.created,
-      this.onCreated.bind(this)
-    );
-    EventBus.subscribe(
-      this.entity.events.updated,
-      this.onUpdated.bind(this)
-    );
-    EventBus.subscribe(
-      this.entity.events.deleted,
-      this.onDeleted.bind(this)
-    );
-    EventBus.subscribe(
-      this.entity.events.restored,
-      this.onRestored.bind(this)
+
+    this.registerEvents();
+
+
+    this.initialized = true;
+    this.ready = true;
+
+
+    Logger.log(
+      "TripEventHandler READY v" +
+      this.version
     );
 
-    Logger.log("TripEventHandler READY v" + this.version);
+
+    Logger.log(
+      "SUBSCRIPTIONS " +
+      JSON.stringify(this.subscriptions)
+    );
+
+
     return true;
+
   },
 
-  // Универсальное извлечение данных из события
-  extract(payload) {
-    if (!payload) return null;
-    return payload.after ?? payload.data ?? payload;
-  },
 
-  // Получение ID поездки
-  getTripId(trip) {
-    if (!trip) return "";
-    return trip[this.entity.idField] || "";
-  },
+  // ==============================
+  // EVENT REGISTER
+  // ==============================
 
-  onCreated(event) {
-    try {
-      const trip = this.extract(event);
-      if (!trip) return;
-      Logger.log("TRIP CREATED " + this.getTripId(trip));
-    } catch (error) {
-      Logger.error("TripEventHandler CREATED ERROR " + error.message);
+  registerEvents() {
+
+
+    if (
+      typeof EntityEvents === "undefined" ||
+      !EntityEvents.TRIP
+    ) {
+
+      throw new Error(
+        "TripEventHandler: TRIP events unavailable"
+      );
+
     }
-  },
 
-  onUpdated(event) {
-    try {
-      const trip = this.extract(event);
-      if (!trip) return;
-      Logger.log("TRIP UPDATED " + this.getTripId(trip));
-    } catch (error) {
-      Logger.error("TripEventHandler UPDATED ERROR " + error.message);
-    }
-  },
 
-  onDeleted(event) {
-    try {
-      const trip = this.extract(event);
-      if (!trip) return;
-      Logger.log("TRIP DELETED " + this.getTripId(trip));
-    } catch (error) {
-      Logger.error("TripEventHandler DELETED ERROR " + error.message);
-    }
-  },
 
-  onRestored(event) {
-    try {
-      const trip = this.extract(event);
-      if (!trip) return;
-      Logger.log("TRIP RESTORED " + this.getTripId(trip));
-    } catch (error) {
-      Logger.error("TripEventHandler RESTORED ERROR " + error.message);
-    }
-  },
-
-  health() {
-    return HealthContract.create(
-      "TripEventHandler",
-      "OK",
-      {
-        version: this.version,
-        entity: this.entity?.entity || "TRIP",
-        dependencies: {
-          EventBus: !!EventBus,
-          EntityRegistry: !!EntityRegistry
-        }
-      }
+    this.subscribe(
+      EntityEvents.TRIP.CREATED,
+      this.onCreated
     );
+
+
+    this.subscribe(
+      EntityEvents.TRIP.UPDATED,
+      this.onUpdated
+    );
+
+
+    this.subscribe(
+      EntityEvents.TRIP.DELETED,
+      this.onDeleted
+    );
+
+
+    this.subscribe(
+      EntityEvents.TRIP.RESTORED,
+      this.onRestored
+    );
+
+
+  },
+
+
+  subscribe(event, handler) {
+
+
+    if (!event || !handler) {
+      return;
+    }
+
+
+    const name =
+      "TripEventHandler_" +
+      handler.name;
+
+
+
+    // защита от повторной регистрации
+
+    const exists =
+      this.subscriptions.some(
+        s => s.handler === name
+      );
+
+
+    if (exists) {
+
+      return;
+
+    }
+
+
+
+    EventBus.subscribe(
+
+      event,
+
+      handler.bind(this),
+
+      {
+        name:name
+      }
+
+    );
+
+
+
+    this.subscriptions.push({
+
+      event:event,
+
+      handler:name
+
+    });
+
+
+  },
+
+
+
+  // ==============================
+  // HELPERS
+  // ==============================
+
+
+  extract(payload) {
+
+    if (!payload)
+      return null;
+
+
+    return (
+      payload.after ??
+      payload.data ??
+      payload
+    );
+
+  },
+
+
+
+  getTripId(payload) {
+
+
+    const trip =
+      this.extract(payload);
+
+
+    if (!trip)
+      return "";
+
+
+
+    return (
+      trip[this.entity.idField] ||
+      trip.TripID ||
+      ""
+    );
+
+  },
+
+
+
+  // ==============================
+  // ERP EVENT
+  // ==============================
+
+
+  createERPEvent(type,event){
+
+
+    if (
+      typeof ERPEventContract === "undefined"
+    ){
+
+      throw new Error(
+        "ERPEventContract unavailable"
+      );
+
+    }
+
+
+
+    return ERPEventContract.create({
+
+      entity:this.entityName,
+
+
+      type:type,
+
+
+      entityId:
+        this.getTripId(event),
+
+
+
+      before:
+        event.before || null,
+
+
+
+      after:
+        event.after ||
+        this.extract(event),
+
+
+
+      source:
+        "TripEventHandler",
+
+
+
+      user:null,
+
+
+
+      timestamp:
+        new Date().toISOString()
+
+    });
+
+
+  },
+
+
+
+  // ==============================
+  // VALIDATION
+  // ==============================
+
+
+  validate(event){
+
+
+    if(!event)
+      return false;
+
+
+
+    return !!(
+
+      event.entity &&
+
+      event.type &&
+
+      event.entityId &&
+
+      event.timestamp
+
+    );
+
+
+  },
+
+
+
+  // ==============================
+  // BUSINESS PIPELINE
+  // ==============================
+
+
+  publish(event){
+
+
+    if(
+      typeof BusinessEventProcessor === "undefined"
+    ){
+
+      throw new Error(
+        "BusinessEventProcessor unavailable"
+      );
+
+    }
+
+
+
+    BusinessEventProcessor.process(event);
+
+
+  },
+
+
+
+  // ==============================
+  // RETRY / ERROR QUEUE
+  // ==============================
+
+
+  retry(type,event,error){
+
+
+    Logger.error(
+
+      "TRIP EVENT ERROR " +
+
+      type +
+
+      " " +
+
+      error.message
+
+    );
+
+
+
+    this.errorQueue.push({
+
+      entity:this.entityName,
+
+      type:type,
+
+      event:event,
+
+      error:error.message,
+
+      attempt:1,
+
+      maxAttempts:this.retryLimit,
+
+      timestamp:
+        new Date().toISOString()
+
+    });
+
+
+  },
+
+
+
+  // ==============================
+  // PROCESS
+  // ==============================
+
+
+  process(type,event){
+
+
+    try {
+
+
+      Logger.log(
+
+        "ERP EVENT TRIP " +
+
+        type +
+
+        " " +
+
+        this.getTripId(event)
+
+      );
+
+
+
+      const erpEvent =
+
+        this.createERPEvent(
+          type,
+          event
+        );
+
+
+
+      if(
+        !this.validate(erpEvent)
+      ){
+
+        throw new Error(
+          "INVALID ERP EVENT"
+        );
+
+      }
+
+
+
+      this.publish(
+        erpEvent
+      );
+
+
+
+    }
+
+    catch(e){
+
+
+      this.retry(
+        type,
+        event,
+        e
+      );
+
+
+    }
+
+
+  },
+
+
+
+  // ==============================
+  // HANDLERS
+  // ==============================
+
+
+  onCreated(event){
+
+    this.process(
+      "CREATED",
+      event
+    );
+
+  },
+
+
+
+  onUpdated(event){
+
+    this.process(
+      "UPDATED",
+      event
+    );
+
+  },
+
+
+
+  onDeleted(event){
+
+    this.process(
+      "DELETED",
+      event
+    );
+
+  },
+
+
+
+  onRestored(event){
+
+    this.process(
+      "RESTORED",
+      event
+    );
+
+  },
+
+
+
+  // ==============================
+  // HEALTH
+  // ==============================
+
+
+  health(){
+
+
+    return HealthContract.create(
+
+      "TripEventHandler",
+
+
+      this.ready
+        ? "OK"
+        : "WARNING",
+
+
+
+      {
+
+        version:this.version,
+
+
+        entity:this.entityName,
+
+
+        subscriptions:
+          this.subscriptions.length,
+
+
+        errorQueue:
+          this.errorQueue.length,
+
+
+
+        dependencies:{
+
+
+          EventBus:
+            typeof EventBus !== "undefined",
+
+
+
+          EntityRegistry:
+            typeof EntityRegistry !== "undefined",
+
+
+
+          ERPEventContract:
+            typeof ERPEventContract !== "undefined",
+
+
+
+          BusinessEventProcessor:
+            typeof BusinessEventProcessor !== "undefined"
+
+        }
+
+      }
+
+    );
+
+
   }
+
+
 };
 
-globalThis.TripEventHandler = TripEventHandler;
+
+
+globalThis.TripEventHandler =
+  TripEventHandler;
+
+
+Logger.log(
+  "TripEventHandler LOADED v1.1.0"
+);
