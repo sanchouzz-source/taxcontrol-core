@@ -1,17 +1,38 @@
 function installSystem() {
+  // 1. Сначала инициализируем SchemaManager (он строит схему из метаданных)
+  if (typeof SchemaManager !== "undefined") {
+    SchemaManager.init();
+  }
 
-SchemaManager.init();
+  // 2. Затем Database – теперь без внутреннего вызова SchemaManager
+  if (typeof Database !== "undefined") {
+    Database.init();
+  }
 
-Registry.init();
+  // 3. Остальные компоненты
+  if (typeof Registry !== "undefined") {
+    Registry.init();
+  }
 
-EventBus.init();
+  if (typeof EventBus !== "undefined") {
+    EventBus.init();
+  }
 
-TransportOrderEventHandler.init();
+  if (typeof TransportOrderEventHandler !== "undefined") {
+    TransportOrderEventHandler.init();
+  }
 
-LogisticsEventSubscriptions.init();
+  if (typeof LogisticsEventSubscriptions !== "undefined") {
+    LogisticsEventSubscriptions.init();
+  }
 
-TripEventHandler.init();
+  if (typeof TripEventHandler !== "undefined") {
+    TripEventHandler.init();
+  }
 
-FinanceEngine.init();
+  if (typeof FinanceEngine !== "undefined") {
+    FinanceEngine.init();
+  }
 
+  Logger.log("System installation complete.");
 }
