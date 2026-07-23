@@ -1,32 +1,26 @@
+console.log("CRMSubscriptions");
+
+
 const CRMSubscriptions = {
 
-version:"0.1.0",
-
-initialized:false,
+version:"1.0.0",
 
 
 init(){
 
-if(this.initialized)
-return;
-
-
-if(typeof EventBus==="undefined")
-throw new Error(
-"EventBus unavailable"
-);
+if(typeof EventBus==="undefined"){
+    throw new Error(
+      "EventBus unavailable for CRMSubscriptions"
+    );
+}
 
 
 this.register();
 
-
-this.initialized=true;
-
-
 Logger.log(
-"CRMSubscriptions READY v0.1.0"
+"CRMSubscriptions READY v"+
+this.version
 );
-
 
 },
 
@@ -35,12 +29,10 @@ register(){
 
 EventBus.subscribe(
 EntityEvents.CLIENT.CREATED,
-this.onClientCreated.bind(this),
+this.onClientCreated,
 {
-name:"CRM_CLIENT_CREATED"
-}
-);
-
+name:"CRM_ClientCreated"
+});
 
 },
 
@@ -48,9 +40,9 @@ name:"CRM_CLIENT_CREATED"
 onClientCreated(event){
 
 Logger.log(
-"CRM CLIENT CREATED"
+"CRM CLIENT EVENT "+
+event.entityId
 );
-
 
 }
 
@@ -58,5 +50,4 @@ Logger.log(
 };
 
 
-globalThis.CRMSubscriptions =
-CRMSubscriptions;
+globalThis.CRMSubscriptions = CRMSubscriptions;
