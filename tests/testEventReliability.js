@@ -1,165 +1,131 @@
-function testEventReliability() {
+function testEventReliability(){
 
-  Logger.log(
-    "===== EVENT RELIABILITY TEST START ====="
-  );
+Logger.info(
+"===== EVENT RELIABILITY TEST START ====="
+);
 
 
-  const testId = "TO-RETRY-" + Date.now();
+const id =
+"TO-TEST-" + Date.now();
 
 
-  const event =
-    ERPEventContract.create({
+const event =
+ERPEventContract.create({
 
-      entity: "TRANSPORT_ORDER",
+entity:"TRANSPORT_ORDER",
 
-      type: "CREATED",
+type:"CREATED",
 
-      entityId: testId,
+entityId:id,
 
-      after: {
 
-        TransportOrderID: testId,
+after:{
 
-        ClientID: "CLIENT-TEST-001",
+TransportOrderID:id,
 
-        Status: "NEW",
+ClientID:"CLIENT-TEST-001",
 
-        Amount: 15000
+Status:"NEW",
 
-      },
+Amount:15000,
 
-      source: "TEST",
+Currency:"RUB",
 
-      user: "SYSTEM"
+CreatedAt:new Date().toISOString()
 
-    });
+},
 
 
+source:"TEST",
 
-  Logger.log(
-    "EVENT CREATED: " +
-    JSON.stringify(event)
-  );
+user:"SYSTEM"
 
+});
 
 
-  try {
+Logger.info(
+"EVENT CREATED: "+
+JSON.stringify(event)
+);
 
 
-    // 1. Проверяем BusinessEventProcessor
 
-    BusinessEventProcessor.process(
-      event
-    );
+try{
 
 
+BusinessEventProcessor.process(event);
 
-    Logger.log(
-      "PROCESS RESULT: SUCCESS"
-    );
 
 
+Logger.info(
+"PROCESS RESULT: SUCCESS"
+);
 
-    // 2. Проверяем что событие опубликовано
 
-    Logger.log(
-      "CHECK EVENTBUS HANDLERS"
-    );
 
+}
+catch(e){
 
-    const handlers =
-      EventBus
-        .diagnostics
-        ?
-        EventBus.diagnostics()
-        :
-        null;
+Logger.error(
+"PROCESS RESULT FAILED: "+
+e.message
+);
 
+}
 
 
-    if (handlers) {
 
-      Logger.log(
-        "EVENTBUS STATUS: "+
-        JSON.stringify(handlers)
-      );
+Logger.info(
+"CHECK EVENTBUS SUBSCRIBERS"
+);
 
-    }
 
 
+try{
 
-    // 3. Проверяем KPI подписку
 
+Logger.info(
+"KPI STATUS: "+
+JSON.stringify(
+KPISubscriptions.health()
+)
+);
 
-    if (
-      typeof KPISubscriptions !== "undefined"
-    ){
 
-      Logger.log(
-        "KPI STATUS: "+
-        JSON.stringify(
-          KPISubscriptions.health()
-        )
-      );
 
-    }
+Logger.info(
+"NOTIFICATION STATUS: "+
+JSON.stringify(
+NotificationSubscriptions.health()
+)
+);
 
 
 
-    // 4. Проверяем Notification
+}
+catch(e){
 
+Logger.error(
+"SUBSCRIPTION CHECK FAILED "+
+e.message
+);
 
-    if (
-      typeof NotificationSubscriptions !== "undefined"
-    ){
+}
 
-      Logger.log(
-        "NOTIFICATION STATUS: "+
-        JSON.stringify(
-          NotificationSubscriptions.health()
-        )
-      );
 
-    }
 
+Logger.info(
+"PROCESSOR HEALTH: "+
+JSON.stringify(
+BusinessEventProcessor.health()
+)
+);
 
 
-    // 5. Проверяем состояние процессора
 
+Logger.info(
+"===== EVENT RELIABILITY TEST END ====="
+);
 
-    Logger.log(
-      "PROCESSOR HEALTH: "+
-      JSON.stringify(
-        BusinessEventProcessor.health()
-      )
-    );
-
-
-
-  }
-
-  catch(e){
-
-
-    Logger.error(
-      "EVENT PROCESS FAILED: "+
-      e.message
-    );
-
-
-
-    Logger.error(
-      e.stack
-    );
-
-
-  }
-
-
-
-  Logger.log(
-    "===== EVENT RELIABILITY TEST END ====="
-  );
 
 }
