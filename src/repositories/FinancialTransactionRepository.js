@@ -1,57 +1,117 @@
+// ============================================================
+// FinancialTransactionRepository v1.1.0
+// ============================================================
+
 const FinancialTransactionRepository = {
 
-version:"1.0.0",
+  version:"1.1.0",
+
+  entityName:"FINANCIAL_TRANSACTION",
 
 
-create(data){
+  // ============================================================
+  // CREATE
+  // ============================================================
 
-return BaseRepository.create(
-    "FINANCIAL_TRANSACTION",
-    data
-);
+  create(data){
 
-},
+    return BaseRepository.create(
+      this.entityName,
+      data
+    );
 
-
-findById(id){
-
-return BaseRepository.findById(
-    "FINANCIAL_TRANSACTION",
-    id
-);
-
-},
+  },
 
 
-update(id,data){
+  // ============================================================
+  // FIND BY ID
+  // ============================================================
 
-return BaseRepository.update(
-    "FINANCIAL_TRANSACTION",
-    id,
-    data
-);
+  findById(id){
 
-},
+    return BaseRepository.findById(
+      this.entityName,
+      id
+    );
 
-
-delete(id){
-
-return BaseRepository.delete(
-    "FINANCIAL_TRANSACTION",
-    id
-);
+  },
 
 
-}
+  // ============================================================
+  // FIND ALL
+  // ============================================================
+
+  findAll(){
+
+    return BaseRepository.findAll(
+      this.entityName
+    );
+
+  },
+
+
+  // ============================================================
+  // UPDATE
+  // ============================================================
+
+  update(id,data){
+
+    return BaseRepository.update(
+      this.entityName,
+      id,
+      data
+    );
+
+  },
+
+
+  // ============================================================
+  // DELETE
+  // ============================================================
+
+  delete(id){
+
+    return BaseRepository.delete(
+      this.entityName,
+      id
+    );
+
+  },
+
+
+  // ============================================================
+  // HEALTH
+  // ============================================================
+
+  health(){
+
+    return {
+
+      status:"OK",
+
+      repository:
+        "FinancialTransactionRepository",
+
+      version:this.version,
+
+      entity:this.entityName
+
+    };
+
+  }
 
 
 };
 
+
+// ============================================================
+// GLOBAL REGISTER
+// ============================================================
 
 globalThis.FinancialTransactionRepository =
 FinancialTransactionRepository;
 
 
 Logger.log(
-"FinancialTransactionRepository READY v1.0.0"
+"FinancialTransactionRepository READY v1.1.0"
 );
