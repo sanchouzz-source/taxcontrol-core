@@ -426,3 +426,12 @@ const SystemInit = {
 
 globalThis.SystemInit = SystemInit;
 Logger.log("SystemInit READY v" + SystemInit.version);
+if(typeof ERPDiagnostics!=="undefined"){
+
+Logger.log(
+"Running startup diagnostics..."
+);
+
+ERPDiagnostics.run();
+
+}
