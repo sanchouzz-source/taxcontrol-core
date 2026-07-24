@@ -1,10 +1,10 @@
 // ============================================================
-// SystemInit v2.0.0 – Исправленный оркестратор с асинхронной загрузкой
+// SystemInit v2.0.1 – Исправленный оркестратор с защитой от отсутствующих компонентов
 // ============================================================
-console.log("SystemInit v2.0.0");
+console.log("SystemInit v2.0.1");
 
 const SystemInit = {
-  version: "2.0.0",
+  version: "2.0.1",
   initialized: false,
   startedAt: null,
   bootLog: [],
@@ -63,12 +63,14 @@ const SystemInit = {
     BusinessEventProcessor: "EVENT"
   },
 
-  // ---- АСИНХРОННАЯ ИНИЦИАЛИЗАЦИЯ КОМПОНЕНТА ----
+  // ---- АСИНХРОННАЯ ИНИЦИАЛИЗАЦИЯ КОМПОНЕНТА (с проверкой существования) ----
   async _initComponent(name, fn, phase = "CORE", critical = false) {
     if (this.started[name]) {
       Logger.warn(`${name} already started, skipping`);
       return true;
     }
+
+    // Проверяем зависимости
     const deps = this.dependencyGraph[name] || [];
     for (const dep of deps) {
       if (!this.started[dep]) {
@@ -78,9 +80,19 @@ const SystemInit = {
         throw new Error(`Component ${name} blocked: ${msg}`);
       }
     }
+
+    // Проверяем, что компонент существует (хотя бы глобально)
+    const obj = globalThis[name];
+    if (!obj && critical) {
+      const msg = `Component ${name} not defined in global scope`;
+      this.bootLog.push({ name, phase, status: "FAILED", error: msg });
+      this.componentStatus[name] = { status: "FAILED", error: msg, timestamp: new Date().toISOString() };
+      throw new Error(`Critical component ${name} not found: ${msg}`);
+    }
+
     try {
       const startedAt = Date.now();
-      await fn(); // ★ теперь ждём Promise
+      await fn(); // fn уже обёрнута в безопасный вызов
       const duration = Date.now() - startedAt;
       this.bootLog.push({ name, phase, status: "OK", duration });
       this.componentStatus[name] = { status: "OK", startedAt: new Date().toISOString(), duration };
@@ -97,6 +109,7 @@ const SystemInit = {
     }
   },
 
+  // ---- БЕЗОПАСНАЯ ИНИЦИАЛИЗАЦИЯ (для некритичных) ----
   safeInit(name, phase = "SERVICES") {
     const obj = globalThis[name];
     if (obj && typeof obj.init === "function") {
@@ -107,6 +120,7 @@ const SystemInit = {
     return false;
   },
 
+  // ---- ГЛАВНЫЙ МЕТОД ЗАПУСКА ----
   async init() {
     if (this.initialized) {
       Logger.log("ERP SYSTEM ALREADY RUNNING");
@@ -119,7 +133,7 @@ const SystemInit = {
     this.componentStatus = {};
 
     try {
-      // ---- BOOTSTRAP ----
+      // ---- BOOTSTRAP (с проверкой существования через безопасный вызов) ----
       await this._initComponent("Config", () => Config?.init?.() || Promise.resolve(), "BOOTSTRAP", true);
       await this._initComponent("Logger", () => Logger?.init?.() || Promise.resolve(), "BOOTSTRAP", true);
 
@@ -198,6 +212,7 @@ const SystemInit = {
     return this.health();
   },
 
+  // ---- ВАЛИДАЦИЯ СИСТЕМЫ (с проверками) ----
   async _validateSystem() {
     Logger.log("VALIDATION | Running system validation...");
     if (
@@ -214,6 +229,7 @@ const SystemInit = {
     Logger.log("VALIDATION | Complete");
   },
 
+  // ---- ПРОВЕРКА ЗДОРОВЬЯ СИСТЕМЫ ----
   async _healthCheck() {
     Logger.log("HEALTHCHECK | Performing system health check...");
     let ok = true;
@@ -233,6 +249,7 @@ const SystemInit = {
     Logger.log("HEALTHCHECK | All systems healthy");
   },
 
+  // ---- ПУБЛИКАЦИЯ СОБЫТИЯ СТАРТА ----
   _emitStartupEvent() {
     try {
       if (typeof EventBus !== "undefined" && EventBus.emit) {
@@ -248,6 +265,7 @@ const SystemInit = {
     }
   },
 
+  // ---- ПЕЧАТЬ ОТЧЁТА ----
   _printReport() {
     Logger.log("===== ERP START REPORT =====");
     const phases = ["BOOTSTRAP", "CORE", "MIGRATION", "ENTITY", "EVENT", "DOMAIN", "APPLICATION", "SERVICES", "REPORTING", "VALIDATION", "HEALTHCHECK"];
@@ -266,8 +284,91 @@ const SystemInit = {
     Logger.log("\n===== ERP READY =====");
   },
 
-  health() { /* без изменений – уже есть */ },
-  diagnostics() { /* без изменений – уже есть */ }
+  // ---- HEALTH (с проверкой существования компонентов) ----
+  health() {
+    let uptime = 0;
+    if (this.startedAt) uptime = Date.now() - new Date(this.startedAt).getTime();
+
+    let subscriptions = 0;
+    try {
+      if (typeof EventBus !== "undefined" && EventBus.list) {
+        const events = EventBus.list();
+        for (const ev of events) subscriptions += EventBus.listeners ? EventBus.listeners(ev) : 0;
+      }
+    } catch { subscriptions = -1; }
+
+    let tables = 0;
+    try {
+      if (typeof SchemaManager !== "undefined" && SchemaManager.getSchema) {
+        const schema = SchemaManager.getSchema();
+        tables = schema ? Object.keys(schema).length : 0;
+      }
+    } catch { tables = -1; }
+
+    // Статусы компонентов с защитой от отсутствующих
+    const compStatus = {};
+    for (const [name, st] of Object.entries(this.componentStatus)) {
+      compStatus[name] = st.status;
+    }
+    // Добавляем компоненты, которые могли быть пропущены
+    const allComponents = ["Config", "Logger", "SchemaManager", "Database", "EntityMetadata", "EntityRegistry", "Registry", "ERPEventContract", "EventBus", "BusinessEventProcessor"];
+    for (const name of allComponents) {
+      if (!compStatus[name]) {
+        const started = this.started[name];
+        compStatus[name] = started ? "OK" : "NOT_STARTED";
+      }
+    }
+
+    return HealthContract.create("SystemInit", this.initialized ? "OK" : "WARNING", {
+      version: this.version,
+      startedAt: this.startedAt,
+      uptime,
+      components: compStatus,
+      bootLog: this.bootLog,
+      eventBus: {
+        subscriptions,
+        ready: typeof EventBus !== "undefined" && EventBus.ready
+      },
+      database: {
+        tables,
+        ready: typeof Database !== "undefined" && Database.initialized
+      },
+      moduleRegistry: {
+        ready: typeof ModuleRegistry !== "undefined" && ModuleRegistry.initialized,
+        failed: typeof ModuleRegistry !== "undefined" ? ModuleRegistry.failed || [] : []
+      },
+      criticalStatus: {
+        database: typeof Database !== "undefined" && Database.initialized,
+        eventBus: typeof EventBus !== "undefined" && EventBus.ready,
+        businessProcessor: typeof BusinessEventProcessor !== "undefined" && BusinessEventProcessor.ready
+      }
+    });
+  },
+
+  // ---- ДИАГНОСТИКА (с проверками) ----
+  diagnostics() {
+    let moduleDiag = null;
+    if (typeof ModuleRegistry !== "undefined" && ModuleRegistry.diagnostics) {
+      moduleDiag = ModuleRegistry.diagnostics();
+    }
+    // Безопасное получение статусов
+    const componentStatusSafe = {};
+    for (const name of Object.keys(this.componentStatus)) {
+      componentStatusSafe[name] = this.componentStatus[name]?.status || "UNKNOWN";
+    }
+    return {
+      system: {
+        version: this.version,
+        initialized: this.initialized,
+        startedAt: this.startedAt,
+        uptime: this.startedAt ? Date.now() - new Date(this.startedAt).getTime() : 0
+      },
+      bootLog: this.bootLog,
+      startedComponents: Object.keys(this.started),
+      componentStatus: componentStatusSafe,
+      moduleRegistry: moduleDiag
+    };
+  }
 };
 
 globalThis.SystemInit = SystemInit;
