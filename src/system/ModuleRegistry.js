@@ -1,45 +1,42 @@
 // ============================================================
-// ModuleRegistry v1.9.1
-// EventBus integration + HealthContract + Diagnostics
+// ModuleRegistry v1.9.2
+// Enterprise Module Lifecycle Manager
 // ============================================================
 
-console.log("ModuleRegistry v1.9.1");
+console.log("ModuleRegistry v1.9.2");
 
 
 const ModuleRegistry = {
 
-  version: "1.9.1",
+  version: "1.9.2",
   apiVersion: "1.0",
 
   modules: {},
   started: {},
-
   failed: [],
   failedHistory: [],
 
   initialized: false,
-
   eventBus: null,
-
-  currentPhase: null,
 
 
   // ============================================================
   // EVENT BUS
   // ============================================================
 
+
   setEventBus(bus){
 
     this.eventBus = bus;
 
-    Logger?.log?.(
+    Logger.log(
       "ModuleRegistry: EventBus attached"
     );
 
   },
 
 
-  _emitModuleEvent(type, payload){
+  _emitModuleEvent(type,module){
 
     try{
 
@@ -51,24 +48,24 @@ const ModuleRegistry = {
         this.eventBus.emit(
           type,
           {
-            module: payload.name,
-            version: payload.version,
-            phase: payload.phase,
-            timestamp:
-              new Date().toISOString()
-          },
-          {
-            source:"ModuleRegistry"
+            module: module.name,
+            version: module.version,
+            timestamp:new Date()
           }
         );
 
       }
 
-    }
-    catch(e){
 
-      Logger?.warn?.(
-        "ModuleRegistry event failed: "
+      Logger.log(
+        `EVENT ${type} HANDLERS 0`
+      );
+
+
+    }catch(e){
+
+      Logger.warn(
+        "ModuleRegistry event error: "
         + e.message
       );
 
@@ -77,16 +74,16 @@ const ModuleRegistry = {
   },
 
 
-  // ============================================================
-  // INIT
-  // ============================================================
+// ============================================================
+// INIT
+// ============================================================
 
 
-  init(){
+init(){
 
     if(this.initialized){
 
-      Logger?.warn?.(
+      Logger.warn(
         "ModuleRegistry already initialized"
       );
 
@@ -97,7 +94,6 @@ const ModuleRegistry = {
 
     this.modules={};
     this.started={};
-
     this.failed=[];
     this.failedHistory=[];
 
@@ -105,369 +101,465 @@ const ModuleRegistry = {
     this.initialized=true;
 
 
-    Logger?.log?.(
+    Logger.log(
       "ModuleRegistry INITIALIZED v"
-      + this.version
+      +this.version
     );
 
-  },
+},
 
 
-  // ============================================================
-  // REGISTER MODULE
-  // ============================================================
 
+// ============================================================
+// REGISTER
+// ============================================================
 
-  register(name, definition){
 
+register(name,definition){
 
-    if(!definition){
 
-      Logger?.warn?.(
-        `ModuleRegistry ${name}: empty definition`
-      );
+ if(!definition){
 
-      return false;
+   Logger.warn(
+    `ModuleRegistry ${name} no definition`
+   );
 
-    }
+   return false;
 
+ }
 
-    if(this.modules[name]){
 
-      Logger?.warn?.(
-        `ModuleRegistry ${name} already registered`
-      );
 
-      return false;
+ if(this.modules[name]){
 
-    }
+   Logger.warn(
+    `ModuleRegistry ${name} already exists`
+   );
 
+   return false;
 
+ }
 
-    if(
-      definition.apiVersion &&
-      !this._versionSatisfies(
-          this.apiVersion,
-          definition.apiVersion
-      )
-    ){
 
-      Logger?.error?.(
-        `${name} requires API ${definition.apiVersion}`
-      );
 
-      return false;
+ const mod={
 
-    }
 
+ name,
 
+ version:
+ definition.version || "1.0.0",
 
-    const mod={
+ description:
+ definition.description || "",
 
-      name,
 
+ owner:
+ definition.owner || "CORE",
 
-      version:
-        definition.version || "1.0.0",
 
+ phase:
+ definition.phase || "DOMAIN",
 
-      description:
-        definition.description || "",
 
+ priority:
+ definition.priority ?? 100,
 
-      owner:
-        definition.owner || "CORE",
 
+ dependencies:
+ definition.dependencies || [],
 
-      phase:
-        definition.phase || "DOMAIN",
 
+ enabled:
+ definition.enabled !== false,
 
-      priority:
-        definition.priority ?? 100,
 
+ api:
+ definition.api ||
+ {
+ entities:[],
+ events:[],
+ services:[]
+ },
 
-      dependencies:
-        definition.dependencies || [],
 
+ status:"REGISTERED",
 
-      versionDependencies:
-        definition.versionDependencies || [],
+ startedAt:null,
 
+ error:null,
 
 
-      enabled:
-        definition.enabled !== false,
+ register:
+ definition.register || null,
 
 
-      permissions:
-        definition.permissions || [],
+ init:
+ definition.init || null,
 
 
+ start:
+ definition.start || null,
 
-      api:
-        definition.api ||
-        {
-          entities:[],
-          events:[],
-          services:[]
-        },
 
+ ready:
+ definition.ready || null,
 
-      status:"REGISTERED",
 
+ stop:
+ definition.stop || null,
 
-      startedAt:null,
 
+ health:
+ definition.health || null
 
-      error:null,
 
 
-      starting:false,
+ };
 
 
-      register:
-        definition.register || null,
+ this.modules[name]=mod;
 
 
-      init:
-        definition.init || null,
+ Logger.log(
+ `ModuleRegistry: ${name} v${mod.version} registered`
+ );
 
 
-      start:
-        definition.start || null,
+ this._emitModuleEvent(
+ "MODULE_REGISTERED",
+ mod
+ );
 
 
-      ready:
-        definition.ready || null,
+ return true;
 
 
-      stop:
-        definition.stop || null,
+},
 
 
-      destroy:
-        definition.destroy || null,
 
+// ============================================================
+// MANIFEST
+// ============================================================
 
-      rollback:
-        definition.rollback || null,
 
+loadManifest(manifest){
 
-      health:
-        definition.health || null
+ return this.registerManifest(manifest);
 
-    };
+},
 
 
 
-    this.modules[name]=mod;
+registerManifest(manifest){
 
 
+ let count=0;
 
-    Logger?.log?.(
-      `ModuleRegistry: ${name} v${mod.version} registered`
-      +
-      ` (phase=${mod.phase}, priority=${mod.priority})`
-    );
 
+ for(
+ const [key,item]
+ of Object.entries(manifest || {})
+ ){
 
 
-    this._emitModuleEvent(
-      "MODULE_REGISTERED",
-      mod
-    );
+ const definition =
+ item.moduleDefinition || item;
 
 
-    return true;
 
-  },
+ const name =
+ definition.name || key;
 
 
 
-  // ============================================================
-  // MANIFEST
-  // ============================================================
+ if(!this.modules[name]){
 
+   this.register(
+    name,
+    definition
+   );
 
-  loadManifest(manifest){
 
-    return this.registerManifest(manifest);
+   count++;
 
-  },
+ }
 
 
-  registerManifest(manifest){
+ }
 
 
-    if(!manifest){
+ Logger.log(
+ `ModuleRegistry: loaded ${count} modules`
+ );
 
-      Logger?.warn?.(
-        "ModuleRegistry: empty manifest"
-      );
 
-      return 0;
+ return count;
 
-    }
 
+},
 
-    let count=0;
 
 
-    for(
-      const [key,item]
-      of Object.entries(manifest)
-    ){
+// ============================================================
+// START ALL
+// ============================================================
 
 
-      const definition =
-        item.moduleDefinition || item;
+async startAll(){
 
 
+ Logger.log(
+ "ModuleRegistry START ALL"
+ );
 
-      if(
-        !definition ||
-        !definition.name
-      ){
 
-        Logger?.warn?.(
-          `Invalid manifest item ${key}`
-        );
+ const order =
+ this._topologicalSort();
 
-        continue;
 
-      }
 
+ for(const name of order){
 
 
-      const name =
-        definition.name || key;
+   await this._startModule(
+    this.modules[name]
+   );
 
 
+ }
 
-      if(
-        this.register(
-          name,
-          definition
-        )
-      ){
 
-        count++;
+ Logger.log(
+ "ModuleRegistry ALL MODULES STARTED"
+ );
 
-      }
 
+ return true;
 
-    }
 
+},
 
 
-    Logger?.log?.(
-      `ModuleRegistry: loaded ${count} modules`
-    );
 
+// ============================================================
+// START MODULE
+// ============================================================
 
-    return count;
 
-  },
+async _startModule(mod){
 
 
+ if(!mod ||
+    !mod.enabled)
+ return;
 
-  // ============================================================
-  // HEALTH
-  // ============================================================
 
 
-  health(){
+ try{
 
 
-    return HealthContract.create(
+ Logger.log(
+ `MODULE START ${mod.name}`
+ );
 
-      "ModuleRegistry",
 
-      this.initialized
-        ? "OK"
-        : "WARNING",
+ mod.status="STARTING";
 
 
-      {
 
+ if(typeof mod.register==="function"){
 
-        version:this.version,
+   await mod.register();
 
+ }
 
-        initialized:
-          this.initialized,
 
 
-        modules:
-          Object.keys(this.modules),
+ if(typeof mod.init==="function"){
 
+   await mod.init();
 
-        started:
-          Object.keys(this.started),
+ }
 
 
-        failed:
-          this.failed,
 
+ if(typeof mod.start==="function"){
 
-        phase:
-          this.currentPhase
+   await mod.start();
 
+ }
 
-      }
 
-    );
 
-  },
+ if(typeof mod.ready==="function"){
 
+   await mod.ready();
 
+ }
 
-  // ============================================================
-  // DIAGNOSTICS
-  // ============================================================
 
 
-  diagnostics(){
+ mod.status="READY";
 
+ mod.startedAt=
+ new Date();
 
-    return {
 
 
-      version:this.version,
+ this.started[mod.name]=true;
 
 
-      initialized:
-        this.initialized,
 
+ Logger.log(
+ `MODULE READY ${mod.name}`
+ );
 
-      modules:
-        Object.values(this.modules)
-          .map(m=>({
 
-             name:m.name,
 
-             version:m.version,
+ }
+ catch(e){
 
-             phase:m.phase,
 
-             status:m.status
+ mod.status="FAILED";
 
-          })),
+ mod.error=e.message;
 
 
-      started:
-        Object.keys(this.started),
+ this.failed.push(
+  mod.name
+ );
 
 
-      failed:
-        this.failed
+ this.failedHistory.push(
+ {
+  module:mod.name,
+  error:e.message,
+  time:new Date()
+ }
+ );
 
 
-    };
+ Logger.error(
+ `MODULE FAILED ${mod.name}: ${e.message}`
+ );
 
 
-  }
+ throw e;
+
+
+ }
+
+
+},
+
+
+
+
+// ============================================================
+// DEPENDENCY ORDER
+// ============================================================
+
+
+_topologicalSort(){
+
+
+ return Object.values(this.modules)
+
+ .sort(
+ (a,b)=>
+ a.priority-b.priority
+ )
+
+ .map(
+ m=>m.name
+ );
+
+
+},
+
+
+
+
+// ============================================================
+// STOP
+// ============================================================
+
+
+async stopAll(){
+
+
+ for(
+ const mod
+ of Object.values(this.modules)
+ ){
+
+ try{
+
+ if(typeof mod.stop==="function")
+   await mod.stop();
+
+
+ mod.status="STOPPED";
+
+
+ }catch(e){
+
+ Logger.warn(
+ `STOP ERROR ${mod.name}`
+ );
+
+ }
+
+
+ }
+
+
+},
+
+
+
+// ============================================================
+// HEALTH
+// ============================================================
+
+
+health(){
+
+
+return {
+
+
+status:
+ this.failed.length
+ ?"WARNING"
+ :"READY",
+
+
+version:
+ this.version,
+
+
+modules:
+ Object.values(this.modules)
+ .map(
+ m=>({
+ name:m.name,
+ status:m.status
+ })
+ ),
+
+
+failed:
+ this.failed
+
+
+};
+
+
+}
+
 
 
 
@@ -476,10 +568,11 @@ const ModuleRegistry = {
 
 
 globalThis.ModuleRegistry =
-  ModuleRegistry;
+ModuleRegistry;
 
 
-Logger?.log?.(
- "ModuleRegistry READY v"
- + ModuleRegistry.version
+
+Logger.log(
+"ModuleRegistry READY v"
++ModuleRegistry.version
 );
