@@ -3,219 +3,149 @@ console.log("CarrierRepository");
 
 const CarrierRepository = {
 
-  version: "1.0.0",
+  version: "2.0.0",
 
   entity: "CARRIER",
 
 
-  create(data) {
+  /**
+   * CREATE
+   */
+  create(data = {}) {
 
-    const record = {
-      CarrierID: IdService.generate("CAR"),
-      OrganizationID: data.OrganizationID || "ORG000001",
-
-      Name: data.Name || "",
-      INN: data.INN || "",
-
-      Phone: data.Phone || "",
-      Email: data.Email || "",
-
-      ContactPerson: data.ContactPerson || "",
-
-      Status: data.Status || "ACTIVE",
-
-      CreatedAt: new Date().toISOString(),
-      UpdatedAt: new Date().toISOString(),
-
-      Deleted: false,
-      DeletedAt: null,
-      DeletedBy: null
-    };
-
-
-    Database.insert(
+    return BaseRepository.create(
       this.entity,
-      record
+      data
     );
 
-
-    EventBus.emit(
-      "CARRIER_CREATED",
-      record
-    );
-
-
-    return record;
   },
 
 
-  findById(id) {
+  /**
+   * FIND BY ID
+   */
+  findById(id, options = {}) {
 
-    return Database.findById(
+    return BaseRepository.findById(
       this.entity,
       id,
-      {
-        includeDeleted:false
-      }
-    );
-
-  },
-
-
-  findAll(options={}) {
-
-    return Database.findAll(
-      this.entity,
       options
     );
 
   },
 
 
-  update(id, data) {
+  /**
+   * FIND ALL
+   */
+  findAll(filters = {}, options = {}) {
 
-
-    const current = this.findById(id);
-
-    if(!current){
-      throw new Error(
-        "Carrier not found: " + id
-      );
-    }
-
-
-    const updated = {
-
-      ...current,
-
-      ...data,
-
-      CarrierID:id,
-
-      UpdatedAt:
-        new Date().toISOString()
-
-    };
-
-
-    Database.update(
+    return BaseRepository.findAll(
       this.entity,
-      id,
-      updated
+      filters,
+      options
     );
-
-
-    EventBus.emit(
-      "CARRIER_UPDATED",
-      updated
-    );
-
-
-    return updated;
 
   },
 
 
-  delete(id, user="SYSTEM") {
+  /**
+   * UPDATE
+   */
+  update(id, data = {}) {
 
-
-    const carrier = this.findById(id);
-
-
-    if(!carrier){
-      throw new Error(
-        "Carrier not found: " + id
-      );
-    }
-
-
-    Database.update(
+    return BaseRepository.update(
       this.entity,
       id,
-      {
-
-        Deleted:true,
-
-        DeletedAt:
-          new Date().toISOString(),
-
-        DeletedBy:user,
-
-        UpdatedAt:
-          new Date().toISOString()
-
-      }
+      data
     );
-
-
-    EventBus.emit(
-      "CARRIER_DELETED",
-      carrier
-    );
-
-
-    return true;
 
   },
 
 
+  /**
+   * DELETE
+   */
+  delete(id) {
+
+    return BaseRepository.delete(
+      this.entity,
+      id
+    );
+
+  },
+
+
+  /**
+   * RESTORE
+   */
   restore(id) {
 
-
-    const carrier =
-      Database.findById(
-        this.entity,
-        id,
-        {
-          includeDeleted:true
-        }
-      );
-
-
-    if(!carrier){
-      throw new Error(
-        "Carrier not found: "+id
-      );
-    }
-
-
-    Database.update(
+    return BaseRepository.restore(
       this.entity,
-      id,
-      {
-
-        Deleted:false,
-
-        DeletedAt:null,
-
-        DeletedBy:null,
-
-        UpdatedAt:
-          new Date().toISOString()
-
-      }
+      id
     );
-
-
-    EventBus.emit(
-      "CARRIER_RESTORED",
-      carrier
-    );
-
-
-    return this.findById(id);
 
   },
 
 
-  exists(id){
+  /**
+   * EXISTS
+   */
+  exists(id) {
 
-    return !!this.findById(id);
+    return BaseRepository.exists(
+      this.entity,
+      id
+    );
 
   },
 
 
-  health(){
+  /**
+   * EXISTS BY FIELD
+   */
+  existsBy(field, value) {
+
+    return BaseRepository.existsBy(
+      this.entity,
+      field,
+      value
+    );
+
+  },
+
+
+  /**
+   * SEARCH
+   */
+  search(filters = {}) {
+
+    return BaseRepository.findAll(
+      this.entity,
+      filters
+    );
+
+  },
+
+
+  /**
+   * COUNT
+   */
+  count(filters = {}) {
+
+    return BaseRepository.count(
+      this.entity,
+      filters
+    );
+
+  },
+
+
+  /**
+   * HEALTH
+   */
+  health() {
 
     return HealthContract.create(
 
@@ -225,7 +155,8 @@ const CarrierRepository = {
 
       {
         version:this.version,
-        entity:this.entity
+        entity:this.entity,
+        architecture:"BaseRepository v3"
       }
 
     );
@@ -240,18 +171,25 @@ globalThis.CarrierRepository =
     CarrierRepository;
 
 
-Logger.debug(
- "CarrierRepository READY v1.0.0"
+
+Logger.log(
+  "CarrierRepository READY v" +
+  CarrierRepository.version
 );
 
 
+
+/**
+ * Registration
+ */
+
 if (
-    typeof RepositoryFactory !== "undefined"
+ typeof RepositoryFactory !== "undefined"
 ) {
 
-    RepositoryFactory.registerLoaded(
-        "CARRIER",
-        CarrierRepository
-    );
+  RepositoryFactory.registerLoaded(
+    "CARRIER",
+    CarrierRepository
+  );
 
 }

@@ -1,48 +1,214 @@
 // CargoRepository.js
+
 console.log("CargoRepository");
 
+
 const CargoRepository = {
-  version: "1.0.0",
 
-  create(data) {
-    return BaseRepository.create("CARGO", data);
+  version: "1.1.0",
+
+  entity: "CARGO",
+
+
+  // =================================
+  // CREATE
+  // =================================
+
+  create(data = {}) {
+
+    return BaseRepository.create(
+      this.entity,
+      data
+    );
+
   },
 
-  findById(id) {
-    return BaseRepository.findById("CARGO", id);
+
+  // =================================
+  // READ
+  // =================================
+
+  findById(id, options = {}) {
+
+    return BaseRepository.findById(
+      this.entity,
+      id,
+      options
+    );
+
   },
 
-  findAll(filters = {}) {
-    return BaseRepository.findAll("CARGO", filters);
+
+  findAll(filters = {}, options = {}) {
+
+    return BaseRepository.findAll(
+      this.entity,
+      filters,
+      options
+    );
+
   },
 
-  update(id, data) {
-    return BaseRepository.update("CARGO", id, data);
+
+  count(filters = {}, options = {}) {
+
+    return BaseRepository.count(
+      this.entity,
+      filters,
+      options
+    );
+
   },
+
+
+  exists(id, options = {}) {
+
+    return BaseRepository.exists(
+      this.entity,
+      id,
+      options
+    );
+
+  },
+
+
+  existsBy(field, value, options = {}) {
+
+    return BaseRepository.existsBy(
+      this.entity,
+      field,
+      value,
+      options
+    );
+
+  },
+
+
+  // =================================
+  // UPDATE
+  // =================================
+
+  update(id, data = {}) {
+
+    return BaseRepository.update(
+      this.entity,
+      id,
+      data
+    );
+
+  },
+
+
+  // =================================
+  // DELETE
+  // =================================
 
   delete(id) {
-    return BaseRepository.delete("CARGO", id);
+
+    return BaseRepository.delete(
+      this.entity,
+      id
+    );
+
   },
+
+
+  // =================================
+  // RESTORE
+  // =================================
 
   restore(id) {
-    return BaseRepository.restore("CARGO", id);
+
+    return BaseRepository.restore(
+      this.entity,
+      id
+    );
+
   },
 
-  exists(id) {
-    return BaseRepository.exists("CARGO", id);
-  },
+
+  // =================================
+  // HEALTH
+  // =================================
 
   health() {
+
     return HealthContract.create(
+
       "CargoRepository",
+
       "OK",
+
       {
+
         version: this.version,
-        entity: "CARGO"
+
+        entity: this.entity,
+
+        architecture:
+          "BaseRepository 4.x",
+
+        features: [
+
+          "CRUD",
+
+          "SoftDelete",
+
+          "Restore",
+
+          "Validation",
+
+          "Permissions",
+
+          "Audit",
+
+          "Versioning",
+
+          "EventBus"
+
+        ]
+
       }
+
     );
+
   }
+
 };
 
-globalThis.CargoRepository = CargoRepository;
-Logger.log("CargoRepository READY v" + CargoRepository.version);
+
+
+// =================================
+// GLOBAL REGISTRATION
+// =================================
+
+globalThis.CargoRepository =
+  CargoRepository;
+
+
+
+// =================================
+// RepositoryFactory registration
+// =================================
+
+if (
+  typeof RepositoryFactory !== "undefined"
+) {
+
+  RepositoryFactory.registerLoaded(
+    "CARGO",
+    CargoRepository
+  );
+
+}
+
+
+
+// =================================
+// READY
+// =================================
+
+Logger.log(
+  "CargoRepository READY v" +
+  CargoRepository.version
+);

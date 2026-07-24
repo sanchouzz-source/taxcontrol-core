@@ -1,116 +1,270 @@
+// TransportOrderRepository.js
+
 console.log("TransportOrderRepository");
 
 
 const TransportOrderRepository = {
 
-version:"1.1.0",
+  version: "2.0.0",
+
+  entity: "TRANSPORT_ORDER",
 
 
-create(data){
+  // =====================================
+  // CREATE
+  // =====================================
+
+  create(data = {}) {
 
     return BaseRepository.create(
-        "TRANSPORT_ORDER",
-        data
+      this.entity,
+      data
     );
 
-},
+  },
 
 
-findById(id){
+  // =====================================
+  // READ
+  // =====================================
+
+  findById(id, options = {}) {
 
     return BaseRepository.findById(
-        "TRANSPORT_ORDER",
-        id
+      this.entity,
+      id,
+      options
     );
 
-},
+  },
 
 
-findAll(filters = {}){
+  findAll(filters = {}, options = {}) {
 
     return BaseRepository.findAll(
-        "TRANSPORT_ORDER",
-        filters
+      this.entity,
+      filters,
+      options
     );
 
-},
+  },
 
 
-update(id,data){
+  count(filters = {}, options = {}) {
 
-    return BaseRepository.update(
-        "TRANSPORT_ORDER",
-        id,
-        data
+    return BaseRepository.count(
+      this.entity,
+      filters,
+      options
     );
 
-},
+  },
 
 
-delete(id){
-
-    return BaseRepository.delete(
-        "TRANSPORT_ORDER",
-        id
-    );
-
-},
-
-
-restore(id){
-
-    return BaseRepository.restore(
-        "TRANSPORT_ORDER",
-        id
-    );
-
-},
-
-
-exists(id){
+  exists(id, options = {}) {
 
     return BaseRepository.exists(
-        "TRANSPORT_ORDER",
-        id
+      this.entity,
+      id,
+      options
     );
 
-},
+  },
 
 
-health(){
+  existsBy(field, value, options = {}) {
+
+    return BaseRepository.existsBy(
+      this.entity,
+      field,
+      value,
+      options
+    );
+
+  },
+
+
+  // =====================================
+  // UPDATE
+  // =====================================
+
+  update(id, data = {}) {
+
+    return BaseRepository.update(
+      this.entity,
+      id,
+      data
+    );
+
+  },
+
+
+  // =====================================
+  // DELETE
+  // =====================================
+
+  delete(id) {
+
+    return BaseRepository.delete(
+      this.entity,
+      id
+    );
+
+  },
+
+
+  // =====================================
+  // RESTORE
+  // =====================================
+
+  restore(id) {
+
+    return BaseRepository.restore(
+      this.entity,
+      id
+    );
+
+  },
+
+
+  // =====================================
+  // BUSINESS METHODS
+  // (заготовки для логистики)
+  // =====================================
+
+
+  assignCarrier(orderId, carrierId) {
+
+    return this.update(
+      orderId,
+      {
+        CarrierID: carrierId
+      }
+    );
+
+  },
+
+
+  assignVehicle(orderId, vehicleId) {
+
+    return this.update(
+      orderId,
+      {
+        VehicleID: vehicleId
+      }
+    );
+
+  },
+
+
+  assignDriver(orderId, driverId) {
+
+    return this.update(
+      orderId,
+      {
+        DriverID: driverId
+      }
+    );
+
+  },
+
+
+  changeStatus(orderId, status) {
+
+    return this.update(
+      orderId,
+      {
+        Status: status
+      }
+    );
+
+  },
+
+
+  // =====================================
+  // HEALTH
+  // =====================================
+
+  health() {
 
     return HealthContract.create(
-        "TransportOrderRepository",
-        "OK",
-        {
-            version:this.version,
-            entity:"TRANSPORT_ORDER"
-        }
+
+      "TransportOrderRepository",
+
+      "OK",
+
+      {
+
+        version: this.version,
+
+        entity: this.entity,
+
+        architecture:
+          "BaseRepository 4.x",
+
+        features: [
+
+          "CRUD",
+
+          "SoftDelete",
+
+          "Restore",
+
+          "Validation",
+
+          "Permissions",
+
+          "Audit",
+
+          "Versioning",
+
+          "EventBus",
+
+          "LogisticsWorkflow"
+
+        ]
+
+      }
+
     );
 
-}
+  }
 
 };
 
 
 
+// =====================================
+// GLOBAL
+// =====================================
+
 globalThis.TransportOrderRepository =
-    TransportOrderRepository;
+  TransportOrderRepository;
 
 
-Logger.debug(
-"[DEBUG] TransportOrderRepository READY v"
-+ TransportOrderRepository.version
-);
 
+// =====================================
+// RepositoryFactory registration
+// =====================================
 
-// регистрация после загрузки
+if (
+  typeof RepositoryFactory !== "undefined"
+) {
 
-if(typeof RepositoryFactory !== "undefined"){
-
-    RepositoryFactory.register(
-        "TRANSPORT_ORDER",
-        TransportOrderRepository
-    );
+  RepositoryFactory.registerLoaded(
+    "TRANSPORT_ORDER",
+    TransportOrderRepository
+  );
 
 }
+
+
+
+// =====================================
+// READY
+// =====================================
+
+Logger.log(
+  "TransportOrderRepository READY v" +
+  TransportOrderRepository.version
+);
