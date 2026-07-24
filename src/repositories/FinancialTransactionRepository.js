@@ -1,120 +1,82 @@
 // ============================================================
-// FinancialTransactionRepository v1.1.0
-// ERP Core Repository Contract
+// FinancialTransactionRepository v1.2.0
 // ============================================================
 
-console.log("FinancialTransactionRepository v1.1.0");
+console.log("FinancialTransactionRepository v1.2.0");
 
 
 const FinancialTransactionRepository = {
 
-    version:"1.1.0",
+version:"1.2.0",
 
 
-    entity:"FINANCIAL_TRANSACTION",
+create(data){
+
+return BaseRepository.create(
+    "FINANCIAL_TRANSACTION",
+    data
+);
+
+},
 
 
-    create(data){
+findAll(){
 
-        return BaseRepository.create(
-            this.entity,
-            data
-        );
+return BaseRepository.findAll(
+    "FINANCIAL_TRANSACTION"
+);
 
-    },
-
-
-    findById(id){
-
-        return BaseRepository.findById(
-            this.entity,
-            id
-        );
-
-    },
+},
 
 
-    findAll(filter){
+findById(id){
 
-        return BaseRepository.findAll(
-            this.entity,
-            filter || {}
-        );
+return BaseRepository.findById(
+    "FINANCIAL_TRANSACTION",
+    id
+);
 
-    },
-
-
-    update(id,data){
-
-        return BaseRepository.update(
-            this.entity,
-            id,
-            data
-        );
-
-    },
+},
 
 
-    delete(id){
+update(id,data){
 
-        return BaseRepository.delete(
-            this.entity,
-            id
-        );
+return BaseRepository.update(
+    "FINANCIAL_TRANSACTION",
+    id,
+    data
+);
 
-    },
-
-
-    count(filter){
-
-        if(BaseRepository.count){
-
-            return BaseRepository.count(
-                this.entity,
-                filter || {}
-            );
-
-        }
+},
 
 
-        const rows = this.findAll(filter);
+delete(id){
 
-        return rows.length;
+return BaseRepository.delete(
+    "FINANCIAL_TRANSACTION",
+    id
+);
 
-    },
-
-
-    exists(id){
-
-        return !!this.findById(id);
-
-    },
+},
 
 
-    health(){
+restore(id){
 
-        return {
+return BaseRepository.restore(
+    "FINANCIAL_TRANSACTION",
+    id
+);
 
-            status:"READY",
-
-            repository:this.entity,
-
-            version:this.version
-
-        };
-
-    }
+}
 
 
 };
-
 
 
 globalThis.FinancialTransactionRepository =
 FinancialTransactionRepository;
 
 
-
 Logger.log(
-"FinancialTransactionRepository READY v1.1.0"
+"FinancialTransactionRepository READY v1.2.0"
 );
