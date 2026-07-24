@@ -1,10 +1,10 @@
 // ============================================================
-// SystemInit v2.0.1 – Исправленный оркестратор с защитой от отсутствующих компонентов
+// SystemInit v2.1.1 – Улучшенный оркестратор с гибкой синхронизацией
 // ============================================================
-console.log("SystemInit v2.0.1");
+console.log("SystemInit v2.1.1");
 
 const SystemInit = {
-  version: "2.0.1",
+  version: "2.1.1",
   initialized: false,
   startedAt: null,
   bootLog: [],
@@ -26,21 +26,22 @@ const SystemInit = {
     READY:       { order: 11, label: "READY" }
   },
 
+  // ---------- ОБНОВЛЁННЫЙ ГРАФ ЗАВИСИМОСТЕЙ ----------
   dependencyGraph: {
-    // BOOTSTRAP
     Config: [],
     Logger: [],
-    // CORE
     SchemaManager: [],
     Database: ["SchemaManager"],
+    EntityMetadata: [],
     EntityRegistry: ["EntityMetadata"],
-    Registry: ["EntityRegistry"],
-    // EVENT
+    Registry: ["EntityMetadata"],               // больше не ждёт EntityRegistry
+    RepositoryFactory: ["EntityMetadata"],      // зависит от EntityMetadata
     ERPEventContract: [],
     EventBus: ["ERPEventContract"],
     BusinessEventProcessor: ["EventBus"]
   },
 
+  // ---------- КРИТИЧЕСКИЕ КОМПОНЕНТЫ (только жизненно важные) ----------
   criticalComponents: [
     "Config",
     "Logger",
@@ -50,29 +51,70 @@ const SystemInit = {
     "BusinessEventProcessor"
   ],
 
+  // ---------- ФАЗЫ КОМПОНЕНТОВ ----------
   componentPhase: {
     Config: "BOOTSTRAP",
     Logger: "BOOTSTRAP",
     SchemaManager: "CORE",
-    EntityMetadata: "ENTITY",
     Database: "CORE",
+    EntityMetadata: "ENTITY",
     EntityRegistry: "ENTITY",
     Registry: "ENTITY",
+    RepositoryFactory: "ENTITY",
     ERPEventContract: "EVENT",
     EventBus: "EVENT",
     BusinessEventProcessor: "EVENT"
   },
 
-  // ---- АСИНХРОННАЯ ИНИЦИАЛИЗАЦИЯ КОМПОНЕНТА (с проверкой существования) ----
+  // ---------- ФИКСАЦИЯ УСПЕШНОГО ЗАПУСКА КОМПОНЕНТА ----------
+  _syncStarted(name) {
+    this.started[name] = true;
+    this.componentStatus[name] = {
+      status: "OK",
+      timestamp: new Date().toISOString()
+    };
+    Logger.debug(`SYNC STARTED ${name}`);
+  },
+
+  // ---------- УЛУЧШЕННАЯ СИНХРОНИЗАЦИЯ СОСТОЯНИЯ ----------
+  _syncComponentState(name) {
+    const obj = globalThis[name];
+    if (!obj) return false;
+
+    // Расширенные признаки готовности (учитываем старые модули)
+    const ready =
+      obj.ready === true ||
+      obj.initialized === true ||
+      obj.status === "READY" ||
+      typeof obj.health === "function" ||
+      obj.version !== undefined;
+
+    if (ready) {
+      if (!this.started[name]) {
+        this.started[name] = true;
+        this.componentStatus[name] = {
+          status: "OK",
+          restored: true,
+          timestamp: new Date().toISOString()
+        };
+        Logger.debug(`STATE SYNC ${name} = READY`);
+      }
+      return true;
+    }
+    return false;
+  },
+
+  // ---------- ИНИЦИАЛИЗАЦИЯ КОМПОНЕНТА ----------
   async _initComponent(name, fn, phase = "CORE", critical = false) {
     if (this.started[name]) {
       Logger.warn(`${name} already started, skipping`);
       return true;
     }
 
-    // Проверяем зависимости
+    // ---- Проверка зависимостей с синхронизацией ----
     const deps = this.dependencyGraph[name] || [];
     for (const dep of deps) {
+      this._syncComponentState(dep);
       if (!this.started[dep]) {
         const msg = `Missing dependency ${dep}`;
         this.bootLog.push({ name, phase, status: "BLOCKED", reason: msg });
@@ -81,7 +123,7 @@ const SystemInit = {
       }
     }
 
-    // Проверяем, что компонент существует (хотя бы глобально)
+    // ---- Проверка существования компонента ----
     const obj = globalThis[name];
     if (!obj && critical) {
       const msg = `Component ${name} not defined in global scope`;
@@ -92,11 +134,11 @@ const SystemInit = {
 
     try {
       const startedAt = Date.now();
-      await fn(); // fn уже обёрнута в безопасный вызов
+      await fn();
       const duration = Date.now() - startedAt;
       this.bootLog.push({ name, phase, status: "OK", duration });
-      this.componentStatus[name] = { status: "OK", startedAt: new Date().toISOString(), duration };
-      this.started[name] = true;
+      // Фиксируем успешный старт
+      this._syncStarted(name);
       Logger.log(`${phase} | ${name} OK (${duration}ms)`);
       return true;
     } catch (e) {
@@ -109,7 +151,7 @@ const SystemInit = {
     }
   },
 
-  // ---- БЕЗОПАСНАЯ ИНИЦИАЛИЗАЦИЯ (для некритичных) ----
+  // ---- БЕЗОПАСНАЯ ИНИЦИАЛИЗАЦИЯ (некритичные) ----
   safeInit(name, phase = "SERVICES") {
     const obj = globalThis[name];
     if (obj && typeof obj.init === "function") {
@@ -133,7 +175,7 @@ const SystemInit = {
     this.componentStatus = {};
 
     try {
-      // ---- BOOTSTRAP (с проверкой существования через безопасный вызов) ----
+      // ---- BOOTSTRAP ----
       await this._initComponent("Config", () => Config?.init?.() || Promise.resolve(), "BOOTSTRAP", true);
       await this._initComponent("Logger", () => Logger?.init?.() || Promise.resolve(), "BOOTSTRAP", true);
 
@@ -141,13 +183,15 @@ const SystemInit = {
       await this._initComponent("SchemaManager", () => SchemaManager.init(), "CORE", true);
       await this._initComponent("Database", () => Database.init(), "CORE", true);
 
-      // ---- ENTITY ----
+      // ---- ENTITY (строгий порядок) ----
       if (typeof EntityMetadata !== "undefined" && EntityMetadata.init)
         await this._initComponent("EntityMetadata", () => EntityMetadata.init(), "ENTITY", false);
       if (typeof EntityRegistry !== "undefined" && EntityRegistry.init)
         await this._initComponent("EntityRegistry", () => EntityRegistry.init(), "ENTITY", false);
       if (typeof Registry !== "undefined" && Registry.init)
         await this._initComponent("Registry", () => Registry.init(), "ENTITY", false);
+      if (typeof RepositoryFactory !== "undefined" && RepositoryFactory.init)
+        await this._initComponent("RepositoryFactory", () => RepositoryFactory.init(), "ENTITY", false);
 
       // ---- MIGRATION ----
       if (typeof SchemaManager !== "undefined" && SchemaManager.migrate)
@@ -195,6 +239,9 @@ const SystemInit = {
         ModuleRegistry.finish();
       }
 
+      // ---- ОБНОВЛЯЕМ СОСТОЯНИЕ ПОСЛЕ ВСЕХ ИНИЦИАЛИЗАЦИЙ ----
+      this.refreshHealth();
+
       // ---- READY ----
       const failedCritical = this.bootLog.some(e => e.status === "FAILED" && this.criticalComponents.includes(e.name));
       if (failedCritical) throw new Error("Critical components failed");
@@ -212,7 +259,16 @@ const SystemInit = {
     return this.health();
   },
 
-  // ---- ВАЛИДАЦИЯ СИСТЕМЫ (с проверками) ----
+  // ---- ОБНОВЛЕНИЕ СОСТОЯНИЯ КОМПОНЕНТОВ ----
+  refreshHealth() {
+    const allComponents = Object.keys(this.componentPhase);
+    for (const name of allComponents) {
+      this._syncComponentState(name);
+    }
+    Logger.debug("Health state refreshed");
+  },
+
+  // ---- ВАЛИДАЦИЯ СИСТЕМЫ ----
   async _validateSystem() {
     Logger.log("VALIDATION | Running system validation...");
     if (
@@ -229,7 +285,7 @@ const SystemInit = {
     Logger.log("VALIDATION | Complete");
   },
 
-  // ---- ПРОВЕРКА ЗДОРОВЬЯ СИСТЕМЫ ----
+  // ---- ПРОВЕРКА ЗДОРОВЬЯ ----
   async _healthCheck() {
     Logger.log("HEALTHCHECK | Performing system health check...");
     let ok = true;
@@ -284,7 +340,7 @@ const SystemInit = {
     Logger.log("\n===== ERP READY =====");
   },
 
-  // ---- HEALTH (с проверкой существования компонентов) ----
+  // ---- HEALTH (с защитой) ----
   health() {
     let uptime = 0;
     if (this.startedAt) uptime = Date.now() - new Date(this.startedAt).getTime();
@@ -305,13 +361,11 @@ const SystemInit = {
       }
     } catch { tables = -1; }
 
-    // Статусы компонентов с защитой от отсутствующих
     const compStatus = {};
     for (const [name, st] of Object.entries(this.componentStatus)) {
       compStatus[name] = st.status;
     }
-    // Добавляем компоненты, которые могли быть пропущены
-    const allComponents = ["Config", "Logger", "SchemaManager", "Database", "EntityMetadata", "EntityRegistry", "Registry", "ERPEventContract", "EventBus", "BusinessEventProcessor"];
+    const allComponents = Object.keys(this.componentPhase);
     for (const name of allComponents) {
       if (!compStatus[name]) {
         const started = this.started[name];
@@ -345,13 +399,12 @@ const SystemInit = {
     });
   },
 
-  // ---- ДИАГНОСТИКА (с проверками) ----
+  // ---- ДИАГНОСТИКА ----
   diagnostics() {
     let moduleDiag = null;
     if (typeof ModuleRegistry !== "undefined" && ModuleRegistry.diagnostics) {
       moduleDiag = ModuleRegistry.diagnostics();
     }
-    // Безопасное получение статусов
     const componentStatusSafe = {};
     for (const name of Object.keys(this.componentStatus)) {
       componentStatusSafe[name] = this.componentStatus[name]?.status || "UNKNOWN";
