@@ -1,115 +1,118 @@
 // ============================================================
 // FinancialTransactionRepository v1.1.0
+// ERP Core Repository Contract
 // ============================================================
+
+console.log("FinancialTransactionRepository v1.1.0");
+
 
 const FinancialTransactionRepository = {
 
-  version:"1.1.0",
-
-  entityName:"FINANCIAL_TRANSACTION",
+    version:"1.1.0",
 
 
-  // ============================================================
-  // CREATE
-  // ============================================================
-
-  create(data){
-
-    return BaseRepository.create(
-      this.entityName,
-      data
-    );
-
-  },
+    entity:"FINANCIAL_TRANSACTION",
 
 
-  // ============================================================
-  // FIND BY ID
-  // ============================================================
+    create(data){
 
-  findById(id){
+        return BaseRepository.create(
+            this.entity,
+            data
+        );
 
-    return BaseRepository.findById(
-      this.entityName,
-      id
-    );
-
-  },
+    },
 
 
-  // ============================================================
-  // FIND ALL
-  // ============================================================
+    findById(id){
 
-  findAll(){
+        return BaseRepository.findById(
+            this.entity,
+            id
+        );
 
-    return BaseRepository.findAll(
-      this.entityName
-    );
-
-  },
+    },
 
 
-  // ============================================================
-  // UPDATE
-  // ============================================================
+    findAll(filter){
 
-  update(id,data){
+        return BaseRepository.findAll(
+            this.entity,
+            filter || {}
+        );
 
-    return BaseRepository.update(
-      this.entityName,
-      id,
-      data
-    );
-
-  },
+    },
 
 
-  // ============================================================
-  // DELETE
-  // ============================================================
+    update(id,data){
 
-  delete(id){
+        return BaseRepository.update(
+            this.entity,
+            id,
+            data
+        );
 
-    return BaseRepository.delete(
-      this.entityName,
-      id
-    );
-
-  },
+    },
 
 
-  // ============================================================
-  // HEALTH
-  // ============================================================
+    delete(id){
 
-  health(){
+        return BaseRepository.delete(
+            this.entity,
+            id
+        );
 
-    return {
+    },
 
-      status:"OK",
 
-      repository:
-        "FinancialTransactionRepository",
+    count(filter){
 
-      version:this.version,
+        if(BaseRepository.count){
 
-      entity:this.entityName
+            return BaseRepository.count(
+                this.entity,
+                filter || {}
+            );
 
-    };
+        }
 
-  }
+
+        const rows = this.findAll(filter);
+
+        return rows.length;
+
+    },
+
+
+    exists(id){
+
+        return !!this.findById(id);
+
+    },
+
+
+    health(){
+
+        return {
+
+            status:"READY",
+
+            repository:this.entity,
+
+            version:this.version
+
+        };
+
+    }
 
 
 };
 
 
-// ============================================================
-// GLOBAL REGISTER
-// ============================================================
 
 globalThis.FinancialTransactionRepository =
 FinancialTransactionRepository;
+
 
 
 Logger.log(
