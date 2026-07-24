@@ -1,7 +1,7 @@
-console.log("TransportOrderEventHandler v2.2");
+console.log("TransportOrderEventHandler v2.4");
 
 const TransportOrderEventHandler = {
-  version: "2.2.0",
+  version: "2.4.0",
   initialized: false,
   ready: false,
   entityName: "TRANSPORT_ORDER",
@@ -12,9 +12,6 @@ const TransportOrderEventHandler = {
   processed: 0,
   failed: 0,
   lastEvent: null,
-
-  // Защита от циклов (глубина вложенности)
-  MAX_DEPTH: 3,
 
   // ----- ИНИЦИАЛИЗАЦИЯ -----
   init() {
@@ -42,7 +39,7 @@ const TransportOrderEventHandler = {
     return true;
   },
 
-  // ----- ПОДПИСКА НА СОБЫТИЯ -----
+  // ----- ПОДПИСКА ТОЛЬКО НА CRUD СОБЫТИЯ ОТ РЕПОЗИТОРИЯ -----
   registerEvents() {
     this.subscribe(
       EntityEvents.TRANSPORT_ORDER.CREATED,
@@ -70,7 +67,7 @@ const TransportOrderEventHandler = {
     this.subscriptions.push({ event: event, handler: name });
   },
 
-  // ----- ОБРАБОТЧИКИ СОБЫТИЙ ОТ EVENTBUS -----
+  // ----- ОБРАБОТЧИКИ -----
   onCreated(event) {
     this.onEvent(event, "CREATED");
   },
@@ -84,11 +81,10 @@ const TransportOrderEventHandler = {
     this.onEvent(event, "RESTORED");
   },
 
-  // ----- ЕДИНЫЙ МЕТОД БИЗНЕС-ЛОГИКИ -----
+  // ----- БИЗНЕС-ЛОГИКА (БЕЗ ПУБЛИКАЦИИ НОВЫХ СОБЫТИЙ) -----
   onEvent(event, type) {
     try {
-      // Извлекаем сущность
-      let entity = event.after || event.data || event;
+      const entity = event.after || event.data || event;
       if (!entity) {
         throw new Error("TransportOrder entity missing");
       }
@@ -100,44 +96,10 @@ const TransportOrderEventHandler = {
 
       Logger.info(`TRANSPORT ORDER ${type} ${entityId}`);
 
-      // Проверка глубины вложенности (защита от циклов)
-      const depth = event._depth || 0;
-      if (depth >= this.MAX_DEPTH) {
-        Logger.warn(`Max depth reached for ${entityId}, skipping further publication`);
-        return;
-      }
+      // ---- ЗДЕСЬ МОЖЕТ БЫТЬ БИЗНЕС-ЛОГИКА (расчёты, уведомления и т.п.) ----
+      // НО НЕ ПУБЛИКОВАТЬ НОВЫЕ СОБЫТИЯ!
+      // BusinessEventProcessor уже опубликует бизнес-событие, если его вызывают.
 
-      // Создаём доменное событие через контракт (если доступен)
-      let domainEvent;
-      if (typeof DomainEventContract !== "undefined" && DomainEventContract.create) {
-        domainEvent = DomainEventContract.create({
-          entity: this.entityName,
-          entityId: entityId,
-          type: type,
-          payload: entity,
-          source: "TransportOrderEventHandler",
-          timestamp: new Date().toISOString(),
-          _depth: depth + 1
-        });
-      } else {
-        // fallback – ручное создание с проверкой
-        domainEvent = {
-          entity: this.entityName,
-          entityId: entityId,
-          type: type,
-          payload: entity,
-          source: "TransportOrderEventHandler",
-          timestamp: new Date().toISOString(),
-          _depth: depth + 1,
-          _version: "1.0"
-        };
-      }
-
-      // Публикуем событие в EventBus (без суффикса _BUSINESS)
-      const eventName = `TRANSPORT_ORDER_${type}`;
-      this._emitEvent(eventName, domainEvent);
-
-      // Обновляем счётчики
       this.processed++;
       this.lastEvent = new Date().toISOString();
 
@@ -147,31 +109,10 @@ const TransportOrderEventHandler = {
     }
   },
 
-  // ----- БЕЗОПАСНАЯ ПУБЛИКАЦИЯ СОБЫТИЯ -----
-  _emitEvent(eventName, payload) {
-    // Проверяем наличие EventBus
-    if (typeof EventBus === "undefined") {
-      Logger.warn("EventBus not available, cannot emit " + eventName);
-      return;
-    }
-
-    // Определяем, какой метод использовать
-    if (typeof EventBus.emit === "function") {
-      EventBus.emit(eventName, payload, { source: "TransportOrderEventHandler" });
-    } else if (typeof EventBus.publish === "function") {
-      EventBus.publish(eventName, payload, { source: "TransportOrderEventHandler" });
-    } else if (typeof EventBus.dispatch === "function") {
-      EventBus.dispatch(eventName, payload, { source: "TransportOrderEventHandler" });
-    } else {
-      Logger.error("EventBus has no emit/publish/dispatch method");
-    }
-  },
-
   // ----- ОБРАБОТЧИК ОТ BUSINESS EVENT PROCESSOR (если вызывают) -----
   handle(erpEvent) {
     if (!erpEvent) return;
     const type = erpEvent.type || "UNKNOWN";
-    // Для совместимости передаём как есть (он уже содержит после/до)
     this.onEvent(erpEvent, type);
   },
 
@@ -193,4 +134,4 @@ const TransportOrderEventHandler = {
 };
 
 globalThis.TransportOrderEventHandler = TransportOrderEventHandler;
-Logger.info("TransportOrderEventHandler READY v2.2.0");
+Logger.info("TransportOrderEventHandler READY v2.4.0");
