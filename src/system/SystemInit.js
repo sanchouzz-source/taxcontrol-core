@@ -1,10 +1,10 @@
 // ============================================================
-// SystemInit v2.1.1 – Улучшенный оркестратор с гибкой синхронизацией
+// SystemInit v2.2.0 – Оркестратор с правильным порядком сущностей
 // ============================================================
-console.log("SystemInit v2.1.1");
+console.log("SystemInit v2.2.0");
 
 const SystemInit = {
-  version: "2.1.1",
+  version: "2.2.0",
   initialized: false,
   startedAt: null,
   bootLog: [],
@@ -13,9 +13,9 @@ const SystemInit = {
 
   phases: {
     BOOTSTRAP:   { order: 0, label: "BOOTSTRAP" },
-    CORE:        { order: 1, label: "CORE" },
-    MIGRATION:   { order: 2, label: "MIGRATION" },
-    ENTITY:      { order: 3, label: "ENTITY" },
+    ENTITY:      { order: 1, label: "ENTITY" },
+    CORE:        { order: 2, label: "CORE" },
+    MIGRATION:   { order: 3, label: "MIGRATION" },
     EVENT:       { order: 4, label: "EVENT" },
     DOMAIN:      { order: 5, label: "DOMAIN" },
     APPLICATION: { order: 6, label: "APPLICATION" },
@@ -26,25 +26,26 @@ const SystemInit = {
     READY:       { order: 11, label: "READY" }
   },
 
-  // ---------- ОБНОВЛЁННЫЙ ГРАФ ЗАВИСИМОСТЕЙ ----------
+  // ---------- НОВЫЙ ГРАФ ЗАВИСИМОСТЕЙ ----------
   dependencyGraph: {
     Config: [],
     Logger: [],
-    SchemaManager: [],
-    Database: ["SchemaManager"],
     EntityMetadata: [],
+    SchemaRegistry: ["EntityMetadata"],
+    SchemaManager: ["EntityMetadata", "SchemaRegistry"],
+    Database: ["SchemaManager"],
     EntityRegistry: ["EntityMetadata"],
-    Registry: ["EntityMetadata"],               // больше не ждёт EntityRegistry
-    RepositoryFactory: ["EntityMetadata"],      // зависит от EntityMetadata
+    RepositoryFactory: ["EntityRegistry"],
     ERPEventContract: [],
     EventBus: ["ERPEventContract"],
     BusinessEventProcessor: ["EventBus"]
   },
 
-  // ---------- КРИТИЧЕСКИЕ КОМПОНЕНТЫ (только жизненно важные) ----------
+  // ---------- КРИТИЧЕСКИЕ КОМПОНЕНТЫ ----------
   criticalComponents: [
     "Config",
     "Logger",
+    "EntityMetadata",
     "SchemaManager",
     "Database",
     "EventBus",
@@ -55,18 +56,18 @@ const SystemInit = {
   componentPhase: {
     Config: "BOOTSTRAP",
     Logger: "BOOTSTRAP",
+    EntityMetadata: "ENTITY",
+    SchemaRegistry: "ENTITY",
     SchemaManager: "CORE",
     Database: "CORE",
-    EntityMetadata: "ENTITY",
     EntityRegistry: "ENTITY",
-    Registry: "ENTITY",
     RepositoryFactory: "ENTITY",
     ERPEventContract: "EVENT",
     EventBus: "EVENT",
     BusinessEventProcessor: "EVENT"
   },
 
-  // ---------- ФИКСАЦИЯ УСПЕШНОГО ЗАПУСКА КОМПОНЕНТА ----------
+  // ---------- ФИКСАЦИЯ УСПЕШНОГО ЗАПУСКА ----------
   _syncStarted(name) {
     this.started[name] = true;
     this.componentStatus[name] = {
@@ -76,12 +77,11 @@ const SystemInit = {
     Logger.debug(`SYNC STARTED ${name}`);
   },
 
-  // ---------- УЛУЧШЕННАЯ СИНХРОНИЗАЦИЯ СОСТОЯНИЯ ----------
+  // ---------- СИНХРОНИЗАЦИЯ СОСТОЯНИЯ ----------
   _syncComponentState(name) {
     const obj = globalThis[name];
     if (!obj) return false;
 
-    // Расширенные признаки готовности (учитываем старые модули)
     const ready =
       obj.ready === true ||
       obj.initialized === true ||
@@ -111,7 +111,6 @@ const SystemInit = {
       return true;
     }
 
-    // ---- Проверка зависимостей с синхронизацией ----
     const deps = this.dependencyGraph[name] || [];
     for (const dep of deps) {
       this._syncComponentState(dep);
@@ -123,7 +122,6 @@ const SystemInit = {
       }
     }
 
-    // ---- Проверка существования компонента ----
     const obj = globalThis[name];
     if (!obj && critical) {
       const msg = `Component ${name} not defined in global scope`;
@@ -137,7 +135,6 @@ const SystemInit = {
       await fn();
       const duration = Date.now() - startedAt;
       this.bootLog.push({ name, phase, status: "OK", duration });
-      // Фиксируем успешный старт
       this._syncStarted(name);
       Logger.log(`${phase} | ${name} OK (${duration}ms)`);
       return true;
@@ -151,7 +148,6 @@ const SystemInit = {
     }
   },
 
-  // ---- БЕЗОПАСНАЯ ИНИЦИАЛИЗАЦИЯ (некритичные) ----
   safeInit(name, phase = "SERVICES") {
     const obj = globalThis[name];
     if (obj && typeof obj.init === "function") {
@@ -179,27 +175,45 @@ const SystemInit = {
       await this._initComponent("Config", () => Config?.init?.() || Promise.resolve(), "BOOTSTRAP", true);
       await this._initComponent("Logger", () => Logger?.init?.() || Promise.resolve(), "BOOTSTRAP", true);
 
-      // ---- CORE ----
+      // =================================================
+      // ENTITY FOUNDATION (новый порядок)
+      // =================================================
+      if (typeof EntityMetadata !== "undefined" && EntityMetadata.init) {
+        await this._initComponent("EntityMetadata", () => EntityMetadata.init(), "ENTITY", true);
+      }
+
+      if (typeof SchemaRegistry !== "undefined" && SchemaRegistry.init) {
+        await this._initComponent("SchemaRegistry", () => SchemaRegistry.init(), "ENTITY", false);
+      }
+
+      // =================================================
+      // CORE SCHEMA
+      // =================================================
       await this._initComponent("SchemaManager", () => SchemaManager.init(), "CORE", true);
       await this._initComponent("Database", () => Database.init(), "CORE", true);
 
-      // ---- ENTITY (строгий порядок) ----
-      if (typeof EntityMetadata !== "undefined" && EntityMetadata.init)
-        await this._initComponent("EntityMetadata", () => EntityMetadata.init(), "ENTITY", false);
-      if (typeof EntityRegistry !== "undefined" && EntityRegistry.init)
+      // ---- ENTITY (остальные реестры) ----
+      if (typeof EntityRegistry !== "undefined" && EntityRegistry.init) {
         await this._initComponent("EntityRegistry", () => EntityRegistry.init(), "ENTITY", false);
-      if (typeof Registry !== "undefined" && Registry.init)
-        await this._initComponent("Registry", () => Registry.init(), "ENTITY", false);
-      if (typeof RepositoryFactory !== "undefined" && RepositoryFactory.init)
+        // После регистрации сущностей – синхронизация SchemaManager
+        if (SchemaManager && SchemaManager.sync) {
+          Logger.log("SchemaManager RESYNC AFTER ENTITY REGISTRY");
+          SchemaManager.sync(SchemaManager.getSchema());
+        }
+      }
+      if (typeof RepositoryFactory !== "undefined" && RepositoryFactory.init) {
         await this._initComponent("RepositoryFactory", () => RepositoryFactory.init(), "ENTITY", false);
+      }
 
       // ---- MIGRATION ----
-      if (typeof SchemaManager !== "undefined" && SchemaManager.migrate)
+      if (typeof SchemaManager !== "undefined" && SchemaManager.migrate) {
         await this._initComponent("SchemaMigration", () => SchemaManager.migrate(), "MIGRATION", false);
+      }
 
       // ---- EVENT ----
-      if (typeof ERPEventContract !== "undefined" && ERPEventContract.init)
+      if (typeof ERPEventContract !== "undefined" && ERPEventContract.init) {
         await this._initComponent("ERPEventContract", () => ERPEventContract.init(), "EVENT", false);
+      }
       await this._initComponent("EventBus", () => EventBus.init(), "EVENT", true);
       await this._initComponent("BusinessEventProcessor", () => BusinessEventProcessor.init(), "EVENT", true);
 
@@ -239,7 +253,7 @@ const SystemInit = {
         ModuleRegistry.finish();
       }
 
-      // ---- ОБНОВЛЯЕМ СОСТОЯНИЕ ПОСЛЕ ВСЕХ ИНИЦИАЛИЗАЦИЙ ----
+      // ---- ОБНОВЛЯЕМ СОСТОЯНИЕ ----
       this.refreshHealth();
 
       // ---- READY ----
@@ -259,7 +273,7 @@ const SystemInit = {
     return this.health();
   },
 
-  // ---- ОБНОВЛЕНИЕ СОСТОЯНИЯ КОМПОНЕНТОВ ----
+  // ---- ОБНОВЛЕНИЕ СОСТОЯНИЯ ----
   refreshHealth() {
     const allComponents = Object.keys(this.componentPhase);
     for (const name of allComponents) {
@@ -268,7 +282,7 @@ const SystemInit = {
     Logger.debug("Health state refreshed");
   },
 
-  // ---- ВАЛИДАЦИЯ СИСТЕМЫ ----
+  // ---- ВАЛИДАЦИЯ ----
   async _validateSystem() {
     Logger.log("VALIDATION | Running system validation...");
     if (
@@ -285,7 +299,7 @@ const SystemInit = {
     Logger.log("VALIDATION | Complete");
   },
 
-  // ---- ПРОВЕРКА ЗДОРОВЬЯ ----
+  // ---- HEALTHCHECK ----
   async _healthCheck() {
     Logger.log("HEALTHCHECK | Performing system health check...");
     let ok = true;
@@ -305,7 +319,7 @@ const SystemInit = {
     Logger.log("HEALTHCHECK | All systems healthy");
   },
 
-  // ---- ПУБЛИКАЦИЯ СОБЫТИЯ СТАРТА ----
+  // ---- СОБЫТИЕ СТАРТА ----
   _emitStartupEvent() {
     try {
       if (typeof EventBus !== "undefined" && EventBus.emit) {
@@ -321,10 +335,10 @@ const SystemInit = {
     }
   },
 
-  // ---- ПЕЧАТЬ ОТЧЁТА ----
+  // ---- ОТЧЁТ ----
   _printReport() {
     Logger.log("===== ERP START REPORT =====");
-    const phases = ["BOOTSTRAP", "CORE", "MIGRATION", "ENTITY", "EVENT", "DOMAIN", "APPLICATION", "SERVICES", "REPORTING", "VALIDATION", "HEALTHCHECK"];
+    const phases = ["BOOTSTRAP", "ENTITY", "CORE", "MIGRATION", "EVENT", "DOMAIN", "APPLICATION", "SERVICES", "REPORTING", "VALIDATION", "HEALTHCHECK"];
     for (const phase of phases) {
       const entries = this.bootLog.filter(e => e.phase === phase);
       if (!entries.length) continue;
@@ -340,7 +354,7 @@ const SystemInit = {
     Logger.log("\n===== ERP READY =====");
   },
 
-  // ---- HEALTH (с защитой) ----
+  // ---- HEALTH ----
   health() {
     let uptime = 0;
     if (this.startedAt) uptime = Date.now() - new Date(this.startedAt).getTime();
@@ -426,12 +440,35 @@ const SystemInit = {
 
 globalThis.SystemInit = SystemInit;
 Logger.log("SystemInit READY v" + SystemInit.version);
-if(typeof ERPDiagnostics!=="undefined"){
 
-Logger.log(
-"Running startup diagnostics..."
-);
+globalThis.SystemInit = SystemInit;
+Logger.log("SystemInit READY v" + SystemInit.version);
 
-ERPDiagnostics.run();
+// Добавляем глобальные команды для управления ERP
+globalThis.startERP = function () {
+  return SystemInit.init();
+};
 
+globalThis.erpHealth = function () {
+  return SystemInit.health();
+};
+
+globalThis.erpDiag = function () {
+  if (typeof ERPDiagnostics !== "undefined") {
+    return ERPDiagnostics.run();
+  } else {
+    Logger.warn("ERPDiagnostics not available");
+    return null;
+  }
+};
+
+Logger.log("ERP COMMANDS READY:");
+Logger.log("  startERP()");
+Logger.log("  erpHealth()");
+Logger.log("  erpDiag()");
+
+// Автоматический запуск диагностики, если доступна
+if (typeof ERPDiagnostics !== "undefined") {
+  Logger.log("Running startup diagnostics...");
+  ERPDiagnostics.run();
 }
