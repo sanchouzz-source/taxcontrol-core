@@ -1,14 +1,16 @@
 console.log("EntityMetadata");
 
 const EntityMetadata = {
-  version: "0.6.0",
+  version: "0.7.0",
 
-  // ----- СУЩЕСТВУЮЩИЕ СУЩНОСТИ (CLIENT, TRIP, CLIENT_FINANCE_PROFILE, KPI, AUDIT) -----
+  // ----- СУЩЕСТВУЮЩИЕ СУЩНОСТИ (с версиями, relations, indexes, audit) -----
+
   CLIENT: {
     entity: "CLIENT",
     table: "Clients",
     id: "ClientID",
     idPrefix: "CLIENT",
+    version: 1,
     permissions: {
       create: "CLIENT_CREATE",
       read: "CLIENT_READ",
@@ -26,9 +28,9 @@ const EntityMetadata = {
       { name: "ClientID", type: "ID", required: true },
       { name: "OrganizationID", type: "REFERENCE", required: true },
       { name: "Name", type: "STRING", required: true },
-      { name: "INN", type: "STRING" },
+      { name: "INN", type: "STRING", unique: true },
       { name: "Phone", type: "STRING" },
-      { name: "Email", type: "STRING" },
+      { name: "Email", type: "STRING", unique: true },
       { name: "Address", type: "STRING" },
       { name: "ManagerID", type: "REFERENCE" },
       { name: "Rating", type: "NUMBER" },
@@ -36,7 +38,19 @@ const EntityMetadata = {
       { name: "CreatedAt", type: "DATETIME" },
       { name: "UpdatedAt", type: "DATETIME" },
       { name: "Deleted", type: "BOOLEAN" }
-    ]
+    ],
+    relations: {
+      OrganizationID: { entity: "ORGANIZATION", type: "MANY_TO_ONE" },
+      ManagerID: { entity: "USER", type: "MANY_TO_ONE" }
+    },
+    indexes: {
+      unique: ["INN", "Email"],
+      search: ["Name", "Phone", "Status"]
+    },
+    audit: {
+      enabled: true,
+      fields: ["Name", "Phone", "Email", "Status"]
+    }
   },
 
   AUDIT: {
@@ -44,6 +58,7 @@ const EntityMetadata = {
     table: "AuditLog",
     id: "AuditID",
     idPrefix: "AUD",
+    version: 1,
     permissions: {
       create: "AUDIT_CREATE",
       read: "AUDIT_READ",
@@ -58,7 +73,8 @@ const EntityMetadata = {
       restored: "AUDIT_RESTORED"
     },
     fields: [],
-    timestamps: true
+    timestamps: true,
+    audit: { enabled: false }
   },
 
   TRIP: {
@@ -66,6 +82,7 @@ const EntityMetadata = {
     table: "Trips",
     id: "TripID",
     idPrefix: "TRIP",
+    version: 1,
     permissions: {
       create: "TRIP_CREATE",
       read: "TRIP_READ",
@@ -98,7 +115,21 @@ const EntityMetadata = {
       { name: "CreatedAt", type: "DATETIME" },
       { name: "UpdatedAt", type: "DATETIME" },
       { name: "Deleted", type: "BOOLEAN" }
-    ]
+    ],
+    relations: {
+      OrganizationID: { entity: "ORGANIZATION", type: "MANY_TO_ONE" },
+      ClientID: { entity: "CLIENT", type: "MANY_TO_ONE" },
+      VehicleID: { entity: "VEHICLE", type: "MANY_TO_ONE" },
+      DriverID: { entity: "DRIVER", type: "MANY_TO_ONE" },
+      ManagerID: { entity: "USER", type: "MANY_TO_ONE" }
+    },
+    indexes: {
+      search: ["ClientID", "DriverID", "Status", "CreatedAt"]
+    },
+    audit: {
+      enabled: true,
+      fields: ["Status", "Revenue", "ActualCost", "LoadingPoint", "UnloadingPoint"]
+    }
   },
 
   CLIENT_FINANCE_PROFILE: {
@@ -106,6 +137,7 @@ const EntityMetadata = {
     table: "ClientFinanceProfiles",
     id: "FinanceProfileID",
     idPrefix: "FP",
+    version: 1,
     permissions: {
       create: "CLIENT_FINANCE_CREATE",
       read: "CLIENT_FINANCE_READ",
@@ -127,7 +159,18 @@ const EntityMetadata = {
       { name: "CreditLimit", type: "MONEY", default: 0 },
       { name: "Status", type: "ENUM", default: "ACTIVE" },
       { name: "CreatedAt", type: "DATETIME" }
-    ]
+    ],
+    relations: {
+      OrganizationID: { entity: "ORGANIZATION", type: "MANY_TO_ONE" },
+      ClientID: { entity: "CLIENT", type: "MANY_TO_ONE" }
+    },
+    indexes: {
+      search: ["ClientID", "Status"]
+    },
+    audit: {
+      enabled: true,
+      fields: ["Balance", "CreditLimit", "Status"]
+    }
   },
 
   KPI: {
@@ -135,6 +178,7 @@ const EntityMetadata = {
     table: "KPIMetrics",
     id: "KPIID",
     idPrefix: "KPI",
+    version: 1,
     permissions: {
       create: "KPI_CREATE",
       read: "KPI_READ",
@@ -162,7 +206,380 @@ const EntityMetadata = {
       { name: "CreatedAt", type: "DATETIME" },
       { name: "UpdatedAt", type: "DATETIME" },
       { name: "Deleted", type: "BOOLEAN" }
-    ]
+    ],
+    relations: {
+      OrganizationID: { entity: "ORGANIZATION", type: "MANY_TO_ONE" },
+      EntityID: { entity: "ENTITY", type: "MANY_TO_ONE" }
+    },
+    indexes: {
+      search: ["MetricType", "Period", "EntityID"]
+    },
+    audit: {
+      enabled: true,
+      fields: ["MetricType", "Revenue", "Cost", "Profit", "Margin"]
+    }
+  },
+
+  // ============================================================
+  // НОВЫЕ СУЩНОСТИ (исправлены дубли и добавлены relations, indexes, audit)
+  // ============================================================
+
+  // 1. TRANSPORT_ORDER
+  TRANSPORT_ORDER: {
+    entity: "TRANSPORT_ORDER",
+    repository: "TransportOrderRepository",
+    table: "TransportOrders",
+    id: "TransportOrderID",
+    idPrefix: "TO",
+    version: 1,
+    permissions: {
+      create: "TRANSPORT_ORDER_CREATE",
+      read: "TRANSPORT_ORDER_READ",
+      update: "TRANSPORT_ORDER_UPDATE",
+      delete: "TRANSPORT_ORDER_DELETE",
+      restore: "TRANSPORT_ORDER_RESTORE"
+    },
+    events: {
+      created: "TRANSPORT_ORDER_CREATED",
+      updated: "TRANSPORT_ORDER_UPDATED",
+      deleted: "TRANSPORT_ORDER_DELETED",
+      restored: "TRANSPORT_ORDER_RESTORED"
+    },
+    fields: [
+      { name: "TransportOrderID", type: "ID", required: true },
+      { name: "OrganizationID", type: "REFERENCE", required: true },
+      { name: "ClientID", type: "REFERENCE", required: true },
+      { name: "CarrierID", type: "REFERENCE" },
+      { name: "RouteID", type: "REFERENCE" },
+      { name: "CargoID", type: "REFERENCE" },
+      { name: "DriverID", type: "REFERENCE" },
+      { name: "VehicleID", type: "REFERENCE" },
+      { name: "OrderNumber", type: "STRING", unique: true },
+      { name: "LoadingAddress", type: "STRING" },
+      { name: "DeliveryAddress", type: "STRING" },
+      { name: "CargoWeight", type: "NUMBER" },
+      { name: "Status", type: "ENUM", default: "NEW" },
+      { name: "CreatedAt", type: "DATETIME" },
+      { name: "UpdatedAt", type: "DATETIME" },
+      { name: "Deleted", type: "BOOLEAN" }
+    ],
+    relations: {
+      OrganizationID: { entity: "ORGANIZATION", type: "MANY_TO_ONE" },
+      ClientID: { entity: "CLIENT", type: "MANY_TO_ONE" },
+      CarrierID: { entity: "CARRIER", type: "MANY_TO_ONE" },
+      RouteID: { entity: "ROUTE", type: "MANY_TO_ONE" },
+      CargoID: { entity: "CARGO", type: "MANY_TO_ONE" },
+      DriverID: { entity: "DRIVER", type: "MANY_TO_ONE" },
+      VehicleID: { entity: "VEHICLE", type: "MANY_TO_ONE" }
+    },
+    indexes: {
+      unique: ["OrderNumber"],
+      search: ["ClientID", "CarrierID", "Status", "CreatedAt"]
+    },
+    audit: {
+      enabled: true,
+      fields: ["Status", "LoadingAddress", "DeliveryAddress", "CargoWeight"]
+    }
+  },
+
+  // 2. CARRIER
+  CARRIER: {
+    entity: "CARRIER",
+    repository: "CarrierRepository",
+    table: "Carriers",
+    id: "CarrierID",
+    idPrefix: "CAR",
+    version: 1,
+    permissions: {
+      create: "CARRIER_CREATE",
+      read: "CARRIER_READ",
+      update: "CARRIER_UPDATE",
+      delete: "CARRIER_DELETE",
+      restore: "CARRIER_RESTORE"
+    },
+    events: {
+      created: "CARRIER_CREATED",
+      updated: "CARRIER_UPDATED",
+      deleted: "CARRIER_DELETED",
+      restored: "CARRIER_RESTORED"
+    },
+    fields: [
+      { name: "CarrierID", type: "ID", required: true },
+      { name: "OrganizationID", type: "REFERENCE", required: true },
+      { name: "Name", type: "STRING", required: true },
+      { name: "INN", type: "STRING", unique: true },
+      { name: "Phone", type: "STRING" },
+      { name: "Email", type: "STRING" },
+      { name: "Status", type: "ENUM", default: "ACTIVE" },
+      { name: "CreatedAt", type: "DATETIME" },
+      { name: "UpdatedAt", type: "DATETIME" },
+      { name: "Deleted", type: "BOOLEAN" }
+    ],
+    relations: {
+      OrganizationID: { entity: "ORGANIZATION", type: "MANY_TO_ONE" }
+    },
+    indexes: {
+      unique: ["INN"],
+      search: ["Name", "Phone", "Status"]
+    },
+    audit: {
+      enabled: true,
+      fields: ["Name", "Phone", "Email", "Status"]
+    }
+  },
+
+  // 3. DRIVER
+  DRIVER: {
+    entity: "DRIVER",
+    repository: "DriverRepository",
+    table: "Drivers",
+    id: "DriverID",
+    idPrefix: "DRV",
+    version: 1,
+    permissions: {
+      create: "DRIVER_CREATE",
+      read: "DRIVER_READ",
+      update: "DRIVER_UPDATE",
+      delete: "DRIVER_DELETE",
+      restore: "DRIVER_RESTORE"
+    },
+    events: {
+      created: "DRIVER_CREATED",
+      updated: "DRIVER_UPDATED",
+      deleted: "DRIVER_DELETED",
+      restored: "DRIVER_RESTORED"
+    },
+    fields: [
+      { name: "DriverID", type: "ID", required: true },
+      { name: "OrganizationID", type: "REFERENCE", required: true },
+      { name: "CarrierID", type: "REFERENCE" },
+      { name: "Name", type: "STRING", required: true },
+      { name: "Phone", type: "STRING" },
+      { name: "LicenseNumber", type: "STRING", unique: true },
+      { name: "Status", type: "ENUM", default: "ACTIVE" },
+      { name: "CreatedAt", type: "DATETIME" },
+      { name: "UpdatedAt", type: "DATETIME" },
+      { name: "Deleted", type: "BOOLEAN" }
+    ],
+    relations: {
+      OrganizationID: { entity: "ORGANIZATION", type: "MANY_TO_ONE" },
+      CarrierID: { entity: "CARRIER", type: "MANY_TO_ONE" }
+    },
+    indexes: {
+      unique: ["LicenseNumber"],
+      search: ["Name", "Phone", "Status"]
+    },
+    audit: {
+      enabled: true,
+      fields: ["Name", "Phone", "LicenseNumber", "Status"]
+    }
+  },
+
+  // 4. VEHICLE
+  VEHICLE: {
+    entity: "VEHICLE",
+    repository: "VehicleRepository",
+    table: "Vehicles",
+    id: "VehicleID",
+    idPrefix: "VEH",
+    version: 1,
+    permissions: {
+      create: "VEHICLE_CREATE",
+      read: "VEHICLE_READ",
+      update: "VEHICLE_UPDATE",
+      delete: "VEHICLE_DELETE",
+      restore: "VEHICLE_RESTORE"
+    },
+    events: {
+      created: "VEHICLE_CREATED",
+      updated: "VEHICLE_UPDATED",
+      deleted: "VEHICLE_DELETED",
+      restored: "VEHICLE_RESTORED"
+    },
+    fields: [
+      { name: "VehicleID", type: "ID", required: true },
+      { name: "OrganizationID", type: "REFERENCE", required: true },
+      { name: "CarrierID", type: "REFERENCE" },
+      { name: "PlateNumber", type: "STRING", unique: true },
+      { name: "Model", type: "STRING" },
+      { name: "Capacity", type: "NUMBER" },
+      { name: "Status", type: "ENUM", default: "ACTIVE" },
+      { name: "CreatedAt", type: "DATETIME" },
+      { name: "UpdatedAt", type: "DATETIME" },
+      { name: "Deleted", type: "BOOLEAN" }
+    ],
+    relations: {
+      OrganizationID: { entity: "ORGANIZATION", type: "MANY_TO_ONE" },
+      CarrierID: { entity: "CARRIER", type: "MANY_TO_ONE" }
+    },
+    indexes: {
+      unique: ["PlateNumber"],
+      search: ["Model", "Status"]
+    },
+    audit: {
+      enabled: true,
+      fields: ["PlateNumber", "Model", "Capacity", "Status"]
+    }
+  },
+
+  // 5. ROUTE
+  ROUTE: {
+    entity: "ROUTE",
+    repository: "RouteRepository",
+    table: "Routes",
+    id: "RouteID",
+    idPrefix: "RTE",
+    version: 1,
+    permissions: {
+      create: "ROUTE_CREATE",
+      read: "ROUTE_READ",
+      update: "ROUTE_UPDATE",
+      delete: "ROUTE_DELETE",
+      restore: "ROUTE_RESTORE"
+    },
+    events: {
+      created: "ROUTE_CREATED",
+      updated: "ROUTE_UPDATED",
+      deleted: "ROUTE_DELETED",
+      restored: "ROUTE_RESTORED"
+    },
+    fields: [
+      { name: "RouteID", type: "ID", required: true },
+      { name: "OrganizationID", type: "REFERENCE", required: true },
+      { name: "StartPoint", type: "STRING", required: true },
+      { name: "EndPoint", type: "STRING", required: true },
+      { name: "Distance", type: "NUMBER" },
+      { name: "Duration", type: "NUMBER" },
+      { name: "CreatedAt", type: "DATETIME" },
+      { name: "UpdatedAt", type: "DATETIME" },
+      { name: "Deleted", type: "BOOLEAN" }
+    ],
+    relations: {
+      OrganizationID: { entity: "ORGANIZATION", type: "MANY_TO_ONE" }
+    },
+    indexes: {
+      search: ["StartPoint", "EndPoint"]
+    },
+    audit: {
+      enabled: true,
+      fields: ["StartPoint", "EndPoint", "Distance", "Duration"]
+    }
+  },
+
+  // 6. CARGO
+  CARGO: {
+    entity: "CARGO",
+    repository: "CargoRepository",
+    table: "Cargoes",
+    id: "CargoID",
+    idPrefix: "CRG",
+    version: 1,
+    permissions: {
+      create: "CARGO_CREATE",
+      read: "CARGO_READ",
+      update: "CARGO_UPDATE",
+      delete: "CARGO_DELETE",
+      restore: "CARGO_RESTORE"
+    },
+    events: {
+      created: "CARGO_CREATED",
+      updated: "CARGO_UPDATED",
+      deleted: "CARGO_DELETED",
+      restored: "CARGO_RESTORED"
+    },
+    fields: [
+      { name: "CargoID", type: "ID", required: true },
+      { name: "OrganizationID", type: "REFERENCE", required: true },
+      { name: "Name", type: "STRING", required: true },
+      { name: "Weight", type: "NUMBER" },
+      { name: "Volume", type: "NUMBER" },
+      { name: "Type", type: "STRING" },
+      { name: "CreatedAt", type: "DATETIME" },
+      { name: "UpdatedAt", type: "DATETIME" },
+      { name: "Deleted", type: "BOOLEAN" }
+    ],
+    relations: {
+      OrganizationID: { entity: "ORGANIZATION", type: "MANY_TO_ONE" }
+    },
+    indexes: {
+      search: ["Name", "Type"]
+    },
+    audit: {
+      enabled: true,
+      fields: ["Name", "Weight", "Volume", "Type"]
+    }
+  },
+
+  // 7. EVENT_EXECUTION_LOG (единственный вариант, без дублирования)
+  EVENT_EXECUTION_LOG: {
+    entity: "EVENT_EXECUTION_LOG",
+    repository: "EventExecutionLogRepository",
+    table: "EventExecutionLog",
+    id: "ExecutionID",
+    idField: "ExecutionID",
+    idPrefix: "ELOG",
+    version: 1,
+    permissions: {
+      create: "EVENT_LOG_CREATE",
+      read: "EVENT_LOG_READ",
+      update: "EVENT_LOG_UPDATE",
+      delete: "EVENT_LOG_DELETE",
+      restore: "EVENT_LOG_RESTORE"
+    },
+    events: {
+      created: "EVENT_LOG_CREATED",
+      updated: "EVENT_LOG_UPDATED",
+      deleted: "EVENT_LOG_DELETED",
+      restored: "EVENT_LOG_RESTORED"
+    },
+    fields: [
+      { name: "ExecutionID", type: "ID", required: true },
+      { name: "EventID", type: "STRING" },
+      { name: "Entity", type: "STRING" },
+      { name: "EventType", type: "STRING" },
+      { name: "Status", type: "ENUM", default: "PENDING" },
+      { name: "Processor", type: "STRING" },
+      { name: "Error", type: "STRING" },
+      { name: "Timestamp", type: "DATETIME" },
+      { name: "CreatedAt", type: "DATETIME" }
+    ],
+    audit: { enabled: false }
+  },
+
+  // 8. FAILED_EVENT (единственный вариант, исправлен)
+  FAILED_EVENT: {
+    entity: "FAILED_EVENT",
+    repository: "FailedEventRepository",
+    table: "FailedEvents",
+    id: "FailedEventID",
+    idField: "FailedEventID",
+    idPrefix: "FAIL",
+    version: 1,
+    permissions: {
+      create: "FAILED_EVENT_CREATE",
+      read: "FAILED_EVENT_READ",
+      update: "FAILED_EVENT_UPDATE",
+      delete: "FAILED_EVENT_DELETE",
+      restore: "FAILED_EVENT_RESTORE"
+    },
+    events: {
+      created: "FAILED_EVENT_CREATED",
+      updated: "FAILED_EVENT_UPDATED",
+      deleted: "FAILED_EVENT_DELETED",
+      restored: "FAILED_EVENT_RESTORED"
+    },
+    fields: [
+      { name: "FailedEventID", type: "ID", required: true },
+      { name: "EventID", type: "STRING" },
+      { name: "Entity", type: "STRING" },
+      { name: "Payload", type: "STRING" },
+      { name: "Error", type: "STRING" },
+      { name: "RetryCount", type: "NUMBER", default: 0 },
+      { name: "Status", type: "ENUM", default: "PENDING" },
+      { name: "CreatedAt", type: "DATETIME" },
+      { name: "UpdatedAt", type: "DATETIME" }
+    ],
+    audit: { enabled: false }
   }
 };
 
@@ -175,7 +592,7 @@ EntityMetadata.has = function (entity) {
   return !!this[entity];
 };
 
-// ----- ИСПРАВЛЕННЫЙ МЕТОД list() -----
+// ----- list() -----
 EntityMetadata.list = function () {
   return Object.keys(this).filter(key => {
     const item = this[key];
@@ -200,18 +617,19 @@ EntityMetadata.health = function () {
   );
 };
 
-// ----- МЕТОД REGISTER -----
+// ----- МЕТОД REGISTER (улучшен) -----
 EntityMetadata.register = function (definition) {
   if (!definition || !definition.entity) {
     throw new Error("EntityMetadata.register: entity name required");
   }
   const entity = definition.entity;
 
-  // 1. Заполняем отсутствующие поля значениями по умолчанию
+  // Заполняем отсутствующие поля
   if (!definition.table) definition.table = entity + "s";
   if (!definition.id) definition.id = entity + "ID";
   if (!definition.idField) definition.idField = definition.id;
   if (!definition.idPrefix) definition.idPrefix = entity.substring(0, 3);
+  if (!definition.version) definition.version = 1;
   if (!definition.permissions) {
     definition.permissions = {
       create: entity + "_CREATE",
@@ -229,242 +647,38 @@ EntityMetadata.register = function (definition) {
       restored: entity + "_RESTORED"
     };
   }
+  if (!definition.fields) definition.fields = [];
+  if (!definition.relations) definition.relations = {};
+  if (!definition.indexes) definition.indexes = { search: [], unique: [] };
+  if (!definition.audit) definition.audit = { enabled: true, fields: [] };
 
-  // 2. Преобразуем поля (если переданы как массив строк)
+  // Преобразуем поля из массива строк в объекты
   if (Array.isArray(definition.fields) && definition.fields.length > 0 && typeof definition.fields[0] === "string") {
     const fieldNames = definition.fields;
     definition.fields = fieldNames.map(name => {
       const field = { name, type: "STRING" };
+      // Определяем тип
       if (name === definition.id) {
         field.type = "ID";
+        field.required = true;
       } else if (name.endsWith("ID")) {
         field.type = "REFERENCE";
-      } else if (name === "CreatedAt" || name === "UpdatedAt") {
+      } else if (name === "CreatedAt" || name === "UpdatedAt" || name === "Timestamp") {
         field.type = "DATETIME";
       } else if (name === "Deleted") {
         field.type = "BOOLEAN";
+      } else if (name === "Balance" || name === "CreditLimit" || name === "Revenue" || name === "Cost" || name === "Profit" || name === "Margin" || name === "Weight" || name === "Volume" || name === "Distance" || name === "Duration" || name === "CargoWeight") {
+        field.type = "NUMBER";
       }
       return field;
     });
   }
 
-  // 3. Сохраняем в объект
+  // Сохраняем
   this[entity] = definition;
   Logger.log("EntityMetadata REGISTERED: " + entity);
   return definition;
 };
-
-// ----- РЕГИСТРАЦИЯ НОВЫХ СУЩНОСТЕЙ -----
-
-// 1. TRANSPORT_ORDER
-EntityMetadata.register({
-  entity: "TRANSPORT_ORDER",
-  repository: "TransportOrderRepository",
-  table: "TransportOrders",
-  id: "TransportOrderID",
-  idPrefix: "TO",
-  fields: [
-    "TransportOrderID",
-    "OrganizationID",
-    "ClientID",
-    "CarrierID",
-    "RouteID",
-    "CargoID",
-    "DriverID",
-    "VehicleID",
-    "OrderNumber",
-    "LoadingAddress",
-    "DeliveryAddress",
-    "CargoWeight",
-    "Status",
-    "CreatedAt",
-    "UpdatedAt",
-    "Deleted"
-  ]
-});
-
-// 2. CARRIER
-EntityMetadata.register({
-  entity: "CARRIER",
-  repository: "CarrierRepository",
-  table: "Carriers",
-  id: "CarrierID",
-  idPrefix: "CAR",
-  fields: [
-    "CarrierID",
-    "OrganizationID",
-    "Name",
-    "INN",
-    "Phone",
-    "Email",
-    "Status",
-    "CreatedAt",
-    "UpdatedAt",
-    "Deleted"
-  ]
-});
-
-// 3. DRIVER
-EntityMetadata.register({
-  entity: "DRIVER",
-  repository: "DriverRepository",
-  table: "Drivers",
-  id: "DriverID",
-  idPrefix: "DRV",
-  fields: [
-    "DriverID",
-    "OrganizationID",
-    "CarrierID",
-    "Name",
-    "Phone",
-    "LicenseNumber",
-    "Status",
-    "CreatedAt",
-    "UpdatedAt",
-    "Deleted"
-  ]
-});
-
-// 4. VEHICLE
-EntityMetadata.register({
-  entity: "VEHICLE",
-  repository: "VehicleRepository",
-  table: "Vehicles",
-  id: "VehicleID",
-  idPrefix: "VEH",
-  fields: [
-    "VehicleID",
-    "OrganizationID",
-    "CarrierID",
-    "PlateNumber",
-    "Model",
-    "Capacity",
-    "Status",
-    "CreatedAt",
-    "UpdatedAt",
-    "Deleted"
-  ]
-});
-
-// 5. ROUTE
-EntityMetadata.register({
-  entity: "ROUTE",
-  repository: "RouteRepository",
-  table: "Routes",
-  id: "RouteID",
-  idPrefix: "RTE",
-  fields: [
-    "RouteID",
-    "OrganizationID",
-    "StartPoint",
-    "EndPoint",
-    "Distance",
-    "Duration",
-    "CreatedAt",
-    "UpdatedAt",
-    "Deleted"
-  ]
-});
-
-// 6. CARGO
-EntityMetadata.register({
-  entity: "CARGO",
-  repository: "CargoRepository",
-  table: "Cargoes",
-  id: "CargoID",
-  idPrefix: "CRG",
-  fields: [
-    "CargoID",
-    "OrganizationID",
-    "Name",
-    "Weight",
-    "Volume",
-    "Type",
-    "CreatedAt",
-    "UpdatedAt",
-    "Deleted"
-  ]
-});
-
-// 7. EVENT EXECUTION LOG
-EntityMetadata.register({
-  entity: "EVENT_EXECUTION",
-  repository: "EventExecutionLogRepository",
-  table: "EventExecutionLog",
-  id: "ExecutionID",
-  idField: "ExecutionID",
-  idPrefix: "EXEC",
-  fields: [
-    "ExecutionID",
-    "EventID",
-    "Entity",
-    "Type",
-    "Status",
-    "Processor",
-    "Error",
-    "CreatedAt"
-  ]
-});
-
-// 8. FAILED EVENTS
-EntityMetadata.register({
-  entity: "FAILED_EVENT",
-  repository: "FailedEventRepository",
-  table: "FailedEvents",
-  id: "FailedEventID",
-  idField: "FailedEventID",
-  idPrefix: "FAIL",
-  fields: [
-    "FailedEventID",
-    "EventID",
-    "Entity",
-    "Type",
-    "Payload",
-    "Error",
-    "RetryCount",
-    "Status",
-    "CreatedAt",
-    "UpdatedAt"
-  ]
-});
-
-// ----- НОВЫЕ РЕГИСТРАЦИИ ПО ЗАПРОСУ -----
-EntityMetadata.register({
-  entity: "EVENT_EXECUTION_LOG",
-  table: "EventExecutionLog",
-  id: "ExecutionID",
-  idPrefix: "ELOG",
-  repository: "EventExecutionLog",
-  fields: [
-    "ExecutionID",
-    "EventID",
-    "Entity",
-    "EventType",
-    "Status",
-    "Processor",
-    "Error",
-    "Timestamp"
-  ]
-});
-
-EntityMetadata.register({
-  entity: "FAILED_EVENT",
-  table: "FailedEvents",
-  id: "FailedEventID",
-  idPrefix: "FAIL",
-  repository: "FailedEventRepository",
-  fields: [
-    "FailedEventID",
-    "EventID",
-    "Entity",
-    "Payload",
-    "Error",
-    "RetryCount",
-    "Status",
-    "CreatedAt",
-    "UpdatedAt"
-  ]
-});
 
 // ----- ГЛОБАЛИЗАЦИЯ -----
 globalThis.EntityMetadata = EntityMetadata;

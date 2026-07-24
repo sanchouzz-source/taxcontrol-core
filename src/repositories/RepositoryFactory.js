@@ -1,17 +1,17 @@
 // ============================================================
-// RepositoryFactory v1.5.0
+// RepositoryFactory v1.6.0
 // Enterprise Repository Container
 // ERP Core
 // ============================================================
 
 
-console.log("RepositoryFactory v1.5.0");
+console.log("RepositoryFactory v1.6.0");
 
 
 const RepositoryFactory = {
 
 
-version:"1.5.0",
+version:"1.6.0",
 
 apiVersion:"1.0",
 
@@ -45,6 +45,7 @@ return;
 }
 
 
+
 Logger.debug(
 "RepositoryFactory INIT"
 );
@@ -52,6 +53,7 @@ Logger.debug(
 
 
 this.autoRegister();
+
 
 
 this.checkPending();
@@ -68,13 +70,15 @@ this.version
 );
 
 
+
 },
 
 
 
 
+
 // ============================================================
-// AUTO REGISTER FROM ENTITY METADATA
+// AUTO REGISTER
 // ============================================================
 
 
@@ -119,27 +123,33 @@ globalThis[meta.repository];
 
 if(repo){
 
+
 this.register(
 entity,
 repo
 );
 
+
 }
 else{
 
 
+this.pending[entity]={
+
+repository:meta.repository,
+
+timestamp:new Date()
+
+};
+
+
+
 Logger.debug(
-"WAITING REPOSITORY: "+
+"WAITING REPOSITORY "+
 entity+
 " -> "+
 meta.repository
 );
-
-
-this.pending[entity]={
-repository:meta.repository,
-timestamp:new Date()
-};
 
 
 }
@@ -150,6 +160,7 @@ timestamp:new Date()
 
 
 },
+
 
 
 
@@ -166,8 +177,7 @@ register(name,repository){
 if(!repository){
 
 throw new Error(
-"Repository missing: "+
-name
+"Repository missing "+name
 );
 
 }
@@ -176,12 +186,9 @@ name
 
 if(this.repositories[name]){
 
-
 Logger.warn(
-"Repository already registered: "+
-name
+"Repository already registered "+name
 );
-
 
 return false;
 
@@ -189,31 +196,42 @@ return false;
 
 
 
-const contract =
-this.validate(repository);
+const validation =
+this.validate(
+name,
+repository
+);
 
 
 
 this.repositories[name]=repository;
 
 
+
 this.metadata[name]={
 
 version:
-repository.version || "1.0.0",
+repository.version ||
+"1.0.0",
 
-registeredAt:
-new Date(),
 
 methods:
-contract.methods
+validation.methods,
+
+
+warnings:
+validation.warnings,
+
+
+registeredAt:
+new Date()
 
 };
 
 
 
 Logger.debug(
-"REGISTERED REPOSITORY: "+
+"REGISTERED REPOSITORY "+
 name+
 " v"+
 this.metadata[name].version
@@ -231,11 +249,11 @@ return true;
 
 
 // ============================================================
-// CONTRACT VALIDATION
+// VALIDATE CONTRACT
 // ============================================================
 
 
-validate(repository){
+validate(name,repository){
 
 
 
@@ -277,12 +295,47 @@ missing.push(method);
 
 
 
+// если есть BaseRepository
+// создаём адаптер
+
+
+if(
+missing.length &&
+globalThis.BaseRepository
+){
+
+
+
+Logger.warn(
+
+"Repository "+
+name+
+" incomplete. Applying BaseRepository adapter"
+
+);
+
+
+
+return this.attachBaseAdapter(
+name,
+repository,
+missing
+);
+
+
+}
+
+
+
+
 if(missing.length){
 
 
 throw new Error(
 
-"Repository contract violation. Missing methods: "+
+"Repository contract violation "+
+name+
+": missing "+
 missing.join(", ")
 
 );
@@ -294,7 +347,9 @@ missing.join(", ")
 
 return {
 
-methods:required
+methods:required,
+
+warnings:[]
 
 };
 
@@ -306,7 +361,60 @@ methods:required
 
 
 // ============================================================
-// LAZY REGISTER
+// BASE REPOSITORY ADAPTER
+// ============================================================
+
+
+attachBaseAdapter(name,repository,missing){
+
+
+
+const entity =
+name;
+
+
+
+missing.forEach(method=>{
+
+
+repository[method]=function(...args){
+
+
+return BaseRepository[method](
+
+entity,
+
+...args
+
+);
+
+
+};
+
+
+});
+
+
+
+return {
+
+methods:Object.keys(repository),
+
+warnings:[
+"BaseRepository adapter applied"
+]
+
+};
+
+
+},
+
+
+
+
+
+// ============================================================
+// LAZY
 // ============================================================
 
 
@@ -323,8 +431,8 @@ name,
 
 configurable:true,
 
-get(){
 
+get(){
 
 const repo=getter();
 
@@ -332,8 +440,7 @@ const repo=getter();
 if(!repo){
 
 throw new Error(
-"Lazy repository unavailable: "+
-name
+"Lazy repository unavailable "+name
 );
 
 }
@@ -351,7 +458,7 @@ return repo;
 
 
 Logger.debug(
-"LAZY REGISTERED: "+
+"LAZY REGISTERED "+
 name
 );
 
@@ -363,14 +470,14 @@ name
 
 
 // ============================================================
-// REGISTER AFTER LOAD
+// LOADED
 // ============================================================
 
 
 registerLoaded(name,repository){
 
 
-
+const result =
 this.register(
 name,
 repository
@@ -381,12 +488,7 @@ repository
 delete this.pending[name];
 
 
-
-Logger.debug(
-"LOADED REPOSITORY REGISTERED: "+
-name
-);
-
+return result;
 
 
 },
@@ -396,15 +498,14 @@ name
 
 
 // ============================================================
-// PENDING CHECK
+// PENDING
 // ============================================================
 
 
 checkPending(){
 
 
-
-let registered=0;
+let count=0;
 
 
 
@@ -412,7 +513,6 @@ for(
 const [entity,data]
 of Object.entries(this.pending)
 ){
-
 
 
 const repo =
@@ -429,38 +529,25 @@ repo
 );
 
 
-registered++;
-
-
-}
-
+count++;
 
 }
 
 
+}
 
-if(registered){
 
 
 Logger.debug(
 
-"CHECK PENDING REGISTERED: "+
-registered
+"CHECK PENDING REGISTERED "+
+count
 
 );
 
 
-}
-else{
 
-
-Logger.debug(
-"CHECK PENDING: no repositories found"
-);
-
-
-}
-
+return count;
 
 
 },
@@ -468,13 +555,13 @@ Logger.debug(
 
 
 
+
 // ============================================================
-// GET
+// ACCESS
 // ============================================================
 
 
 get(name){
-
 
 
 const repo =
@@ -485,24 +572,12 @@ this.repositories[name];
 if(!repo){
 
 
-Logger.error(
-
-"Repository missing: "+
-name+
-" pending="+
-JSON.stringify(this.pending)
-
-);
-
-
-
 throw new Error(
 
 "Repository not registered: "+
 name
 
 );
-
 
 }
 
@@ -516,16 +591,13 @@ return repo;
 
 
 
-// ============================================================
-// HELPERS
-// ============================================================
-
 
 has(name){
 
 return !!this.repositories[name];
 
 },
+
 
 
 
@@ -551,6 +623,37 @@ return this.list().length;
 
 
 // ============================================================
+// DIAGNOSTICS
+// ============================================================
+
+
+diagnostics(){
+
+
+return {
+
+
+version:this.version,
+
+
+repositories:this.metadata,
+
+
+pending:this.pending,
+
+
+count:this.count()
+
+
+};
+
+
+},
+
+
+
+
+// ============================================================
 // HEALTH
 // ============================================================
 
@@ -562,6 +665,7 @@ return HealthContract.create(
 
 "RepositoryFactory",
 
+
 this.initialized
 ?
 "OK"
@@ -571,18 +675,13 @@ this.initialized
 
 {
 
-
 version:this.version,
-
-
-repositories:this.list(),
-
 
 count:this.count(),
 
+repositories:this.list(),
 
 pending:Object.keys(this.pending)
-
 
 }
 
@@ -595,6 +694,7 @@ pending:Object.keys(this.pending)
 
 
 };
+
 
 
 
@@ -615,9 +715,3 @@ Logger.log(
 RepositoryFactory.version
 
 );
-
-
-
-// авто-подхват уже загруженных
-
-RepositoryFactory.checkPending();
