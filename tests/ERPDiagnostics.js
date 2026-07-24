@@ -1,159 +1,646 @@
-components() {
+// ============================================================
+// ERP Diagnostics v3.1.0
+// Compatible:
+// SystemInit v2.1.x
+// SchemaManager v3.x
+// Database v3.x
+// EventBus v2.3
+// ModuleRegistry v1.10
+// ============================================================
 
-return {
-
-Config:
-typeof Config !== "undefined"
-&& (
-Config.initialized===true ||
-Config.status==="READY"
-)
-?
-"READY"
-:
-"WARNING",
+console.log("ERP Diagnostics v3.1.0");
 
 
-
-SchemaManager:
-typeof SchemaManager !== "undefined"
-&& (
-SchemaManager.initialized===true ||
-SchemaManager.status==="READY"
-)
-?
-"READY"
-:
-"WARNING",
+const ERPDiagnostics = {
 
 
+  version: "3.1.0",
 
-Database:
-typeof Database !== "undefined"
-&& (
-Database.initialized===true ||
-Database.status==="READY"
-)
-?
-"READY"
-:
-"WARNING",
+
+  // ============================================================
+  // RUN
+  // ============================================================
+
+  run(options = {}) {
+
+    const report = this.buildReport();
+
+    if (options.json) {
+      return report;
+    }
+
+    this.print(report);
+
+    return report;
+  },
 
 
 
-SchemaRegistry:
-typeof SchemaRegistry !== "undefined"
-&& (
-SchemaRegistry.initialized===true ||
-SchemaRegistry.status==="READY"
-)
-?
-"READY"
-:
-"WARNING",
+  // ============================================================
+  // BUILD REPORT
+  // ============================================================
+
+  buildReport(){
+
+    return {
+
+      timestamp:
+        new Date().toISOString(),
+
+      system:
+        this.system(),
+
+      components:
+        this.components(),
+
+      entities:
+        this.entities(),
+
+      database:
+        this.database(),
+
+      repositories:
+        this.repositories(),
+
+      events:
+        this.events(),
+
+      modules:
+        this.modules(),
+
+      health:
+        this.health()
+
+    };
+
+  },
 
 
 
-EntityRegistry:
-typeof EntityRegistry !== "undefined"
-&& (
-EntityRegistry.initialized===true ||
-EntityRegistry.status==="READY"
-)
-?
-"READY"
-:
-"WARNING",
+  // ============================================================
+  // SYSTEM
+  // ============================================================
+
+  system(){
+
+    return {
+
+      version:
+        SystemInit?.version || null,
+
+
+      initialized:
+        SystemInit?.initialized || false,
+
+
+      startedAt:
+        SystemInit?.startedAt || null,
+
+
+      uptime:
+        SystemInit?.startedAt
+        ?
+        Date.now()
+        -
+        new Date(SystemInit.startedAt).getTime()
+        :
+        0
+
+    };
+
+  },
 
 
 
-BaseRepository:
-typeof BaseRepository !== "undefined"
-?
-"READY"
-:
-"FAILED",
+  // ============================================================
+  // COMPONENTS
+  // ============================================================
+
+  components(){
+
+    const check = (name)=>{
+
+      const obj = globalThis[name];
+
+
+      if(!obj){
+        return "NOT_FOUND";
+      }
+
+
+      if(obj.ready === true){
+        return "READY";
+      }
+
+
+      if(obj.initialized === true){
+        return "READY";
+      }
+
+
+      if(
+        typeof obj.health === "function"
+      ){
+        return "READY";
+      }
+
+
+      return "LOADED";
+
+    };
+
+
+    return {
+
+
+      Config:
+        check("Config"),
+
+
+      Logger:
+        check("Logger"),
+
+
+      SchemaManager:
+        check("SchemaManager"),
+
+
+      Database:
+        check("Database"),
+
+
+      EntityMetadata:
+        check("EntityMetadata"),
+
+
+      EntityRegistry:
+        check("EntityRegistry"),
+
+
+      RepositoryFactory:
+        check("RepositoryFactory"),
+
+
+      RepositoryRegistry:
+        check("RepositoryRegistry"),
+
+
+      EventBus:
+        check("EventBus"),
+
+
+      BusinessEventProcessor:
+        check("BusinessEventProcessor"),
+
+
+      ModuleRegistry:
+        check("ModuleRegistry")
+
+
+    };
+
+
+  },
 
 
 
-RepositoryFactory:
-typeof RepositoryFactory !== "undefined"
-&& (
-RepositoryFactory.initialized===true ||
-RepositoryFactory.status==="READY"
-)
-?
-"READY"
-:
-"WARNING",
+  // ============================================================
+  // ENTITIES
+  // ============================================================
+
+  entities(){
+
+    try{
+
+
+      if(
+        typeof EntityRegistry !== "undefined"
+        &&
+        EntityRegistry.list
+      ){
+
+        const list =
+          EntityRegistry.list();
+
+
+        return {
+
+          count:list.length,
+
+          items:list
+
+        };
+
+      }
+
+
+    }
+    catch(e){
+
+      return {
+        error:e.message
+      };
+
+    }
+
+
+    return {
+      count:0,
+      items:[]
+    };
+
+  },
 
 
 
-RepositoryRegistry:
-typeof RepositoryRegistry !== "undefined"
-&& (
-RepositoryRegistry.initialized===true ||
-RepositoryRegistry.status==="READY"
-)
-?
-"READY"
-:
-"WARNING",
+  // ============================================================
+  // DATABASE
+  // ============================================================
+
+  database(){
+
+    let schema=[];
+
+
+    try{
+
+
+      if(
+        SchemaManager
+        &&
+        SchemaManager.getSchema
+      ){
+
+        schema =
+          Object.keys(
+            SchemaManager.getSchema() || {}
+          );
+
+      }
+
+
+    }
+    catch(e){
+
+      schema=[
+        "ERROR: "+e.message
+      ];
+
+    }
 
 
 
-EventBus:
-typeof EventBus !== "undefined"
-&& (
-EventBus.initialized===true ||
-EventBus.ready===true ||
-EventBus.status==="READY"
-)
-?
-"READY"
-:
-"WARNING",
+    return {
+
+
+      initialized:
+        Database?.initialized || false,
+
+
+      ready:
+        Database?.ready || false,
+
+
+      tables:
+        schema,
+
+
+      count:
+        schema.length
+
+
+    };
+
+  },
 
 
 
-BusinessEventProcessor:
-typeof BusinessEventProcessor !== "undefined"
-&& (
-BusinessEventProcessor.ready===true ||
-BusinessEventProcessor.initialized===true
-)
-?
-"READY"
-:
-"WARNING",
+  // ============================================================
+  // REPOSITORIES
+  // ============================================================
+
+  repositories(){
+
+
+    return {
+
+
+      factory:
+
+        RepositoryFactory?.registry
+        ?
+        Object.keys(
+          RepositoryFactory.registry
+        )
+        :
+        [],
 
 
 
-SecurityGuard:
-typeof SecurityGuard !== "undefined"
-?
-"READY"
-:
-"FAILED",
+      registry:
+
+        RepositoryRegistry?.repositories
+        ?
+        Object.keys(
+          RepositoryRegistry.repositories
+        )
+        :
+        []
+
+    };
+
+
+  },
 
 
 
-EntityValidator:
-typeof EntityValidator !== "undefined"
-?
-"READY"
-:
-"FAILED",
+  // ============================================================
+  // EVENTS
+  // ============================================================
+
+  events(){
+
+
+    let events=[];
+
+
+    try{
+
+
+      if(
+        EventBus
+        &&
+        EventBus.list
+      ){
+
+        events =
+          EventBus.list();
+
+      }
+
+
+    }
+    catch(e){}
 
 
 
-IdService:
-typeof IdService !== "undefined"
-?
-"READY"
-:
-"FAILED"
+    return {
+
+
+      ready:
+        EventBus?.ready || false,
+
+
+      count:
+        events.length,
+
+
+      events
+
+
+    };
+
+
+  },
+
+
+
+  // ============================================================
+  // MODULES
+  // ============================================================
+
+  modules(){
+
+    try{
+
+
+      if(
+        ModuleRegistry
+        &&
+        ModuleRegistry.modules
+      ){
+
+        return Object.keys(
+          ModuleRegistry.modules
+        );
+
+      }
+
+
+    }
+    catch(e){}
+
+
+    return [];
+
+  },
+
+
+
+  // ============================================================
+  // HEALTH
+  // ============================================================
+
+  health(){
+
+
+    try{
+
+
+      if(
+        typeof SystemInit !== "undefined"
+        &&
+        SystemInit.health
+      ){
+
+        return SystemInit.health();
+
+      }
+
+
+    }
+    catch(e){
+
+      return {
+        error:e.message
+      };
+
+    }
+
+
+    return {};
+
+  },
+
+
+
+  // ============================================================
+  // PRINT
+  // ============================================================
+
+  print(report){
+
+
+    Logger.log(
+      "========== ERP DIAGNOSTICS "
+      +
+      this.version
+      +
+      " =========="
+    );
+
+
+
+    Logger.log(
+      "SYSTEM:"
+      +
+      (
+        report.system.initialized
+        ?
+        " READY"
+        :
+        " NOT READY"
+      )
+    );
+
+
+
+    Logger.log("\nCOMPONENTS");
+
+
+    Object.entries(
+      report.components
+    )
+    .forEach(([name,status])=>{
+
+
+      const icon =
+        status==="READY"
+        ?
+        "✔"
+        :
+        "⚠";
+
+
+      Logger.log(
+        `${icon} ${name}: ${status}`
+      );
+
+
+    });
+
+
+
+    Logger.log("\nENTITIES");
+
+    Logger.log(
+      JSON.stringify(
+        report.entities,
+        null,
+        2
+      )
+    );
+
+
+
+    Logger.log("\nDATABASE");
+
+    Logger.log(
+      JSON.stringify(
+        report.database,
+        null,
+        2
+      )
+    );
+
+
+
+    Logger.log("\nREPOSITORIES");
+
+    Logger.log(
+      JSON.stringify(
+        report.repositories,
+        null,
+        2
+      )
+    );
+
+
+
+    Logger.log("\nEVENT BUS");
+
+    Logger.log(
+      JSON.stringify(
+        report.events,
+        null,
+        2
+      )
+    );
+
+
+
+    Logger.log("\nMODULES");
+
+    Logger.log(
+      JSON.stringify(
+        report.modules,
+        null,
+        2
+      )
+    );
+
+
+
+    Logger.log(
+      "\n========== END ERP DIAGNOSTICS =========="
+    );
+
+
+  }
+
 
 };
 
-}
+
+
+// ============================================================
+// GLOBAL COMMANDS
+// ============================================================
+
+
+globalThis.erpDiag = function(){
+
+  return ERPDiagnostics.run();
+
+};
+
+
+
+globalThis.erpDiagJSON = function(){
+
+  return ERPDiagnostics.run({
+    json:true
+  });
+
+};
+
+
+
+globalThis.erpHealth = function(){
+
+  return ERPDiagnostics.health();
+
+};
+
+
+
+globalThis.ERPDiagnostics =
+  ERPDiagnostics;
+
+
+
+Logger.log(
+  "ERP Diagnostics READY v"
+  +
+  ERPDiagnostics.version
+);
