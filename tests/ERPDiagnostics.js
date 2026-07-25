@@ -1,646 +1,668 @@
-// ============================================================
-// ERP Diagnostics v3.1.0
-// Compatible:
-// SystemInit v2.1.x
-// SchemaManager v3.x
-// Database v3.x
-// EventBus v2.3
-// ModuleRegistry v1.10
-// ============================================================
-
-console.log("ERP Diagnostics v3.1.0");
+console.log("ERP Diagnostics v4.0.0");
 
 
 const ERPDiagnostics = {
 
 
-  version: "3.1.0",
+version:"4.0.0",
 
 
-  // ============================================================
-  // RUN
-  // ============================================================
 
-  run(options = {}) {
+// =================================================
+// MAIN
+// =================================================
 
-    const report = this.buildReport();
+run(options={}){
 
-    if (options.json) {
-      return report;
-    }
+
+    const report=this.buildReport();
+
+
+    if(options.json)
+        return report;
+
 
     this.print(report);
 
+
     return report;
-  },
 
+},
 
 
-  // ============================================================
-  // BUILD REPORT
-  // ============================================================
 
-  buildReport(){
 
-    return {
+// =================================================
+// BUILD
+// =================================================
 
-      timestamp:
-        new Date().toISOString(),
+buildReport(){
 
-      system:
-        this.system(),
 
-      components:
-        this.components(),
+return {
 
-      entities:
-        this.entities(),
 
-      database:
-        this.database(),
+timestamp:new Date().toISOString(),
 
-      repositories:
-        this.repositories(),
 
-      events:
-        this.events(),
+system:this.system(),
 
-      modules:
-        this.modules(),
 
-      health:
-        this.health()
+components:this.components(),
 
-    };
 
-  },
+schema:this.schema(),
 
 
+database:this.database(),
 
-  // ============================================================
-  // SYSTEM
-  // ============================================================
 
-  system(){
+repositories:this.repositories(),
 
-    return {
 
-      version:
-        SystemInit?.version || null,
+events:this.events(),
 
 
-      initialized:
-        SystemInit?.initialized || false,
+modules:this.modules(),
 
 
-      startedAt:
-        SystemInit?.startedAt || null,
+health:this.health(),
 
 
-      uptime:
-        SystemInit?.startedAt
-        ?
-        Date.now()
-        -
-        new Date(SystemInit.startedAt).getTime()
-        :
-        0
+summary:this.summary()
 
-    };
 
-  },
+};
 
 
+},
 
-  // ============================================================
-  // COMPONENTS
-  // ============================================================
 
-  components(){
 
-    const check = (name)=>{
 
-      const obj = globalThis[name];
+// =================================================
+// SYSTEM
+// =================================================
 
+system(){
 
-      if(!obj){
-        return "NOT_FOUND";
-      }
 
+return {
 
-      if(obj.ready === true){
-        return "READY";
-      }
 
+version:
+SystemInit?.version || null,
 
-      if(obj.initialized === true){
-        return "READY";
-      }
 
+initialized:
+SystemInit?.initialized || false,
 
-      if(
-        typeof obj.health === "function"
-      ){
-        return "READY";
-      }
 
+startedAt:
+SystemInit?.startedAt || null,
 
-      return "LOADED";
 
-    };
+uptime:
+SystemInit?.startedAt
+?
+Date.now()
+-
+new Date(SystemInit.startedAt).getTime()
+:
+0
 
 
-    return {
+};
 
 
-      Config:
-        check("Config"),
+},
 
 
-      Logger:
-        check("Logger"),
 
 
-      SchemaManager:
-        check("SchemaManager"),
 
+// =================================================
+// COMPONENTS
+// =================================================
 
-      Database:
-        check("Database"),
 
+components(){
 
-      EntityMetadata:
-        check("EntityMetadata"),
 
+const check=(name)=>{
 
-      EntityRegistry:
-        check("EntityRegistry"),
 
+const obj=globalThis[name];
 
-      RepositoryFactory:
-        check("RepositoryFactory"),
 
+if(!obj)
+return "NOT_FOUND";
 
-      RepositoryRegistry:
-        check("RepositoryRegistry"),
 
+if(
+obj.ready===true ||
+obj.initialized===true ||
+obj.status==="READY"
+)
+return "READY";
 
-      EventBus:
-        check("EventBus"),
 
-
-      BusinessEventProcessor:
-        check("BusinessEventProcessor"),
-
-
-      ModuleRegistry:
-        check("ModuleRegistry")
-
-
-    };
-
-
-  },
-
-
-
-  // ============================================================
-  // ENTITIES
-  // ============================================================
-
-  entities(){
-
-    try{
-
-
-      if(
-        typeof EntityRegistry !== "undefined"
-        &&
-        EntityRegistry.list
-      ){
-
-        const list =
-          EntityRegistry.list();
-
-
-        return {
-
-          count:list.length,
-
-          items:list
-
-        };
-
-      }
-
-
-    }
-    catch(e){
-
-      return {
-        error:e.message
-      };
-
-    }
-
-
-    return {
-      count:0,
-      items:[]
-    };
-
-  },
-
-
-
-  // ============================================================
-  // DATABASE
-  // ============================================================
-
-  database(){
-
-    let schema=[];
-
-
-    try{
-
-
-      if(
-        SchemaManager
-        &&
-        SchemaManager.getSchema
-      ){
-
-        schema =
-          Object.keys(
-            SchemaManager.getSchema() || {}
-          );
-
-      }
-
-
-    }
-    catch(e){
-
-      schema=[
-        "ERROR: "+e.message
-      ];
-
-    }
-
-
-
-    return {
-
-
-      initialized:
-        Database?.initialized || false,
-
-
-      ready:
-        Database?.ready || false,
-
-
-      tables:
-        schema,
-
-
-      count:
-        schema.length
-
-
-    };
-
-  },
-
-
-
-  // ============================================================
-  // REPOSITORIES
-  // ============================================================
-
-  repositories(){
-
-
-    return {
-
-
-      factory:
-
-        RepositoryFactory?.registry
-        ?
-        Object.keys(
-          RepositoryFactory.registry
-        )
-        :
-        [],
-
-
-
-      registry:
-
-        RepositoryRegistry?.repositories
-        ?
-        Object.keys(
-          RepositoryRegistry.repositories
-        )
-        :
-        []
-
-    };
-
-
-  },
-
-
-
-  // ============================================================
-  // EVENTS
-  // ============================================================
-
-  events(){
-
-
-    let events=[];
-
-
-    try{
-
-
-      if(
-        EventBus
-        &&
-        EventBus.list
-      ){
-
-        events =
-          EventBus.list();
-
-      }
-
-
-    }
-    catch(e){}
-
-
-
-    return {
-
-
-      ready:
-        EventBus?.ready || false,
-
-
-      count:
-        events.length,
-
-
-      events
-
-
-    };
-
-
-  },
-
-
-
-  // ============================================================
-  // MODULES
-  // ============================================================
-
-  modules(){
-
-    try{
-
-
-      if(
-        ModuleRegistry
-        &&
-        ModuleRegistry.modules
-      ){
-
-        return Object.keys(
-          ModuleRegistry.modules
-        );
-
-      }
-
-
-    }
-    catch(e){}
-
-
-    return [];
-
-  },
-
-
-
-  // ============================================================
-  // HEALTH
-  // ============================================================
-
-  health(){
-
-
-    try{
-
-
-      if(
-        typeof SystemInit !== "undefined"
-        &&
-        SystemInit.health
-      ){
-
-        return SystemInit.health();
-
-      }
-
-
-    }
-    catch(e){
-
-      return {
-        error:e.message
-      };
-
-    }
-
-
-    return {};
-
-  },
-
-
-
-  // ============================================================
-  // PRINT
-  // ============================================================
-
-  print(report){
-
-
-    Logger.log(
-      "========== ERP DIAGNOSTICS "
-      +
-      this.version
-      +
-      " =========="
-    );
-
-
-
-    Logger.log(
-      "SYSTEM:"
-      +
-      (
-        report.system.initialized
-        ?
-        " READY"
-        :
-        " NOT READY"
-      )
-    );
-
-
-
-    Logger.log("\nCOMPONENTS");
-
-
-    Object.entries(
-      report.components
-    )
-    .forEach(([name,status])=>{
-
-
-      const icon =
-        status==="READY"
-        ?
-        "✔"
-        :
-        "⚠";
-
-
-      Logger.log(
-        `${icon} ${name}: ${status}`
-      );
-
-
-    });
-
-
-
-    Logger.log("\nENTITIES");
-
-    Logger.log(
-      JSON.stringify(
-        report.entities,
-        null,
-        2
-      )
-    );
-
-
-
-    Logger.log("\nDATABASE");
-
-    Logger.log(
-      JSON.stringify(
-        report.database,
-        null,
-        2
-      )
-    );
-
-
-
-    Logger.log("\nREPOSITORIES");
-
-    Logger.log(
-      JSON.stringify(
-        report.repositories,
-        null,
-        2
-      )
-    );
-
-
-
-    Logger.log("\nEVENT BUS");
-
-    Logger.log(
-      JSON.stringify(
-        report.events,
-        null,
-        2
-      )
-    );
-
-
-
-    Logger.log("\nMODULES");
-
-    Logger.log(
-      JSON.stringify(
-        report.modules,
-        null,
-        2
-      )
-    );
-
-
-
-    Logger.log(
-      "\n========== END ERP DIAGNOSTICS =========="
-    );
-
-
-  }
+return "LOADED";
 
 
 };
 
 
 
-// ============================================================
-// GLOBAL COMMANDS
-// ============================================================
+return {
 
 
-globalThis.erpDiag = function(){
+Config:check("Config"),
 
-  return ERPDiagnostics.run();
+Logger:check("Logger"),
+
+SchemaRegistry:check("SchemaRegistry"),
+
+SchemaManager:check("SchemaManager"),
+
+Database:check("Database"),
+
+EntityRegistry:check("EntityRegistry"),
+
+RepositoryFactory:check("RepositoryFactory"),
+
+RepositoryRegistry:check("RepositoryRegistry"),
+
+EventBus:check("EventBus"),
+
+BusinessEventProcessor:check("BusinessEventProcessor"),
+
+ModuleRegistry:check("ModuleRegistry")
+
 
 };
 
 
+},
 
-globalThis.erpDiagJSON = function(){
 
-  return ERPDiagnostics.run({
-    json:true
-  });
+
+
+
+// =================================================
+// SCHEMA
+// =================================================
+
+schema(){
+
+
+try{
+
+
+if(typeof SchemaRegistry!=="undefined"){
+
+
+return {
+
+
+status:
+SchemaRegistry.status,
+
+
+initialized:
+SchemaRegistry.initialized,
+
+
+entities:
+Object.keys(
+SchemaRegistry.schemas||{}
+),
+
+
+tables:
+Object.keys(
+SchemaRegistry.tableIndex||{}
+).length
+
 
 };
 
 
+}
 
-globalThis.erpHealth = function(){
 
-  return ERPDiagnostics.health();
+
+}catch(e){
+
+return {
+error:e.message
+};
+
+}
+
+
+return {};
+
+},
+
+
+
+
+
+
+// =================================================
+// DATABASE
+// =================================================
+
+
+database(){
+
+
+try{
+
+
+return {
+
+
+status:
+Database?.status || null,
+
+
+initialized:
+Database?.initialized || false,
+
+
+ready:
+Database?.ready || false,
+
+
+tables:
+SchemaRegistry?.tableIndex
+?
+Object.keys(
+SchemaRegistry.tableIndex
+)
+:
+[]
+
 
 };
 
 
+}
+catch(e){
 
-globalThis.ERPDiagnostics =
-  ERPDiagnostics;
+
+return {
+error:e.message
+};
+
+
+}
+
+
+},
+
+
+
+
+
+
+// =================================================
+// REPOSITORIES
+// =================================================
+
+repositories(){
+
+
+return {
+
+
+factory:
+
+
+RepositoryFactory?.registry
+?
+Object.keys(
+RepositoryFactory.registry
+)
+:
+RepositoryFactory?.repositories
+?
+Object.keys(
+RepositoryFactory.repositories
+)
+:
+[],
+
+
+
+registry:
+
+
+RepositoryRegistry?.repositories
+?
+Object.keys(
+RepositoryRegistry.repositories
+)
+:
+[]
+
+
+};
+
+
+},
+
+
+
+
+
+
+// =================================================
+// EVENTS
+// =================================================
+
+events(){
+
+
+try{
+
+
+let events=[];
+
+
+if(EventBus?.list)
+events=EventBus.list();
+
+
+else
+if(EventBus?.events)
+events=
+Object.keys(EventBus.events);
+
+
+
+return {
+
+
+ready:
+EventBus?.ready || false,
+
+
+count:
+events.length,
+
+
+events
+
+
+};
+
+
+}
+catch(e){
+
+return {
+error:e.message
+};
+
+}
+
+
+
+},
+
+
+
+
+
+
+
+// =================================================
+// MODULES
+// =================================================
+
+
+modules(){
+
+
+try{
+
+
+return {
+
+
+count:
+
+ModuleRegistry?.modules
+?
+Object.keys(ModuleRegistry.modules).length
+:
+0,
+
+
+items:
+
+ModuleRegistry?.modules
+?
+Object.keys(ModuleRegistry.modules)
+:
+[],
+
+
+failed:
+
+ModuleRegistry?.failed || []
+
+
+};
+
+
+}
+catch(e){
+
+return {};
+
+}
+
+
+},
+
+
+
+
+
+
+
+// =================================================
+// HEALTH
+// =================================================
+
+
+health(){
+
+
+try{
+
+
+if(SystemInit?.health)
+
+return SystemInit.health();
+
+
+
+return {
+
+status:"UNKNOWN"
+
+};
+
+
+}
+catch(e){
+
+return {
+
+status:"ERROR",
+
+error:e.message
+
+};
+
+}
+
+
+
+},
+
+
+
+
+
+
+// =================================================
+// SUMMARY
+// =================================================
+
+summary(){
+
+
+const h=this.health();
+
+
+return {
+
+
+status:
+h?.status || "UNKNOWN",
+
+
+critical:
+
+
+{
+
+
+database:
+Database?.initialized || false,
+
+
+eventBus:
+EventBus?.ready || false,
+
+
+processor:
+BusinessEventProcessor?.ready || false
+
+
+}
+
+
+
+};
+
+
+},
+
+
+
+
+
+
+// =================================================
+// DIAGNOSTICS
+// =================================================
+
+
+diagnostics(){
+
+return this.buildReport();
+
+},
+
+
+
+
+
+
+// =================================================
+// PRINT
+// =================================================
+
+
+print(r){
+
+
+Logger.log(
+"========== ERP DIAGNOSTICS v"+
+this.version+
+" =========="
+);
 
 
 
 Logger.log(
-  "ERP Diagnostics READY v"
-  +
-  ERPDiagnostics.version
+JSON.stringify(
+r.summary,
+null,
+2
+)
+);
+
+
+
+Logger.log(
+JSON.stringify(
+r.components,
+null,
+2
+)
+);
+
+
+
+Logger.log(
+"========== END =========="
+);
+
+
+
+}
+
+
+
+};
+
+
+
+
+// GLOBAL
+
+
+globalThis.ERPDiagnostics=
+ERPDiagnostics;
+
+
+
+globalThis.erpDiag=
+()=>ERPDiagnostics.run();
+
+
+
+globalThis.erpDiagJSON=
+()=>ERPDiagnostics.run({
+json:true
+});
+
+
+
+globalThis.erpHealth=
+()=>ERPDiagnostics.health();
+
+
+
+Logger.log(
+"ERP Diagnostics READY v"+
+ERPDiagnostics.version
 );
