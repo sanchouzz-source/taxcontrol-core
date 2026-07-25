@@ -1,21 +1,23 @@
-console.log("SchemaRegistry");
+console.log("SchemaRegistry v3.3.2");
 
 const SchemaRegistry = {
-  version: "3.3.0",
+  version: "3.3.2",
   status: "REGISTERED",
   initialized: false,
   initAttempts: 0,
   maxInitAttempts: 3,
   initError: null,
 
-  schemas: {},          // entity → meta (полный объект из EntityMetadata)
+  schemas: {},          // entity → meta
   tableIndex: {},       // table → entity
-  fieldCache: {},       // table → { fieldName: { type, required, unique, default, ... } }
+  fieldCache: {},       // table → { fieldName: field }
   migrationHandlers: {},
   hooks: {},
   relations: {},
 
-  // ----- ИНИЦИАЛИЗАЦИЯ (мягкий режим с защитой) -----
+  // ============================================================
+  // INIT
+  // ============================================================
   init() {
     if (this.initialized) return;
     if (this.initAttempts >= this.maxInitAttempts) {
@@ -27,39 +29,41 @@ const SchemaRegistry = {
 
     if (typeof EntityMetadata === "undefined") {
       this.status = "WAITING_METADATA";
-      Logger.warn("SchemaRegistry waiting for EntityMetadata...");
+      Logger.warn("SchemaRegistry waiting EntityMetadata...");
       return;
     }
 
     try {
-      const entities = EntityMetadata.list(); // теперь возвращает массив объектов
-      for (const meta of entities) {
-        if (!meta || !meta.table) continue;
-        const entity = meta.entity;
-        this.schemas[entity] = meta;
-        this.tableIndex[meta.table] = entity;
-        if (meta.fields) {
-          this.fieldCache[meta.table] = {};
-          for (const field of meta.fields) {
-            this.fieldCache[meta.table][field.name] = field;
-          }
-        }
-        // Кешируем хуки
-        if (meta.hooks) {
-          for (const [hookName, hookFns] of Object.entries(meta.hooks)) {
-            if (!this.hooks[hookName]) this.hooks[hookName] = {};
-            this.hooks[hookName][entity] = hookFns;
-          }
-        }
-        // Кешируем связи
-        if (meta.relations) {
-          this.relations[entity] = meta.relations;
-        }
+      let entities = [];
+
+      // Новый формат (list возвращает массив объектов)
+      if (typeof EntityMetadata.list === "function") {
+        entities = EntityMetadata.list();
       }
-      this.status = "READY";
+      // fallback старый формат (если есть поле entities)
+      else if (EntityMetadata.entities) {
+        entities = Object.values(EntityMetadata.entities);
+      }
+
+      Logger.log(`SchemaRegistry loading ${entities.length} metadata entries`);
+
+      for (const meta of entities) {
+        if (!meta) continue;
+        const entity = meta.entity || meta.name || meta.code;
+        const table = meta.table || meta.tableName;
+        if (!entity || !table) {
+          Logger.warn("Schema skip invalid metadata: " + JSON.stringify(meta));
+          continue;
+        }
+        this.register(entity, meta);
+      }
+
       this.initialized = true;
+      this.status = "READY";
       this.initError = null;
-      Logger.log("SchemaRegistry READY v" + this.version);
+      Logger.log(
+        `SchemaRegistry READY v${this.version} TABLES=${Object.keys(this.tableIndex).length}`
+      );
     } catch (e) {
       this.status = "FAILED";
       this.initError = e.message;
@@ -68,7 +72,37 @@ const SchemaRegistry = {
     }
   },
 
-  // ----- ПЕРЕЗАГРУЗКА -----
+  // ============================================================
+  // REGISTER (внутренний)
+  // ============================================================
+  register(entity, meta) {
+    if (!entity || !meta.table) return false;
+    this.schemas[entity] = meta;
+    this.tableIndex[meta.table] = entity;
+
+    if (meta.fields) {
+      this.fieldCache[meta.table] = {};
+      for (const field of meta.fields) {
+        this.fieldCache[meta.table][field.name] = field;
+      }
+    }
+
+    if (meta.relations) {
+      this.relations[entity] = meta.relations;
+    }
+
+    if (meta.hooks) {
+      for (const [hook, list] of Object.entries(meta.hooks)) {
+        if (!this.hooks[hook]) this.hooks[hook] = {};
+        this.hooks[hook][entity] = list;
+      }
+    }
+    return true;
+  },
+
+  // ============================================================
+  // ПЕРЕЗАГРУЗКА
+  // ============================================================
   reinitialize() {
     Logger.log("SchemaRegistry reinitializing...");
     this.initialized = false;
@@ -81,7 +115,9 @@ const SchemaRegistry = {
     this.init();
   },
 
-  // ----- ДИАГНОСТИКА ИНИЦИАЛИЗАЦИИ -----
+  // ============================================================
+  // ДИАГНОСТИКА ИНИЦИАЛИЗАЦИИ
+  // ============================================================
   getInitReport() {
     this.init();
     return {
@@ -96,23 +132,49 @@ const SchemaRegistry = {
     };
   },
 
-  // ----- ПОЛУЧЕНИЕ СХЕМЫ -----
+  // ============================================================
+  // БАЗОВЫЕ ГЕТТЕРЫ
+  // ============================================================
+  list() {
+    this.init();
+    return Object.values(this.schemas);
+  },
+
+  getAll() {
+    return this.list();
+  },
+
+  has(entity) {
+    this.init();
+    return !!this.schemas[entity];
+  },
+
+  count() {
+    this.init();
+    return Object.keys(this.schemas).length;
+  },
+
+  tables() {
+    this.init();
+    return Object.keys(this.tableIndex);
+  },
+
   get(entity) {
     this.init();
     return this.schemas[entity] || null;
   },
+
   getByTable(table) {
     this.init();
     const entity = this.tableIndex[table];
-    if (!entity) return null;
-    return this.schemas[entity];
+    return entity ? this.schemas[entity] : null;
   },
+
   getEntityByTable(table) {
     this.init();
     return this.tableIndex[table] || null;
   },
 
-  // ----- ОСНОВНЫЕ МЕТАДАННЫЕ -----
   getIdField(table) {
     this.init();
     const meta = this.getByTable(table);
@@ -123,14 +185,14 @@ const SchemaRegistry = {
   getSoftDelete(table) {
     this.init();
     const meta = this.getByTable(table);
-    if (!meta) return true; // по умолчанию включено
+    if (!meta) return true;
     return meta.softDelete !== false;
   },
 
   getTimestamps(table) {
     this.init();
     const meta = this.getByTable(table);
-    if (!meta) return true; // по умолчанию включено
+    if (!meta) return true;
     return meta.timestamps !== false;
   },
 
@@ -143,9 +205,7 @@ const SchemaRegistry = {
 
   getField(table, fieldName) {
     this.init();
-    const fields = this.fieldCache[table];
-    if (!fields) return null;
-    return fields[fieldName] || null;
+    return this.fieldCache[table]?.[fieldName] || null;
   },
 
   getRelations(table) {
@@ -169,7 +229,9 @@ const SchemaRegistry = {
     return meta.version || 1;
   },
 
-  // ----- ВАЛИДАЦИЯ (с partial и strict) -----
+  // ============================================================
+  // ВАЛИДАЦИЯ
+  // ============================================================
   validate(table, data, options = {}) {
     this.init();
     const meta = this.getByTable(table);
@@ -213,7 +275,6 @@ const SchemaRegistry = {
     return true;
   },
 
-  // ----- ПРИМЕНЕНИЕ ЗНАЧЕНИЙ ПО УМОЛЧАНИЮ (возвращает копию) -----
   applyDefaults(table, data) {
     this.init();
     const meta = this.getByTable(table);
@@ -228,7 +289,9 @@ const SchemaRegistry = {
     return result;
   },
 
-  // ----- УНИКАЛЬНОСТЬ (с учётом includeDeleted) -----
+  // ============================================================
+  // УНИКАЛЬНОСТЬ
+  // ============================================================
   checkUnique(table, fieldName, value, excludeId) {
     this.init();
     const field = this.getField(table, fieldName);
@@ -253,7 +316,9 @@ const SchemaRegistry = {
     return true;
   },
 
-  // ----- ПРОВЕРКА СВЯЗЕЙ (валидация существования сущностей и записей) -----
+  // ============================================================
+  // СВЯЗИ
+  // ============================================================
   validateRelations(table, data) {
     this.init();
     const relations = this.getRelations(table);
@@ -262,12 +327,10 @@ const SchemaRegistry = {
       if (data[field] === undefined || data[field] === null) continue;
       const refEntity = config.entity;
       if (!refEntity) continue;
-      // Проверяем, что сущность существует в EntityMetadata
       const refMeta = this.get(refEntity);
       if (!refMeta) {
         throw new Error(`Relation ${field} references unknown entity ${refEntity}`);
       }
-      // Проверяем существование записи
       const refTable = refMeta.table;
       const resolvedTable = Database.resolveTable ? Database.resolveTable(refTable) : refTable;
       const refRecord = Database.find(resolvedTable, data[field]);
@@ -281,7 +344,6 @@ const SchemaRegistry = {
     return true;
   },
 
-  // ----- ПРОВЕРКА ВСЕХ СВЯЗЕЙ (для health) -----
   checkAllRelations() {
     this.init();
     const errors = [];
@@ -298,7 +360,9 @@ const SchemaRegistry = {
     return errors;
   },
 
-  // ----- ХУКИ (регистрация и выполнение) -----
+  // ============================================================
+  // ХУКИ
+  // ============================================================
   registerHook(entity, hookName, fn) {
     if (!this.hooks[hookName]) this.hooks[hookName] = {};
     if (!this.hooks[hookName][entity]) this.hooks[hookName][entity] = [];
@@ -322,7 +386,9 @@ const SchemaRegistry = {
     }
   },
 
-  // ----- МИГРАЦИИ -----
+  // ============================================================
+  // МИГРАЦИИ
+  // ============================================================
   registerMigration(entity, fromVersion, toVersion, handler) {
     const key = `${entity}:${fromVersion}->${toVersion}`;
     this.migrationHandlers[key] = handler;
@@ -344,7 +410,9 @@ const SchemaRegistry = {
     }
   },
 
-  // ----- СРАВНЕНИЕ СХЕМЫ С ТАБЛИЦЕЙ (Schema diff) -----
+  // ============================================================
+  // СРАВНЕНИЕ СХЕМЫ С ТАБЛИЦЕЙ (Schema diff)
+  // ============================================================
   compareTable(table) {
     this.init();
     const meta = this.getByTable(table);
@@ -386,7 +454,9 @@ const SchemaRegistry = {
     };
   },
 
-  // ----- ПРАВА ДОСТУПА (permissions) -----
+  // ============================================================
+  // ПРАВА ДОСТУПА
+  // ============================================================
   getPermissions(table) {
     this.init();
     const meta = this.getByTable(table);
@@ -401,7 +471,9 @@ const SchemaRegistry = {
     return allowed.includes(user.role) || allowed.includes(user.id);
   },
 
-  // ----- HEALTH (с проверкой связей) -----
+  // ============================================================
+  // HEALTH
+  // ============================================================
   health() {
     const relationErrors = this.initialized ? this.checkAllRelations() : [];
     return {
