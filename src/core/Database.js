@@ -1,71 +1,49 @@
 // ============================================================
-// Database v3.0.0
+// Database v4.0.0
 // TaxControl ERP Core
 //
-// Storage Layer
+// Storage Engine
 //
 // Responsibility:
-// - Google Spreadsheet storage
-// - CRUD operations
-// - Query engine
-// - Cache
-// - Indexes
+// - Persistence
+// - CRUD
+// - Query
+// - Bulk operations
+// - Indexing
 // - Transactions
 //
 // NOT responsible:
-// - Business logic
 // - Permissions
-// - Events
-// - Audit
 // - Validation
+// - Audit
+// - Events
 // ============================================================
 
 
-console.log("Database v3.0.0");
-
+console.log("Database v4.0.0");
 
 
 const Database = {
 
 
-version:"3.0.0",
+version:"4.0.0",
 
 architecture:
-"SchemaRegistry + RepositoryLayer",
+"Repository -> Database -> SpreadsheetAdapter",
 
-
-status:"CREATED",
 
 initialized:false,
+
+status:"CREATED",
 
 lastError:null,
 
 
+_adapter:null,
 
-// ============================================================
-// CACHE
-// ============================================================
+_metaCache:{},
 
-
-_spreadsheet:null,
-
-
-_headerCache:{},
-
-_headerMapCache:{},
-
-
-_rowIndexCache:{},
-
-
-_tableIndex:{},
-
-
-
-
-// ============================================================
-// STATISTICS
-// ============================================================
+_indexes:{},
 
 
 _stats:{
@@ -79,18 +57,15 @@ updates:0,
 
 deletes:0,
 
+bulkInserts:0,
+
 
 cacheHits:0,
 
-cacheMisses:0,
-
-
-executionTime:0
+cacheMisses:0
 
 
 },
-
-
 
 
 
@@ -99,14 +74,11 @@ executionTime:0
 // ============================================================
 
 
-init(){
+init(adapter){
 
 
-if(this.initialized){
-
+if(this.initialized)
 return;
-
-}
 
 
 try{
@@ -115,20 +87,23 @@ try{
 this.status="INITIALIZING";
 
 
+this._adapter =
+adapter ||
+SpreadsheetAdapter;
 
-if(
-typeof SchemaRegistry!=="undefined" &&
-SchemaRegistry.init
-){
 
-SchemaRegistry.init();
+
+if(!this._adapter){
+
+throw new Error(
+"Storage adapter missing"
+);
 
 }
 
 
 
-this.buildTableIndex();
-
+this.buildMetadata();
 
 
 this.initialized=true;
@@ -154,101 +129,28 @@ this.status="FAILED";
 this.lastError=e.message;
 
 
-Logger.error(
-"Database INIT FAILED "+
-e.message
-);
-
-
 throw e;
 
-}
-
-
-},
-
-
-
-
-
-// ============================================================
-// READY CHECK
-// ============================================================
-
-
-isReady(){
-
-
-return (
-this.initialized &&
-this.status==="READY"
-);
-
-
-},
-
-
-
-
-
-// ============================================================
-// SPREADSHEET
-// ============================================================
-
-
-spreadsheet(){
-
-
-if(!this._spreadsheet){
-
-
-this._spreadsheet =
-SpreadsheetApp.getActiveSpreadsheet();
-
 
 }
 
 
-return this._spreadsheet;
-
-
 },
 
 
 
 
-sheet(name){
+_require(){
 
 
-return this.spreadsheet()
-.getSheetByName(name);
+if(!this.initialized){
 
-
-},
-
-
-
-
-getSheet(name){
-
-
-const sheet=this.sheet(name);
-
-
-if(!sheet){
-
-throw new Error(
-"Sheet not found: "+name
-);
+this.init();
 
 }
 
 
-return sheet;
-
-
 },
-
 
 
 
@@ -258,43 +160,27 @@ return sheet;
 // ============================================================
 
 
-buildTableIndex(){
-
-
-this._tableIndex={};
+buildMetadata(){
 
 
 if(
 typeof SchemaRegistry==="undefined"
-){
-
+)
 return;
 
-}
 
-
-
-const list =
-SchemaRegistry.list();
-
-
-
-list.forEach(entity=>{
+SchemaRegistry
+.list()
+.forEach(entity=>{
 
 
 const meta =
 SchemaRegistry.get(entity);
 
 
-
 if(meta){
 
-
-this._tableIndex[entity]=meta;
-
-
-this._tableIndex[meta.table]=meta;
-
+this._metaCache[entity]=meta;
 
 }
 
@@ -306,31 +192,11 @@ this._tableIndex[meta.table]=meta;
 
 
 
-
-resolveTable(entity){
-
-
-const meta =
-this._tableIndex[entity];
-
-
-return meta
-?
-meta.table
-:
-entity;
-
-
-},
-
-
-
-
 getMeta(entity){
 
 
 const meta =
-this._tableIndex[entity];
+this._metaCache[entity];
 
 
 if(!meta){
@@ -350,80 +216,13 @@ return meta;
 
 
 
-
-// ============================================================
-// HEADERS
-// ============================================================
+resolveTable(entity){
 
 
-headers(sheet){
-
-
-const name=
-sheet.getName();
-
-
-
-if(this._headerCache[name]){
-
-
-this._stats.cacheHits++;
-
-
-return {
-
-headers:this._headerCache[name],
-
-map:this._headerMapCache[name]
-
-};
-
-}
-
-
-
-this._stats.cacheMisses++;
-
-
-
-const headers =
-sheet
-.getRange(
-1,
-1,
-1,
-sheet.getLastColumn()
-)
-.getValues()[0];
-
-
-
-const map={};
-
-
-headers.forEach(
-(h,i)=>map[h]=i
-);
-
-
-
-this._headerCache[name]=headers;
-
-this._headerMapCache[name]=map;
-
-
-
-return {
-
-headers,
-
-map
-
-};
+return this.getMeta(entity).table;
 
 
 },
-
 
 
 
@@ -436,44 +235,26 @@ map
 insert(entity,data){
 
 
-this.init();
+this._require();
 
 
-const table =
-this.resolveTable(entity);
-
-
-const sheet =
-this.getSheet(table);
+const meta =
+this.getMeta(entity);
 
 
 
-const {
-headers
-}=this.headers(sheet);
+const result =
+this._adapter.appendObject(
 
+meta.table,
 
+data
 
-const row =
-headers.map(
-h=>data[h] ?? ""
 );
 
 
 
-sheet
-.getRange(
-sheet.getLastRow()+1,
-1,
-1,
-headers.length
-)
-.setValues([row]);
-
-
-
 this._stats.inserts++;
-
 
 
 return data;
@@ -481,6 +262,46 @@ return data;
 
 },
 
+
+
+
+// ============================================================
+// BULK INSERT
+// ============================================================
+
+
+bulkInsert(entity,items){
+
+
+if(!items.length)
+return [];
+
+
+this._require();
+
+
+const meta =
+this.getMeta(entity);
+
+
+
+this._adapter.appendObjects(
+
+meta.table,
+
+items
+
+);
+
+
+
+this._stats.bulkInserts++;
+
+
+return items;
+
+
+},
 
 
 
@@ -493,77 +314,24 @@ return data;
 find(entity,id){
 
 
-this.init();
-
-
-const table =
-this.resolveTable(entity);
-
-
-const sheet =
-this.getSheet(table);
+this._require();
 
 
 
-const {
-headers,
-map
-}=this.headers(sheet);
+const meta =
+this.getMeta(entity);
 
 
 
-const values =
-sheet
-.getDataRange()
-.getValues();
+return this._adapter.findById(
 
+meta.table,
 
+meta.idField || entity+"ID",
 
-const idField =
-this.getMeta(entity).idField ||
-entity+"ID";
+id
 
-
-
-const col =
-map[idField];
-
-
-
-for(
-let i=1;
-i<values.length;
-i++
-){
-
-
-if(
-String(values[i][col])===
-String(id)
-){
-
-
-const obj={};
-
-
-headers.forEach(
-(h,j)=>
-obj[h]=values[i][j]
 );
-
-
-
-return obj;
-
-
-}
-
-
-}
-
-
-
-return null;
 
 
 },
@@ -580,83 +348,37 @@ return null;
 query(entity,filters={}){
 
 
-this.init();
+this._require();
 
 
-
-const table =
-this.resolveTable(entity);
-
-
-const sheet =
-this.getSheet(table);
-
-
-
-const {
-headers
-}=this.headers(sheet);
+const meta =
+this.getMeta(entity);
 
 
 
 const rows =
-sheet
-.getDataRange()
-.getValues();
-
-
-
-const result=[];
-
-
-
-for(
-let i=1;
-i<rows.length;
-i++
-){
-
-
-const obj={};
-
-
-headers.forEach(
-(h,j)=>
-obj[h]=rows[i][j]
+this._adapter.readObjects(
+meta.table
 );
 
 
 
-let ok=true;
+const result =
+rows.filter(row=>{
 
 
+return Object.keys(filters)
+.every(key=>
 
-Object.keys(filters)
-.forEach(k=>{
+
+String(row[key]) ===
+String(filters[key])
 
 
-if(
-String(obj[k]) !==
-String(filters[k])
-){
-
-ok=false;
-
-}
+);
 
 
 });
-
-
-
-if(ok){
-
-result.push(obj);
-
-}
-
-
-}
 
 
 
@@ -680,104 +402,36 @@ return result;
 update(entity,id,data){
 
 
-const current =
-this.find(entity,id);
+this._require();
+
+
+const meta =
+this.getMeta(entity);
 
 
 
-if(!current){
+const result =
+this._adapter.updateById(
 
-throw new Error(
-"Record not found "+id
+meta.table,
+
+meta.idField || entity+"ID",
+
+id,
+
+data
+
 );
-
-}
-
-
-
-const updated={
-
-...current,
-
-...data
-
-};
-
-
-
-const table =
-this.resolveTable(entity);
-
-
-const sheet =
-this.getSheet(table);
-
-
-
-const {
-headers,
-map
-}=this.headers(sheet);
-
-
-
-const idField =
-this.getMeta(entity).idField ||
-entity+"ID";
-
-
-
-const values =
-sheet.getDataRange().getValues();
-
-
-
-for(
-let i=1;
-i<values.length;
-i++
-){
-
-
-if(
-String(values[i][map[idField]])===
-String(id)
-){
-
-
-sheet
-.getRange(
-i+1,
-1,
-1,
-headers.length
-)
-.setValues([
-
-headers.map(
-h=>updated[h]??""
-)
-
-]);
-
-
-break;
-
-}
-
-
-}
 
 
 
 this._stats.updates++;
 
 
-return updated;
+return result;
 
 
 },
-
 
 
 
@@ -790,18 +444,51 @@ return updated;
 delete(entity,id){
 
 
-return this.update(
-entity,
-id,
-{
-Deleted:true,
-DeletedAt:new Date()
-}
+this._require();
+
+
+const meta =
+this.getMeta(entity);
+
+
+
+const result =
+this._adapter.deleteById(
+
+meta.table,
+
+meta.idField || entity+"ID",
+
+id
+
 );
+
+
+
+this._stats.deletes++;
+
+
+return result;
 
 
 },
 
+
+
+
+
+// ============================================================
+// EXISTS
+// ============================================================
+
+
+exists(entity,id){
+
+
+return !!this.find(entity,id);
+
+
+},
 
 
 
@@ -815,13 +502,13 @@ transaction(callback){
 
 
 const lock =
-LockService.getDocumentLock();
+LockService.getScriptLock();
+
+
+lock.waitLock(10000);
 
 
 try{
-
-
-lock.waitLock(5000);
 
 
 return callback();
@@ -852,11 +539,9 @@ lock.releaseLock();
 clearCache(){
 
 
-this._headerCache={};
+this._metaCache={};
 
-this._headerMapCache={};
-
-this._rowIndexCache={};
+this._indexes={};
 
 
 },
@@ -880,12 +565,15 @@ version:this.version,
 
 status:this.status,
 
-
 initialized:this.initialized,
 
 
+adapter:
+this._adapter?.constructor?.name,
+
+
 tables:
-Object.keys(this._tableIndex),
+Object.keys(this._metaCache),
 
 
 stats:this._stats,
@@ -911,28 +599,46 @@ error:this.lastError
 health(){
 
 
+const data={
+
+
+version:this.version,
+
+architecture:this.architecture,
+
+status:this.status,
+
+
+adapter:
+!!this._adapter,
+
+
+stats:this._stats
+
+
+};
+
+
+
+if(
+typeof HealthContract!=="undefined"
+){
+
 return HealthContract.create(
-
 "Database",
-
-this.isReady()
+this.status==="READY"
 ?
 "OK"
 :
 "WARNING",
+data
+);
 
-
-{
-
-version:this.version,
-
-status:this.status,
-
-architecture:this.architecture
 
 }
 
-);
+
+return data;
 
 
 }
@@ -940,7 +646,6 @@ architecture:this.architecture
 
 
 };
-
 
 
 
