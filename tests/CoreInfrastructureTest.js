@@ -39,6 +39,21 @@ const CoreInfrastructureTest = {
     try {
       result.schema = this.testSchemaRegistry();
       result.adapter = this.testAdapter();
+
+      // ===== ВРЕМЕННЫЙ ЛОГ ПЕРЕД DATABASE =====
+      Logger.log(
+        JSON.stringify(
+          {
+            schema: SchemaRegistry.get("__TEST_DATABASE"),
+            table: SchemaRegistry.getByTable("__TEST_DATABASE"),
+            entity: SchemaRegistry.getEntityByTable("__TEST_DATABASE")
+          },
+          null,
+          2
+        )
+      );
+      // =========================================
+
       result.database = this.testDatabase();
       result.repository = this.testRepository();
       result.chain = this.testChain();

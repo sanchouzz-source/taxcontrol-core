@@ -226,26 +226,20 @@ this._adapter.constructor.name
 // ============================================================
 
 
-buildMetadata(){
+// ============================================================
+// BUILD METADATA v4.2
+// ============================================================
 
+buildMetadata(){
 
 this._metaCache={};
 
 
+if(typeof SchemaRegistry==="undefined"){
 
-if(
-typeof SchemaRegistry==="undefined"
-){
-
-return;
-
-}
-
-
-
-if(
-!SchemaRegistry.list
-){
+Logger.warn(
+"Database: SchemaRegistry unavailable"
+);
 
 return;
 
@@ -253,25 +247,106 @@ return;
 
 
 
-SchemaRegistry
-.list()
-.forEach(entity=>{
+let entities=[];
 
 
-const meta =
+
+// вариант 1
+if(typeof SchemaRegistry.list==="function"){
+
+entities = SchemaRegistry.list();
+
+}
+
+
+// вариант 2
+else if(typeof SchemaRegistry.getAll==="function"){
+
+entities =
+Object.keys(
+SchemaRegistry.getAll()
+);
+
+}
+
+
+// вариант 3
+else if(SchemaRegistry.registry){
+
+entities =
+Object.keys(
+SchemaRegistry.registry
+);
+
+}
+
+
+// вариант 4
+else if(SchemaRegistry.entities){
+
+entities =
+Object.keys(
+SchemaRegistry.entities
+);
+
+}
+
+
+
+Logger.log(
+"Database metadata loading entities="+
+entities.length
+);
+
+
+
+entities.forEach(entity=>{
+
+
+let meta=null;
+
+
+
+if(typeof SchemaRegistry.get==="function"){
+
+meta =
 SchemaRegistry.get(entity);
+
+}
+
+
+else if(SchemaRegistry.registry){
+
+meta =
+SchemaRegistry.registry[entity];
+
+}
+
+
+else if(SchemaRegistry.entities){
+
+meta =
+SchemaRegistry.entities[entity];
+
+}
+
 
 
 if(meta){
 
-
 this._metaCache[entity]=meta;
-
 
 }
 
 
 });
+
+
+
+Logger.log(
+"Database metadata loaded="+
+Object.keys(this._metaCache).length
+);
 
 
 },
@@ -499,7 +574,8 @@ this._adapter.findById(
 meta.table,
 
 meta.idField ||
-entity+"ID",
+meta.primaryKey ||
+"id",
 
 id
 
@@ -609,7 +685,8 @@ this._adapter.updateById(
 meta.table,
 
 meta.idField ||
-entity+"ID",
+meta.primaryKey ||
+"id",
 
 id,
 
@@ -657,7 +734,8 @@ this._adapter.deleteById(
 meta.table,
 
 meta.idField ||
-entity+"ID",
+meta.primaryKey ||
+"id",
 
 id
 
