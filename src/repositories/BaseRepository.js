@@ -1,13 +1,13 @@
 // ============================================================
-// BaseRepository v5.4.1
+// BaseRepository v5.4.3
 // Enterprise Repository Base
-// Единое определение idField во всех методах
+// Защищённый getMeta с тройным fallback
 // ============================================================
 
-console.log("BaseRepository v5.4.1");
+console.log("BaseRepository v5.4.3");
 
 const BaseRepository = {
-  version: "5.4.1",
+  version: "5.4.3",
   _adapter: null,
 
   // ----- ИНИЦИАЛИЗАЦИЯ АДАПТЕРА -----
@@ -46,8 +46,7 @@ const BaseRepository = {
     this.checkPermission(meta, "create");
     this.beforeCreate(entity, payload, meta);
 
-    // ОБНОВЛЕНО: единое определение idField
-    const idField = meta.idField || meta.primaryKey || "id";
+    const idField = meta.idField || meta.primaryKey || entity + "ID";
     if (!payload[idField]) {
       payload[idField] = IdService.generate(entity);
     }
@@ -227,8 +226,7 @@ const BaseRepository = {
     this._requireAdapter();
     if (!items || !items.length) return [];
     const meta = this.getMeta(entity);
-    // ОБНОВЛЕНО: единое определение idField
-    const idField = meta.idField || meta.primaryKey || "id";
+    const idField = meta.idField || meta.primaryKey || entity + "ID";
 
     if (options.skipHooks === true) {
       const prepared = items.map(item => {
@@ -303,53 +301,41 @@ const BaseRepository = {
   // ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ
   // ============================================================
 
-  // ----- GET META (самодостаточная) -----
+  // ----- GET META (защищённый тройной fallback) -----
   getMeta(entity) {
-    if (!entity) {
-      throw new Error("Repository entity name is empty");
-    }
+    let meta = null;
 
+    // 1. Основной источник – SchemaRegistry
     if (
       typeof SchemaRegistry !== "undefined" &&
-      typeof SchemaRegistry.get === "function"
+      SchemaRegistry.get
     ) {
-      const schema = SchemaRegistry.get(entity);
-      if (schema) {
-        return {
-          ...schema,
-          entity: schema.entity || entity,
-          table: schema.table || entity,
-          idField: schema.idField || schema.primaryKey || "id"
-        };
-      }
+      meta = SchemaRegistry.get(entity);
     }
 
+    // 2. Fallback – Database (если есть метод getMetadata)
     if (
+      !meta &&
+      typeof Database !== "undefined" &&
+      Database.getMetadata
+    ) {
+      meta = Database.getMetadata(entity);
+    }
+
+    // 3. Последний резерв – EntityMetadata
+    if (
+      !meta &&
       typeof EntityMetadata !== "undefined" &&
-      typeof EntityMetadata.get === "function"
+      EntityMetadata.get
     ) {
-      const meta = EntityMetadata.get(entity);
-      if (meta) {
-        return {
-          ...meta,
-          entity: meta.entity || entity,
-          table: meta.table || entity,
-          idField: meta.idField || "id"
-        };
-      }
+      meta = EntityMetadata.get(entity);
     }
 
-    if (
-      this._adapter &&
-      typeof this._adapter.getMetadata === "function"
-    ) {
-      const meta = this._adapter.getMetadata(entity);
-      if (meta) {
-        return meta;
-      }
+    if (!meta) {
+      throw new Error("Metadata missing for entity " + entity);
     }
 
-    throw new Error("Metadata missing for entity " + entity);
+    return meta;
   },
 
   isDeleted(record, meta) {
@@ -371,9 +357,8 @@ const BaseRepository = {
     };
   },
 
-  // ----- ЗАЩИТА СИСТЕМНЫХ ПОЛЕЙ (обновлено) -----
+  // ----- ЗАЩИТА СИСТЕМНЫХ ПОЛЕЙ -----
   _protectSystemFields(meta, data) {
-    // ОБНОВЛЕНО: единое определение idField
     const idField = meta.idField || meta.primaryKey || "id";
     const protectedFields = [
       idField,
@@ -443,11 +428,10 @@ const BaseRepository = {
     }
   },
 
-  // ----- СОБЫТИЯ (обновлено) -----
+  // ----- СОБЫТИЯ -----
   emit(entity, event, before, after, action) {
     if (typeof EventBus === "undefined" || !event) return;
     const meta = this.getMeta(entity);
-    // ОБНОВЛЕНО: единое определение idField
     const idField = meta.idField || meta.primaryKey || "id";
     const entityId = after ? after[idField] : null;
     EventBus.emit(event, {
@@ -517,12 +501,27 @@ const BaseRepository = {
 };
 
 // ============================================================
-// ИНИЦИАЛИЗАЦИЯ
+// ОТЛОЖЕННАЯ ИНИЦИАЛИЗАЦИЯ
 // ============================================================
-if (typeof Database !== "undefined") {
-  BaseRepository.init(Database);
+
+function initBaseRepository() {
+  if (typeof Database !== "undefined") {
+    BaseRepository.init(Database);
+    Logger.log("BaseRepository READY v" + BaseRepository.version);
+    return true;
+  }
+
+  Logger.warn("Database not ready. BaseRepository delayed.");
+  return false;
+}
+
+if (
+  typeof SystemInit !== "undefined" &&
+  SystemInit.register
+) {
+  SystemInit.register("BaseRepository", initBaseRepository);
+} else {
+  initBaseRepository();
 }
 
 globalThis.BaseRepository = BaseRepository;
-
-Logger.log("BaseRepository READY v" + BaseRepository.version);
