@@ -547,3 +547,172 @@ const SpreadsheetAdapter = {
 
 globalThis.SpreadsheetAdapter = SpreadsheetAdapter;
 Logger.log("SpreadsheetAdapter REGISTERED v" + SpreadsheetAdapter.version);
+// ============================================================
+// SchemaStorage COMPATIBILITY API
+// ============================================================
+
+
+SpreadsheetAdapter.writeRows = function(
+    sheetName,
+    rows,
+    headers=[]
+){
+
+    if(!sheetName){
+        throw new Error(
+            "SpreadsheetAdapter.writeRows sheetName required"
+        );
+    }
+
+
+    const ss =
+        SpreadsheetApp.getActiveSpreadsheet();
+
+
+    let sheet =
+        ss.getSheetByName(sheetName);
+
+
+
+    if(!sheet){
+
+        sheet =
+        ss.insertSheet(sheetName);
+
+    }
+
+
+
+    sheet.clear();
+
+
+
+    if(headers.length){
+
+        sheet
+        .getRange(
+            1,
+            1,
+            1,
+            headers.length
+        )
+        .setValues(
+            [headers]
+        );
+
+    }
+
+
+
+    if(rows && rows.length){
+
+
+        sheet
+        .getRange(
+            headers.length ? 2 : 1,
+            1,
+            rows.length,
+            rows[0].length
+        )
+        .setValues(rows);
+
+
+    }
+
+
+    Logger.debug(
+        "SpreadsheetAdapter.writeRows OK "+
+        sheetName+
+        " rows="+rows.length
+    );
+
+
+};
+
+
+
+
+
+SpreadsheetAdapter.appendRow=function(
+    sheetName,
+    row
+){
+
+
+    const ss =
+    SpreadsheetApp.getActiveSpreadsheet();
+
+
+
+    let sheet =
+    ss.getSheetByName(sheetName);
+
+
+
+    if(!sheet){
+
+        sheet =
+        ss.insertSheet(sheetName);
+
+    }
+
+
+
+    sheet
+    .appendRow(row);
+
+
+
+    Logger.debug(
+        "SpreadsheetAdapter.appendRow OK "+
+        sheetName
+    );
+
+
+};
+
+
+
+
+
+SpreadsheetAdapter.readRows=function(
+    sheetName
+){
+
+
+    const ss =
+    SpreadsheetApp.getActiveSpreadsheet();
+
+
+    const sheet =
+    ss.getSheetByName(sheetName);
+
+
+
+    if(!sheet){
+
+        return [];
+
+    }
+
+
+
+    const values =
+    sheet
+    .getDataRange()
+    .getValues();
+
+
+
+    if(values.length<=1){
+
+        return [];
+
+    }
+
+
+
+    return values.slice(1);
+
+
+};
