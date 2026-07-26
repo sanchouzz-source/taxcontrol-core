@@ -1,7 +1,7 @@
-console.log("SchemaRegistry v3.3.2");
+console.log("SchemaRegistry v4.0.2");
 
 const SchemaRegistry = {
-  version: "3.3.2",
+  version: "4.0.2",
   status: "REGISTERED",
   initialized: false,
   initAttempts: 0,
@@ -14,6 +14,49 @@ const SchemaRegistry = {
   migrationHandlers: {},
   hooks: {},
   relations: {},
+
+  // Системные таблицы
+  systemTables: [
+    "__TEST_DATABASE",
+    "__TEST_EVENTS",
+    "__TEST_REPOSITORY"
+  ],
+
+  systemSchemas: {
+    "__TEST_DATABASE": {
+      entity: "__TEST_DATABASE",
+      table: "__TEST_DATABASE",
+      idField: "id",
+      version: 1,
+      system: true,
+      fields: [
+        { name: "id", type: "STRING", required: true },
+        { name: "createdAt", type: "DATE" },
+        { name: "value", type: "STRING" }
+      ]
+    },
+    "__TEST_EVENTS": {
+      entity: "__TEST_EVENTS",
+      table: "__TEST_EVENTS",
+      idField: "id",
+      version: 1,
+      system: true,
+      fields: [
+        { name: "id", type: "STRING", required: true },
+        { name: "event", type: "STRING" }
+      ]
+    },
+    "__TEST_REPOSITORY": {
+      entity: "__TEST_REPOSITORY",
+      table: "__TEST_REPOSITORY",
+      idField: "id",
+      version: 1,
+      system: true,
+      fields: [
+        { name: "id", type: "STRING", required: true }
+      ]
+    }
+  },
 
   // ============================================================
   // INIT
@@ -36,12 +79,9 @@ const SchemaRegistry = {
     try {
       let entities = [];
 
-      // Новый формат (list возвращает массив объектов)
       if (typeof EntityMetadata.list === "function") {
         entities = EntityMetadata.list();
-      }
-      // fallback старый формат (если есть поле entities)
-      else if (EntityMetadata.entities) {
+      } else if (EntityMetadata.entities) {
         entities = Object.values(EntityMetadata.entities);
       }
 
@@ -55,7 +95,20 @@ const SchemaRegistry = {
           Logger.warn("Schema skip invalid metadata: " + JSON.stringify(meta));
           continue;
         }
+        if (this.isSystemTable(table)) {
+          Logger.debug(`Skipping system table from metadata: ${table}`);
+          continue;
+        }
         this.register(entity, meta);
+      }
+
+      // Регистрация системных схем
+      for (const table of this.systemTables) {
+        const schema = this.systemSchemas[table];
+        if (schema) {
+          this.register(schema.entity, schema);
+          Logger.log("System schema registered: " + table);
+        }
       }
 
       this.initialized = true;
@@ -77,6 +130,14 @@ const SchemaRegistry = {
   // ============================================================
   register(entity, meta) {
     if (!entity || !meta.table) return false;
+
+    // Устанавливаем категорию
+    if (meta.system) {
+      meta.category = "SYSTEM";
+    } else {
+      meta.category = "BUSINESS";
+    }
+
     this.schemas[entity] = meta;
     this.tableIndex[meta.table] = entity;
 
@@ -101,7 +162,33 @@ const SchemaRegistry = {
   },
 
   // ============================================================
-  // ПЕРЕЗАГРУЗКА
+  // СИСТЕМНЫЕ ТАБЛИЦЫ
+  // ============================================================
+  isSystemTable(table) {
+    return this.systemTables.includes(table);
+  },
+
+  // ============================================================
+  // НОРМАЛИЗАЦИЯ ENTITY / TABLE
+  // ============================================================
+  resolveEntity(value) {
+    this.init();
+    if (this.schemas[value]) return value;
+    if (this.tableIndex[value]) return this.tableIndex[value];
+    if (this.systemSchemas[value]) return value;
+    throw new Error(`Unknown entity/table: ${value}`);
+  },
+
+  resolveTable(value) {
+    this.init();
+    const entity = this.resolveEntity(value);
+    const meta = this.schemas[entity] || this.systemSchemas[entity];
+    if (!meta) throw new Error(`No metadata for entity: ${entity}`);
+    return meta.table;
+  },
+
+  // ============================================================
+  // ПЕРЕЗАГРУЗКА (сохраняет системные схемы)
   // ============================================================
   reinitialize() {
     Logger.log("SchemaRegistry reinitializing...");
@@ -167,7 +254,13 @@ const SchemaRegistry = {
   getByTable(table) {
     this.init();
     const entity = this.tableIndex[table];
-    return entity ? this.schemas[entity] : null;
+    if (entity && this.schemas[entity]) {
+      return this.schemas[entity];
+    }
+    if (this.systemSchemas[table]) {
+      return this.systemSchemas[table];
+    }
+    return null;
   },
 
   getEntityByTable(table) {
@@ -234,8 +327,9 @@ const SchemaRegistry = {
   // ============================================================
   validate(table, data, options = {}) {
     this.init();
-    const meta = this.getByTable(table);
-    if (!meta) throw new Error(`Schema not registered for table: ${table}`);
+    const entity = this.getEntityByTable(table);
+    if (!entity) throw new Error(`Table not registered: ${table}`);
+    const meta = this.get(entity);
     const fields = meta.fields || [];
     const strict = options.strict === true;
 
@@ -277,8 +371,9 @@ const SchemaRegistry = {
 
   applyDefaults(table, data) {
     this.init();
-    const meta = this.getByTable(table);
-    if (!meta) throw new Error(`Schema not registered for table: ${table}`);
+    const entity = this.getEntityByTable(table);
+    if (!entity) throw new Error(`Table not registered: ${table}`);
+    const meta = this.get(entity);
     const fields = meta.fields || [];
     const result = { ...data };
     for (const field of fields) {
@@ -301,11 +396,15 @@ const SchemaRegistry = {
     if (typeof Database === "undefined") {
       throw new Error("Database not available for uniqueness check");
     }
+
+    const entity = this.getEntityByTable(table);
+    if (!entity) throw new Error(`Entity not found for table: ${table}`);
+
     let result;
     try {
-      result = Database.query(table, { [fieldName]: value }, { includeDeleted: true });
+      result = Database.query(entity, { [fieldName]: value }, { includeDeleted: true });
     } catch (e) {
-      result = Database.query(table, { [fieldName]: value });
+      result = Database.query(entity, { [fieldName]: value });
     }
     const records = result.data || result || [];
     const idField = this.getIdField(table);
@@ -321,8 +420,11 @@ const SchemaRegistry = {
   // ============================================================
   validateRelations(table, data) {
     this.init();
+    const entity = this.getEntityByTable(table);
+    if (!entity) throw new Error(`Table not registered: ${table}`);
     const relations = this.getRelations(table);
     if (!relations) return true;
+
     for (const [field, config] of Object.entries(relations)) {
       if (data[field] === undefined || data[field] === null) continue;
       const refEntity = config.entity;
@@ -332,10 +434,10 @@ const SchemaRegistry = {
         throw new Error(`Relation ${field} references unknown entity ${refEntity}`);
       }
       const refTable = refMeta.table;
-      const resolvedTable = Database.resolveTable ? Database.resolveTable(refTable) : refTable;
+      const resolvedTable = Database.resolveTable ? Database.resolveTable(refEntity) : refTable;
       const refRecord = Database.find(resolvedTable, data[field]);
       if (!refRecord) {
-        throw new Error(`Referenced record not found: ${field}=${data[field]} (table ${refTable})`);
+        throw new Error(`Referenced record not found: ${field}=${data[field]} (entity ${refEntity})`);
       }
       if (refRecord.Deleted === true || refRecord.Deleted === "true") {
         throw new Error(`Referenced record is deleted: ${field}=${data[field]}`);
@@ -345,7 +447,7 @@ const SchemaRegistry = {
   },
 
   checkAllRelations() {
-    this.init();
+    if (!this.initialized) return [];
     const errors = [];
     for (const [entity, meta] of Object.entries(this.schemas)) {
       if (!meta.relations) continue;
@@ -411,7 +513,7 @@ const SchemaRegistry = {
   },
 
   // ============================================================
-  // СРАВНЕНИЕ СХЕМЫ С ТАБЛИЦЕЙ (Schema diff)
+  // СРАВНЕНИЕ СХЕМЫ С ТАБЛИЦЕЙ
   // ============================================================
   compareTable(table) {
     this.init();
@@ -422,10 +524,20 @@ const SchemaRegistry = {
 
     let actualColumns = [];
     try {
-      const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(table);
-      if (sheet) {
-        const headerRow = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
-        actualColumns = headerRow || [];
+      if (typeof SpreadsheetAdapter !== "undefined") {
+        const sheet = SpreadsheetAdapter.getSheet(table);
+        if (sheet) {
+          actualColumns = SpreadsheetAdapter.getHeaders(sheet) || [];
+        }
+      } else {
+        const ss = SpreadsheetApp.getActiveSpreadsheet();
+        const sheet = ss.getSheetByName(table);
+        if (sheet) {
+          const lastCol = sheet.getLastColumn();
+          if (lastCol > 0) {
+            actualColumns = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
+          }
+        }
       }
     } catch (e) {
       return { table, error: e.message };
@@ -472,7 +584,48 @@ const SchemaRegistry = {
   },
 
   // ============================================================
-  // HEALTH
+  // СИСТЕМНАЯ ПРОВЕРКА
+  // ============================================================
+  checkSystemSchemas() {
+    const result = [];
+    for (const table of this.systemTables) {
+      const exists = !!this.getByTable(table);
+      result.push({
+        table,
+        registered: exists,
+        status: exists ? "OK" : "MISSING"
+      });
+    }
+    return result;
+  },
+
+  // ============================================================
+  // ДИАГНОСТИКА (разделяет бизнес и системные)
+  // ============================================================
+  diagnostics() {
+    this.init();
+    const businessEntities = Object.values(this.schemas)
+      .filter(m => m.category === "BUSINESS")
+      .length;
+    const systemEntities = Object.values(this.schemas)
+      .filter(m => m.category === "SYSTEM")
+      .length;
+
+    return {
+      version: this.version,
+      status: this.status,
+      initialized: this.initialized,
+      businessEntities,
+      systemEntities,
+      tables: Object.keys(this.tableIndex).length,
+      relations: Object.keys(this.relations).length,
+      hooks: Object.keys(this.hooks).length,
+      systemCheck: this.checkSystemSchemas()
+    };
+  },
+
+  // ============================================================
+  // HEALTH (добавлены systemSchemas)
   // ============================================================
   health() {
     const relationErrors = this.initialized ? this.checkAllRelations() : [];
@@ -482,6 +635,7 @@ const SchemaRegistry = {
       status: this.status,
       initialized: this.initialized,
       schemas: Object.keys(this.schemas).length,
+      systemSchemas: Object.keys(this.systemSchemas).length,
       tables: Object.keys(this.tableIndex).length,
       metadataLoaded: typeof EntityMetadata !== "undefined",
       initAttempts: this.initAttempts,
