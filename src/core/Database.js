@@ -1,5 +1,5 @@
 // ============================================================
-// Database v4.1.1
+// Database v4.1.2
 // TaxControl ERP Core
 //
 // Storage Engine
@@ -26,10 +26,10 @@
 // - Events
 // ============================================================
 
-console.log("Database v4.1.1");
+console.log("Database v4.1.2");
 
 const Database = {
-  version: "4.1.1",
+  version: "4.1.2",
 
   architecture: "Repository -> Database -> SpreadsheetAdapter",
 
@@ -129,7 +129,6 @@ const Database = {
       throw new Error("Database: SchemaRegistry unavailable");
     }
 
-    // Проверяем наличие метода list()
     if (typeof SchemaRegistry.list !== "function") {
       throw new Error("Database: SchemaRegistry.list() not available");
     }
@@ -138,7 +137,6 @@ const Database = {
     Logger.log("Database metadata loading items=" + items.length);
 
     items.forEach(item => {
-      // Определяем имя сущности
       const entity = typeof item === "string" ? item : item.entity;
 
       if (!entity) {
@@ -146,10 +144,8 @@ const Database = {
         return;
       }
 
-      // Получаем метаданные
       let meta = null;
       if (typeof item === "object" && item !== null) {
-        // Если item — объект с метаданными, используем его напрямую
         meta = item;
       } else if (typeof SchemaRegistry.get === "function") {
         meta = SchemaRegistry.get(entity);
@@ -160,7 +156,7 @@ const Database = {
 
       if (!meta) {
         Logger.error("Metadata NOT FOUND for entity: " + entity);
-        return; // не добавляем в кэш
+        return;
       }
 
       this._metaCache[entity] = meta;
@@ -170,21 +166,44 @@ const Database = {
     Logger.log("Database metadata loaded=" + Object.keys(this._metaCache).length);
   },
 
+  // ============================================================
+  // GET META (усиленная защита)
+  // ============================================================
+
   getMeta(entity) {
-    const meta = this._metaCache[entity];
+    // 1. Убеждаемся, что база инициализирована
+    this._require();
+
+    // 2. Проверяем валидность имени сущности
+    if (!entity || typeof entity !== "string") {
+      throw new Error("Invalid entity name: " + entity);
+    }
+
+    // 3. Пытаемся получить метаданные из кэша
+    let meta = this._metaCache[entity];
+
+    // 4. Если нет — перестраиваем кэш и проверяем снова
     if (!meta) {
-      // Перестраиваем метаданные только если они отсутствуют
       this.buildMetadata();
+      meta = this._metaCache[entity];
+      if (!meta) {
+        throw new Error("Metadata missing for entity: " + entity);
+      }
     }
-    const result = this._metaCache[entity];
-    if (!result) {
-      throw new Error("Metadata missing: " + entity);
-    }
-    return result;
+
+    return meta;
   },
 
+  // ============================================================
+  // RESOLVE TABLE (с защитой)
+  // ============================================================
+
   resolveTable(entity) {
-    return this.getMeta(entity).table;
+    const meta = this.getMeta(entity);
+    if (!meta.table) {
+      throw new Error("Table name missing in metadata for entity: " + entity);
+    }
+    return meta.table;
   },
 
   // ============================================================
@@ -193,7 +212,6 @@ const Database = {
 
   insert(entity, data) {
     this._require();
-
     const meta = this.getMeta(entity);
 
     if (!this._adapter.appendObject) {
@@ -242,7 +260,6 @@ const Database = {
 
   find(entity, id) {
     this._require();
-
     const meta = this.getMeta(entity);
 
     const result = this._adapter.findById(
@@ -262,7 +279,6 @@ const Database = {
 
   query(entity, filters = {}) {
     this._require();
-
     const meta = this.getMeta(entity);
 
     const rows = this._adapter.readObjects(meta.table);
@@ -284,7 +300,6 @@ const Database = {
 
   update(entity, id, data) {
     this._require();
-
     const meta = this.getMeta(entity);
 
     if (!this._adapter.updateById) {
@@ -310,7 +325,6 @@ const Database = {
 
   delete(entity, id) {
     this._require();
-
     const meta = this.getMeta(entity);
 
     const result = this._adapter.deleteById(

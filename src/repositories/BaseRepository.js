@@ -1,12 +1,13 @@
 // ============================================================
-// BaseRepository v5.3.0
+// BaseRepository v5.3.1
 // Enterprise Repository Base
+// Интеграция с Database v4.1.2 (усиленная getMeta)
 // ============================================================
 
-console.log("BaseRepository v5.3.0");
+console.log("BaseRepository v5.3.1");
 
 const BaseRepository = {
-  version: "5.3.0",
+  version: "5.3.1",
   _adapter: null,
 
   // ----- ИНИЦИАЛИЗАЦИЯ АДАПТЕРА -----
@@ -18,10 +19,15 @@ const BaseRepository = {
     Logger.log("BaseRepository initialized with adapter v" + this.version);
   },
 
-  // ----- ПРОВЕРКА АДАПТЕРА -----
+  // ----- ПРОВЕРКА АДАПТЕРА (с вызовом _require адаптера) -----
   _requireAdapter() {
     if (!this._adapter) {
       throw new Error("BaseRepository adapter not initialized. Call BaseRepository.init(Database) first.");
+    }
+    // Если адаптер имеет собственный метод _require (например, Database v4.1.2+),
+    // вызываем его для принудительной инициализации.
+    if (typeof this._adapter._require === "function") {
+      this._adapter._require();
     }
   },
 
@@ -224,7 +230,6 @@ const BaseRepository = {
     const meta = this.getMeta(entity);
     const idField = meta.idField || entity + "ID";
 
-    // Если запрошено пропустить хуки – просто вставляем через адаптер
     if (options.skipHooks === true) {
       const prepared = items.map(item => {
         const payload = { ...item };
@@ -237,7 +242,6 @@ const BaseRepository = {
       if (typeof this._adapter.bulkInsert === "function") {
         return this._adapter.bulkInsert(meta.table, prepared);
       }
-      // fallback
       const results = [];
       for (const data of prepared) {
         results.push(this._adapter.insert(meta.table, data));
@@ -245,7 +249,6 @@ const BaseRepository = {
       return results;
     }
 
-    // По умолчанию – вызываем create для каждого (с хуками, аудитом, событиями)
     return items.map(item => this.create(entity, item));
   },
 
@@ -272,7 +275,6 @@ const BaseRepository = {
       return results;
     }
 
-    // Стандартный путь – по одному обновлению
     return ids.map(id => this.update(entity, id, data));
   },
 
@@ -301,7 +303,13 @@ const BaseRepository = {
   // ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ
   // ============================================================
 
+  // ----- GET META (используем адаптер, если он Database) -----
   getMeta(entity) {
+    // Приоритет: если адаптер имеет getMeta (Database v4.1.2+), используем его
+    if (this._adapter && typeof this._adapter.getMeta === "function") {
+      return this._adapter.getMeta(entity);
+    }
+    // Fallback: прямой доступ к SchemaRegistry
     let meta = null;
     if (typeof SchemaRegistry !== "undefined" && SchemaRegistry.get) {
       meta = SchemaRegistry.get(entity);
@@ -369,7 +377,6 @@ const BaseRepository = {
       }
     }
 
-    // TenantID – если есть контекст арендатора
     if (typeof TenantContext !== "undefined" && meta.tenant !== false) {
       if (!data.TenantID) {
         data.TenantID = TenantContext.get();
