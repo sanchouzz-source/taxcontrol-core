@@ -90,6 +90,31 @@ typeof RepositoryFactory!=="undefined"
 ){
 
 
+// ============================================
+// FORCE REPOSITORY SYNC
+// ============================================
+
+if(
+typeof RepositoryFactory!=="undefined"
+){
+
+try{
+
+RepositoryFactory.init();
+
+RepositoryFactory.refresh();
+
+}
+catch(e){
+
+Logger.warn(
+"RepositoryFactory refresh failed "+
+e.message
+);
+
+}
+
+
 result.repositoryFactory =
 {
 
@@ -102,6 +127,8 @@ RepositoryFactory.missingRepositories?.(),
 validation:
 RepositoryFactory.validateAll?.()
 
+
+};
 
 };
 
