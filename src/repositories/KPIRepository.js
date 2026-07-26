@@ -438,3 +438,11 @@ Logger.log(
   "KPIRepository READY v" +
   KPIRepository.version
 );
+if(typeof RepositoryFactory!=="undefined"){
+
+RepositoryFactory.registerLoaded(
+"KPI",
+KPIRepository
+);
+
+}

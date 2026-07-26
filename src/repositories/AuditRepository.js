@@ -825,3 +825,11 @@ Logger.log(
   "AuditRepository READY v" +
   AuditRepository.version
 );
+if(typeof RepositoryFactory!=="undefined"){
+
+RepositoryFactory.registerLoaded(
+"AUDIT",
+AuditRepository
+);
+
+}

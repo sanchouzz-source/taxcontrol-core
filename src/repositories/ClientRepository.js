@@ -542,3 +542,11 @@ Logger.log(
   "ClientRepository READY v" +
   ClientRepository.version
 );
+if(typeof RepositoryFactory!=="undefined"){
+
+RepositoryFactory.registerLoaded(
+"CLIENT",
+ClientRepository
+);
+
+}

@@ -738,3 +738,11 @@ Logger.log(
   "CargoRepository READY v" +
   CargoRepository.version
 );
+if(typeof RepositoryFactory!=="undefined"){
+
+RepositoryFactory.registerLoaded(
+"CARGO",
+CargoRepository
+);
+
+}
