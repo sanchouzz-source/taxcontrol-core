@@ -1,35 +1,45 @@
 // ============================================================
-// Database v4.0.0
+// Database v4.1.0
 // TaxControl ERP Core
 //
 // Storage Engine
+//
+// Layer:
+// Repository
+//      |
+// Database
+//      |
+// SpreadsheetAdapter
 //
 // Responsibility:
 // - Persistence
 // - CRUD
 // - Query
-// - Bulk operations
-// - Indexing
+// - Bulk
 // - Transactions
+// - Storage diagnostics
 //
 // NOT responsible:
-// - Permissions
 // - Validation
+// - Permissions
 // - Audit
 // - Events
 // ============================================================
 
 
-console.log("Database v4.0.0");
+console.log("Database v4.1.0");
+
 
 
 const Database = {
 
 
-version:"4.0.0",
+version:"4.1.0",
+
 
 architecture:
 "Repository -> Database -> SpreadsheetAdapter",
+
 
 
 initialized:false,
@@ -41,9 +51,9 @@ lastError:null,
 
 _adapter:null,
 
+
 _metaCache:{},
 
-_indexes:{},
 
 
 _stats:{
@@ -58,6 +68,9 @@ updates:0,
 deletes:0,
 
 bulkInserts:0,
+
+
+adapterCalls:0,
 
 
 cacheHits:0,
@@ -77,8 +90,12 @@ cacheMisses:0
 init(adapter){
 
 
-if(this.initialized)
+if(this.initialized){
+
 return;
+
+}
+
 
 
 try{
@@ -87,16 +104,23 @@ try{
 this.status="INITIALIZING";
 
 
+
 this._adapter =
 adapter ||
-SpreadsheetAdapter;
+(
+typeof SpreadsheetAdapter!=="undefined"
+?
+SpreadsheetAdapter
+:
+null
+);
 
 
 
 if(!this._adapter){
 
 throw new Error(
-"Storage adapter missing"
+"SpreadsheetAdapter unavailable"
 );
 
 }
@@ -104,6 +128,7 @@ throw new Error(
 
 
 this.buildMetadata();
+
 
 
 this.initialized=true;
@@ -114,7 +139,9 @@ this.status="READY";
 
 Logger.log(
 "Database READY v"+
-this.version
+this.version+
+" adapter="+
+this.adapterName()
 );
 
 
@@ -129,6 +156,12 @@ this.status="FAILED";
 this.lastError=e.message;
 
 
+Logger.error(
+"Database INIT FAILED "+
+e.message
+);
+
+
 throw e;
 
 
@@ -138,6 +171,11 @@ throw e;
 },
 
 
+
+
+// ============================================================
+// REQUIRE READY
+// ============================================================
 
 
 _require(){
@@ -156,6 +194,34 @@ this.init();
 
 
 // ============================================================
+// ADAPTER
+// ============================================================
+
+
+adapterName(){
+
+
+if(!this._adapter)
+return "none";
+
+
+return (
+this._adapter.version
+?
+"SpreadsheetAdapter v"+
+this._adapter.version
+:
+this._adapter.constructor.name
+);
+
+
+},
+
+
+
+
+
+// ============================================================
 // METADATA
 // ============================================================
 
@@ -163,10 +229,28 @@ this.init();
 buildMetadata(){
 
 
+this._metaCache={};
+
+
+
 if(
 typeof SchemaRegistry==="undefined"
-)
+){
+
 return;
+
+}
+
+
+
+if(
+!SchemaRegistry.list
+){
+
+return;
+
+}
+
 
 
 SchemaRegistry
@@ -180,7 +264,9 @@ SchemaRegistry.get(entity);
 
 if(meta){
 
+
 this._metaCache[entity]=meta;
+
 
 }
 
@@ -192,6 +278,8 @@ this._metaCache[entity]=meta;
 
 
 
+
+
 getMeta(entity){
 
 
@@ -199,7 +287,23 @@ const meta =
 this._metaCache[entity];
 
 
+
 if(!meta){
+
+
+this.buildMetadata();
+
+
+}
+
+
+
+const result =
+this._metaCache[entity];
+
+
+
+if(!result){
 
 throw new Error(
 "Metadata missing: "+entity
@@ -208,7 +312,8 @@ throw new Error(
 }
 
 
-return meta;
+
+return result;
 
 
 },
@@ -216,10 +321,13 @@ return meta;
 
 
 
+
 resolveTable(entity){
 
 
-return this.getMeta(entity).table;
+return this
+.getMeta(entity)
+.table;
 
 
 },
@@ -238,8 +346,21 @@ insert(entity,data){
 this._require();
 
 
+
 const meta =
 this.getMeta(entity);
+
+
+
+if(
+!this._adapter.appendObject
+){
+
+throw new Error(
+"Adapter appendObject unavailable"
+);
+
+}
 
 
 
@@ -256,11 +377,15 @@ data
 
 this._stats.inserts++;
 
+this._stats.adapterCalls++;
 
-return data;
+
+
+return result || data;
 
 
 },
+
 
 
 
@@ -273,11 +398,19 @@ return data;
 bulkInsert(entity,items){
 
 
-if(!items.length)
+this._require();
+
+
+
+if(
+!items ||
+!items.length
+){
+
 return [];
 
+}
 
-this._require();
 
 
 const meta =
@@ -285,20 +418,57 @@ this.getMeta(entity);
 
 
 
-this._adapter.appendObjects(
+let result;
 
+
+
+if(
+this._adapter.bulkInsert
+){
+
+result =
+this._adapter.bulkInsert(
 meta.table,
-
 items
-
 );
+
+
+}
+
+else if(
+this._adapter.appendObjects
+){
+
+result =
+this._adapter.appendObjects(
+meta.table,
+items
+);
+
+
+}
+
+else{
+
+
+result =
+items.map(
+i=>
+this.insert(entity,i)
+);
+
+
+}
 
 
 
 this._stats.bulkInserts++;
 
+this._stats.adapterCalls++;
 
-return items;
+
+
+return result || items;
 
 
 },
@@ -323,15 +493,25 @@ this.getMeta(entity);
 
 
 
-return this._adapter.findById(
+const result =
+this._adapter.findById(
 
 meta.table,
 
-meta.idField || entity+"ID",
+meta.idField ||
+entity+"ID",
 
 id
 
 );
+
+
+
+this._stats.adapterCalls++;
+
+
+
+return result;
 
 
 },
@@ -351,6 +531,7 @@ query(entity,filters={}){
 this._require();
 
 
+
 const meta =
 this.getMeta(entity);
 
@@ -367,14 +548,13 @@ const result =
 rows.filter(row=>{
 
 
-return Object.keys(filters)
-.every(key=>
-
-
-String(row[key]) ===
+return Object
+.keys(filters)
+.every(
+key=>
+String(row[key])
+===
 String(filters[key])
-
-
 );
 
 
@@ -385,11 +565,11 @@ String(filters[key])
 this._stats.queries++;
 
 
+
 return result;
 
 
 },
-
 
 
 
@@ -405,8 +585,21 @@ update(entity,id,data){
 this._require();
 
 
+
 const meta =
 this.getMeta(entity);
+
+
+
+if(
+!this._adapter.updateById
+){
+
+throw new Error(
+"Adapter updateById unavailable"
+);
+
+}
 
 
 
@@ -415,7 +608,8 @@ this._adapter.updateById(
 
 meta.table,
 
-meta.idField || entity+"ID",
+meta.idField ||
+entity+"ID",
 
 id,
 
@@ -427,11 +621,15 @@ data
 
 this._stats.updates++;
 
+this._stats.adapterCalls++;
+
+
 
 return result;
 
 
 },
+
 
 
 
@@ -447,6 +645,7 @@ delete(entity,id){
 this._require();
 
 
+
 const meta =
 this.getMeta(entity);
 
@@ -457,7 +656,8 @@ this._adapter.deleteById(
 
 meta.table,
 
-meta.idField || entity+"ID",
+meta.idField ||
+entity+"ID",
 
 id
 
@@ -467,12 +667,14 @@ id
 
 this._stats.deletes++;
 
+this._stats.adapterCalls++;
+
+
 
 return result;
 
 
 },
-
 
 
 
@@ -485,10 +687,11 @@ return result;
 exists(entity,id){
 
 
-return !!this.find(entity,id);
+return this.find(entity,id)!==null;
 
 
 },
+
 
 
 
@@ -505,7 +708,9 @@ const lock =
 LockService.getScriptLock();
 
 
+
 lock.waitLock(10000);
+
 
 
 try{
@@ -541,7 +746,14 @@ clearCache(){
 
 this._metaCache={};
 
-this._indexes={};
+
+if(
+this._adapter.clearCache
+){
+
+this._adapter.clearCache();
+
+}
 
 
 },
@@ -561,19 +773,27 @@ diagnostics(){
 return {
 
 
+module:"Database",
+
 version:this.version,
 
+
 status:this.status,
+
 
 initialized:this.initialized,
 
 
-adapter:
-this._adapter?.constructor?.name,
+architecture:this.architecture,
+
+
+adapter:this.adapterName(),
 
 
 tables:
-Object.keys(this._metaCache),
+Object.keys(
+this._metaCache
+),
 
 
 stats:this._stats,
@@ -599,24 +819,7 @@ error:this.lastError
 health(){
 
 
-const data={
-
-
-version:this.version,
-
-architecture:this.architecture,
-
-status:this.status,
-
-
-adapter:
-!!this._adapter,
-
-
-stats:this._stats
-
-
-};
+const data=this.diagnostics();
 
 
 
@@ -625,17 +828,21 @@ typeof HealthContract!=="undefined"
 ){
 
 return HealthContract.create(
+
 "Database",
+
 this.status==="READY"
 ?
 "OK"
 :
 "WARNING",
+
 data
+
 );
 
-
 }
+
 
 
 return data;
@@ -646,6 +853,7 @@ return data;
 
 
 };
+
 
 
 
