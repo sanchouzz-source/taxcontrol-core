@@ -548,9 +548,17 @@ const SpreadsheetAdapter = {
 globalThis.SpreadsheetAdapter = SpreadsheetAdapter;
 Logger.log("SpreadsheetAdapter REGISTERED v" + SpreadsheetAdapter.version);
 // ============================================================
-// SchemaStorage COMPATIBILITY API
+// SchemaStorage COMPATIBILITY API v4.2.1
 // ============================================================
 
+
+/**
+ * WRITE ROWS
+ *
+ * Используется:
+ * SchemaStorage.saveTables()
+ * SchemaStorage.saveFields()
+ */
 
 SpreadsheetAdapter.writeRows = function(
     sheetName,
@@ -558,28 +566,24 @@ SpreadsheetAdapter.writeRows = function(
     headers=[]
 ){
 
+    this._require();
+
+
     if(!sheetName){
+
         throw new Error(
-            "SpreadsheetAdapter.writeRows sheetName required"
+            "SpreadsheetAdapter.writeRows: sheetName required"
         );
-    }
-
-
-    const ss =
-        SpreadsheetApp.getActiveSpreadsheet();
-
-
-    let sheet =
-        ss.getSheetByName(sheetName);
-
-
-
-    if(!sheet){
-
-        sheet =
-        ss.insertSheet(sheetName);
 
     }
+
+
+
+    const sheet =
+        this.getOrCreateSheet(
+            sheetName,
+            headers
+        );
 
 
 
@@ -587,17 +591,11 @@ SpreadsheetAdapter.writeRows = function(
 
 
 
-    if(headers.length){
+    if(headers && headers.length){
 
-        sheet
-        .getRange(
-            1,
-            1,
-            1,
-            headers.length
-        )
-        .setValues(
-            [headers]
+        this._setHeaders(
+            sheet,
+            headers
         );
 
     }
@@ -607,9 +605,14 @@ SpreadsheetAdapter.writeRows = function(
     if(rows && rows.length){
 
 
+        const startRow =
+            headers.length ? 2 : 1;
+
+
+
         sheet
         .getRange(
-            headers.length ? 2 : 1,
+            startRow,
             1,
             rows.length,
             rows[0].length
@@ -620,10 +623,16 @@ SpreadsheetAdapter.writeRows = function(
     }
 
 
+
+    this._headerCache[sheetName]=headers;
+    this.invalidateIndexes(sheetName);
+
+
+
     Logger.debug(
         "SpreadsheetAdapter.writeRows OK "+
         sheetName+
-        " rows="+rows.length
+        " rows="+(rows?.length||0)
     );
 
 
@@ -633,33 +642,80 @@ SpreadsheetAdapter.writeRows = function(
 
 
 
-SpreadsheetAdapter.appendRow=function(
-    sheetName,
-    row
+/**
+ * READ ROWS
+ *
+ * Возвращает данные без заголовков
+ */
+
+SpreadsheetAdapter.readRows=function(
+    sheetName
 ){
 
-
-    const ss =
-    SpreadsheetApp.getActiveSpreadsheet();
+    this._require();
 
 
-
-    let sheet =
-    ss.getSheetByName(sheetName);
+    const sheet =
+        this.getSheet(sheetName);
 
 
 
     if(!sheet){
 
-        sheet =
-        ss.insertSheet(sheetName);
+        return [];
 
     }
 
 
 
-    sheet
-    .appendRow(row);
+    const values =
+        sheet
+        .getDataRange()
+        .getValues();
+
+
+
+    if(values.length<=1){
+
+        return [];
+
+    }
+
+
+
+    return values.slice(1);
+
+};
+
+
+
+
+
+/**
+ * APPEND ROW
+ */
+
+SpreadsheetAdapter.appendRow=function(
+    sheetName,
+    row
+){
+
+    this._require();
+
+
+
+    const sheet =
+        this.getOrCreateSheet(
+            sheetName
+        );
+
+
+
+    sheet.appendRow(row);
+
+
+
+    this.invalidateIndexes(sheetName);
 
 
 
@@ -675,44 +731,67 @@ SpreadsheetAdapter.appendRow=function(
 
 
 
-SpreadsheetAdapter.readRows=function(
+/**
+ * EXISTENCE CHECK
+ */
+
+SpreadsheetAdapter.hasSheet=function(
     sheetName
 ){
 
-
-    const ss =
-    SpreadsheetApp.getActiveSpreadsheet();
-
-
-    const sheet =
-    ss.getSheetByName(sheetName);
-
-
-
-    if(!sheet){
-
-        return [];
-
-    }
-
-
-
-    const values =
-    sheet
-    .getDataRange()
-    .getValues();
-
-
-
-    if(values.length<=1){
-
-        return [];
-
-    }
-
-
-
-    return values.slice(1);
-
+    return !!this.getSheet(sheetName);
 
 };
+
+
+
+
+
+/**
+ * WRITE SINGLE OBJECT
+ *
+ * для Database compatibility
+ */
+
+SpreadsheetAdapter.write=function(
+    sheetName,
+    data
+){
+
+    return this.insert(
+        sheetName,
+        data
+    );
+
+};
+
+
+
+
+
+/**
+ * CLEAR STORAGE CACHE
+ */
+
+SpreadsheetAdapter.reset=function(){
+
+    this.clearCache();
+
+    this.initialized=false;
+
+    Logger.log(
+        "SpreadsheetAdapter RESET"
+    );
+
+};
+
+
+
+
+
+SpreadsheetAdapter.version="4.2.1";
+
+
+Logger.log(
+"SpreadsheetAdapter COMPATIBILITY READY v4.2.1"
+);
