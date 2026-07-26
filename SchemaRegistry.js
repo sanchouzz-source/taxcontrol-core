@@ -1,7 +1,7 @@
-console.log("SchemaRegistry v4.0.2");
+console.log("SchemaRegistry v4.0.3");
 
 const SchemaRegistry = {
-  version: "4.0.2",
+  version: "4.0.3",
   status: "REGISTERED",
   initialized: false,
   initAttempts: 0,
@@ -95,10 +95,7 @@ const SchemaRegistry = {
           Logger.warn("Schema skip invalid metadata: " + JSON.stringify(meta));
           continue;
         }
-        if (this.isSystemTable(table)) {
-          Logger.debug(`Skipping system table from metadata: ${table}`);
-          continue;
-        }
+        // Удалён блок if (this.isSystemTable(table)) { continue; }
         this.register(entity, meta);
       }
 
@@ -109,6 +106,23 @@ const SchemaRegistry = {
           this.register(schema.entity, schema);
           Logger.log("System schema registered: " + table);
         }
+      }
+
+      // ===== СИНХРОНИЗАЦИЯ С EntityRegistry =====
+      if (typeof EntityRegistry !== "undefined") {
+        Object.keys(EntityRegistry)
+          .filter(k => {
+            return EntityRegistry[k] &&
+                   typeof EntityRegistry[k] === "object" &&
+                   EntityRegistry[k].entity;
+          })
+          .forEach(entity => {
+            const meta = EntityRegistry[entity];
+            if (!this.schemas[entity]) {
+              this.register(entity, meta);
+              Logger.log("Synchronized from EntityRegistry: " + entity);
+            }
+          });
       }
 
       this.initialized = true;
@@ -126,38 +140,67 @@ const SchemaRegistry = {
   },
 
   // ============================================================
-  // REGISTER (внутренний)
+  // REGISTER (обновлён)
   // ============================================================
   register(entity, meta) {
-    if (!entity || !meta.table) return false;
-
-    // Устанавливаем категорию
-    if (meta.system) {
-      meta.category = "SYSTEM";
-    } else {
-      meta.category = "BUSINESS";
+    if (!entity || !meta.table) {
+      Logger.warn(
+        "SchemaRegistry skip invalid entity " + entity
+      );
+      return false;
     }
 
-    this.schemas[entity] = meta;
-    this.tableIndex[meta.table] = entity;
+    const schema = {
+      entity,
+      table: meta.table,
+      idField: meta.idField || "id",
+      version: meta.version || 1,
 
-    if (meta.fields) {
-      this.fieldCache[meta.table] = {};
-      for (const field of meta.fields) {
-        this.fieldCache[meta.table][field.name] = field;
-      }
+      module: meta.module || "core",
+
+      system: meta.system === true,
+
+      category:
+        meta.system === true
+        ? "SYSTEM"
+        : "BUSINESS",
+
+      softDelete:
+        meta.softDelete !== false,
+
+      timestamps:
+        meta.timestamps !== false,
+
+      fields:
+        meta.fields || [],
+
+      relations:
+        meta.relations || {},
+
+      indexes:
+        meta.indexes || []
+    };
+
+    this.schemas[entity] = schema;
+    this.tableIndex[schema.table] = entity;
+
+    this.fieldCache[schema.table] = {};
+
+    schema.fields.forEach(field => {
+      this.fieldCache[schema.table][field.name] = field;
+    });
+
+    if (schema.relations) {
+      this.relations[entity] = schema.relations;
     }
 
-    if (meta.relations) {
-      this.relations[entity] = meta.relations;
-    }
+    Logger.debug(
+      "SCHEMA REGISTERED "
+      + entity
+      + " -> "
+      + schema.table
+    );
 
-    if (meta.hooks) {
-      for (const [hook, list] of Object.entries(meta.hooks)) {
-        if (!this.hooks[hook]) this.hooks[hook] = {};
-        this.hooks[hook][entity] = list;
-      }
-    }
     return true;
   },
 
@@ -169,14 +212,21 @@ const SchemaRegistry = {
   },
 
   // ============================================================
-  // НОРМАЛИЗАЦИЯ ENTITY / TABLE
+  // НОРМАЛИЗАЦИЯ ENTITY / TABLE (обновлён resolveEntity)
   // ============================================================
   resolveEntity(value) {
     this.init();
+    if (!value) throw new Error("Empty entity");
+
+    const key = String(value).trim().toUpperCase();
+
+    if (this.schemas[key]) return key;
     if (this.schemas[value]) return value;
     if (this.tableIndex[value]) return this.tableIndex[value];
-    if (this.systemSchemas[value]) return value;
-    throw new Error(`Unknown entity/table: ${value}`);
+
+    throw new Error(
+      "Unknown entity/table: " + value
+    );
   },
 
   resolveTable(value) {
@@ -188,7 +238,7 @@ const SchemaRegistry = {
   },
 
   // ============================================================
-  // ПЕРЕЗАГРУЗКА (сохраняет системные схемы)
+  // ПЕРЕЗАГРУЗКА
   // ============================================================
   reinitialize() {
     Logger.log("SchemaRegistry reinitializing...");
@@ -600,7 +650,7 @@ const SchemaRegistry = {
   },
 
   // ============================================================
-  // ДИАГНОСТИКА (разделяет бизнес и системные)
+  // ДИАГНОСТИКА
   // ============================================================
   diagnostics() {
     this.init();
@@ -625,7 +675,7 @@ const SchemaRegistry = {
   },
 
   // ============================================================
-  // HEALTH (добавлены systemSchemas)
+  // HEALTH
   // ============================================================
   health() {
     const relationErrors = this.initialized ? this.checkAllRelations() : [];

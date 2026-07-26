@@ -1,123 +1,445 @@
 // ============================================================
-// SchemaManager.gs – основной оркестратор
+// SchemaManager.gs
+// ERP TexControl Core
+// Schema orchestration layer
 // ============================================================
+
+console.log("SchemaManager");
+
+
 const SchemaManager = {
-  version: '4.0.0',
+
+  version: "4.1.0",
+
   initialized: false,
+
   schema: {},
 
+
   init(options = {}) {
+
     if (this.initialized) {
-      Logger.debug('SchemaManager ALREADY READY');
-      return;
+      Logger.debug(
+        "SchemaManager ALREADY READY"
+      );
+      return this.schema;
     }
 
-    const syncMode = options.syncMode || 'SAFE';
-    const environment = options.environment || 'DEV';
+
+    const syncMode =
+      options.syncMode || "SAFE";
+
+
+    const environment =
+      options.environment || "DEV";
+
 
     return SchemaLock.withLock(() => {
-      Logger.log('SCHEMA INIT START v' + this.version);
 
-      // 1. Построить схему из метаданных
-      const built = SchemaBuilder.build();
-
-      // 2. Проверить лимиты
-      SchemaValidator.check(built);
-
-      // 3. Загрузить существующую схему из хранилища
-      const stored = SchemaStorage.load();
-
-      // 4. Сравнить и объединить
-      const merged = SchemaDiff.merge(stored, built);
-
-      // 5. Сохранить в хранилище
-      SchemaStorage.save(merged);
-
-      // 6. Создать снапшот
-      const newHash = this._computeHash(merged);
-      const currentHash = SchemaStorage.getCurrentHash();
-      if (newHash !== currentHash) {
-        const currentVersion = SchemaStorage.getVersion();
-        const newVersion = currentVersion + 1;
-        SchemaStorage.saveVersion(newVersion, newHash, 'system');
-        SchemaSnapshot.save(newVersion, newHash, merged);
-        Logger.log('Schema version bumped to ' + newVersion);
-      }
-
-      // 7. Обновить UID map
-      for (const [table, meta] of Object.entries(merged)) {
-        if (meta.uid) {
-          SchemaUID.update(meta.uid, table);
-        }
-      }
-
-      // 8. Сохранить в память
-      this.schema = merged;
-      this.initialized = true;
 
       Logger.log(
-        'SchemaManager READY v' + this.version +
-        ' TABLES=' + Object.keys(this.schema).length
+        "SCHEMA INIT START v" +
+        this.version
       );
 
-      SchemaEvents.emit('SCHEMA_READY', {
-        tables: Object.keys(this.schema).length,
-        version: this.version
-      });
-    });
-  },
 
-  _computeHash(schema) {
-    const json = this._canonicalStringify(schema);
-    const bytes = Utilities.computeDigest(
-      Utilities.DigestAlgorithm.SHA_256,
-      Utilities.newBlob(json).getBytes()
-    );
-    return bytes.map(b => ('0' + ((b + 256) % 256).toString(16)).slice(-2)).join('');
-  },
+      try {
 
-  _canonicalStringify(obj) {
-    const sortKeys = (o) => {
-      if (Array.isArray(o)) return o.map(sortKeys);
-      if (o !== null && typeof o === 'object') {
-        const keys = Object.keys(o).sort();
-        const result = {};
-        for (const k of keys) {
-          result[k] = sortKeys(o[k]);
+
+        // ====================================================
+        // 1. BUILD SCHEMA FROM REGISTRY
+        // ====================================================
+
+        const built =
+          SchemaBuilder.build();
+
+
+        Logger.log(
+          "SCHEMA BUILT TABLES=" +
+          Object.keys(built).length
+        );
+
+
+
+        // ====================================================
+        // 2. VALIDATE
+        // ====================================================
+
+        SchemaValidator.check(
+          built
+        );
+
+
+
+        // ====================================================
+        // 3. LOAD STORED SCHEMA
+        // ====================================================
+
+
+        let stored = {};
+
+
+        try {
+
+          stored =
+            SchemaStorage.load()
+            || {};
+
         }
-        return result;
+        catch(e){
+
+          Logger.warn(
+            "SchemaStorage LOAD skipped: "
+            + e.message
+          );
+
+        }
+
+
+
+        // ====================================================
+        // 4. MERGE
+        // ====================================================
+
+
+        const merged =
+          SchemaDiff.merge(
+            stored,
+            built
+          );
+
+
+
+        // ====================================================
+        // 5. SAVE
+        // ====================================================
+
+
+        SchemaStorage.save(
+          merged
+        );
+
+
+
+        // ====================================================
+        // 6. VERSION CONTROL
+        // ====================================================
+
+
+        const hash =
+          this._computeHash(
+            merged
+          );
+
+
+        const oldHash =
+          SchemaStorage.getCurrentHash?.();
+
+
+
+        if(hash !== oldHash){
+
+
+          const version =
+            (SchemaStorage.getVersion?.() || 0)
+            + 1;
+
+
+
+          SchemaStorage.saveVersion(
+            version,
+            hash,
+            "system"
+          );
+
+
+          SchemaSnapshot.save(
+            version,
+            hash,
+            merged
+          );
+
+
+          Logger.log(
+            "Schema version bumped "
+            + version
+          );
+
+        }
+
+
+
+        // ====================================================
+        // 7. UID UPDATE
+        // ====================================================
+
+
+        Object.entries(
+          merged
+        )
+        .forEach(
+          ([table,meta])=>{
+
+
+            if(meta.uid){
+
+              SchemaUID.update(
+                meta.uid,
+                table
+              );
+
+            }
+
+          }
+        );
+
+
+
+        // ====================================================
+        // 8. MEMORY CACHE
+        // ====================================================
+
+
+        this.schema =
+          JSON.parse(
+            JSON.stringify(
+              merged
+            )
+          );
+
+
+        this.initialized =
+          true;
+
+
+
+        Logger.log(
+          "SchemaManager READY v"
+          + this.version
+          +
+          " TABLES="
+          +
+          Object.keys(this.schema).length
+        );
+
+
+
+        SchemaEvents.emit(
+          "SCHEMA_READY",
+          {
+            tables:
+              Object.keys(this.schema).length,
+
+            version:
+              this.version
+          }
+        );
+
+
+
+        return this.schema;
+
+
       }
-      return o;
-    };
-    return JSON.stringify(sortKeys(obj));
+      catch(e){
+
+
+        Logger.error(
+          "SchemaManager FAILED: "
+          + e.message
+        );
+
+
+        throw e;
+
+      }
+
+
+    });
+
+
   },
 
-  getSchema() {
-    return JSON.parse(JSON.stringify(this.schema));
+
+
+  // ==========================================================
+  // HASH
+  // ==========================================================
+
+
+  _computeHash(schema){
+
+
+    const json =
+      this._canonicalStringify(
+        schema
+      );
+
+
+    const bytes =
+      Utilities.computeDigest(
+        Utilities.DigestAlgorithm.SHA_256,
+        Utilities.newBlob(json)
+          .getBytes()
+      );
+
+
+    return bytes
+      .map(
+        b =>
+        ('0'+
+        ((b+256)%256)
+        .toString(16))
+        .slice(-2)
+      )
+      .join("");
+
   },
 
-  getTables() {
-    return Object.keys(this.schema);
+
+
+  _canonicalStringify(obj){
+
+
+    const sort =
+      value => {
+
+
+        if(Array.isArray(value)){
+
+          return value.map(sort);
+
+        }
+
+
+        if(
+          value &&
+          typeof value==="object"
+        ){
+
+          return Object.keys(value)
+            .sort()
+            .reduce(
+              (r,k)=>{
+
+                r[k]=sort(value[k]);
+
+                return r;
+
+              },
+              {}
+            );
+
+        }
+
+
+        return value;
+
+      };
+
+
+    return JSON.stringify(
+      sort(obj)
+    );
+
   },
 
-  getTableSchema(table) {
-    return this.schema[table] ? JSON.parse(JSON.stringify(this.schema[table])) : null;
+
+
+  // ==========================================================
+  // API
+  // ==========================================================
+
+
+  getSchema(){
+
+    return JSON.parse(
+      JSON.stringify(
+        this.schema
+      )
+    );
+
   },
 
-  getSchemaVersion() {
-    return SchemaStorage.getVersion();
+
+  getTables(){
+
+    return Object.keys(
+      this.schema
+    );
+
   },
 
-  health() {
+
+  getTableSchema(table){
+
+    return this.schema[table]
+      ?
+      JSON.parse(
+        JSON.stringify(
+          this.schema[table]
+        )
+      )
+      :
+      null;
+
+  },
+
+
+  getSchemaVersion(){
+
+    return SchemaStorage.getVersion?.()
+      ||
+      0;
+
+  },
+
+
+
+  health(){
+
     return {
-      module: 'SchemaManager',
-      status: this.initialized ? 'OK' : 'WARNING',
-      version: this.version,
-      schemaVersion: this.getSchemaVersion(),
-      tables: this.getTables().length,
-      initialized: this.initialized
+
+      module:
+        "SchemaManager",
+
+      status:
+        this.initialized
+          ?
+          "OK"
+          :
+          "WARNING",
+
+      version:
+        this.version,
+
+
+      schemaVersion:
+        this.getSchemaVersion(),
+
+
+      tables:
+        this.getTables().length,
+
+
+      initialized:
+        this.initialized
+
     };
+
   }
+
+
 };
 
-globalThis.SchemaManager = SchemaManager;
+
+
+globalThis.SchemaManager =
+  SchemaManager;
+
+
+Logger.log(
+  "SchemaManager READY v"
+  +
+  SchemaManager.version
+);

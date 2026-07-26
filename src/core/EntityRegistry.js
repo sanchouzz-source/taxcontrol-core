@@ -1,7 +1,7 @@
 console.log("EntityRegistry");
 
 const EntityRegistry = {
-  version: "2.1.0",
+  version: "2.2.1",
   ready: false,
 
   aliases: {
@@ -9,7 +9,7 @@ const EntityRegistry = {
     FinancialTransactions: "FINANCIAL_TRANSACTION",
     AuditLogs: "AUDIT",
     Versions: "VERSION",
-    TransportOrders: "TRANSPORT_ORDER",   // добавлено для удобства
+    TransportOrders: "TRANSPORT_ORDER",
     Carriers: "CARRIER",
     Drivers: "DRIVER",
     Vehicles: "VEHICLE",
@@ -80,7 +80,7 @@ const EntityRegistry = {
     idPrefix: "FIN",
     repository: "FinancialTransactionRepository",
     audit: true,
-    softDelete: false, // финансовые транзакции обычно не удаляются мягко
+    softDelete: false,
     timestamps: true,
     events: {
       created: "FINANCIAL_TRANSACTION_CREATED",
@@ -128,7 +128,6 @@ const EntityRegistry = {
     events: {
       created: "KPI_CREATED",
       updated: "KPI_UPDATED"
-      // удаление и восстановление KPI не предусмотрены
     }
   },
 
@@ -239,6 +238,51 @@ const EntityRegistry = {
       deleted: "CARGO_DELETED",
       restored: "CARGO_RESTORED"
     }
+  },
+
+  // ============================================================
+  // SYSTEM TEST ENTITIES
+  // ============================================================
+  __TEST_DATABASE: {
+    entity: "__TEST_DATABASE",
+    module: "system",
+    table: "__TEST_DATABASE",
+    idField: "id",
+    idPrefix: "DB",
+    repository: "BaseRepository",
+    audit: false,
+    softDelete: false,
+    timestamps: true,
+    system: true,
+    events: {}
+  },
+
+  __TEST_EVENTS: {
+    entity: "__TEST_EVENTS",
+    module: "system",
+    table: "__TEST_EVENTS",
+    idField: "id",
+    idPrefix: "EVT",
+    repository: "BaseRepository",
+    audit: false,
+    softDelete: false,
+    timestamps: true,
+    system: true,
+    events: {}
+  },
+
+  __TEST_REPOSITORY: {
+    entity: "__TEST_REPOSITORY",
+    module: "system",
+    table: "__TEST_REPOSITORY",
+    idField: "id",
+    idPrefix: "REP",
+    repository: "BaseRepository",
+    audit: false,
+    softDelete: false,
+    timestamps: true,
+    system: true,
+    events: {}
   }
 };
 
@@ -248,17 +292,37 @@ API
 ==============================
 */
 
+// ----- RESOLVE (с нормализацией и диагностикой) -----
 EntityRegistry.resolve = function (entity) {
-  // Сначала проверяем алиасы (чтобы "TransportOrders" -> "TRANSPORT_ORDER")
-  if (this.aliases[entity]) {
-    return this.aliases[entity];
+  if (!entity) {
+    throw new Error("Entity is empty");
   }
-  if (this.has(entity)) {
-    return entity;
+
+  const normalized = String(entity).trim();
+
+  // alias
+  if (this.aliases[normalized]) {
+    return this.aliases[normalized];
   }
-  throw new Error("Unknown entity: " + entity);
+
+  // прямое совпадение
+  if (this.has(normalized)) {
+    return normalized;
+  }
+
+  // uppercase поиск
+  const upper = normalized.toUpperCase();
+  if (this.has(upper)) {
+    return upper;
+  }
+
+  throw new Error(
+    "Unknown entity: " + entity +
+    " available=" + this.list().join(",")
+  );
 };
 
+// ----- GET -----
 EntityRegistry.get = function (entity) {
   entity = this.resolve(entity);
   const meta = this[entity];
@@ -268,29 +332,65 @@ EntityRegistry.get = function (entity) {
   return meta;
 };
 
+// ----- HAS (улучшенный: проверяет и entity, и table) -----
 EntityRegistry.has = function (entity) {
-  return !!(this[entity] && this[entity].entity);
+  const item = this[entity];
+  return !!(
+    item &&
+    typeof item === "object" &&
+    item.entity &&
+    item.table
+  );
 };
 
+// ----- LIST -----
 EntityRegistry.list = function () {
   return Object.keys(this).filter(key => {
     const item = this[key];
-    return (item && typeof item === "object" && item.entity);
+    return (item && typeof item === "object" && item.entity && item.table);
   });
 };
 
+// ----- GET REPOSITORY -----
 EntityRegistry.getRepository = function (entity) {
   return this.get(entity).repository;
 };
 
+// ----- GET TABLE -----
 EntityRegistry.getTable = function (entity) {
   return this.get(entity).table;
 };
 
+// ----- GET ID PREFIX -----
 EntityRegistry.getIdPrefix = function (entity) {
   return this.get(entity).idPrefix;
 };
 
+// ----- VALIDATE SCHEMA LINKS -----
+EntityRegistry.validateSchemaLinks = function () {
+  const result = [];
+
+  this.list().forEach(entity => {
+    try {
+      const schema = SchemaRegistry.get(entity);
+      result.push({
+        entity: entity,
+        schema: true,
+        table: schema.table
+      });
+    } catch (e) {
+      result.push({
+        entity: entity,
+        schema: false,
+        error: e.message
+      });
+    }
+  });
+
+  return result;
+};
+
+// ----- HEALTH -----
 EntityRegistry.health = function () {
   return HealthContract.create(
     "EntityRegistry",

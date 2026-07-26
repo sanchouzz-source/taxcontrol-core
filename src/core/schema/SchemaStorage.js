@@ -1,160 +1,621 @@
 // ============================================================
-// SchemaStorage.gs – хранение и загрузка схемы
+// SchemaStorage.gs
+// Schema persistence layer
+// ERP TexControl
+// Version 2.0.0
 // ============================================================
+
 const SchemaStorage = {
-  _tablesSheet: '_SystemSchemaTables',
-  _fieldsSheet: '_SystemSchemaFields',
-  _versionsSheet: '_SchemaVersions',
-  _migrationsSheet: '_SchemaMigrations',
 
-  // --- Таблицы ---
-  loadTables() {
-    const rows = SpreadsheetAdapter.readRows(this._tablesSheet);
-    const result = {};
-    for (const row of rows) {
-      const [table, primaryKey, softDelete, timestamps, requireId] = row;
-      result[table] = {
+  version: "2.0.0",
+
+  _tablesSheet: "_SystemSchemaTables",
+  _fieldsSheet: "_SystemSchemaFields",
+  _versionsSheet: "_SchemaVersions",
+  _migrationsSheet: "_SchemaMigrations",
+
+
+  // ============================================================
+  // ADAPTER SAFE METHODS
+  // ============================================================
+
+  _read(sheet) {
+
+    if (!SpreadsheetAdapter) {
+      throw new Error(
+        "SpreadsheetAdapter unavailable"
+      );
+    }
+
+
+    if (SpreadsheetAdapter.query) {
+
+      return SpreadsheetAdapter.query(sheet) || [];
+
+    }
+
+
+    if (SpreadsheetAdapter.findAll) {
+
+      return SpreadsheetAdapter.findAll(sheet) || [];
+
+    }
+
+
+    throw new Error(
+      "SpreadsheetAdapter read API not found"
+    );
+  },
+
+
+  _write(sheet, rows, headers) {
+
+
+    if (SpreadsheetAdapter.replace) {
+
+      return SpreadsheetAdapter.replace(
+        sheet,
+        rows,
+        headers
+      );
+
+    }
+
+
+    if (SpreadsheetAdapter.write) {
+
+      return SpreadsheetAdapter.write(
+        sheet,
+        rows,
+        headers
+      );
+
+    }
+
+
+    throw new Error(
+      "SpreadsheetAdapter write API not found"
+    );
+  },
+
+
+  _append(sheet,row){
+
+
+    if (SpreadsheetAdapter.insert){
+
+      return SpreadsheetAdapter.insert(
+        sheet,
+        row
+      );
+
+    }
+
+
+    throw new Error(
+      "SpreadsheetAdapter insert API not found"
+    );
+
+  },
+
+
+
+  // ============================================================
+  // TABLES
+  // ============================================================
+
+
+  loadTables(){
+
+
+    const rows=this._read(
+      this._tablesSheet
+    );
+
+
+    const result={};
+
+
+    rows.forEach(row=>{
+
+
+      const table=row.table || row[0];
+
+
+      if(!table)
+        return;
+
+
+      result[table]={
+
         table,
-        primaryKey: primaryKey || null,
-        softDelete: softDelete !== 'FALSE',
-        timestamps: timestamps !== 'FALSE',
-        requireId: requireId !== 'FALSE',
-        fields: [],
-        relations: {},
-        indexes: [],
-        uid: table
+
+        primaryKey:
+          row.primaryKey || row[1] || null,
+
+
+        softDelete:
+          row.softDelete !== false,
+
+
+        timestamps:
+          row.timestamps !== false,
+
+
+        requireId:
+          row.requireId !== false,
+
+
+        fields:[],
+
+
+        relations:{},
+
+
+        indexes:[],
+
+
+        uid:table
+
       };
-    }
+
+
+    });
+
+
     return result;
+
   },
 
-  saveTables(schema) {
-    const rows = Object.entries(schema).map(([table, meta]) => [
-      table,
-      meta.primaryKey || '',
-      meta.softDelete !== false ? 'TRUE' : 'FALSE',
-      meta.timestamps !== false ? 'TRUE' : 'FALSE',
-      meta.requireId !== false ? 'TRUE' : 'FALSE'
-    ]);
-    SpreadsheetAdapter.writeRows(
-      this._tablesSheet,
-      rows,
-      ['table', 'primaryKey', 'softDelete', 'timestamps', 'requireId']
-    );
-  },
 
-  // --- Поля ---
-  loadFields() {
-    const rows = SpreadsheetAdapter.readRows(this._fieldsSheet);
-    const result = {};
-    for (const row of rows) {
-      const [table, field, type, required, defaultValue, unique, index, relation, nullable, active] = row;
-      if (!result[table]) result[table] = [];
-      result[table].push({
-        name: field,
-        type: type || 'STRING',
-        required: required === 'TRUE',
-        default: defaultValue || undefined,
-        unique: unique === 'TRUE',
-        index: index === 'TRUE',
-        relation: relation || '',
-        nullable: nullable === 'TRUE',
-        active: active !== 'FALSE'
+
+
+  saveTables(schema){
+
+
+    const rows=[];
+
+
+    Object.values(schema)
+    .forEach(meta=>{
+
+
+      rows.push({
+
+        table:meta.table,
+
+
+        primaryKey:
+          meta.primaryKey || "",
+
+
+        softDelete:
+          meta.softDelete !== false,
+
+
+        timestamps:
+          meta.timestamps !== false,
+
+
+        requireId:
+          meta.requireId !== false
+
       });
-    }
-    return result;
-  },
 
-  saveFields(schema) {
-    const rows = [];
-    for (const [table, meta] of Object.entries(schema)) {
-      if (!meta.fields) continue;
-      for (const field of meta.fields) {
-        rows.push([
-          table,
-          field.name,
-          field.type || 'STRING',
-          field.required ? 'TRUE' : 'FALSE',
-          field.default !== undefined ? String(field.default) : '',
-          field.unique ? 'TRUE' : 'FALSE',
-          field.index ? 'TRUE' : 'FALSE',
-          field.relation || '',
-          field.nullable !== undefined ? (field.nullable ? 'TRUE' : 'FALSE') : (field.required ? 'FALSE' : 'TRUE'),
-          field.active !== undefined ? (field.active ? 'TRUE' : 'FALSE') : 'TRUE'
-        ]);
-      }
-    }
-    SpreadsheetAdapter.writeRows(
-      this._fieldsSheet,
+
+    });
+
+
+
+    this._write(
+
+      this._tablesSheet,
+
       rows,
-      ['table', 'field', 'type', 'required', 'default', 'unique', 'index', 'relation', 'nullable', 'active']
+
+      [
+        "table",
+        "primaryKey",
+        "softDelete",
+        "timestamps",
+        "requireId"
+      ]
+
     );
+
+
   },
 
-  // --- Версии ---
-  getVersion() {
-    const rows = SpreadsheetAdapter.readRows(this._versionsSheet);
-    if (!rows.length) return 0;
-    const versions = rows.map(r => ({ version: parseInt(r[0], 10), hash: r[2] }));
-    versions.sort((a, b) => b.version - a.version);
-    return versions.length ? versions[0].version : 0;
+
+
+
+
+  // ============================================================
+  // FIELDS
+  // ============================================================
+
+
+  loadFields(){
+
+
+    const rows=this._read(
+      this._fieldsSheet
+    );
+
+
+    const result={};
+
+
+
+    rows.forEach(row=>{
+
+
+      const table=
+        row.table || row[0];
+
+
+      if(!table)
+        return;
+
+
+
+      if(!result[table])
+        result[table]=[];
+
+
+
+
+      result[table].push({
+
+        name:
+          row.field || row[1],
+
+
+        type:
+          row.type || row[2] || "STRING",
+
+
+        required:
+          row.required === true ||
+          row.required==="TRUE",
+
+
+        unique:
+          row.unique === true ||
+          row.unique==="TRUE",
+
+
+        index:
+          row.index === true ||
+          row.index==="TRUE",
+
+
+        relation:
+          row.relation || "",
+
+
+        nullable:
+          row.nullable !== false,
+
+
+        active:
+          row.active !== false
+
+      });
+
+
+    });
+
+
+
+    return result;
+
   },
 
-  getCurrentHash() {
-    const rows = SpreadsheetAdapter.readRows(this._versionsSheet);
-    if (!rows.length) return null;
-    const sorted = rows.map(r => ({ version: parseInt(r[0], 10), hash: r[2] }))
-      .sort((a, b) => b.version - a.version);
-    return sorted.length ? sorted[0].hash : null;
+
+
+
+  saveFields(schema){
+
+
+    const rows=[];
+
+
+
+    Object.values(schema)
+    .forEach(meta=>{
+
+
+      (meta.fields||[])
+      .forEach(field=>{
+
+
+        rows.push({
+
+          table:meta.table,
+
+
+          field:field.name,
+
+
+          type:
+            field.type || "STRING",
+
+
+          required:
+            !!field.required,
+
+
+          unique:
+            !!field.unique,
+
+
+          index:
+            !!field.index,
+
+
+          relation:
+            field.relation || "",
+
+
+          nullable:
+            field.nullable !== false,
+
+
+          active:
+            field.active !== false
+
+
+        });
+
+
+
+      });
+
+
+
+    });
+
+
+
+    this._write(
+
+      this._fieldsSheet,
+
+      rows,
+
+      [
+        "table",
+        "field",
+        "type",
+        "required",
+        "unique",
+        "index",
+        "relation",
+        "nullable",
+        "active"
+      ]
+
+    );
+
+
   },
 
-  saveVersion(version, hash, author) {
-    SpreadsheetAdapter.appendRow(this._versionsSheet, [
-      version,
-      new Date().toISOString(),
-      hash,
-      author || 'system'
-    ]);
+
+
+
+  // ============================================================
+  // VERSIONING
+  // ============================================================
+
+
+  getVersion(){
+
+
+    const rows=
+      this._read(
+        this._versionsSheet
+      );
+
+
+    if(!rows.length)
+      return 0;
+
+
+
+    return Math.max(
+      ...rows.map(
+        r=>Number(
+          r.version || r[0] || 0
+        )
+      )
+    );
+
+
   },
 
-  // --- Миграции ---
-  getMigrations() {
-    const rows = SpreadsheetAdapter.readRows(this._migrationsSheet);
-    return rows.map(r => ({
-      id: r[0],
-      version: r[1],
-      action: r[2],
-      status: r[3],
-      date: r[4],
-      rollback: r[5] || ''
-    }));
+
+
+
+  getCurrentHash(){
+
+
+    const rows=
+      this._read(
+        this._versionsSheet
+      );
+
+
+    if(!rows.length)
+      return null;
+
+
+
+    rows.sort(
+      (a,b)=>
+        Number(b.version||b[0])
+        -
+        Number(a.version||a[0])
+    );
+
+
+    return rows[0].hash || rows[0][2];
+
   },
 
-  saveMigration(id, version, action, status, rollback) {
-    SpreadsheetAdapter.appendRow(this._migrationsSheet, [
-      id,
-      version,
-      action,
-      status,
-      new Date().toISOString(),
-      rollback || ''
-    ]);
-  },
 
-  // --- Полная загрузка/сохранение ---
-  load() {
-    const tables = this.loadTables();
-    const fields = this.loadFields();
-    for (const [table, fieldList] of Object.entries(fields)) {
-      if (tables[table]) {
-        tables[table].fields = fieldList;
+
+
+  saveVersion(
+    version,
+    hash,
+    author="system"
+  ){
+
+
+    this._append(
+
+      this._versionsSheet,
+
+      {
+
+        version,
+
+        date:
+          new Date(),
+
+        hash,
+
+        author
+
       }
-    }
-    return tables;
+
+    );
+
+
   },
 
-  save(schema) {
+
+
+
+  // ============================================================
+  // MIGRATIONS
+  // ============================================================
+
+
+  getMigrations(){
+
+    return this._read(
+      this._migrationsSheet
+    );
+
+  },
+
+
+
+
+  saveMigration(
+    id,
+    version,
+    action,
+    status,
+    rollback=""
+  ){
+
+
+    this._append(
+
+      this._migrationsSheet,
+
+      {
+
+        id,
+
+        version,
+
+        action,
+
+        status,
+
+        date:
+          new Date(),
+
+        rollback
+
+      }
+
+    );
+
+
+  },
+
+
+
+
+  // ============================================================
+  // FULL LOAD/SAVE
+  // ============================================================
+
+
+  load(){
+
+
+    const tables =
+      this.loadTables();
+
+
+
+    const fields =
+      this.loadFields();
+
+
+
+    Object.keys(fields)
+    .forEach(table=>{
+
+
+      if(tables[table]){
+
+        tables[table].fields =
+          fields[table];
+
+      }
+
+
+    });
+
+
+
+    return tables;
+
+
+  },
+
+
+
+
+  save(schema){
+
+
     this.saveTables(schema);
+
     this.saveFields(schema);
+
+
   }
+
+
+
 };
+
+
+
+
+globalThis.SchemaStorage =
+SchemaStorage;
+
+
+Logger.log(
+ "SchemaStorage READY v"+
+ SchemaStorage.version
+);
