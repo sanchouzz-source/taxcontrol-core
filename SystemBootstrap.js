@@ -1,24 +1,42 @@
 /**
  * ============================================================
- * ERP BOOTSTRAP v2.2
+ * ERP BOOTSTRAP v2.3
  *
- * Единая точка входа ERP
+ * Unified ERP Entry Point
  *
- * Запуск:
+ * Architecture:
+ *
+ * startERP()
+ *      |
+ *      v
+ * Bootstrap.start()
+ *      |
+ *      v
+ * SystemInit.init()
+ *
+ *
+ * Commands:
  *
  * startERP()
  *
- * Проверка:
- *
  * erpHealth()
+ *
  * erpDiag()
+ *
+ * resetERP()
  *
  * ============================================================
  */
 
 
-console.log("ERP Bootstrap v2.2");
+console.log("ERP Bootstrap v2.3");
 
+
+
+
+// ============================================================
+// GLOBAL ERP STATE
+// ============================================================
 
 
 globalThis.__ERP_STATE__ =
@@ -34,7 +52,10 @@ globalThis.__ERP_STATE__ || {
     startedAt:null,
 
 
-    error:null
+    error:null,
+
+
+    version:"2.3.0"
 
 };
 
@@ -42,15 +63,12 @@ globalThis.__ERP_STATE__ || {
 
 
 
-/**
- * ============================================================
- * START ERP
- * ============================================================
- */
+// ============================================================
+// START ERP
+// ============================================================
 
 
 async function startERP(){
-
 
 
     const state =
@@ -58,13 +76,13 @@ async function startERP(){
 
 
 
-    // защита от двойного запуска
+    // already started
 
     if(state.started){
 
 
-        Logger.log(
-            "⚠ ERP already started"
+        Logger.warn(
+            "ERP already started"
         );
 
 
@@ -74,11 +92,13 @@ async function startERP(){
 
 
 
+    // startup lock
+
     if(state.starting){
 
 
-        Logger.log(
-            "⏳ ERP boot already running"
+        Logger.warn(
+            "ERP startup already running"
         );
 
 
@@ -89,6 +109,9 @@ async function startERP(){
 
 
     state.starting=true;
+
+
+    state.error=null;
 
 
 
@@ -102,11 +125,11 @@ async function startERP(){
 
 
         if(
-            typeof SystemInit === "undefined"
+            typeof Bootstrap === "undefined"
         ){
 
             throw new Error(
-                "SystemInit not found"
+                "Bootstrap controller missing"
             );
 
         }
@@ -114,18 +137,19 @@ async function startERP(){
 
 
         /*
-         * Главный запуск
+         * Единственная точка запуска
          */
 
         const result =
-            await SystemInit.init();
-
+            await Bootstrap.start();
 
 
 
         state.started=true;
 
+
         state.starting=false;
+
 
         state.startedAt =
             new Date().toISOString();
@@ -147,24 +171,29 @@ async function startERP(){
 
 
 
-        state.error=e.message;
+        state.started=false;
 
 
         state.starting=false;
 
 
-        state.started=false;
+        state.error =
+            e.message;
 
 
 
         Logger.error(
+
             "💥 ERP BOOT FAILED: "
-            + e.message
+            +
+            e.message
+
         );
 
 
 
         throw e;
+
 
     }
 
@@ -175,14 +204,15 @@ async function startERP(){
 
 
 
-/**
- * ============================================================
- * HEALTH COMMAND
- * ============================================================
- */
+
+
+// ============================================================
+// HEALTH
+// ============================================================
 
 
 function erpHealth(){
+
 
 
     Logger.log(
@@ -190,35 +220,91 @@ function erpHealth(){
     );
 
 
-    if(
-        typeof SystemInit==="undefined"
-    ){
+
+    try{
+
+
+        let health=null;
+
+
+
+        if(
+            typeof Bootstrap !== "undefined" &&
+            Bootstrap.health
+        ){
+
+
+            health =
+                Bootstrap.health();
+
+
+        }
+        else if(
+            typeof SystemInit !== "undefined"
+        ){
+
+
+            health =
+                SystemInit.health();
+
+
+        }
+        else{
+
+
+            health={
+
+                status:"FAILED",
+
+                message:
+                "ERP health service unavailable"
+
+            };
+
+
+        }
+
+
 
         Logger.log(
-            "❌ SystemInit missing"
+
+            JSON.stringify(
+                health,
+                null,
+                2
+            )
+
         );
 
-        return;
+
+
+        return health;
+
+
+
+    }
+    catch(e){
+
+
+        const error={
+
+            status:"FAILED",
+
+            error:e.message
+
+        };
+
+
+        Logger.error(
+            e.message
+        );
+
+
+        return error;
+
 
     }
 
-
-
-    const health =
-        SystemInit.health();
-
-
-
-    Logger.log(
-        JSON.stringify(
-            health,
-            null,
-            2
-        )
-    );
-
-
-    return health;
 
 }
 
@@ -226,15 +312,14 @@ function erpHealth(){
 
 
 
-/**
- * ============================================================
- * DIAGNOSTICS COMMAND
- * ============================================================
- */
+
+
+// ============================================================
+// DIAGNOSTICS
+// ============================================================
 
 
 function erpDiag(){
-
 
 
     Logger.log(
@@ -243,22 +328,70 @@ function erpDiag(){
 
 
 
-    if(
-        typeof ERPDiagnostics==="undefined"
-    ){
+    try{
 
-        Logger.log(
-            "❌ ERPDiagnostics missing"
+
+        if(
+            typeof Bootstrap !== "undefined" &&
+            Bootstrap.diagnostics
+        ){
+
+
+            return Bootstrap.diagnostics();
+
+
+        }
+
+
+
+        if(
+            typeof ERPDiagnostics !== "undefined"
+        ){
+
+
+            return ERPDiagnostics.run();
+
+
+        }
+
+
+
+        return {
+
+
+            status:"WARNING",
+
+            message:
+            "Diagnostics unavailable"
+
+
+        };
+
+
+
+    }
+    catch(e){
+
+
+        Logger.error(
+            "ERP DIAG FAILED "+
+            e.message
         );
 
 
-        return;
+        return {
+
+
+            status:"FAILED",
+
+            error:e.message
+
+
+        };
+
 
     }
 
-
-
-    return ERPDiagnostics.run();
 
 }
 
@@ -266,65 +399,133 @@ function erpDiag(){
 
 
 
-/**
- * ============================================================
- * RESET FOR DEVELOPMENT
- * ============================================================
- */
+
+
+// ============================================================
+// RESET DEVELOPMENT MODE
+// ============================================================
 
 
 function resetERP(){
 
 
 
-    globalThis.__ERP_STATE__={
-
-        started:false,
-
-        starting:false,
-
-        startedAt:null,
-
-        error:null
-
-    };
+    Logger.warn(
+        "========== ERP RESET =========="
+    );
 
 
 
-    if(
-        typeof SystemInit!=="undefined"
-    ){
+    try{
 
-        SystemInit.reset?.();
+
+        if(
+            typeof Bootstrap !== "undefined" &&
+            Bootstrap.reset
+        ){
+
+            Bootstrap.reset();
+
+        }
+
+
+
+        if(
+            typeof SystemInit !== "undefined" &&
+            SystemInit.reset
+        ){
+
+            SystemInit.reset();
+
+        }
+
+
+
+        globalThis.__ERP_STATE__={
+
+
+            started:false,
+
+
+            starting:false,
+
+
+            startedAt:null,
+
+
+            error:null,
+
+
+            version:"2.3.0"
+
+
+        };
+
+
+
+        Logger.log(
+            "ERP RESET COMPLETE"
+        );
+
+
+
+        return true;
+
+
+
+    }
+    catch(e){
+
+
+        Logger.error(
+            "ERP RESET FAILED "+
+            e.message
+        );
+
+
+        return false;
+
 
     }
 
-
-
-    Logger.log(
-        "ERP RESET COMPLETE"
-    );
 
 }
 
 
 
 
-/**
- * ============================================================
- * GLOBAL EXPORT
- * ============================================================
- */
 
 
-globalThis.startERP=startERP;
 
-globalThis.erpHealth=erpHealth;
+// ============================================================
+// GLOBAL EXPORT
+// ============================================================
 
-globalThis.erpDiag=erpDiag;
 
-globalThis.resetERP=resetERP;
+globalThis.startERP =
+    startERP;
 
+
+globalThis.erpHealth =
+    erpHealth;
+
+
+globalThis.erpDiag =
+    erpDiag;
+
+
+globalThis.resetERP =
+    resetERP;
+
+
+
+
+
+
+
+// ============================================================
+// READY
+// ============================================================
 
 
 Logger.log(
