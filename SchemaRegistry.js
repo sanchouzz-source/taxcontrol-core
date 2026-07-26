@@ -1,12 +1,15 @@
-console.log("SchemaRegistry v4.0.3");
+console.log("SchemaRegistry v4.0.4");
 
 const SchemaRegistry = {
-  version: "4.0.3",
+  version: "4.0.4",
   status: "REGISTERED",
   initialized: false,
   initAttempts: 0,
   maxInitAttempts: 3,
   initError: null,
+
+  // ===== НОВЫЙ ФЛАГ =====
+  autoFallbackFields: true,
 
   schemas: {},          // entity → meta
   tableIndex: {},       // table → entity
@@ -95,7 +98,6 @@ const SchemaRegistry = {
           Logger.warn("Schema skip invalid metadata: " + JSON.stringify(meta));
           continue;
         }
-        // Удалён блок if (this.isSystemTable(table)) { continue; }
         this.register(entity, meta);
       }
 
@@ -108,7 +110,7 @@ const SchemaRegistry = {
         }
       }
 
-      // ===== СИНХРОНИЗАЦИЯ С EntityRegistry =====
+      // Синхронизация с EntityRegistry
       if (typeof EntityRegistry !== "undefined") {
         Object.keys(EntityRegistry)
           .filter(k => {
@@ -140,7 +142,7 @@ const SchemaRegistry = {
   },
 
   // ============================================================
-  // REGISTER (обновлён)
+  // REGISTER
   // ============================================================
   register(entity, meta) {
     if (!entity || !meta.table) {
@@ -212,7 +214,7 @@ const SchemaRegistry = {
   },
 
   // ============================================================
-  // НОРМАЛИЗАЦИЯ ENTITY / TABLE (обновлён resolveEntity)
+  // НОРМАЛИЗАЦИЯ ENTITY / TABLE
   // ============================================================
   resolveEntity(value) {
     this.init();
@@ -270,7 +272,7 @@ const SchemaRegistry = {
   },
 
   // ============================================================
-  // БАЗОВЫЕ ГЕТТЕРЫ
+  // БАЗОВЫЕ ГЕТТЕРЫ (с autoFallbackFields)
   // ============================================================
   list() {
     this.init();
@@ -296,19 +298,57 @@ const SchemaRegistry = {
     return Object.keys(this.tableIndex);
   },
 
+  // ----- GET (с автоподстановкой полей) -----
   get(entity) {
     this.init();
-    return this.schemas[entity] || null;
+    const meta = this.schemas[entity] || null;
+    if (!meta) return null;
+
+    // Если флаг включён и fields отсутствуют или пусты – подставляем дефолтные
+    if (this.autoFallbackFields && (!meta.fields || meta.fields.length === 0)) {
+      return {
+        ...meta,
+        fields: [
+          { name: "id", type: "STRING", required: true },
+          { name: "createdAt", type: "DATE" },
+          { name: "updatedAt", type: "DATE" }
+        ]
+      };
+    }
+    return meta;
   },
 
+  // ----- GET BY TABLE (с автоподстановкой) -----
   getByTable(table) {
     this.init();
     const entity = this.tableIndex[table];
     if (entity && this.schemas[entity]) {
-      return this.schemas[entity];
+      const meta = this.schemas[entity];
+      if (this.autoFallbackFields && (!meta.fields || meta.fields.length === 0)) {
+        return {
+          ...meta,
+          fields: [
+            { name: "id", type: "STRING", required: true },
+            { name: "createdAt", type: "DATE" },
+            { name: "updatedAt", type: "DATE" }
+          ]
+        };
+      }
+      return meta;
     }
     if (this.systemSchemas[table]) {
-      return this.systemSchemas[table];
+      const meta = this.systemSchemas[table];
+      if (this.autoFallbackFields && (!meta.fields || meta.fields.length === 0)) {
+        return {
+          ...meta,
+          fields: [
+            { name: "id", type: "STRING", required: true },
+            { name: "createdAt", type: "DATE" },
+            { name: "updatedAt", type: "DATE" }
+          ]
+        };
+      }
+      return meta;
     }
     return null;
   },
@@ -343,12 +383,20 @@ const SchemaRegistry = {
     this.init();
     const meta = this.getByTable(table);
     if (!meta) return null;
+    // Возвращаем уже обогащённые поля из getByTable
     return meta.fields || [];
   },
 
   getField(table, fieldName) {
     this.init();
-    return this.fieldCache[table]?.[fieldName] || null;
+    // Если поле есть в кэше – возвращаем оттуда
+    if (this.fieldCache[table] && this.fieldCache[table][fieldName]) {
+      return this.fieldCache[table][fieldName];
+    }
+    // Иначе пробуем получить через getFields и найти
+    const fields = this.getFields(table);
+    if (!fields) return null;
+    return fields.find(f => f.name === fieldName) || null;
   },
 
   getRelations(table) {

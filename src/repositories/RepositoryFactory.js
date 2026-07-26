@@ -1,13 +1,13 @@
 // ============================================================
-// RepositoryFactory v2.1.0
+// RepositoryFactory v2.2.0
 // Enterprise Repository Dependency Container
 // ERP Core
 // ============================================================
 
-console.log("RepositoryFactory v2.1.0");
+console.log("RepositoryFactory v2.2.0");
 
 const RepositoryFactory = {
-  version: "2.1.0",
+  version: "2.2.0",
   apiVersion: "2.0",
 
   repositories: {},
@@ -30,7 +30,7 @@ const RepositoryFactory = {
     // Загружаем репозитории из RepositoryRegistry (если есть)
     this.loadFromRegistry();
 
-    // Автоматическая регистрация из EntityRegistry
+    // Автоматическая регистрация из EntityRegistry (с поддержкой системных)
     this.autoRegister();
 
     // Синхронизируем наши репозитории обратно в RepositoryRegistry
@@ -66,7 +66,7 @@ const RepositoryFactory = {
   },
 
   // ============================================================
-  // SYNC WITH RepositoryRegistry (новый метод)
+  // SYNC WITH RepositoryRegistry
   // ============================================================
 
   syncRegistry() {
@@ -87,7 +87,7 @@ const RepositoryFactory = {
   },
 
   // ============================================================
-  // AUTO REGISTER FROM EntityRegistry
+  // AUTO REGISTER FROM EntityRegistry (с поддержкой системных)
   // ============================================================
 
   autoRegister() {
@@ -97,20 +97,38 @@ const RepositoryFactory = {
 
     EntityRegistry.list().forEach(entity => {
       const meta = EntityRegistry.get(entity);
-      if (!meta.repository) {
+      const repoName = meta.repository || "BaseRepository";
+
+      // Если сущность системная и репозиторий не задан явно, используем BaseRepository
+      if (meta.system && !meta.repository) {
+        // Явно указываем BaseRepository
+        const repo = globalThis.BaseRepository;
+        if (repo) {
+          this.register(entity, repo);
+          Logger.log(`System entity ${entity} registered with BaseRepository`);
+        } else {
+          this.pending[entity] = {
+            repository: "BaseRepository",
+            created: new Date(),
+            system: true
+          };
+          Logger.debug(`System entity ${entity} pending (BaseRepository not ready)`);
+        }
         return;
       }
 
-      const repo = globalThis[meta.repository];
+      // Если репозиторий указан явно
+      const repo = globalThis[repoName];
 
       if (repo) {
         this.register(entity, repo);
       } else {
         this.pending[entity] = {
-          repository: meta.repository,
-          created: new Date()
+          repository: repoName,
+          created: new Date(),
+          system: meta.system || false
         };
-        Logger.debug("Repository pending " + entity);
+        Logger.debug(`Repository pending for ${entity} (${repoName})`);
       }
     });
   },
