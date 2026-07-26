@@ -3,11 +3,12 @@ console.log("App");
 
 /**
  * ============================================================
- * App v3.0.0
+ * App v3.1.0
  *
  * TaxControl ERP Application Facade
  *
- * Единственная точка управления приложением
+ * Application lifecycle controller
+ *
  * ============================================================
  */
 
@@ -15,29 +16,41 @@ console.log("App");
 const App = {
 
 
-    version:"3.0.0",
+    version:"3.1.0",
 
+    apiVersion:"3.0",
 
     name:"TaxControl ERP",
-
-
 
     platform:"Google Apps Script",
 
 
+    state:{
+
+        started:false,
+
+        starting:false,
+
+        startedAt:null,
+
+        lastError:null
+
+    },
 
 
-    /**
-     * Проверка готовности ядра
-     */
+
+
+
+    // ============================================================
+    // INIT
+    // ============================================================
 
     init(){
 
 
         Logger.log(
-            "ERP APP INIT"
+            "APP INIT"
         );
-
 
 
         if(
@@ -53,19 +66,19 @@ const App = {
 
         return true;
 
+
     },
 
 
 
 
 
-    /**
-     * Полный запуск ERP
-     *
-     * Главная команда:
-     *
-     * erpStart()
-     */
+
+
+    // ============================================================
+    // START ERP
+    // ============================================================
+
 
     async start(){
 
@@ -74,24 +87,103 @@ const App = {
 
 
 
-        Logger.log(
-            "========== ERP START REQUEST =========="
-        );
+        if(this.state.started){
+
+            Logger.warn(
+                "ERP already started"
+            );
+
+            return {
+
+                status:"ALREADY_STARTED",
+
+                startedAt:
+                this.state.startedAt
+
+            };
+
+        }
 
 
 
-        const result =
-            await CoreFunctions.start();
+        if(this.state.starting){
+
+            throw new Error(
+                "ERP startup already running"
+            );
+
+        }
 
 
 
-        Logger.log(
-            "========== ERP START COMPLETE =========="
-        );
+
+        try{
+
+
+            this.state.starting=true;
 
 
 
-        return result;
+            Logger.log(
+                "========== ERP BOOT START =========="
+            );
+
+
+
+            const result =
+                await CoreFunctions.start();
+
+
+
+            this.state.started=true;
+
+            this.state.starting=false;
+
+            this.state.startedAt =
+                new Date();
+
+
+
+            Logger.log(
+                "========== ERP BOOT COMPLETE =========="
+            );
+
+
+
+            return {
+
+                status:"READY",
+
+                result,
+
+                startedAt:
+                this.state.startedAt
+
+            };
+
+
+        }
+        catch(e){
+
+
+            this.state.starting=false;
+
+            this.state.lastError =
+                e.message;
+
+
+
+            Logger.error(
+                "ERP START FAILED "
+                +e.message
+            );
+
+
+            throw e;
+
+
+        }
+
 
 
     },
@@ -100,29 +192,52 @@ const App = {
 
 
 
-    /**
-     * Проверка состояния
-     *
-     * НЕ запускает систему
-     */
+
+
+
+    // ============================================================
+    // HEALTH
+    // ============================================================
+
 
     health(){
 
 
-        Logger.log(
-            "========== ERP HEALTH =========="
-        );
-
-
-
         try{
+
+
+            const modules={};
+
 
 
             if(
                 typeof CoreFunctions!=="undefined"
             ){
 
-                return CoreFunctions.health();
+                modules.core =
+                    CoreFunctions.health();
+
+            }
+
+
+
+            if(
+                typeof RepositoryFactory!=="undefined"
+            ){
+
+                modules.repositories =
+                    RepositoryFactory.health();
+
+            }
+
+
+
+            if(
+                typeof SchemaRegistry!=="undefined"
+            ){
+
+                modules.schema =
+                    SchemaRegistry.health();
 
             }
 
@@ -130,66 +245,26 @@ const App = {
 
             return {
 
-                status:"WARNING",
-
-                message:
-                "CoreFunctions unavailable"
-
-            };
-
-
-        }
-        catch(e){
-
-
-            return {
-
-                status:"ERROR",
 
                 module:"App",
 
-                error:e.message,
+                version:this.version,
+
+                status:
+                this.state.started
+                ?"OK"
+                :"WARNING",
+
+
+                state:this.state,
+
+
+                modules,
+
 
                 timestamp:
                 new Date().toISOString()
 
-            };
-
-
-        }
-
-    },
-
-
-
-
-
-    /**
-     * Полная диагностика
-     */
-
-    diagnostics(){
-
-
-        try{
-
-
-            if(
-                typeof CoreFunctions!=="undefined"
-            ){
-
-                return CoreFunctions.diagnostics();
-
-            }
-
-
-
-            return {
-
-                status:"WARNING",
-
-                message:
-                "Diagnostics unavailable"
 
             };
 
@@ -197,15 +272,27 @@ const App = {
         }
         catch(e){
 
+
             return {
+
+
+                module:"App",
 
                 status:"ERROR",
 
-                error:e.message
+                error:e.message,
+
+
+                timestamp:
+                new Date().toISOString()
+
 
             };
 
+
         }
+
+
 
     },
 
@@ -215,11 +302,71 @@ const App = {
 
 
 
-    /**
-     * Полный сброс ERP
-     *
-     * Только разработка
-     */
+    // ============================================================
+    // DIAGNOSTICS
+    // ============================================================
+
+
+    diagnostics(){
+
+
+        return {
+
+
+            application:this.name,
+
+            version:this.version,
+
+
+            state:this.state,
+
+
+            core:
+            typeof CoreFunctions!=="undefined"
+            ?
+            CoreFunctions.diagnostics?.()
+            :
+            null,
+
+
+
+            repositories:
+            typeof RepositoryFactory!=="undefined"
+            ?
+            RepositoryFactory.diagnostics()
+            :
+            null,
+
+
+
+            schema:
+            typeof SchemaRegistry!=="undefined"
+            ?
+            SchemaRegistry.diagnostics()
+            :
+            null,
+
+
+            timestamp:
+            new Date().toISOString()
+
+
+        };
+
+
+    },
+
+
+
+
+
+
+
+
+    // ============================================================
+    // RESET DEVELOPMENT
+    // ============================================================
+
 
     reset(){
 
@@ -233,6 +380,23 @@ const App = {
         try{
 
 
+
+            this.state={
+
+                started:false,
+
+                starting:false,
+
+                startedAt:null,
+
+                lastError:null
+
+            };
+
+
+
+
+
             // глобальное состояние
 
             globalThis.__ERP_STATE__={
@@ -244,6 +408,9 @@ const App = {
                 startedAt:null
 
             };
+
+
+
 
 
 
@@ -265,7 +432,11 @@ const App = {
 
 
 
-            // Registry
+
+
+
+
+            // SchemaRegistry
 
             if(
                 typeof SchemaRegistry!=="undefined"
@@ -278,7 +449,10 @@ const App = {
 
 
 
-            // Schema
+
+
+
+            // SchemaManager
 
             if(
                 typeof SchemaManager!=="undefined"
@@ -286,7 +460,46 @@ const App = {
 
                 SchemaManager.initialized=false;
 
+                SchemaManager.schema={};
+
             }
+
+
+
+
+
+
+
+            // RepositoryFactory
+
+            if(
+                typeof RepositoryFactory!=="undefined"
+            ){
+
+                RepositoryFactory.reset?.();
+
+            }
+
+
+
+
+
+
+
+            // RepositoryRegistry
+
+            if(
+                typeof RepositoryRegistry!=="undefined"
+                &&
+                RepositoryRegistry.reset
+            ){
+
+                RepositoryRegistry.reset();
+
+            }
+
+
+
 
 
 
@@ -304,6 +517,10 @@ const App = {
 
 
 
+
+
+
+
             // EventBus
 
             if(
@@ -313,6 +530,9 @@ const App = {
                 EventBus.handlers={};
 
             }
+
+
+
 
 
 
@@ -332,19 +552,24 @@ const App = {
 
 
 
+
             Logger.log(
                 "ERP RESET COMPLETE"
             );
 
 
+
             return {
+
 
                 status:"OK",
 
                 message:
                 "ERP reset completed"
 
+
             };
+
 
 
         }
@@ -352,9 +577,10 @@ const App = {
 
 
             Logger.error(
-                "ERP RESET FAILED "+
-                e.message
+                "ERP RESET FAILED "
+                +e.message
             );
+
 
 
             return {
@@ -365,7 +591,10 @@ const App = {
 
             };
 
+
         }
+
+
 
     },
 
@@ -375,9 +604,11 @@ const App = {
 
 
 
-    /**
-     * Информация о приложении
-     */
+
+    // ============================================================
+    // INFO
+    // ============================================================
+
 
     info(){
 
@@ -385,20 +616,26 @@ const App = {
         return {
 
 
-            application:
-            this.name,
+            application:this.name,
 
 
-            version:
-            this.version,
+            version:this.version,
 
 
-            platform:
-            this.platform,
+            apiVersion:this.apiVersion,
+
+
+            platform:this.platform,
 
 
             architecture:
-            "SystemInit + CoreFunctions + ModuleRegistry",
+            [
+                "SystemInit",
+                "CoreFunctions",
+                "SchemaRegistry",
+                "RepositoryFactory",
+                "ModuleRegistry"
+            ],
 
 
             timestamp:
@@ -417,9 +654,13 @@ const App = {
 
 
 
-// ==================================================
+
+
+
+
+// ============================================================
 // GLOBAL COMMAND API
-// ==================================================
+// ============================================================
 
 
 
@@ -431,11 +672,15 @@ async function erpStart(){
 
 
 
+
+
 function erpHealth(){
 
     return App.health();
 
 }
+
+
 
 
 
@@ -447,11 +692,15 @@ function erpDiag(){
 
 
 
+
+
 function erpReset(){
 
     return App.reset();
 
 }
+
+
 
 
 
@@ -465,10 +714,13 @@ function erpInfo(){
 
 
 
+
+
 globalThis.App=App;
 
 
 
+
 Logger.log(
-"App READY v"+App.version
+    "App READY v"+App.version
 );
