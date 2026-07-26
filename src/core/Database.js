@@ -1,5 +1,5 @@
 // ============================================================
-// Database v4.1.0
+// Database v4.1.1
 // TaxControl ERP Core
 //
 // Storage Engine
@@ -26,10 +26,10 @@
 // - Events
 // ============================================================
 
-console.log("Database v4.1.0");
+console.log("Database v4.1.1");
 
 const Database = {
-  version: "4.1.0",
+  version: "4.1.1",
 
   architecture: "Repository -> Database -> SpreadsheetAdapter",
 
@@ -118,44 +118,44 @@ const Database = {
   // ============================================================
 
   // ============================================================
-  // BUILD METADATA (диагностическая версия)
+  // BUILD METADATA v4.1.1
+  // Исправлена обработка элементов списка (строки или объекты)
   // ============================================================
 
   buildMetadata() {
     this._metaCache = {};
 
-    // 1. Проверяем наличие SchemaRegistry
     if (typeof SchemaRegistry === "undefined") {
       throw new Error("Database: SchemaRegistry unavailable");
     }
 
-    // 2. Получаем список сущностей
-    let entities = [];
-
-    if (typeof SchemaRegistry.list === "function") {
-      entities = SchemaRegistry.list();
-    } else if (typeof SchemaRegistry.getAll === "function") {
-      entities = Object.keys(SchemaRegistry.getAll());
-    } else if (SchemaRegistry.registry) {
-      entities = Object.keys(SchemaRegistry.registry);
-    } else if (SchemaRegistry.entities) {
-      entities = Object.keys(SchemaRegistry.entities);
-    } else {
-      throw new Error("Database: cannot list entities from SchemaRegistry");
+    // Проверяем наличие метода list()
+    if (typeof SchemaRegistry.list !== "function") {
+      throw new Error("Database: SchemaRegistry.list() not available");
     }
 
-    Logger.log("Database metadata loading entities=" + entities.length);
+    const items = SchemaRegistry.list();
+    Logger.log("Database metadata loading items=" + items.length);
 
-    // 3. Загружаем метаданные для каждой сущности
-    entities.forEach(entity => {
+    items.forEach(item => {
+      // Определяем имя сущности
+      const entity = typeof item === "string" ? item : item.entity;
+
+      if (!entity) {
+        Logger.warn("Invalid item in SchemaRegistry.list(): " + JSON.stringify(item));
+        return;
+      }
+
+      // Получаем метаданные
       let meta = null;
-
-      if (typeof SchemaRegistry.get === "function") {
+      if (typeof item === "object" && item !== null) {
+        // Если item — объект с метаданными, используем его напрямую
+        meta = item;
+      } else if (typeof SchemaRegistry.get === "function") {
         meta = SchemaRegistry.get(entity);
-      } else if (SchemaRegistry.registry) {
-        meta = SchemaRegistry.registry[entity];
-      } else if (SchemaRegistry.entities) {
-        meta = SchemaRegistry.entities[entity];
+      } else {
+        Logger.error("Cannot retrieve metadata for entity: " + entity);
+        return;
       }
 
       if (!meta) {
@@ -173,6 +173,7 @@ const Database = {
   getMeta(entity) {
     const meta = this._metaCache[entity];
     if (!meta) {
+      // Перестраиваем метаданные только если они отсутствуют
       this.buildMetadata();
     }
     const result = this._metaCache[entity];
