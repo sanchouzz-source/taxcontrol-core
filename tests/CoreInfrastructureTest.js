@@ -1,20 +1,19 @@
 // ============================================================
-// CoreInfrastructureTest v2.2
+// CoreInfrastructureTest v2.3
 // ERP Core Architecture Validation
 // TaxControl ERP
+// Compatible RepositoryFactory v2.5.7
 // ============================================================
 
 
-console.log("CoreInfrastructureTest v2.2");
+console.log("CoreInfrastructureTest v2.3");
 
 
 
 const CoreInfrastructureTest = {
 
 
-version:"2.2.0",
-
-
+version:"2.3.0",
 
 
 
@@ -27,7 +26,7 @@ options.safe !== false;
 
 
 Logger.log(
-"========== CORE INFRASTRUCTURE TEST v2.2 =========="
+"========== CORE INFRASTRUCTURE TEST v2.3 =========="
 );
 
 
@@ -36,7 +35,6 @@ const result={
 
 
 version:this.version,
-
 
 timestamp:
 new Date().toISOString(),
@@ -53,10 +51,14 @@ safe
 components:{},
 
 
+repositoryFactory:{},
+
+
 entities:[],
 
 
 summary:{}
+
 
 
 };
@@ -66,9 +68,10 @@ summary:{}
 try{
 
 
-// ==================================================
+
+// ============================================
 // COMPONENTS
-// ==================================================
+// ============================================
 
 
 result.components =
@@ -77,9 +80,43 @@ this.checkComponents();
 
 
 
-// ==================================================
+// ============================================
+// REPOSITORY FACTORY STATUS
+// ============================================
+
+
+if(
+typeof RepositoryFactory!=="undefined"
+){
+
+
+result.repositoryFactory =
+{
+
+status:
+RepositoryFactory.status?.(),
+
+missing:
+RepositoryFactory.missingRepositories?.(),
+
+validation:
+RepositoryFactory.validateAll?.()
+
+
+};
+
+
+}
+
+
+
+
+
+
+
+// ============================================
 // ENTITIES
-// ==================================================
+// ============================================
 
 
 const entities =
@@ -88,13 +125,13 @@ EntityRegistry.list();
 
 
 Logger.log(
-"Entities found: "+
-entities.length
+"Entities found: "+entities.length
 );
 
 
 
-for(const entity of entities){
+
+entities.forEach(entity=>{
 
 
 result.entities.push(
@@ -107,7 +144,8 @@ safe
 );
 
 
-}
+});
+
 
 
 
@@ -172,10 +210,11 @@ throw e;
 checkComponents(){
 
 
-const checks={};
+const result={};
 
 
-const list=[
+const components=[
+
 
 "EntityRegistry",
 
@@ -191,23 +230,23 @@ const list=[
 
 "SchemaManager"
 
+
 ];
 
 
 
-list.forEach(name=>{
+components.forEach(name=>{
 
 
-const ok =
+const exists =
 typeof globalThis[name]!=="undefined";
 
 
-
-checks[name]=ok;
-
+result[name]=exists;
 
 
-if(ok){
+
+if(exists){
 
 Logger.log(
 "COMPONENT OK "+name
@@ -228,7 +267,7 @@ throw new Error(
 
 
 
-return checks;
+return result;
 
 
 },
@@ -250,35 +289,27 @@ safe
 ){
 
 
+
 const row={
 
 
 entity,
 
-
 system:false,
-
 
 metadata:false,
 
-
 schema:false,
-
 
 repository:false,
 
-
 contract:false,
-
 
 crud:false,
 
-
 events:false,
 
-
 relations:false,
-
 
 errors:[]
 
@@ -287,12 +318,17 @@ errors:[]
 
 
 
+let schema=null;
+
+
+
 try{
 
 
-// ===========================
+
+// =====================================
 // METADATA
-// ===========================
+// =====================================
 
 
 const meta =
@@ -302,25 +338,25 @@ EntityRegistry.get(entity);
 
 if(meta){
 
-
 row.metadata=true;
-
 
 row.system =
 meta.system===true;
-
 
 }
 
 
 
 
-// ===========================
+
+
+
+// =====================================
 // SCHEMA
-// ===========================
+// =====================================
 
 
-const schema =
+schema =
 SchemaRegistry.get(entity);
 
 
@@ -354,15 +390,27 @@ row.errors.push(
 }
 
 
+}
+else{
+
+
+row.errors.push(
+"Schema missing"
+);
+
 
 }
 
 
 
 
-// ===========================
+
+
+
+
+// =====================================
 // REPOSITORY
-// ===========================
+// =====================================
 
 
 try{
@@ -373,21 +421,32 @@ RepositoryFactory.get(entity);
 
 
 
+if(repo){
+
 row.repository=true;
 
+}
 
 
-const contract =
+
+
+const meta =
 RepositoryFactory.metadata?.[entity];
 
 
 
-if(contract){
+if(meta?.contract){
+
 
 row.contract =
-contract.contract.status==="OK"
-||
-contract.contract.status==="ADAPTED";
+[
+"OK",
+"ADAPTED"
+]
+.includes(
+meta.contract.status
+);
+
 
 
 }
@@ -412,9 +471,9 @@ e.message
 
 
 
-// ===========================
+// =====================================
 // RELATIONS
-// ===========================
+// =====================================
 
 
 try{
@@ -422,12 +481,15 @@ try{
 
 if(
 schema &&
-schema.relations
+schema.relations &&
+SchemaRegistry.validateRelations
 ){
 
-SchemaRegistry.validateRelations?.(
+
+SchemaRegistry.validateRelations(
 schema.table,
 {}
+
 );
 
 
@@ -456,13 +518,9 @@ e.message
 
 
 
-
-// ===========================
+// =====================================
 // EVENTS
-// ===========================
-
-
-try{
+// =====================================
 
 
 if(
@@ -477,39 +535,26 @@ row.events=true;
 
 
 
-}
-catch(e){
-
-
-row.errors.push(
-"Events: "+
-e.message
-);
-
-
-}
 
 
 
 
 
-
-
-// ===========================
+// =====================================
 // CRUD
-// ===========================
+// =====================================
 
 
 if(
-row.metadata &&
-row.schema &&
-row.repository
+row.repository &&
+row.schema
 ){
 
 
 row.crud =
 this.testCrud(
 entity,
+schema,
 safe
 );
 
@@ -543,12 +588,13 @@ return row;
 
 
 // ==================================================
-// CRUD TEST
+// CRUD
 // ==================================================
 
 
 testCrud(
 entity,
+schema,
 safe
 ){
 
@@ -556,22 +602,12 @@ safe
 try{
 
 
-const schema =
-SchemaRegistry.get(entity);
 
+// FULL тест только системных таблиц
 
-
-if(!schema){
-
-return false;
-
-}
-
-
-
-// системные сущности
-
-if(schema.system){
+if(
+schema.system
+){
 
 
 return this.testSystemCrud(
@@ -585,16 +621,17 @@ schema
 
 
 
-
-// бизнес сущности
-
-// в SAFE режиме только проверяем контракт
-
+// SAFE режим
 
 if(safe){
 
 
-return true;
+const repo =
+RepositoryFactory.get(entity);
+
+
+
+return !!repo;
 
 
 }
@@ -610,14 +647,11 @@ catch(e){
 
 
 Logger.warn(
-
 "CRUD FAILED "+
 entity+
 " "+
 e.message
-
 );
-
 
 
 return false;
@@ -646,6 +680,7 @@ schema
 ){
 
 
+
 const id =
 "TEST_"+Date.now();
 
@@ -660,7 +695,7 @@ data[schema.idField]=id;
 
 
 if(
-schema.fields.some(
+schema.fields?.some(
 f=>f.name==="value"
 )
 ){
@@ -707,7 +742,6 @@ id
 return true;
 
 
-
 },
 
 
@@ -724,7 +758,6 @@ return true;
 summary(rows){
 
 
-
 return{
 
 
@@ -733,46 +766,31 @@ rows.length,
 
 
 metadata:
-rows.filter(
-x=>x.metadata
-).length,
+rows.filter(x=>x.metadata).length,
 
 
 schema:
-rows.filter(
-x=>x.schema
-).length,
+rows.filter(x=>x.schema).length,
 
 
 repository:
-rows.filter(
-x=>x.repository
-).length,
+rows.filter(x=>x.repository).length,
 
 
 contract:
-rows.filter(
-x=>x.contract
-).length,
+rows.filter(x=>x.contract).length,
 
 
 crud:
-rows.filter(
-x=>x.crud
-).length,
+rows.filter(x=>x.crud).length,
 
 
 events:
-rows.filter(
-x=>x.events
-).length,
+rows.filter(x=>x.events).length,
 
 
 relations:
-rows.filter(
-x=>x.relations
-).length,
-
+rows.filter(x=>x.relations).length,
 
 
 failed:
@@ -781,9 +799,7 @@ x=>x.errors.length
 ).length
 
 
-
 };
-
 
 
 }
@@ -796,16 +812,14 @@ x=>x.errors.length
 
 
 
-
 globalThis.CoreInfrastructureTest =
 CoreInfrastructureTest;
 
 
 
 
+function testCoreInfrastructure(options){
 
-function testCoreInfrastructure(){
-
-return CoreInfrastructureTest.run();
+return CoreInfrastructureTest.run(options);
 
 }
