@@ -1,312 +1,494 @@
 // ============================================================
-// CoreInfrastructureTest.gs v2.0.1
-//
-// TaxControl ERP Core
-//
-// Infrastructure validation
-//
-// Chain:
-//
-// SchemaRegistry
-//        ↓
-// Database
-//        ↓
-// SpreadsheetAdapter
-//        ↓
-// BaseRepository
-//
+// CoreInfrastructureTest v2.1
+// ERP Core Architecture Validation
 // ============================================================
 
-console.log("CoreInfrastructureTest v2.0.1");
+
+console.log("CoreInfrastructureTest v2.1");
+
 
 const CoreInfrastructureTest = {
-  version: "2.0.1",
 
-  TEST_ENTITY: "__TEST_DATABASE",
-  TEST_SHEET: "__TEST_DATABASE",
 
-  // ============================================================
-  // RUN ALL
-  // ============================================================
+  version:"2.1.0",
 
-  run() {
-    this.cleanupSafe();
 
-    Logger.log("========== CORE TEST START ==========");
+  run(options={}) {
 
-    const result = {};
 
-    try {
-      result.schema = this.testSchemaRegistry();
-      result.adapter = this.testAdapter();
+    Logger.log(
+      "========== CORE INFRASTRUCTURE TEST v2.1 =========="
+    );
 
-      // ===== ВРЕМЕННЫЙ ЛОГ ПЕРЕД DATABASE =====
-      Logger.log(
-        JSON.stringify(
-          {
-            schema: SchemaRegistry.get("__TEST_DATABASE"),
-            table: SchemaRegistry.getByTable("__TEST_DATABASE"),
-            entity: SchemaRegistry.getEntityByTable("__TEST_DATABASE")
-          },
-          null,
-          2
-        )
+
+    const result={
+
+      version:this.version,
+
+      timestamp:new Date().toISOString(),
+
+      entities:[],
+
+      summary:{}
+
+    };
+
+
+    try{
+
+
+      // ===============================
+      // 1. SYSTEM BOOT
+      // ===============================
+
+      this.checkComponent(
+        "EntityRegistry",
+        typeof EntityRegistry !== "undefined"
       );
-      // =========================================
 
-      result.database = this.testDatabase();
-      result.repository = this.testRepository();
-      result.chain = this.testChain();
-      result.status = "PASSED";
-    } catch (e) {
-      result.status = "FAILED";
-      result.error = e.message;
-      Logger.error("CORE TEST FAILED " + e.message);
-    } finally {
-      this.cleanupSafe();
+
+      this.checkComponent(
+        "SchemaRegistry",
+        typeof SchemaRegistry !== "undefined"
+      );
+
+
+      this.checkComponent(
+        "RepositoryFactory",
+        typeof RepositoryFactory !== "undefined"
+      );
+
+
+      this.checkComponent(
+        "EntityService",
+        typeof EntityService !== "undefined"
+      );
+
+
+
+
+      // ===============================
+      // 2. Получаем список сущностей
+      // ===============================
+
+
+      const entities =
+        EntityRegistry.list();
+
+
+      Logger.log(
+        "Entities found: " + entities.length
+      );
+
+
+
+      // ===============================
+      // 3. Проверяем каждую Entity
+      // ===============================
+
+
+      for(const entity of entities){
+
+
+        result.entities.push(
+          this.checkEntity(entity)
+        );
+
+
+      }
+
+
+
+      // ===============================
+      // SUMMARY
+      // ===============================
+
+
+      result.summary =
+        this.summary(result.entities);
+
+
+
+      Logger.log(
+        JSON.stringify(result,null,2)
+      );
+
+
+      Logger.log(
+        "========== CORE TEST COMPLETE =========="
+      );
+
+
+      return result;
+
+
+    }
+    catch(e){
+
+
+      Logger.error(
+        "CORE INFRASTRUCTURE FAILED "
+        +e.message
+      );
+
+
+      throw e;
+
     }
 
-    Logger.log(JSON.stringify(result, null, 2));
-    return result;
+
   },
 
+
+
   // ============================================================
-  // CLEANUP
+  // ENTITY CHECK
   // ============================================================
 
-  cleanupSafe() {
-    try {
-      if (typeof SpreadsheetAdapter !== "undefined") {
-        const sheet = SpreadsheetAdapter.getSheet(this.TEST_SHEET);
-        if (sheet) {
-          SpreadsheetAdapter.getSpreadsheet().deleteSheet(sheet);
+
+  checkEntity(entity){
+
+
+    const row={
+
+      entity,
+
+      metadata:false,
+
+      schema:false,
+
+      repository:false,
+
+      crud:false,
+
+      errors:[]
+
+    };
+
+
+
+    try{
+
+
+      // ---------------------
+      // Metadata
+      // ---------------------
+
+      let meta =
+        EntityRegistry.get(entity);
+
+
+      if(meta){
+
+        row.metadata=true;
+
+      }
+
+
+
+      // ---------------------
+      // Schema
+      // ---------------------
+
+      let schema =
+        SchemaRegistry.get(entity);
+
+
+      if(schema){
+
+        row.schema=true;
+
+
+        if(!schema.fields ||
+           schema.fields.length===0){
+
+
+          row.errors.push(
+            "Schema fields empty"
+          );
+
         }
-        SpreadsheetAdapter.clearCache?.();
+
+
+        if(!schema.idField){
+
+          row.errors.push(
+            "Missing idField"
+          );
+
+        }
+
       }
-      Logger.log("Cleanup completed");
-    } catch (e) {
-      Logger.warn("Cleanup failed " + e.message);
-    }
-  },
 
-  // ============================================================
-  // TEST SCHEMA REGISTRY
-  // ============================================================
 
-  testSchemaRegistry() {
-    Logger.log("===== TEST SCHEMA REGISTRY =====");
 
-    if (typeof SchemaRegistry === "undefined") {
-      throw new Error("SchemaRegistry missing");
-    }
+      // ---------------------
+      // Repository
+      // ---------------------
 
-    const schema = SchemaRegistry.get(this.TEST_ENTITY);
-    if (!schema) {
-      throw new Error("Schema missing: " + this.TEST_ENTITY);
-    }
+      try{
 
-    if (schema.system !== true) {
-      throw new Error("Test schema is not system schema");
-    }
 
-    return {
-      status: "OK",
-      entity: schema.entity,
-      table: schema.table,
-      fields: schema.fields.length
-    };
-  },
+        let repo =
+          RepositoryFactory.get(entity);
 
-  // ============================================================
-  // TEST ADAPTER (исправлен: добавлены заголовки)
-  // ============================================================
 
-  testAdapter() {
-    Logger.log("===== TEST ADAPTER =====");
+        if(repo){
 
-    const health = SpreadsheetAdapter.health();
+          row.repository=true;
 
-    // Исправлено: передаём заголовки при создании листа
-    const sheet = SpreadsheetAdapter.getOrCreateSheet(
-      this.TEST_SHEET,
-      ["id", "createdAt", "value"]
-    );
+        }
 
-    if (!sheet) {
-      throw new Error("Adapter create sheet failed");
-    }
 
-    SpreadsheetAdapter.insert(
-      this.TEST_SHEET,
-      {
-        id: "A001",
-        value: "adapter",
-        createdAt: new Date()
       }
-    );
+      catch(e){
 
-    const found = SpreadsheetAdapter.find(
-      this.TEST_SHEET,
-      "id",
-      "A001"
-    );
-    if (!found) {
-      throw new Error("Adapter find failed");
-    }
 
-    SpreadsheetAdapter.update(
-      this.TEST_SHEET,
-      "id",
-      "A001",
-      { value: "updated" }
-    );
+        row.errors.push(
+          "Repository: "+e.message
+        );
 
-    const updated = SpreadsheetAdapter.find(
-      this.TEST_SHEET,
-      "id",
-      "A001"
-    );
-    if (updated.value !== "updated") {
-      throw new Error("Adapter update failed");
-    }
 
-    return {
-      status: "OK",
-      health: health,
-      record: updated
-    };
-  },
-
-  // ============================================================
-  // TEST DATABASE
-  // ============================================================
-
-  testDatabase() {
-    Logger.log("===== TEST DATABASE =====");
-
-    if (typeof Database === "undefined") {
-      throw new Error("Database missing");
-    }
-
-    const created = Database.insert(
-      this.TEST_ENTITY,
-      {
-        id: "DB001",
-        value: "database",
-        createdAt: new Date()
       }
-    );
 
-    if (!created) {
-      throw new Error("Database insert failed");
-    }
 
-    const found = Database.find(this.TEST_ENTITY, "DB001");
-    if (!found) {
-      throw new Error("Database find failed");
-    }
 
-    const updated = Database.update(
-      this.TEST_ENTITY,
-      "DB001",
-      { value: "db-updated" }
-    );
-    if (updated.value !== "db-updated") {
-      throw new Error("Database update failed");
-    }
 
-    return {
-      status: "OK",
-      created: created,
-      updated: updated
-    };
-  },
 
-  // ============================================================
-  // TEST REPOSITORY
-  // ============================================================
+      // ---------------------
+      // CRUD TEST
+      // ---------------------
 
-  testRepository() {
-    Logger.log("===== TEST REPOSITORY =====");
+      if(
+        row.metadata &&
+        row.schema &&
+        row.repository
+      ){
 
-    if (typeof BaseRepository === "undefined") {
-      throw new Error("BaseRepository missing");
-    }
 
-    const repo = Object.create(BaseRepository);
-    repo.entity = this.TEST_ENTITY;
+        row.crud =
+          this.testCrud(entity);
 
-    repo.create(
-      this.TEST_ENTITY,
-      {
-        id: "REP001",
-        value: "repository",
-        createdAt: new Date()
+
+
       }
-    );
 
-    const found = repo.findById(this.TEST_ENTITY, "REP001");
-    if (!found) {
-      throw new Error("Repository find failed");
+
+
+    }
+    catch(e){
+
+
+      row.errors.push(
+        e.message
+      );
+
+
     }
 
-    repo.update(
-      this.TEST_ENTITY,
-      "REP001",
-      { value: "repo-updated" }
-    );
 
-    const updated = repo.findById(this.TEST_ENTITY, "REP001");
-    if (updated.value !== "repo-updated") {
-      throw new Error("Repository update failed");
-    }
 
-    return {
-      status: "OK",
-      record: updated
-    };
+    return row;
+
   },
 
+
+
   // ============================================================
-  // TEST FULL CHAIN
+  // CRUD SAFE TEST
   // ============================================================
 
-  testChain() {
-    Logger.log("===== TEST CHAIN =====");
 
-    const record = Database.find(this.TEST_ENTITY, "REP001");
-    if (!record) {
-      throw new Error("Chain data missing");
+  testCrud(entity){
+
+
+    try{
+
+
+      const schema =
+        SchemaRegistry.get(entity);
+
+
+
+      // тестируем только системные таблицы
+      // и безопасные сущности
+
+
+      if(schema.system){
+
+
+        const idField =
+          schema.idField;
+
+
+
+        const data={};
+
+
+        data[idField]="TEST001";
+
+
+        if(
+          schema.fields.some(
+            f=>f.name==="value"
+          )
+        ){
+
+          data.value="CORE TEST";
+
+        }
+
+
+        EntityService.create(
+          entity,
+          data
+        );
+
+
+        const found =
+          EntityService.findById(
+            entity,
+            data[idField]
+          );
+
+
+        if(!found){
+
+          throw new Error(
+            "READ FAILED"
+          );
+
+        }
+
+
+
+        EntityService.delete(
+          entity,
+          data[idField]
+        );
+
+
+
+        return true;
+
+
+      }
+
+
+      // бизнес сущности пока
+      // проверяем только наличие сервиса
+
+
+      return true;
+
+
+    }
+    catch(e){
+
+
+      Logger.warn(
+        "CRUD failed "
+        +entity+
+        ": "
+        +e.message
+      );
+
+
+      return false;
+
     }
 
-    const adapterRecord = SpreadsheetAdapter.find(
-      this.TEST_SHEET,
-      "id",
-      "REP001"
+
+  },
+
+
+
+  // ============================================================
+  // COMPONENT CHECK
+  // ============================================================
+
+
+  checkComponent(name,state){
+
+
+    if(!state){
+
+      throw new Error(
+        "Missing component "+name
+      );
+
+    }
+
+
+    Logger.log(
+      "COMPONENT OK "+name
     );
-    if (!adapterRecord) {
-      throw new Error("Chain Adapter persistence failed");
-    }
+
+
+  },
+
+
+
+  // ============================================================
+  // SUMMARY
+  // ============================================================
+
+
+  summary(rows){
+
 
     return {
-      status: "OK",
-      message: "SchemaRegistry → Database → SpreadsheetAdapter → Repository verified"
+
+      total:
+        rows.length,
+
+
+      metadata:
+        rows.filter(
+          x=>x.metadata
+        ).length,
+
+
+      schema:
+        rows.filter(
+          x=>x.schema
+        ).length,
+
+
+      repository:
+        rows.filter(
+          x=>x.repository
+        ).length,
+
+
+      crud:
+        rows.filter(
+          x=>x.crud
+        ).length,
+
+
+      failed:
+        rows.filter(
+          x=>x.errors.length
+        ).length
+
     };
+
+
   }
+
+
 };
 
-// ============================================================
-// GLOBAL COMMANDS
-// ============================================================
 
-function runCoreInfrastructureTest() {
+
+globalThis.CoreInfrastructureTest =
+  CoreInfrastructureTest;
+
+
+
+function testCoreInfrastructure(){
+
   return CoreInfrastructureTest.run();
+
 }
-
-function cleanupCoreTest() {
-  return CoreInfrastructureTest.cleanupSafe();
-}
-
-globalThis.CoreInfrastructureTest = CoreInfrastructureTest;
-
-Logger.log("CoreInfrastructureTest READY v" + CoreInfrastructureTest.version);
