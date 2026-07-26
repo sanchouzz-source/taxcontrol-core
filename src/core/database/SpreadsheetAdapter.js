@@ -1,16 +1,25 @@
 // ============================================================
-// SpreadsheetAdapter.gs v4.0.0
+// SpreadsheetAdapter.gs v4.1.0
 // TaxControl ERP Core
 //
 // Infrastructure Storage Adapter
 //
+// Architecture:
+//
+// Repository
+//      |
+// Database
+//      |
+// SpreadsheetAdapter
+//      |
+// Google Sheets
+//
 // Responsibility:
-// - Google Sheets persistence
-// - CRUD operations
-// - Query
+// - Spreadsheet persistence
+// - CRUD
 // - Bulk operations
+// - Indexing
 // - Cache
-// - Indexes
 // - Transactions
 //
 // NOT responsible:
@@ -22,19 +31,18 @@
 // ============================================================
 
 
-console.log("SpreadsheetAdapter v4.0.0");
+console.log("SpreadsheetAdapter v4.1.0");
 
 
 
 const SpreadsheetAdapter = {
 
 
-version:"4.0.0",
-
+version:"4.1.0",
 
 
 architecture:
-"Database -> SpreadsheetAdapter -> GoogleSheets",
+"StorageAdapter -> GoogleSheets",
 
 
 
@@ -45,10 +53,17 @@ initialized:false,
 _spreadsheet:null,
 
 
+
 _sheetCache:{},
+
+_sheetCacheTime:{},
+
 
 
 _headerCache:{},
+
+_headerCacheTime:{},
+
 
 
 _indexCache:{},
@@ -56,16 +71,6 @@ _indexCache:{},
 
 
 _cacheTTL:300000,
-
-
-_cacheTime:{},
-
-
-
-_batchMode:false,
-
-
-_batchQueue:[],
 
 
 
@@ -84,41 +89,31 @@ delete:0,
 
 bulkInsert:0,
 
+
+appendObject:0,
+
+appendObjects:0,
+
+
 cacheHit:0,
 
 cacheMiss:0
-
 
 },
 
 
 
-
-// ============================================================
-// PROTECTED SHEETS
-// ============================================================
-
-
 _protectedSheets:[
 
-
 "_SchemaVersions",
-
 "_SchemaHistory",
-
 "_SchemaFields",
-
 "_SchemaTables",
-
 "_SchemaIndexes",
-
 "_SchemaMigrations",
-
 "_MigrationLock"
 
-
 ],
-
 
 
 
@@ -139,7 +134,9 @@ return;
 this.getSpreadsheet();
 
 
+
 this.initialized=true;
+
 
 
 Logger.log(
@@ -182,31 +179,32 @@ return this._spreadsheet;
 
 
 
-const props=
-PropertiesService.getScriptProperties();
+try{
+
+
+const props =
+PropertiesService
+.getScriptProperties();
 
 
 
-const id=
+const id =
 props.getProperty(
 "SPREADSHEET_ID"
 );
 
 
 
-try{
-
-
 if(id){
 
-this._spreadsheet=
+this._spreadsheet =
 SpreadsheetApp.openById(id);
 
+}
+else{
 
-}else{
 
-
-this._spreadsheet=
+this._spreadsheet =
 SpreadsheetApp.getActiveSpreadsheet();
 
 
@@ -220,8 +218,8 @@ catch(e){
 
 
 throw new Error(
-"Spreadsheet connection failed: "+
-e.message
+"Spreadsheet connection failed: "
++e.message
 );
 
 
@@ -230,6 +228,7 @@ e.message
 
 
 if(!this._spreadsheet){
+
 
 throw new Error(
 "Spreadsheet not configured"
@@ -250,27 +249,28 @@ return this._spreadsheet;
 
 
 // ============================================================
-// SHEETS
+// SHEET MANAGEMENT
 // ============================================================
 
 
 getSheet(name){
 
 
-const now=
+const now =
 Date.now();
 
 
 
 if(
-this._sheetCache[name]
-&&
-now-this._cacheTime[name]
+this._sheetCache[name] &&
+now-this._sheetCacheTime[name]
 <
 this._cacheTTL
 ){
 
+
 this._stats.cacheHit++;
+
 
 return this._sheetCache[name];
 
@@ -282,7 +282,7 @@ this._stats.cacheMiss++;
 
 
 
-const sheet=
+const sheet =
 this
 .getSpreadsheet()
 .getSheetByName(name);
@@ -291,9 +291,10 @@ this
 
 if(sheet){
 
+
 this._sheetCache[name]=sheet;
 
-this._cacheTime[name]=now;
+this._sheetCacheTime[name]=now;
 
 
 }
@@ -314,7 +315,7 @@ headers=[]
 ){
 
 
-let sheet=
+let sheet =
 this.getSheet(name);
 
 
@@ -322,7 +323,7 @@ this.getSheet(name);
 if(!sheet){
 
 
-sheet=
+sheet =
 this
 .getSpreadsheet()
 .insertSheet(name);
@@ -330,6 +331,7 @@ this
 
 
 if(headers.length){
+
 
 sheet
 .getRange(
@@ -346,7 +348,9 @@ headers
 }
 
 
+
 this.cacheSheet(sheet);
+
 
 
 }
@@ -361,21 +365,22 @@ return sheet;
 
 
 
+
 cacheSheet(sheet){
 
 
-const name=
+const name =
 sheet.getName();
-
 
 
 this._sheetCache[name]=sheet;
 
-this._cacheTime[name]=Date.now();
+
+this._sheetCacheTime[name]=Date.now();
+
 
 
 },
-
 
 
 
@@ -399,9 +404,10 @@ this._protectedSheets
 .includes(name)
 ){
 
+
 throw new Error(
-"Protected sheet cannot be deleted: "+
-name
+"Protected sheet cannot be deleted: "
++name
 );
 
 
@@ -409,7 +415,7 @@ name
 
 
 
-const sheet=
+const sheet =
 this.getSheet(name);
 
 
@@ -422,7 +428,11 @@ this
 .deleteSheet(sheet);
 
 
+
 delete this._sheetCache[name];
+
+delete this._sheetCacheTime[name];
+
 
 }
 
@@ -432,54 +442,65 @@ delete this._sheetCache[name];
 
 
 
-
-
 // ============================================================
-// HEADERS
+// HEADERS CACHE
 // ============================================================
 
 
 getHeaders(sheet){
 
 
-const name=
+const name =
 sheet.getName();
 
 
 
+const now =
+Date.now();
+
+
+
 if(
-this._headerCache[name]
+this._headerCache[name] &&
+now-this._headerCacheTime[name]
+<
+this._cacheTTL
 ){
 
+
 return this._headerCache[name];
+
 
 }
 
 
 
-const last=
+const columns =
 sheet.getLastColumn();
 
 
 
-if(!last)
+if(!columns)
 return [];
 
 
 
-const headers=
+const headers =
 sheet
 .getRange(
 1,
 1,
 1,
-last
+columns
 )
 .getValues()[0];
 
 
 
 this._headerCache[name]=headers;
+
+this._headerCacheTime[name]=now;
+
 
 
 return headers;
@@ -489,11 +510,10 @@ return headers;
 
 
 
-
 getHeaderMap(sheet){
 
 
-const headers=
+const headers =
 this.getHeaders(sheet);
 
 
@@ -505,11 +525,11 @@ const map={};
 headers.forEach(
 (h,i)=>{
 
-
 map[h]=i;
 
+}
+);
 
-});
 
 
 return map;
@@ -517,78 +537,26 @@ return map;
 
 },
 
-
-
-
-
-ensureHeaders(sheet,headers){
-
-
-const current=
-this.getHeaders(sheet);
-
-
-
-const missing=
-headers.filter(
-h=>!current.includes(h)
-);
-
-
-
-if(missing.length){
-
-
-sheet
-.getRange(
-1,
-current.length+1,
-1,
-missing.length
-)
-.setValues([
-missing
-]);
-
-
-delete this._headerCache[
-sheet.getName()
-];
-
-
-}
-
-
-
-return missing;
-
-
-},
-
-
-
-
 // ============================================================
 // OBJECT CONVERSION
 // ============================================================
 
 
-rowToObject(
-headers,
-row
-){
+rowToObject(headers,row){
 
 
 const obj={};
-
 
 
 headers.forEach(
 (h,i)=>{
 
 
-if(h)
+if(h){
+
 obj[h]=row[i];
+
+}
 
 
 });
@@ -602,6 +570,18 @@ return obj;
 
 
 
+objectToRow(headers,obj){
+
+
+return headers.map(
+h=>obj[h] ?? ""
+);
+
+
+},
+
+
+
 
 // ============================================================
 // READ
@@ -611,7 +591,7 @@ return obj;
 readObjects(sheetName){
 
 
-const sheet=
+const sheet =
 this.getSheet(sheetName);
 
 
@@ -621,19 +601,19 @@ return [];
 
 
 
-const values=
+const values =
 sheet
 .getDataRange()
 .getValues();
 
 
 
-if(values.length<2)
+if(values.length < 2)
 return [];
 
 
 
-const headers=
+const headers =
 values[0];
 
 
@@ -641,7 +621,7 @@ values[0];
 return values
 .slice(1)
 .map(
-row=>
+row =>
 this.rowToObject(
 headers,
 row
@@ -654,49 +634,45 @@ row
 
 
 
-
 // ============================================================
 // INSERT
 // ============================================================
 
 
-insert(
-sheetName,
-data
-){
+insert(sheetName,data){
 
 
 this._require();
 
 
 
-const sheet=
+const sheet =
 this.getSheet(sheetName);
 
 
 
-if(!sheet)
+if(!sheet){
+
 throw new Error(
-"Sheet not found: "+
-sheetName
+"Sheet not found: "
++sheetName
 );
 
+}
 
 
-const headers=
+
+const headers =
 this.getHeaders(sheet);
 
 
 
-const row=
-headers.map(
-h=>
-data[h] ?? ""
+sheet.appendRow(
+this.objectToRow(
+headers,
+data
+)
 );
-
-
-
-sheet.appendRow(row);
 
 
 
@@ -716,40 +692,100 @@ return data;
 
 
 
-bulkInsert(
+// ============================================================
+// DATABASE COMPATIBILITY
+// appendObject()
+// ============================================================
+
+
+appendObject(sheetName,data){
+
+
+this._stats.appendObject++;
+
+
+
+return this.insert(
 sheetName,
-items
+data
+);
+
+
+},
+
+
+
+
+// ============================================================
+// BULK INSERT
+// ============================================================
+
+
+bulkInsert(sheetName,objects){
+
+
+if(
+!objects ||
+!objects.length
 ){
 
-
-if(!items.length)
 return [];
 
+}
 
 
-const sheet=
+
+const sheet =
 this.getSheet(sheetName);
 
 
 
-const headers=
+if(!sheet){
+
+throw new Error(
+"Sheet not found: "
++sheetName
+);
+
+}
+
+
+
+const headers =
 this.getHeaders(sheet);
 
 
 
-const rows=
-items.map(
-item=>
-headers.map(
-h=>item[h] ?? ""
+if(!headers.length){
+
+throw new Error(
+"No headers in sheet "
++sheetName
+);
+
+}
+
+
+
+const rows =
+objects.map(
+obj =>
+this.objectToRow(
+headers,
+obj
 )
 );
 
 
 
+const start =
+this.getLastDataRow(sheet)+1;
+
+
+
 sheet
 .getRange(
-this.getLastRow(sheet)+1,
+start,
 1,
 rows.length,
 headers.length
@@ -762,11 +798,35 @@ this.invalidateIndexes(sheetName);
 
 
 
-this._stats.bulkInsert++;
+this._stats.bulkInsert+=objects.length;
 
 
 
-return items;
+return objects;
+
+
+},
+
+
+
+
+// ============================================================
+// DATABASE COMPATIBILITY
+// appendObjects()
+// ============================================================
+
+
+appendObjects(sheetName,objects){
+
+
+this._stats.appendObjects++;
+
+
+
+return this.bulkInsert(
+sheetName,
+objects
+);
 
 
 },
@@ -780,14 +840,10 @@ return items;
 // ============================================================
 
 
-find(
-sheetName,
-idField,
-id
-){
+find(sheetName,idField,id){
 
 
-const row=
+const row =
 this.findRow(
 sheetName,
 idField,
@@ -801,17 +857,17 @@ return null;
 
 
 
-const sheet=
+const sheet =
 this.getSheet(sheetName);
 
 
 
-const headers=
+const headers =
 this.getHeaders(sheet);
 
 
 
-const values=
+const values =
 sheet
 .getRange(
 row,
@@ -839,14 +895,37 @@ values
 
 
 
-findRow(
+// ============================================================
+// DATABASE COMPATIBILITY
+// findById()
+// ============================================================
+
+
+findById(sheetName,idField,id){
+
+
+return this.find(
 sheetName,
-field,
-value
-){
+idField,
+id
+);
 
 
-const index=
+},
+
+
+
+
+
+// ============================================================
+// FIND ROW INDEX
+// ============================================================
+
+
+findRow(sheetName,field,value){
+
+
+const index =
 this.getIndex(
 sheetName,
 field
@@ -854,9 +933,7 @@ field
 
 
 
-return index[
-String(value)
-] || null;
+return index[String(value)] || null;
 
 
 },
@@ -870,28 +947,25 @@ String(value)
 // ============================================================
 
 
-query(
-sheetName,
-filters={}
-){
+query(sheetName,filters={}){
 
 
-const rows=
+const rows =
 this.readObjects(sheetName);
 
 
 
-const result=
+const result =
 rows.filter(
 row=>{
 
 
-return Object.keys(filters)
+return Object
+.keys(filters)
 .every(
 key=>
 
-String(row[key])
-===
+String(row[key]) ===
 String(filters[key])
 
 );
@@ -903,12 +977,10 @@ String(filters[key])
 this._stats.query++;
 
 
-
 return result;
 
 
 },
-
 
 
 
@@ -918,15 +990,10 @@ return result;
 // ============================================================
 
 
-update(
-sheetName,
-idField,
-id,
-data
-){
+update(sheetName,idField,id,data){
 
 
-const row=
+const row =
 this.findRow(
 sheetName,
 idField,
@@ -938,27 +1005,29 @@ id
 if(!row){
 
 throw new Error(
-"Record not found: "+
-id
+"Record not found: "
++id
 );
 
 }
 
 
 
-const sheet=
+const sheet =
 this.getSheet(sheetName);
 
 
 
-const headers=
+const headers =
 this.getHeaders(sheet);
 
 
 
-const current=
+const current =
 this.rowToObject(
+
 headers,
+
 sheet
 .getRange(
 row,
@@ -967,6 +1036,7 @@ row,
 headers.length
 )
 .getValues()[0]
+
 );
 
 
@@ -990,8 +1060,9 @@ headers.length
 )
 .setValues([
 
-headers.map(
-h=>updated[h] ?? ""
+this.objectToRow(
+headers,
+updated
 )
 
 ]);
@@ -1014,19 +1085,44 @@ return updated;
 
 
 
+
+// ============================================================
+// DATABASE COMPATIBILITY
+// updateById()
+// ============================================================
+
+
+updateById(
+sheetName,
+idField,
+id,
+data
+){
+
+
+return this.update(
+sheetName,
+idField,
+id,
+data
+);
+
+
+},
+
+
+
+
+
 // ============================================================
 // DELETE
 // ============================================================
 
 
-delete(
-sheetName,
-idField,
-id
-){
+delete(sheetName,idField,id){
 
 
-const row=
+const row =
 this.findRow(
 sheetName,
 idField,
@@ -1062,26 +1158,46 @@ return true;
 
 
 
-
 // ============================================================
-// INDEXES
+// DATABASE COMPATIBILITY
+// deleteById()
 // ============================================================
 
 
-getIndex(
+deleteById(
 sheetName,
-field
+idField,
+id
 ){
 
 
-const key=
+return this.delete(
+sheetName,
+idField,
+id
+);
+
+
+},
+
+
+
+
+
+// ============================================================
+// INDEX ENGINE
+// ============================================================
+
+
+getIndex(sheetName,field){
+
+
+const key =
 sheetName+"|"+field;
 
 
 
-if(
-this._indexCache[key]
-){
+if(this._indexCache[key]){
 
 return this._indexCache[key];
 
@@ -1089,17 +1205,17 @@ return this._indexCache[key];
 
 
 
-const sheet=
+const sheet =
 this.getSheet(sheetName);
 
 
 
-const headers=
+const headers =
 this.getHeaders(sheet);
 
 
 
-const col=
+const col =
 headers.indexOf(field);
 
 
@@ -1107,15 +1223,15 @@ headers.indexOf(field);
 if(col===-1){
 
 throw new Error(
-"Index field missing: "+
-field
+"Index field missing: "
++field
 );
 
 }
 
 
 
-const values=
+const values =
 sheet
 .getDataRange()
 .getValues();
@@ -1133,18 +1249,19 @@ i++
 ){
 
 
-const val=
+const value =
 values[i][col];
 
 
 
 if(
-val!=="" &&
-val!==null &&
-val!==undefined
+value!=="" &&
+value!==null &&
+value!==undefined
 ){
 
-index[String(val)]
+
+index[String(value)]
 =
 i+1;
 
@@ -1171,9 +1288,8 @@ return index;
 invalidateIndexes(sheetName){
 
 
-Object.keys(
-this._indexCache
-)
+Object
+.keys(this._indexCache)
 .forEach(
 key=>{
 
@@ -1182,8 +1298,13 @@ if(
 key.startsWith(
 sheetName+"|"
 )
-)
+){
+
+
 delete this._indexCache[key];
+
+
+}
 
 
 });
@@ -1202,8 +1323,9 @@ delete this._indexCache[key];
 transaction(callback){
 
 
-const lock=
-LockService.getScriptLock();
+const lock =
+LockService
+.getScriptLock();
 
 
 
@@ -1233,7 +1355,6 @@ lock.releaseLock();
 
 
 
-
 // ============================================================
 // BATCH
 // ============================================================
@@ -1251,16 +1372,36 @@ this._batchQueue=[];
 
 
 
-commit(){
+queue(operation){
 
 
-for(
-const operation of this._batchQueue
+if(
+this._batchMode
 ){
+
+this._batchQueue.push(operation);
+
+}
+else{
 
 operation();
 
 }
+
+
+},
+
+
+
+commit(){
+
+
+this._batchQueue
+.forEach(
+operation =>
+operation()
+);
+
 
 
 this._batchQueue=[];
@@ -1285,6 +1426,61 @@ this._batchMode=false;
 
 
 
+// ============================================================
+// UTILITY
+// ============================================================
+
+
+getLastDataRow(sheet){
+
+
+const last =
+sheet.getLastRow();
+
+
+
+if(last===0)
+return 1;
+
+
+
+const values =
+sheet
+.getRange(
+1,
+1,
+last,
+1
+)
+.getValues();
+
+
+
+for(
+let i=values.length-1;
+i>=0;
+i--
+){
+
+
+if(values[i][0]!==""){
+
+return i+1;
+
+}
+
+
+}
+
+
+
+return 1;
+
+
+},
+
+
+
 
 // ============================================================
 // CACHE
@@ -1298,39 +1494,16 @@ this._spreadsheet=null;
 
 this._sheetCache={};
 
+this._sheetCacheTime={};
+
 this._headerCache={};
+
+this._headerCacheTime={};
 
 this._indexCache={};
 
 
 },
-
-
-
-
-
-// ============================================================
-// UTILITY
-// ============================================================
-
-
-getLastRow(sheet){
-
-
-const row=
-sheet.getLastRow();
-
-
-
-return row<2
-?
-2
-:
-row+1;
-
-
-},
-
 
 
 
@@ -1348,9 +1521,12 @@ const data={
 
 version:this.version,
 
+
 architecture:this.architecture,
 
+
 initialized:this.initialized,
+
 
 stats:this._stats
 
@@ -1363,10 +1539,15 @@ if(
 typeof HealthContract!=="undefined"
 ){
 
+
 return HealthContract.create(
+
 "SpreadsheetAdapter",
+
 "OK",
+
 data
+
 );
 
 
@@ -1376,9 +1557,11 @@ data
 
 return {
 
-module:"SpreadsheetAdapter",
+module:
+"SpreadsheetAdapter",
 
-status:"OK",
+status:
+"OK",
 
 ...data
 
@@ -1403,7 +1586,12 @@ return this.health();
 
 
 
-globalThis.SpreadsheetAdapter=
+// ============================================================
+// REGISTER
+// ============================================================
+
+
+globalThis.SpreadsheetAdapter =
 SpreadsheetAdapter;
 
 
