@@ -1,331 +1,623 @@
 // ============================================================
-// RepositoryFactory v2.2.0
+// RepositoryFactory v2.3.0
 // Enterprise Repository Dependency Container
 // ERP Core
 // ============================================================
 
-console.log("RepositoryFactory v2.2.0");
+console.log("RepositoryFactory v2.3.0");
+
 
 const RepositoryFactory = {
-  version: "2.2.0",
-  apiVersion: "2.0",
 
-  repositories: {},
-  pending: {},
-  metadata: {},
-  initialized: false,
+version:"2.3.0",
 
-  // ============================================================
-  // INIT
-  // ============================================================
+apiVersion:"2.1",
 
-  init() {
-    if (this.initialized) {
-      Logger.debug("RepositoryFactory already initialized");
-      return;
-    }
+repositories:{},
 
-    Logger.log("RepositoryFactory INIT");
+pending:{},
 
-    // Загружаем репозитории из RepositoryRegistry (если есть)
-    this.loadFromRegistry();
+metadata:{},
 
-    // Автоматическая регистрация из EntityRegistry (с поддержкой системных)
-    this.autoRegister();
+initialized:false,
 
-    // Синхронизируем наши репозитории обратно в RepositoryRegistry
-    this.syncRegistry();
 
-    // Проверяем ожидающие (pending) репозитории
-    this.checkPending();
+// ============================================================
+// INIT
+// ============================================================
 
-    this.initialized = true;
+init(){
 
-    Logger.log(
-      "RepositoryFactory READY v" +
-        this.version +
-        " count=" +
-        this.count()
-    );
-  },
 
-  // ============================================================
-  // LOAD FROM RepositoryRegistry
-  // ============================================================
+if(this.initialized){
 
-  loadFromRegistry() {
-    if (typeof RepositoryRegistry === "undefined") {
-      Logger.warn("RepositoryRegistry unavailable");
-      return;
-    }
+Logger.debug(
+"RepositoryFactory already initialized"
+);
 
-    RepositoryRegistry.list().forEach(entity => {
-      const repo = RepositoryRegistry.get(entity);
-      this.register(entity, repo);
-    });
-  },
+return;
 
-  // ============================================================
-  // SYNC WITH RepositoryRegistry
-  // ============================================================
+}
 
-  syncRegistry() {
-    if (typeof RepositoryRegistry === "undefined") {
-      Logger.warn("RepositoryRegistry unavailable, sync skipped");
-      return;
-    }
 
-    let count = 0;
-    Object.entries(this.repositories).forEach(([name, repo]) => {
-      if (RepositoryRegistry.register) {
-        RepositoryRegistry.register(name, repo);
-        count++;
-      }
-    });
+Logger.log(
+"RepositoryFactory INIT"
+);
 
-    Logger.log(`RepositoryFactory SYNC REGISTRY COMPLETE (${count} repositories)`);
-  },
 
-  // ============================================================
-  // AUTO REGISTER FROM EntityRegistry (с поддержкой системных)
-  // ============================================================
 
-  autoRegister() {
-    if (typeof EntityRegistry === "undefined") {
-      throw new Error("EntityRegistry unavailable");
-    }
+this.loadFromRegistry();
 
-    EntityRegistry.list().forEach(entity => {
-      const meta = EntityRegistry.get(entity);
-      const repoName = meta.repository || "BaseRepository";
 
-      // Если сущность системная и репозиторий не задан явно, используем BaseRepository
-      if (meta.system && !meta.repository) {
-        // Явно указываем BaseRepository
-        const repo = globalThis.BaseRepository;
-        if (repo) {
-          this.register(entity, repo);
-          Logger.log(`System entity ${entity} registered with BaseRepository`);
-        } else {
-          this.pending[entity] = {
-            repository: "BaseRepository",
-            created: new Date(),
-            system: true
-          };
-          Logger.debug(`System entity ${entity} pending (BaseRepository not ready)`);
-        }
-        return;
-      }
+this.autoRegister();
 
-      // Если репозиторий указан явно
-      const repo = globalThis[repoName];
 
-      if (repo) {
-        this.register(entity, repo);
-      } else {
-        this.pending[entity] = {
-          repository: repoName,
-          created: new Date(),
-          system: meta.system || false
-        };
-        Logger.debug(`Repository pending for ${entity} (${repoName})`);
-      }
-    });
-  },
 
-  // ============================================================
-  // REGISTER
-  // ============================================================
+this.checkPending();
 
-  register(entity, repository) {
-    if (!entity) {
-      throw new Error("Repository entity required");
-    }
-    if (!repository) {
-      throw new Error("Repository missing " + entity);
-    }
 
-    if (this.repositories[entity]) {
-      Logger.debug("Repository already exists " + entity);
-      return false;
-    }
 
-    const contract = this.validate(entity, repository);
+this.syncRegistry();
 
-    this.repositories[entity] = repository;
-    this.metadata[entity] = {
-      version: repository.version || "unknown",
-      contract: contract,
-      registeredAt: new Date()
-    };
 
-    Logger.log("RepositoryFactory REGISTER " + entity);
-    return true;
-  },
 
-  // ============================================================
-  // CONTRACT VALIDATION
-  // ============================================================
+this.initialized=true;
 
-  validate(entity, repository) {
-    const required = [
-      "create",
-      "findById",
-      "findAll",
-      "update",
-      "delete",
-      "restore",
-      "exists"
-    ];
 
-    const missing = [];
 
-    required.forEach(method => {
-      if (typeof repository[method] !== "function") {
-        missing.push(method);
-      }
-    });
+Logger.log(
+"RepositoryFactory READY v"+
+this.version+
+" count="+
+this.count()
+);
 
-    if (missing.length && typeof BaseRepository !== "undefined") {
-      this.attachBaseAdapter(entity, repository, missing);
-      return {
-        status: "ADAPTED",
-        methods: Object.keys(repository),
-        warnings: ["BaseRepository adapter applied"]
-      };
-    }
 
-    if (missing.length) {
-      throw new Error(
-        "Repository contract failed " +
-          entity +
-          ": " +
-          missing.join(",")
-      );
-    }
+},
 
-    return {
-      status: "OK",
-      methods: required,
-      warnings: []
-    };
-  },
 
-  // ============================================================
-  // BASE ADAPTER
-  // ============================================================
 
-  attachBaseAdapter(entity, repository, methods) {
-    methods.forEach(method => {
-      if (typeof repository[method] !== "function") {
-        repository[method] = function (...args) {
-          return BaseRepository[method](entity, ...args);
-        };
-      }
-    });
-  },
+// ============================================================
+// LOAD REGISTRY
+// ============================================================
 
-  // ============================================================
-  // LAZY REGISTER
-  // ============================================================
+loadFromRegistry(){
 
-  registerLazy(entity, getter) {
-    Object.defineProperty(this.repositories, entity, {
-      configurable: true,
-      get() {
-        const repo = getter();
-        if (!repo) {
-          throw new Error("Lazy repository unavailable " + entity);
-        }
-        return repo;
-      }
-    });
-  },
 
-  // ============================================================
-  // LOADED
-  // ============================================================
+if(typeof RepositoryRegistry==="undefined")
+return;
 
-  registerLoaded(entity, repository) {
-    delete this.pending[entity];
-    return this.register(entity, repository);
-  },
 
-  // ============================================================
-  // PENDING CHECK
-  // ============================================================
 
-  checkPending() {
-    let loaded = 0;
-    Object.entries(this.pending).forEach(([entity, item]) => {
-      const repo = globalThis[item.repository];
-      if (repo) {
-        this.registerLoaded(entity, repo);
-        loaded++;
-      }
-    });
-    return loaded;
-  },
+RepositoryRegistry.list()
+.forEach(entity=>{
 
-  // ============================================================
-  // ACCESS
-  // ============================================================
 
-  get(entity) {
-    const repo = this.repositories[entity];
-    if (!repo) {
-      throw new Error("Repository not found " + entity);
-    }
-    return repo;
-  },
+const repo =
+RepositoryRegistry.get(entity);
 
-  getByEntity(entity) {
-    return this.get(entity);
-  },
 
-  has(entity) {
-    return !!this.repositories[entity];
-  },
 
-  list() {
-    return Object.keys(this.repositories);
-  },
+if(repo)
+this.register(entity,repo);
 
-  count() {
-    return this.list().length;
-  },
 
-  // ============================================================
-  // DIAGNOSTICS
-  // ============================================================
+});
 
-  diagnostics() {
-    return {
-      version: this.version,
-      repositories: this.metadata,
-      pending: this.pending,
-      count: this.count()
-    };
-  },
 
-  // ============================================================
-  // HEALTH
-  // ============================================================
+},
 
-  health() {
-    return HealthContract.create(
-      "RepositoryFactory",
-      this.initialized ? "OK" : "WARNING",
-      {
-        version: this.version,
-        repositories: this.list(),
-        count: this.count(),
-        pending: Object.keys(this.pending)
-      }
-    );
-  }
+
+
+
+// ============================================================
+// AUTO REGISTER
+// ============================================================
+
+
+autoRegister(){
+
+
+if(typeof EntityRegistry==="undefined")
+throw new Error(
+"EntityRegistry unavailable"
+);
+
+
+
+const entities =
+EntityRegistry.list();
+
+
+
+entities.forEach(entity=>{
+
+
+const meta =
+EntityRegistry.get(entity);
+
+
+
+const repoName =
+meta.repository;
+
+
+
+let repo =
+this.resolveRepository(repoName);
+
+
+
+if(repo){
+
+
+this.register(
+entity,
+repo
+);
+
+
+}
+else{
+
+
+// fallback
+if(meta.system &&
+typeof BaseRepository!=="undefined"){
+
+
+this.register(
+entity,
+BaseRepository
+);
+
+
+}
+else{
+
+
+this.pending[entity]={
+
+repository:repoName,
+
+created:new Date()
+
 };
 
-globalThis.RepositoryFactory = RepositoryFactory;
 
-Logger.log("RepositoryFactory GLOBAL READY v" + RepositoryFactory.version);
+Logger.debug(
+"Repository pending "+
+entity+
+" -> "+
+repoName
+);
+
+
+}
+
+
+}
+
+
+
+});
+
+
+},
+
+
+
+// ============================================================
+// RESOLVE REPOSITORY
+// ============================================================
+
+
+resolveRepository(name){
+
+
+if(!name)
+return null;
+
+
+
+// 1 globalThis
+
+if(globalThis[name])
+return globalThis[name];
+
+
+
+// 2 прямой lookup
+
+try{
+
+
+return eval(name);
+
+
+}catch(e){}
+
+
+
+return null;
+
+
+},
+
+
+
+
+// ============================================================
+// REGISTER
+// ============================================================
+
+
+register(entity,repository){
+
+
+if(this.repositories[entity])
+return false;
+
+
+
+if(!repository)
+throw new Error(
+"Repository missing "+
+entity
+);
+
+
+
+this.validate(
+entity,
+repository
+);
+
+
+
+this.repositories[entity]=repository;
+
+
+
+this.metadata[entity]={
+
+version:
+repository.version||"unknown",
+
+registeredAt:
+new Date()
+
+};
+
+
+
+Logger.log(
+"RepositoryFactory REGISTER "+
+entity
+);
+
+
+
+return true;
+
+
+},
+
+
+
+
+// ============================================================
+// VALIDATION
+// ============================================================
+
+
+validate(entity,repo){
+
+
+const required=[
+
+"create",
+
+"findById",
+
+"findAll",
+
+"update",
+
+"delete",
+
+"restore",
+
+"exists"
+
+];
+
+
+
+const missing=[];
+
+
+
+required.forEach(m=>{
+
+
+if(typeof repo[m]!=="function")
+missing.push(m);
+
+
+});
+
+
+
+if(missing.length){
+
+
+if(typeof BaseRepository!=="undefined"){
+
+
+this.attachBaseAdapter(
+entity,
+repo,
+missing
+);
+
+
+return;
+
+
+}
+
+
+throw new Error(
+
+"Repository contract failed "+
+entity+
+": "+
+missing.join(",")
+
+);
+
+
+}
+
+
+
+},
+
+
+
+
+// ============================================================
+// BASE ADAPTER
+// ============================================================
+
+
+attachBaseAdapter(entity,repo,methods){
+
+
+methods.forEach(method=>{
+
+
+if(typeof repo[method]!=="function"){
+
+
+repo[method]=function(...args){
+
+
+return BaseRepository[method](
+entity,
+...args
+);
+
+
+};
+
+
+}
+
+
+});
+
+
+},
+
+
+
+
+// ============================================================
+// PENDING
+// ============================================================
+
+
+checkPending(){
+
+
+Object.entries(this.pending)
+.forEach(([entity,item])=>{
+
+
+const repo =
+this.resolveRepository(
+item.repository
+);
+
+
+
+if(repo){
+
+
+this.register(
+entity,
+repo
+);
+
+
+delete this.pending[entity];
+
+
+}
+
+
+});
+
+
+},
+
+
+
+
+// ============================================================
+// SYNC
+// ============================================================
+
+
+syncRegistry(){
+
+
+if(typeof RepositoryRegistry==="undefined")
+return;
+
+
+
+Object.entries(this.repositories)
+.forEach(([entity,repo])=>{
+
+
+if(RepositoryRegistry.register){
+
+RepositoryRegistry.register(
+entity,
+repo
+);
+
+}
+
+
+});
+
+
+},
+
+
+
+
+// ============================================================
+// ACCESS
+// ============================================================
+
+
+get(entity){
+
+
+const repo =
+this.repositories[entity];
+
+
+
+if(!repo)
+throw new Error(
+"Repository not found "+
+entity
+);
+
+
+
+return repo;
+
+
+},
+
+
+
+has(entity){
+
+return !!this.repositories[entity];
+
+},
+
+
+
+list(){
+
+return Object.keys(this.repositories);
+
+},
+
+
+
+count(){
+
+return this.list().length;
+
+},
+
+
+
+diagnostics(){
+
+
+return {
+
+
+version:this.version,
+
+
+repositories:this.list(),
+
+
+pending:this.pending,
+
+
+count:this.count()
+
+
+};
+
+
+},
+
+
+
+health(){
+
+
+return HealthContract.create(
+
+"RepositoryFactory",
+
+this.initialized?
+"OK":
+"WARNING",
+
+{
+
+
+version:this.version,
+
+count:this.count(),
+
+repositories:this.list(),
+
+pending:Object.keys(this.pending)
+
+}
+
+
+);
+
+
+}
+
+
+};
+
+
+
+globalThis.RepositoryFactory =
+RepositoryFactory;
+
+
+Logger.log(
+"RepositoryFactory GLOBAL READY v"+
+RepositoryFactory.version
+);
