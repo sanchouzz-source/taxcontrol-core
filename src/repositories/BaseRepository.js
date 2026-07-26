@@ -1,13 +1,13 @@
 // ============================================================
-// BaseRepository v5.3.1
+// BaseRepository v5.4.1
 // Enterprise Repository Base
-// Интеграция с Database v4.1.2 (усиленная getMeta)
+// Единое определение idField во всех методах
 // ============================================================
 
-console.log("BaseRepository v5.3.1");
+console.log("BaseRepository v5.4.1");
 
 const BaseRepository = {
-  version: "5.3.1",
+  version: "5.4.1",
   _adapter: null,
 
   // ----- ИНИЦИАЛИЗАЦИЯ АДАПТЕРА -----
@@ -19,13 +19,11 @@ const BaseRepository = {
     Logger.log("BaseRepository initialized with adapter v" + this.version);
   },
 
-  // ----- ПРОВЕРКА АДАПТЕРА (с вызовом _require адаптера) -----
+  // ----- ПРОВЕРКА АДАПТЕРА -----
   _requireAdapter() {
     if (!this._adapter) {
       throw new Error("BaseRepository adapter not initialized. Call BaseRepository.init(Database) first.");
     }
-    // Если адаптер имеет собственный метод _require (например, Database v4.1.2+),
-    // вызываем его для принудительной инициализации.
     if (typeof this._adapter._require === "function") {
       this._adapter._require();
     }
@@ -48,7 +46,8 @@ const BaseRepository = {
     this.checkPermission(meta, "create");
     this.beforeCreate(entity, payload, meta);
 
-    const idField = meta.idField || entity + "ID";
+    // ОБНОВЛЕНО: единое определение idField
+    const idField = meta.idField || meta.primaryKey || "id";
     if (!payload[idField]) {
       payload[idField] = IdService.generate(entity);
     }
@@ -93,7 +92,7 @@ const BaseRepository = {
     return rows;
   },
 
-  // ----- FIND WHERE (by field) -----
+  // ----- FIND WHERE -----
   findWhere(entity, field, value) {
     return this.findAll(entity, { [field]: value });
   },
@@ -103,7 +102,7 @@ const BaseRepository = {
     return !!this.findById(entity, id);
   },
 
-  // ----- EXISTS BY (field) -----
+  // ----- EXISTS BY -----
   existsBy(entity, field, value) {
     const rows = this.findAll(entity, { [field]: value });
     return rows.length > 0;
@@ -193,7 +192,7 @@ const BaseRepository = {
     return result;
   },
 
-  // ----- RESTORE (с хуками beforeRestore/afterRestore) -----
+  // ----- RESTORE -----
   restore(entity, id) {
     this._requireAdapter();
     const meta = this.getMeta(entity);
@@ -223,12 +222,13 @@ const BaseRepository = {
     return result;
   },
 
-  // ----- BULK CREATE (с опциями) -----
+  // ----- BULK CREATE -----
   bulkCreate(entity, items, options = {}) {
     this._requireAdapter();
     if (!items || !items.length) return [];
     const meta = this.getMeta(entity);
-    const idField = meta.idField || entity + "ID";
+    // ОБНОВЛЕНО: единое определение idField
+    const idField = meta.idField || meta.primaryKey || "id";
 
     if (options.skipHooks === true) {
       const prepared = items.map(item => {
@@ -252,7 +252,7 @@ const BaseRepository = {
     return items.map(item => this.create(entity, item));
   },
 
-  // ----- BULK UPDATE (с предупреждением) -----
+  // ----- BULK UPDATE -----
   bulkUpdate(entity, ids, data, options = {}) {
     this._requireAdapter();
     if (!ids || !ids.length) return [];
@@ -303,22 +303,53 @@ const BaseRepository = {
   // ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ
   // ============================================================
 
-  // ----- GET META (используем адаптер, если он Database) -----
+  // ----- GET META (самодостаточная) -----
   getMeta(entity) {
-    // Приоритет: если адаптер имеет getMeta (Database v4.1.2+), используем его
-    if (this._adapter && typeof this._adapter.getMeta === "function") {
-      return this._adapter.getMeta(entity);
+    if (!entity) {
+      throw new Error("Repository entity name is empty");
     }
-    // Fallback: прямой доступ к SchemaRegistry
-    let meta = null;
-    if (typeof SchemaRegistry !== "undefined" && SchemaRegistry.get) {
-      meta = SchemaRegistry.get(entity);
+
+    if (
+      typeof SchemaRegistry !== "undefined" &&
+      typeof SchemaRegistry.get === "function"
+    ) {
+      const schema = SchemaRegistry.get(entity);
+      if (schema) {
+        return {
+          ...schema,
+          entity: schema.entity || entity,
+          table: schema.table || entity,
+          idField: schema.idField || schema.primaryKey || "id"
+        };
+      }
     }
-    if (!meta && typeof EntityMetadata !== "undefined" && EntityMetadata.get) {
-      meta = EntityMetadata.get(entity);
+
+    if (
+      typeof EntityMetadata !== "undefined" &&
+      typeof EntityMetadata.get === "function"
+    ) {
+      const meta = EntityMetadata.get(entity);
+      if (meta) {
+        return {
+          ...meta,
+          entity: meta.entity || entity,
+          table: meta.table || entity,
+          idField: meta.idField || "id"
+        };
+      }
     }
-    if (!meta) throw new Error("Metadata missing: " + entity);
-    return meta;
+
+    if (
+      this._adapter &&
+      typeof this._adapter.getMetadata === "function"
+    ) {
+      const meta = this._adapter.getMetadata(entity);
+      if (meta) {
+        return meta;
+      }
+    }
+
+    throw new Error("Metadata missing for entity " + entity);
   },
 
   isDeleted(record, meta) {
@@ -340,9 +371,10 @@ const BaseRepository = {
     };
   },
 
-  // ----- ЗАЩИТА СИСТЕМНЫХ ПОЛЕЙ -----
+  // ----- ЗАЩИТА СИСТЕМНЫХ ПОЛЕЙ (обновлено) -----
   _protectSystemFields(meta, data) {
-    const idField = meta.idField || meta.id || "ID";
+    // ОБНОВЛЕНО: единое определение idField
+    const idField = meta.idField || meta.primaryKey || "id";
     const protectedFields = [
       idField,
       "CreatedAt",
@@ -357,7 +389,7 @@ const BaseRepository = {
     }
   },
 
-  // ----- ПРИМЕНЕНИЕ СИСТЕМНЫХ ПОЛЕЙ (включая CreatedBy/UpdatedBy/TenantID) -----
+  // ----- ПРИМЕНЕНИЕ СИСТЕМНЫХ ПОЛЕЙ -----
   applySystemFields(meta, data, update = false) {
     const now = new Date().toISOString();
     const user = this.getCurrentUser();
@@ -393,7 +425,7 @@ const BaseRepository = {
     }
   },
 
-  // ----- АУДИТ (с JSON.stringify) -----
+  // ----- АУДИТ -----
   audit(action, entity, entityId, before, after) {
     if (typeof AuditLog === "undefined" || !AuditLog.write) return;
     try {
@@ -411,11 +443,12 @@ const BaseRepository = {
     }
   },
 
-  // ----- СОБЫТИЯ (EventBus) -----
+  // ----- СОБЫТИЯ (обновлено) -----
   emit(entity, event, before, after, action) {
     if (typeof EventBus === "undefined" || !event) return;
     const meta = this.getMeta(entity);
-    const idField = meta.idField || entity + "ID";
+    // ОБНОВЛЕНО: единое определение idField
+    const idField = meta.idField || meta.primaryKey || "id";
     const entityId = after ? after[idField] : null;
     EventBus.emit(event, {
       entity,
@@ -437,7 +470,7 @@ const BaseRepository = {
   },
 
   // ============================================================
-  // HOOKS (переопределяются в наследниках)
+  // HOOKS
   // ============================================================
   beforeCreate() {},
   afterCreate() {},
@@ -449,7 +482,7 @@ const BaseRepository = {
   afterRestore() {},
 
   // ============================================================
-  // HEALTH (расширенный)
+  // HEALTH
   // ============================================================
   health() {
     const data = {
@@ -484,7 +517,7 @@ const BaseRepository = {
 };
 
 // ============================================================
-// ИНИЦИАЛИЗАЦИЯ (только если Database уже определён)
+// ИНИЦИАЛИЗАЦИЯ
 // ============================================================
 if (typeof Database !== "undefined") {
   BaseRepository.init(Database);
