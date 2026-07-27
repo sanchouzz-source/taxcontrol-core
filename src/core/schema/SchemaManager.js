@@ -3,40 +3,35 @@
 // ERP TexControl Core
 //
 // Version:
-// SchemaManager v4.1.2
+// SchemaManager v4.2.0
 //
 // Compatible:
 // EntityMetadata v3.x
-// EntityValidator v1.1
+// EntityValidator v1.1+
 // SchemaRegistry v4.x
-// EntityRegistry v2.4
+// EntityRegistry v2.4+
 //
-// Features:
-// - Object fields support
-// - Array fields compatibility
-// - Metadata normalization
-// - Schema validation
-// - Version control
+// Fix:
+// - Metadata v3 object support
+// - Registry compatibility
+// - Object fields normalization
+// - Primary key normalization
+// - System entities support
 // ============================================================
 
 
-console.log("SchemaManager v4.1.2");
+console.log("SchemaManager v4.2.0");
 
 
 
 const SchemaManager = {
 
 
-
-version:"4.1.2",
-
+version:"4.2.0",
 
 initialized:false,
 
-
 schema:{},
-
-
 
 
 
@@ -51,22 +46,13 @@ init(options={}){
 
 if(this.initialized){
 
-
 Logger.debug(
 "SchemaManager ALREADY READY"
 );
 
-
 return this.schema;
 
-
 }
-
-
-
-const mode =
-options.syncMode ||
-"SAFE";
 
 
 
@@ -83,33 +69,27 @@ this.version
 
 
 
+// ====================================================
+// BUILD
+// ====================================================
 
 
-// ------------------------------------------------------------
-// 1. BUILD
-// ------------------------------------------------------------
-
-
-const built =
+let built =
 SchemaBuilder.build();
 
 
 
 Logger.log(
-
 "SCHEMA BUILT TABLES="+
-Object.keys(built).length
-
+Object.keys(built||{}).length
 );
 
 
 
 
-
-
-// ------------------------------------------------------------
-// 2. NORMALIZE
-// ------------------------------------------------------------
+// ====================================================
+// NORMALIZE
+// ====================================================
 
 
 const normalized =
@@ -120,80 +100,73 @@ built
 
 
 
+Logger.log(
+"SCHEMA NORMALIZED TABLES="+
+Object.keys(normalized).length
+);
 
-// ------------------------------------------------------------
-// 3. VALIDATE
-// ------------------------------------------------------------
+
+
+
+// ====================================================
+// VALIDATE
+// ====================================================
 
 
 try{
 
+if(typeof SchemaValidator!=="undefined"){
 
 SchemaValidator.check(
 normalized
 );
 
+}
 
 }
 catch(e){
 
-
 Logger.warn(
-
-"SchemaValidator WARNING: "+
+"SchemaValidator WARNING "+
 e.message
-
 );
-
 
 }
 
 
 
 
-
-
-
-// ------------------------------------------------------------
-// 4. LOAD STORED
-// ------------------------------------------------------------
+// ====================================================
+// LOAD
+// ====================================================
 
 
 let stored={};
 
 
-
 try{
-
 
 stored =
 SchemaStorage.load()
 ||
 {};
 
-
 }
 catch(e){
 
-
 Logger.warn(
-"SchemaStorage skipped "+
+"SchemaStorage LOAD skipped "+
 e.message
 );
-
 
 }
 
 
 
 
-
-
-
-
-// ------------------------------------------------------------
-// 5. MERGE
-// ------------------------------------------------------------
+// ====================================================
+// MERGE
+// ====================================================
 
 
 const merged =
@@ -205,13 +178,9 @@ normalized
 
 
 
-
-
-
-
-// ------------------------------------------------------------
-// 6. STRICT CHECK
-// ------------------------------------------------------------
+// ====================================================
+// STRICT VALIDATION
+// ====================================================
 
 
 this.validateEntities(
@@ -221,13 +190,9 @@ merged
 
 
 
-
-
-
-
-// ------------------------------------------------------------
-// 7. SAVE
-// ------------------------------------------------------------
+// ====================================================
+// SAVE
+// ====================================================
 
 
 SchemaStorage.save(
@@ -237,13 +202,9 @@ merged
 
 
 
-
-
-
-
-// ------------------------------------------------------------
-// 8. VERSION
-// ------------------------------------------------------------
+// ====================================================
+// VERSION HASH
+// ====================================================
 
 
 const hash =
@@ -287,7 +248,8 @@ merged
 
 
 Logger.log(
-"Schema VERSION "+version
+"SCHEMA VERSION "+
+version
 );
 
 
@@ -296,18 +258,16 @@ Logger.log(
 
 
 
-
-
-
-
-// ------------------------------------------------------------
-// 9. CACHE
-// ------------------------------------------------------------
+// ====================================================
+// CACHE
+// ====================================================
 
 
 this.schema =
 JSON.parse(
-JSON.stringify(merged)
+JSON.stringify(
+merged
+)
 );
 
 
@@ -316,37 +276,34 @@ this.initialized=true;
 
 
 
-
-
 Logger.log(
-
 "SchemaManager READY v"+
 this.version+
 " TABLES="+
 this.getTables().length
-
 );
 
 
 
 
+if(typeof SchemaEvents!=="undefined"
+&&
+SchemaEvents.emit
+){
 
 SchemaEvents.emit(
 "SCHEMA_READY",
 {
-
 tables:this.getTables().length,
-
 version:this.version
+}
+);
 
 }
-
-);
 
 
 
 return this.schema;
-
 
 
 }
@@ -378,55 +335,110 @@ throw e;
 
 
 // ============================================================
-// NORMALIZER
+// NORMALIZE SCHEMA
 // ============================================================
 
 
 normalizeSchema(schema){
 
 
-
 const result={};
 
 
 
-Object.keys(schema)
-.forEach(name=>{
+Object.keys(schema||{})
+.forEach(key=>{
 
 
-const meta =
-schema[name];
+let meta =
+schema[key];
 
 
 
-if(!meta){
-
+if(!meta)
 return;
+
+
+
+// ----------------------------------------------------
+// Если пришёл объект metadata вместо имени
+// ----------------------------------------------------
+
+
+if(
+meta.entity &&
+typeof meta.entity==="object"
+){
+
+meta.entity =
+key;
 
 }
 
 
 
+// ----------------------------------------------------
+// TABLE
+// ----------------------------------------------------
 
-// fields object -> array
 
 if(
+typeof meta.table==="object"
+){
+
+if(meta.table.table){
+
+meta.table =
+meta.table.table;
+
+}
+
+else{
+
+meta.table =
+key;
+
+}
+
+}
+
+
+
+// ----------------------------------------------------
+// FIELDS
+// ----------------------------------------------------
+
+
+let fields =
 meta.fields
+||
+meta.columns
+||
+[];
+
+
+
+
+
+// object fields -> array
+
+if(
+!Array.isArray(fields)
 &&
-!Array.isArray(meta.fields)
+typeof fields==="object"
 ){
 
 
-meta.fields =
-Object.keys(meta.fields)
-.map(field=>{
+fields =
+Object.keys(fields)
+.map(name=>{
 
 
 return {
 
-name:field,
+name:name,
 
-...meta.fields[field]
+...(fields[name]||{})
 
 };
 
@@ -439,16 +451,42 @@ name:field,
 
 
 
-if(!meta.fields){
+// если нет полей - пробуем metadata
+
+if(
+fields.length===0
+&&
+typeof EntityMetadata!=="undefined"
+&&
+EntityMetadata.get
+){
 
 
-throw new Error(
+try{
 
-"Entity "+
-name+
-" has no fields"
 
-);
+const source =
+EntityMetadata.get(key);
+
+
+
+if(source){
+
+
+fields =
+source.fields
+||
+source.columns
+||
+[];
+
+}
+
+
+
+}
+catch(e){}
+
 
 
 }
@@ -457,7 +495,94 @@ name+
 
 
 
-result[name]=meta;
+
+// normalize fields
+
+fields =
+fields.map(f=>{
+
+
+if(typeof f==="string"){
+
+return {
+
+name:f,
+
+type:"STRING",
+
+required:false
+
+};
+
+}
+
+
+
+return {
+
+name:
+f.name ||
+f.key ||
+f.field,
+
+type:
+f.type ||
+"STRING",
+
+required:
+f.required===true,
+
+
+nullable:
+f.nullable!==false
+
+};
+
+
+})
+.filter(f=>f.name);
+
+
+
+
+
+
+meta.fields =
+fields;
+
+
+
+
+
+// ----------------------------------------------------
+// PRIMARY KEY
+// ----------------------------------------------------
+
+
+meta.idField =
+meta.idField
+||
+meta.primaryKey
+||
+"ID";
+
+
+
+
+
+// ----------------------------------------------------
+// ENTITY NAME
+// ----------------------------------------------------
+
+
+meta.entity =
+meta.entity
+||
+key;
+
+
+
+result[key]=meta;
 
 
 
@@ -477,7 +602,7 @@ return result;
 
 
 // ============================================================
-// VALIDATION
+// VALIDATE
 // ============================================================
 
 
@@ -495,43 +620,8 @@ schema[name];
 
 
 if(
-!entity.fields
-||
-entity.fields.length===0
+!entity.table
 ){
-
-
-throw new Error(
-
-"Entity "+
-name+
-" has empty fields"
-
-);
-
-
-}
-
-
-
-if(!entity.idField){
-
-
-throw new Error(
-
-"Entity "+
-name+
-" missing idField"
-
-);
-
-
-}
-
-
-
-if(!entity.table){
-
 
 throw new Error(
 
@@ -541,12 +631,42 @@ name+
 
 );
 
+}
+
+
+
+
+if(
+!entity.fields
+||
+entity.fields.length===0
+){
+
+throw new Error(
+
+"Entity "+
+name+
+" has empty fields"
+
+);
+
+}
+
+
+
+
+if(
+!entity.idField
+){
+
+entity.idField="ID";
 
 }
 
 
 
 });
+
 
 
 return true;
@@ -568,11 +688,8 @@ return true;
 _computeHash(schema){
 
 
-
 const json =
-this._canonicalStringify(
-schema
-);
+this._canonicalStringify(schema);
 
 
 
@@ -588,24 +705,18 @@ Utilities.newBlob(json)
 
 
 
-return bytes
+return bytes.map(b=>
 
-.map(
-b=>
 ('0'+
 ((b+256)%256)
 .toString(16)
 )
 .slice(-2)
-)
 
+)
 .join("");
 
-
-
 },
-
-
 
 
 
@@ -618,20 +729,13 @@ _canonicalStringify(obj){
 const sort=value=>{
 
 
-if(Array.isArray(value)){
-
+if(Array.isArray(value))
 
 return value.map(sort);
 
 
-}
 
-
-
-if(
-value &&
-typeof value==="object"
-){
+if(value && typeof value==="object"){
 
 
 return Object.keys(value)
@@ -647,13 +751,12 @@ r[k]=sort(value[k]);
 return r;
 
 
-},
-{}
+},{}
+
 );
 
 
 }
-
 
 
 return value;
@@ -666,7 +769,6 @@ return value;
 return JSON.stringify(
 sort(obj)
 );
-
 
 
 },
@@ -684,11 +786,11 @@ sort(obj)
 
 getSchema(){
 
-
 return JSON.parse(
-JSON.stringify(this.schema)
+JSON.stringify(
+this.schema
+)
 );
-
 
 },
 
@@ -696,18 +798,15 @@ JSON.stringify(this.schema)
 
 getTables(){
 
-
 return Object.keys(
 this.schema
 );
-
 
 },
 
 
 
 getTableSchema(table){
-
 
 return this.schema[table]
 ?
@@ -719,22 +818,18 @@ this.schema[table]
 :
 null;
 
-
 },
-
 
 
 
 
 getSchemaVersion(){
 
-
 return (
 SchemaStorage.getVersion?.()
 ||
 0
 );
-
 
 },
 
@@ -764,21 +859,15 @@ this.initialized
 
 {
 
-
 version:this.version,
-
 
 tables:this.getTables().length,
 
-
 schemaVersion:this.getSchemaVersion(),
-
 
 initialized:this.initialized
 
-
 }
-
 
 );
 
@@ -789,29 +878,20 @@ initialized:this.initialized
 
 
 
-
-
 diagnostics(){
 
 
 return {
 
-
-module:
-"SchemaManager",
-
+module:"SchemaManager",
 
 version:this.version,
 
-
 initialized:this.initialized,
-
 
 tables:this.getTables(),
 
-
 count:this.getTables().length
-
 
 };
 
@@ -821,7 +901,6 @@ count:this.getTables().length
 
 
 };
-
 
 
 
