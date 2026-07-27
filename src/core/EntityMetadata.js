@@ -3183,6 +3183,95 @@ return true;
 
 
 
+// ============================================================
+// FIELD NORMALIZER v3.0.1
+// Compatibility Layer
+//
+// Object fields -> Array fields
+// ============================================================
+
+
+EntityMetadata.getFieldArray = function(entity){
+
+
+    const meta=this.get(entity);
+
+
+    if(!meta){
+        throw new Error(
+            "Metadata missing "+entity
+        );
+    }
+
+
+    const fields=meta.fields || {};
+
+
+    // уже массив
+    if(Array.isArray(fields)){
+        return fields;
+    }
+
+
+    // объект -> массив
+    return Object.keys(fields)
+    .map(name=>{
+
+
+        return Object.assign(
+            {
+                name:name
+            },
+            fields[name]
+        );
+
+
+    });
+
+
+};
+
+
+
+// ============================================================
+// PATCH METADATA
+// ============================================================
+
+EntityMetadata.normalize=function(){
+
+
+    this.list()
+    .forEach(entity=>{
+
+
+        const meta=this[entity];
+
+
+        if(
+            meta.fields &&
+            !Array.isArray(meta.fields)
+        ){
+
+
+            meta.fieldsArray =
+                this.getFieldArray(entity);
+
+
+        }
+
+
+    });
+
+
+
+    Logger.log(
+        "EntityMetadata normalized"
+    );
+
+
+    return true;
+
+};
 
 
 
