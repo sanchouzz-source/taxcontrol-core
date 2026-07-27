@@ -1,34 +1,37 @@
 // ============================================================
-// ModuleLoader v1.2.0
+// ModuleLoader v1.3.0
 // TaxControl ERP Core
 //
 // Responsibility:
 //
 // - Register infrastructure components
-// - Load module manifest
 // - Prepare ModuleRegistry
 // - Diagnostics
 //
 // NOT responsible:
-// - Module lifecycle
-// - Dependency resolution
+//
+// - Manifest lifecycle
+// - Module dependency resolution
 // - Module start/stop
 //
+// Manifest loading:
+// handled by SystemInit
+//
 // Compatible:
-// SystemInit v2.6.x
+// SystemInit v2.7.x
 // ModuleRegistry v2.3.x
 //
 // ============================================================
 
 
-console.log("ModuleLoader v1.2.0");
+console.log("ModuleLoader v1.3.0");
 
 
 
 const ModuleLoader = {
 
 
-version:"1.2.0",
+version:"1.3.0",
 
 
 initialized:false,
@@ -37,20 +40,14 @@ initialized:false,
 coreLoaded:[],
 
 
-manifestLoaded:false,
-
-
-
 startedAt:null,
 
 
 
 
 
-
-
 // ============================================================
-// CORE REGISTRY
+// CORE COMPONENTS
 // ============================================================
 
 
@@ -77,7 +74,6 @@ coreComponents:[
 "AuditLog",
 
 "AuditEventHandler",
-
 
 "SecurityGuard"
 
@@ -124,12 +120,7 @@ new Date().toISOString();
 
 
 
-
 this.loadCore();
-
-
-
-this.loadManifest();
 
 
 
@@ -156,7 +147,7 @@ return true;
 
 
 // ============================================================
-// CORE LOADING
+// CORE REGISTRATION
 // ============================================================
 
 
@@ -170,13 +161,11 @@ Logger.log(
 
 
 
-let count=0;
+let registered=0;
 
 
 
-for(
-const name of this.coreComponents
-){
+this.coreComponents.forEach(name=>{
 
 
 
@@ -184,7 +173,7 @@ if(
 this.coreLoaded.includes(name)
 ){
 
-continue;
+return;
 
 }
 
@@ -204,10 +193,9 @@ name
 );
 
 
-continue;
+return;
 
 }
-
 
 
 
@@ -220,7 +208,6 @@ typeof CoreRegistry!=="undefined"
 &&
 CoreRegistry.register
 ){
-
 
 
 CoreRegistry.register(
@@ -236,12 +223,11 @@ component
 
 
 
-
 this.coreLoaded.push(name);
 
 
 
-count++;
+registered++;
 
 
 
@@ -254,7 +240,6 @@ name
 
 }
 catch(e){
-
 
 
 Logger.error(
@@ -272,18 +257,21 @@ e.message
 
 
 
-}
+});
+
 
 
 
 Logger.log(
+
 "CORE REGISTRATION COMPLETE count="+
-count
+registered
+
 );
 
 
 
-return count;
+return registered;
 
 
 },
@@ -295,95 +283,29 @@ return count;
 
 
 // ============================================================
-// MANIFEST
+// MANIFEST STATUS
 // ============================================================
 
 
-loadManifest(){
+manifestStatus(){
 
 
-
-if(
-typeof ModuleRegistry==="undefined"
-){
+return {
 
 
-throw new Error(
-"ModuleRegistry unavailable"
-);
+available:
+typeof ERP_MODULE_MANIFEST!=="undefined",
 
 
-}
+modules:
+typeof ERP_MODULE_MANIFEST!=="undefined"
+?
+ERP_MODULE_MANIFEST.list()
+:
+[]
 
 
-
-if(
-typeof ERP_MODULE_MANIFEST==="undefined"
-){
-
-
-Logger.warn(
-"ERP_MODULE_MANIFEST NOT FOUND"
-);
-
-
-
-return 0;
-
-
-}
-
-
-
-
-
-try{
-
-
-
-const count =
-ModuleRegistry.loadManifest(
-ERP_MODULE_MANIFEST
-);
-
-
-
-this.manifestLoaded=true;
-
-
-
-Logger.log(
-
-"MODULE MANIFEST LOADED count="+
-count
-
-);
-
-
-
-return count;
-
-
-
-}
-catch(e){
-
-
-
-Logger.error(
-
-"MANIFEST LOAD FAILED "+
-e.message
-
-);
-
-
-
-throw e;
-
-
-}
-
+};
 
 
 },
@@ -407,17 +329,24 @@ if(
 typeof ModuleRegistry==="undefined"
 ){
 
-
 throw new Error(
 "ModuleRegistry unavailable"
 );
-
 
 }
 
 
 
-return ModuleRegistry.startAll();
+Logger.warn(
+
+"ModuleLoader.start delegates to ModuleRegistry"
+
+);
+
+
+
+return ModuleRegistry.startAll?.();
+
 
 
 },
@@ -434,6 +363,7 @@ return ModuleRegistry.startAll();
 
 
 async stop(){
+
 
 
 if(
@@ -462,7 +392,7 @@ return true;
 
 
 // ============================================================
-// MODULE ACCESS
+// MODULE LIST
 // ============================================================
 
 
@@ -499,7 +429,7 @@ status(){
 
 
 
-return{
+return {
 
 
 version:this.version,
@@ -511,14 +441,13 @@ initialized:this.initialized,
 startedAt:this.startedAt,
 
 
-manifestLoaded:this.manifestLoaded,
-
-
 coreLoaded:this.coreLoaded,
 
 
-modules:
-this.listModules()
+manifest:this.manifestStatus(),
+
+
+modules:this.listModules()
 
 
 };
@@ -540,28 +469,17 @@ this.listModules()
 health(){
 
 
-
-const status =
-this.status();
-
-
-
-let state =
-this.initialized
-?
-"OK"
-:
-"WARNING";
-
-
-
 return HealthContract.create(
 
 "ModuleLoader",
 
-state,
+this.initialized
+?
+"OK"
+:
+"WARNING",
 
-status
+this.status()
 
 );
 
@@ -582,7 +500,7 @@ status
 diagnostics(){
 
 
-return{
+return {
 
 
 version:this.version,
@@ -594,16 +512,16 @@ initialized:this.initialized,
 coreLoaded:this.coreLoaded,
 
 
-manifestLoaded:this.manifestLoaded,
+manifest:this.manifestStatus(),
 
 
-moduleRegistry:
+registry:
 
 typeof ModuleRegistry!=="undefined"
 
 ?
 
-ModuleRegistry.diagnostics()
+ModuleRegistry.diagnostics?.()
 
 :
 
@@ -635,9 +553,6 @@ this.initialized=false;
 this.coreLoaded=[];
 
 
-this.manifestLoaded=false;
-
-
 this.startedAt=null;
 
 
@@ -645,6 +560,7 @@ this.startedAt=null;
 Logger.log(
 "ModuleLoader RESET"
 );
+
 
 
 }
@@ -672,6 +588,7 @@ ModuleLoader;
 
 
 
+
 // ============================================================
 // COMMANDS
 // ============================================================
@@ -689,6 +606,8 @@ globalThis.moduleLoaderDiag =
 
 globalThis.moduleLoaderStatus =
 ()=>ModuleLoader.status();
+
+
 
 
 
