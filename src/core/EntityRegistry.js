@@ -1,498 +1,116 @@
 // ============================================================
-// EntityRegistry v2.4.0
-// Enterprise Entity Metadata Registry
+// EntityRegistry v2.5.0
+// Enterprise Runtime Entity Registry
 // TaxControl ERP Core
 //
-// Sprint 1 CORE-001
+// Architecture:
+//
+// EntityMetadata
+//        |
+//        v
+// EntityRegistry
+//        |
+//        v
+// RepositoryFactory
 //
 // Compatible:
-// EntityMetadata v2.x
-// EntityService v5.x
-// RepositoryFactory v2.8.x
-// BaseRepository v5.7.x
+// EntityMetadata v3.1+
+// SchemaRegistry v4.0.6+
+// SchemaManager v4.2+
+// BaseRepository v5.7+
+// EntityService v5+
 // ============================================================
 
 
-console.log("EntityRegistry v2.4.0");
+console.log("EntityRegistry v2.5.0");
 
 
 
 const EntityRegistry = {
 
 
-version:"2.4.0",
+version:"2.5.0",
 
-
-ready:false,
 
 initialized:false,
 
 
+ready:false,
 
 
-
-
-// ============================================================
-// ALIASES
-// ============================================================
+entities:{},
 
 
 aliases:{
 
 
-Client:"CLIENT",
 
+// names
+
+CLIENT:"CLIENT",
+Client:"CLIENT",
 Clients:"CLIENT",
 
-client:"CLIENT",
 
+TRIP:"TRIP",
+Trip:"TRIP",
+Trips:"TRIP",
+
+
+VEHICLE:"VEHICLE",
+Vehicle:"VEHICLE",
+Vehicles:"VEHICLE",
+
+
+DRIVER:"DRIVER",
+Driver:"DRIVER",
+Drivers:"DRIVER",
+
+
+CARRIER:"CARRIER",
+Carrier:"CARRIER",
+Carriers:"CARRIER",
+
+
+ROUTE:"ROUTE",
+Route:"ROUTE",
+Routes:"ROUTE",
+
+
+CARGO:"CARGO",
+Cargo:"CARGO",
+Cargoes:"CARGO",
+
+
+
+// prefixes
 
 CLI:"CLIENT",
 
-
-Trip:"TRIP",
-
-Trips:"TRIP",
-
 TRP:"TRIP",
-
-
-Carrier:"CARRIER",
-
-Carriers:"CARRIER",
-
-CAR:"CARRIER",
-
-
-Driver:"DRIVER",
-
-Drivers:"DRIVER",
-
-DRV:"DRIVER",
-
-
-Vehicle:"VEHICLE",
-
-Vehicles:"VEHICLE",
 
 VEH:"VEHICLE",
 
+DRV:"DRIVER",
 
-Route:"ROUTE",
-
-Routes:"ROUTE",
+CAR:"CARRIER",
 
 RTE:"ROUTE",
 
-
-Cargo:"CARGO",
-
-Cargoes:"CARGO",
-
 CRG:"CARGO",
 
+CFP:"CLIENT_FINANCE_PROFILE",
 
-FinanceTransaction:
-"FINANCIAL_TRANSACTION",
+FIN:"FINANCIAL_TRANSACTION",
 
+KPI:"KPI",
 
-FIN:
-"FINANCIAL_TRANSACTION",
+AUD:"AUDIT",
 
-
-KPI:
-"KPI",
-
-
-AUD:
-"AUDIT",
-
-
-VER:
-"VERSION"
+VER:"VERSION"
 
 
 },
-
-
-
-
-
-
-
-// ============================================================
-// ENTITY DEFINITIONS
-// ============================================================
-
-
-CLIENT:{
-
-
-entity:"CLIENT",
-
-module:"CORE",
-
-table:"Clients",
-
-idField:"ClientID",
-
-idPrefix:"CLI",
-
-repository:"ClientRepository",
-
-audit:true,
-
-softDelete:true,
-
-timestamps:true,
-
-
-events:{
-
-created:"CLIENT_CREATED",
-
-updated:"CLIENT_UPDATED",
-
-deleted:"CLIENT_DELETED",
-
-restored:"CLIENT_RESTORED"
-
-}
-
-},
-
-
-
-
-TRIP:{
-
-
-entity:"TRIP",
-
-module:"LOGISTICS",
-
-table:"Trips",
-
-idField:"TripID",
-
-idPrefix:"TRP",
-
-repository:"TripRepository",
-
-audit:true,
-
-softDelete:true,
-
-timestamps:true,
-
-
-events:{
-
-
-created:"TRIP_CREATED",
-
-updated:"TRIP_UPDATED",
-
-deleted:"TRIP_DELETED",
-
-restored:"TRIP_RESTORED"
-
-}
-
-
-},
-
-
-
-
-CARRIER:{
-
-
-entity:"CARRIER",
-
-module:"LOGISTICS",
-
-table:"Carriers",
-
-idField:"CarrierID",
-
-idPrefix:"CAR",
-
-repository:"CarrierRepository",
-
-audit:true,
-
-softDelete:true,
-
-timestamps:true,
-
-events:{}
-
-},
-
-
-
-
-
-DRIVER:{
-
-
-entity:"DRIVER",
-
-module:"LOGISTICS",
-
-table:"Drivers",
-
-idField:"DriverID",
-
-idPrefix:"DRV",
-
-repository:"DriverRepository",
-
-audit:true,
-
-softDelete:true,
-
-timestamps:true,
-
-events:{}
-
-},
-
-
-
-
-VEHICLE:{
-
-
-entity:"VEHICLE",
-
-module:"LOGISTICS",
-
-table:"Vehicles",
-
-idField:"VehicleID",
-
-idPrefix:"VEH",
-
-repository:"VehicleRepository",
-
-audit:true,
-
-softDelete:true,
-
-timestamps:true,
-
-events:{}
-
-},
-
-
-
-
-ROUTE:{
-
-
-entity:"ROUTE",
-
-module:"LOGISTICS",
-
-table:"Routes",
-
-idField:"RouteID",
-
-idPrefix:"RTE",
-
-repository:"RouteRepository",
-
-audit:true,
-
-softDelete:true,
-
-timestamps:true,
-
-events:{}
-
-},
-
-
-
-
-CARGO:{
-
-
-entity:"CARGO",
-
-module:"LOGISTICS",
-
-table:"Cargoes",
-
-idField:"CargoID",
-
-idPrefix:"CRG",
-
-repository:"CargoRepository",
-
-audit:true,
-
-softDelete:true,
-
-timestamps:true,
-
-events:{}
-
-},
-
-
-
-
-
-CLIENT_FINANCE_PROFILE:{
-
-
-entity:"CLIENT_FINANCE_PROFILE",
-
-module:"FINANCE",
-
-table:"ClientFinanceProfiles",
-
-idField:"FinanceProfileID",
-
-idPrefix:"CFP",
-
-repository:"ClientFinanceProfileRepository",
-
-audit:true,
-
-softDelete:true,
-
-timestamps:true,
-
-events:{}
-
-},
-
-
-
-
-
-FINANCIAL_TRANSACTION:{
-
-
-entity:"FINANCIAL_TRANSACTION",
-
-module:"FINANCE",
-
-table:"FinancialTransactions",
-
-idField:"TransactionID",
-
-idPrefix:"FIN",
-
-repository:"FinancialTransactionRepository",
-
-audit:true,
-
-softDelete:false,
-
-timestamps:true,
-
-events:{}
-
-},
-
-
-
-
-
-AUDIT:{
-
-
-entity:"AUDIT",
-
-module:"SYSTEM",
-
-table:"AuditLog",
-
-idField:"AuditID",
-
-idPrefix:"AUD",
-
-repository:"AuditRepository",
-
-audit:false,
-
-softDelete:false,
-
-timestamps:true,
-
-events:{}
-
-},
-
-
-
-
-VERSION:{
-
-
-entity:"VERSION",
-
-module:"SYSTEM",
-
-table:"Versions",
-
-idField:"VersionID",
-
-idPrefix:"VER",
-
-repository:"VersionRepository",
-
-audit:false,
-
-softDelete:false,
-
-timestamps:true,
-
-events:{}
-
-},
-
-
-
-
-KPI:{
-
-
-entity:"KPI",
-
-module:"ANALYTICS",
-
-table:"KPIMetrics",
-
-idField:"KPIID",
-
-idPrefix:"KPI",
-
-repository:"KPIRepository",
-
-audit:true,
-
-softDelete:true,
-
-timestamps:true,
-
-events:{}
-
-}
-
-
-
-
-
-};
-
-
 
 
 
@@ -505,21 +123,54 @@ events:{}
 // ============================================================
 
 
-EntityRegistry.init=function(){
+init(){
 
 
-if(this.initialized)
+if(this.initialized){
+
 return true;
+
+}
+
+
+
+if(
+typeof EntityMetadata==="undefined"
+){
+
+throw new Error(
+"EntityRegistry requires EntityMetadata"
+);
+
+}
+
+
+
+Logger.log(
+"EntityRegistry INIT v"+
+this.version
+);
+
+
+
+this.loadFromMetadata();
+
+
+
+this.createCompatibilityObjects();
+
 
 
 this.initialized=true;
 
+
 this.ready=true;
+
 
 
 Logger.log(
 
-"EntityRegistry INIT v"+
+"EntityRegistry READY v"+
 this.version+
 " entities="+
 this.list().length
@@ -527,12 +178,128 @@ this.list().length
 );
 
 
+
 return true;
 
 
-};
+},
 
 
+
+
+
+
+
+// ============================================================
+// LOAD
+// ============================================================
+
+
+loadFromMetadata(){
+
+
+
+this.entities={};
+
+
+
+const list =
+EntityMetadata.list();
+
+
+
+list.forEach(name=>{
+
+
+const meta =
+EntityMetadata.get(name);
+
+
+
+if(!meta){
+
+return;
+
+}
+
+
+
+const key =
+String(name)
+.toUpperCase();
+
+
+
+this.entities[key]=meta;
+
+
+
+});
+
+
+
+},
+
+
+
+
+
+
+
+// ============================================================
+// OLD COMPATIBILITY
+// EntityRegistry.CLIENT
+// ============================================================
+
+
+createCompatibilityObjects(){
+
+
+
+Object.keys(this.entities)
+
+.forEach(key=>{
+
+
+if(
+this[key]
+){
+
+return;
+
+}
+
+
+
+Object.defineProperty(
+
+this,
+
+key,
+
+{
+
+
+get(){
+
+return EntityRegistry.entities[key];
+
+},
+
+
+configurable:true
+
+}
+
+
+);
+
+
+
+});
+
+
+},
 
 
 
@@ -545,7 +312,7 @@ return true;
 // ============================================================
 
 
-EntityRegistry.normalize=function(value){
+normalize(value){
 
 
 return String(value)
@@ -557,9 +324,7 @@ return String(value)
 .toUpperCase();
 
 
-};
-
-
+},
 
 
 
@@ -572,63 +337,75 @@ return String(value)
 // ============================================================
 
 
-EntityRegistry.resolve=function(value){
+resolve(value){
 
 
-if(!value)
+if(!value){
 
 throw new Error(
 "Entity empty"
 );
 
+}
 
 
-let original =
+
+const original =
 String(value).trim();
 
 
 
-
-let normalized =
+const normalized =
 this.normalize(original);
+
 
 
 
 
 // alias
 
-if(this.aliases[original])
+if(this.aliases[original]){
+
 return this.aliases[original];
 
+}
 
 
-if(this.aliases[normalized])
+
+if(this.aliases[normalized]){
+
 return this.aliases[normalized];
 
+}
 
 
 
 
-// direct entity
 
-if(this.has(normalized))
+
+// direct
+
+if(this.entities[normalized]){
+
 return normalized;
 
+}
 
 
 
 
-// ID prefix search
 
 
-const entities=this.list();
+// prefix
+
+for(
+const key of this.list()
+){
 
 
+const meta =
+this.entities[key];
 
-for(const e of entities){
-
-
-const meta=this[e];
 
 
 if(
@@ -638,12 +415,13 @@ meta.idPrefix
 )
 ){
 
-return e;
+return key;
 
 }
 
 
 }
+
 
 
 
@@ -651,21 +429,27 @@ return e;
 
 // table
 
-for(const e of entities){
+for(
+const key of this.list()
+){
 
 
 if(
-this[e].table.toUpperCase()
+
+this.entities[key].table
+.toUpperCase()
 ===
 normalized
+
 ){
 
-return e;
+return key;
 
 }
 
 
 }
+
 
 
 
@@ -673,18 +457,26 @@ return e;
 
 // repository
 
-for(const e of entities){
+for(
+const key of this.list()
+){
 
 
 if(
-this[e].repository.toUpperCase()
+
+this.entities[key].repository
+&&
+this.entities[key].repository
+.toUpperCase()
 ===
 normalized
+
 ){
 
-return e;
+return key;
 
 }
+
 
 }
 
@@ -696,17 +488,24 @@ return e;
 // camelCase
 
 const camel =
+
 original
+
 .replace(
 /([a-z])([A-Z])/g,
 "$1_$2"
 )
+
 .toUpperCase();
 
 
 
-if(this.has(camel))
+if(this.entities[camel]){
+
 return camel;
+
+}
+
 
 
 
@@ -717,9 +516,7 @@ value
 );
 
 
-};
-
-
+},
 
 
 
@@ -732,15 +529,15 @@ value
 // ============================================================
 
 
-EntityRegistry.get=function(entity){
+get(entity){
 
 
-return this[
+return this.entities[
 this.resolve(entity)
 ];
 
 
-};
+},
 
 
 
@@ -748,29 +545,18 @@ this.resolve(entity)
 
 
 
+// ============================================================
+// HAS
+// ============================================================
 
 
-EntityRegistry.has=function(entity){
+has(entity){
 
 
-return !!(
-
-this[entity]
-
-&&
-
-typeof this[entity]==="object"
-
-&&
-
-this[entity].entity
-
-);
+return !!this.entities[entity];
 
 
-};
-
-
+},
 
 
 
@@ -783,42 +569,15 @@ this[entity].entity
 // ============================================================
 
 
-EntityRegistry.list=function(){
+list(){
 
 
-return Object.keys(this)
-
-.filter(k=>{
-
-
-const x=this[k];
-
-
-return (
-
-x
-
-&&
-
-typeof x==="object"
-
-&&
-
-x.entity
-
-&&
-
-x.table
-
+return Object.keys(
+this.entities
 );
 
 
-});
-
-
-};
-
-
+},
 
 
 
@@ -831,37 +590,53 @@ x.table
 // ============================================================
 
 
-EntityRegistry.getRepository=function(entity){
-
-return this.get(entity).repository;
-
-};
+getRepository(entity){
 
 
+return this.get(entity)
+.repository;
 
-EntityRegistry.getTable=function(entity){
 
-return this.get(entity).table;
-
-};
+},
 
 
 
-EntityRegistry.getIdField=function(entity){
-
-return this.get(entity).idField;
-
-};
 
 
-
-EntityRegistry.getPrefix=function(entity){
-
-return this.get(entity).idPrefix;
-
-};
+getTable(entity){
 
 
+return this.get(entity)
+.table;
+
+
+},
+
+
+
+
+
+getIdField(entity){
+
+
+return this.get(entity)
+.idField;
+
+
+},
+
+
+
+
+
+getPrefix(entity){
+
+
+return this.get(entity)
+.idPrefix;
+
+
+},
 
 
 
@@ -874,7 +649,7 @@ return this.get(entity).idPrefix;
 // ============================================================
 
 
-EntityRegistry.validate=function(){
+validate(){
 
 
 const errors=[];
@@ -882,53 +657,90 @@ const errors=[];
 
 const tables={};
 
-const repos={};
+
+const repositories={};
 
 
 
 this.list()
-.forEach(e=>{
+
+.forEach(key=>{
 
 
-const m=this[e];
+const meta =
+this.entities[key];
 
 
-if(!m.idField)
-errors.push(e+" idField missing");
 
+if(!meta.table){
 
-if(!m.repository)
-errors.push(e+" repository missing");
-
-
-if(tables[m.table])
 errors.push(
-"Duplicate table "+m.table
+key+
+" table missing"
 );
 
-
-tables[m.table]=e;
-
+}
 
 
-if(repos[m.repository])
+
+if(!meta.idField){
+
 errors.push(
-"Duplicate repository "+m.repository
+key+
+" idField missing"
 );
 
+}
 
-repos[m.repository]=e;
+
+
+if(
+meta.table
+&&
+tables[meta.table]
+){
+
+errors.push(
+"Duplicate table "+
+meta.table
+);
+
+}
+
+
+
+tables[meta.table]=key;
+
+
+
+
+if(
+meta.repository
+&&
+repositories[meta.repository]
+){
+
+errors.push(
+"Duplicate repository "+
+meta.repository
+);
+
+}
+
+
+
+repositories[meta.repository]=key;
+
 
 
 });
 
 
+
 return errors;
 
 
-};
-
-
+},
 
 
 
@@ -941,10 +753,12 @@ return errors;
 // ============================================================
 
 
-EntityRegistry.health=function(){
+health(){
 
 
-const errors=this.validate();
+const errors =
+this.validate();
+
 
 
 return HealthContract.create(
@@ -962,23 +776,86 @@ errors.length
 
 version:this.version,
 
+
 initialized:this.initialized,
 
-entities:this.list(),
 
 count:this.list().length,
 
+
+entities:this.list(),
+
+
 errors
+
 
 }
 
 );
 
 
+},
+
+
+
+
+
+
+
+diagnostics(){
+
+
+return {
+
+
+module:"EntityRegistry",
+
+
+version:this.version,
+
+
+initialized:this.initialized,
+
+
+entities:this.list(),
+
+
+count:this.list().length
+
+
 };
 
 
+},
 
+
+
+
+
+
+
+// ============================================================
+// RESET
+// ============================================================
+
+
+reset(){
+
+
+this.entities={};
+
+
+this.initialized=false;
+
+
+this.ready=false;
+
+
+}
+
+
+
+};
 
 
 
@@ -990,13 +867,9 @@ EntityRegistry;
 
 
 
-EntityRegistry.init();
-
-
-
 Logger.log(
 
-"EntityRegistry GLOBAL READY v"+
+"EntityRegistry REGISTERED v"+
 EntityRegistry.version
 
 );

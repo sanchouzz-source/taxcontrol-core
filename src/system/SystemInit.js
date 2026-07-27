@@ -1,18 +1,33 @@
 // ============================================================
-// SystemInit v2.7.0
+// SystemInit v2.8.0
 // Enterprise ERP Bootstrap Orchestrator
 // TaxControl ERP Core
+//
+// Architecture:
+//
+// EntityMetadata
+//        |
+// SchemaRegistry
+//        |
+// SchemaManager
+//        |
+// Database
+//        |
+// RepositoryFactory
+//        |
+// EntityService
+//
 // ============================================================
 
 
-console.log("SystemInit v2.7.0");
+console.log("SystemInit v2.8.0");
 
 
 
-const SystemInit={
+const SystemInit = {
 
 
-version:"2.7.0",
+version:"2.8.0",
 
 
 initialized:false,
@@ -37,8 +52,13 @@ componentStatus:{},
 
 
 
+// ============================================================
+// DEPENDENCY GRAPH
+// ============================================================
+
 
 dependencyGraph:{
+
 
 
 Config:[],
@@ -50,16 +70,23 @@ Logger:[],
 HealthContract:[],
 
 
-EntityMetadata:[],
+
+// METADATA
+
+EntityMetadata:[
+"Logger"
+],
 
 
-EntityRegistry:[
+
+SchemaRegistry:[
 "EntityMetadata"
 ],
 
 
-SchemaRegistry:[
-"EntityRegistry"
+
+EntityRegistry:[
+"EntityMetadata"
 ],
 
 
@@ -70,9 +97,10 @@ SchemaManager:[
 
 
 
-SpreadsheetAdapter:[
-],
 
+// STORAGE
+
+SpreadsheetAdapter:[],
 
 
 Database:[
@@ -81,6 +109,8 @@ Database:[
 ],
 
 
+
+// REPOSITORY
 
 BaseRepository:[
 "Database"
@@ -95,11 +125,15 @@ RepositoryFactory:[
 
 
 
+// APPLICATION
+
 EntityService:[
 "RepositoryFactory"
 ],
 
 
+
+// EVENTS
 
 ERPEventContract:[],
 
@@ -119,12 +153,6 @@ BusinessEventProcessor:[
 ModuleRegistry:[
 "EventBus",
 "EntityService"
-],
-
-
-
-ModuleLoader:[
-"ModuleRegistry"
 ]
 
 
@@ -140,9 +168,9 @@ ModuleLoader:[
 criticalComponents:[
 
 
-"Config",
+"EntityMetadata",
 
-"Logger",
+"SchemaRegistry",
 
 "SchemaManager",
 
@@ -152,11 +180,7 @@ criticalComponents:[
 
 "RepositoryFactory",
 
-"EntityService",
-
-"EventBus"
-
-
+"EntityService"
 
 ],
 
@@ -166,56 +190,12 @@ criticalComponents:[
 
 
 
-componentPhase:{
+// ============================================================
+// START TRACKING
+// ============================================================
 
 
-Config:"BOOT",
-
-Logger:"BOOT",
-
-
-EntityMetadata:"ENTITY",
-
-EntityRegistry:"ENTITY",
-
-SchemaRegistry:"ENTITY",
-
-
-SchemaManager:"CORE",
-
-
-SpreadsheetAdapter:"STORAGE",
-
-
-Database:"STORAGE",
-
-
-BaseRepository:"REPOSITORY",
-
-RepositoryFactory:"REPOSITORY",
-
-
-EntityService:"APPLICATION",
-
-
-EventBus:"EVENT",
-
-
-ModuleRegistry:"MODULE",
-
-ModuleLoader:"MODULE"
-
-
-
-},
-
-
-
-
-
-
-
-_syncStarted(name){
+_markReady(name){
 
 
 this.started[name]=true;
@@ -223,14 +203,11 @@ this.started[name]=true;
 
 this.componentStatus[name]={
 
-
 status:"OK",
 
 time:new Date().toISOString()
 
-
 };
-
 
 
 },
@@ -241,34 +218,47 @@ time:new Date().toISOString()
 
 
 
-async _start(name,fn){
 
-
-if(this.started[name]) return true;
-
-
-
-const deps=this.dependencyGraph[name]||[];
+_start(name,fn){
 
 
 
-for(const dep of deps){
+if(this.started[name]){
+
+return true;
+
+}
+
+
+
+
+const deps =
+this.dependencyGraph[name]||[];
+
+
+
+
+
+deps.forEach(dep=>{
 
 
 if(!this.started[dep]){
 
 
 throw new Error(
+
 name+
 " dependency missing "+
 dep
+
 );
 
 
 }
 
 
-}
+});
+
 
 
 
@@ -276,19 +266,18 @@ dep
 try{
 
 
-const start=Date.now();
+const start =
+Date.now();
 
 
 
-await fn();
+fn();
 
 
 
 this.bootLog.push({
 
 name,
-
-phase:this.componentPhase[name],
 
 status:"OK",
 
@@ -299,7 +288,7 @@ Date.now()-start
 
 
 
-this._syncStarted(name);
+this._markReady(name);
 
 
 
@@ -315,6 +304,7 @@ return true;
 
 
 }
+
 catch(e){
 
 
@@ -329,22 +319,12 @@ error:e.message
 
 
 
-this.bootLog.push({
-
-name,
-
-status:"FAILED",
-
-error:e.message
-
-});
-
-
-
 Logger.error(
+
 name+
 " FAILED "+
 e.message
+
 );
 
 
@@ -373,13 +353,26 @@ return false;
 
 
 
+
+
+// ============================================================
+// SAFE INIT
+// ============================================================
+
+
 safeInit(name,args){
 
 
-const obj=globalThis[name];
+const obj =
+globalThis[name];
 
 
-if(!obj)return true;
+
+if(!obj){
+
+return true;
+
+}
 
 
 
@@ -387,11 +380,10 @@ if(
 typeof obj.init==="function"
 ){
 
-
 return obj.init(args);
 
-
 }
+
 
 
 return true;
@@ -405,25 +397,42 @@ return true;
 
 
 
-async init(){
+// ============================================================
+// INIT
+// ============================================================
 
 
-if(this.initialized)
+init(){
+
+
+
+if(this.initialized){
+
 return this.health();
 
+}
 
 
-if(this.initializing)
+
+if(this.initializing){
+
 return;
+
+}
 
 
 
 this.initializing=true;
 
 
-this.startedAt=
+this.startedAt =
 new Date().toISOString();
 
+
+
+
+
+try{
 
 
 Logger.log(
@@ -432,74 +441,100 @@ Logger.log(
 
 
 
-try{
 
 
+// BOOT
 
-await this._start(
+
+this._start(
 "Config",
 ()=>this.safeInit("Config")
 );
 
 
 
-await this._start(
+this._start(
 "Logger",
 ()=>this.safeInit("Logger")
 );
 
 
 
-await this._start(
+
+// METADATA
+
+
+this._start(
 "EntityMetadata",
 ()=>this.safeInit("EntityMetadata")
 );
 
 
 
-await this._start(
-"EntityRegistry",
-()=>this.safeInit("EntityRegistry")
-);
 
 
-
-await this._start(
+this._start(
 "SchemaRegistry",
 ()=>this.safeInit("SchemaRegistry")
 );
 
 
 
-await this._start(
+
+
+this._start(
+"EntityRegistry",
+()=>this.safeInit("EntityRegistry")
+);
+
+
+
+
+
+
+this._start(
 "SchemaManager",
 ()=>this.safeInit("SchemaManager")
 );
 
 
 
-await this._start(
+
+
+// STORAGE
+
+
+this._start(
 "SpreadsheetAdapter",
 ()=>this.safeInit("SpreadsheetAdapter")
 );
 
 
 
-await this._start(
+
+
+this._start(
 "Database",
 ()=>this.safeInit("Database")
 );
 
 
 
-await this._start(
+
+
+// REPOSITORY
+
+
+this._start(
 "BaseRepository",
 ()=>BaseRepository.init(Database)
 );
 
 
 
-await this._start(
+
+
+this._start(
 "RepositoryFactory",
 ()=>RepositoryFactory.init()
 );
@@ -512,7 +547,10 @@ RepositoryFactory.refresh?.();
 
 
 
-await this._start(
+// SERVICE
+
+
+this._start(
 "EntityService",
 ()=>this.safeInit("EntityService")
 );
@@ -521,14 +559,19 @@ await this._start(
 
 
 
-await this._start(
+
+// EVENTS
+
+
+this._start(
 "ERPEventContract",
 ()=>this.safeInit("ERPEventContract")
 );
 
 
 
-await this._start(
+
+this._start(
 "EventBus",
 ()=>this.safeInit("EventBus")
 );
@@ -537,14 +580,8 @@ await this._start(
 
 
 
-await this._start(
-"BusinessEventProcessor",
-()=>this.safeInit("BusinessEventProcessor")
-);
 
-
-
-
+// MODULES
 
 
 if(
@@ -552,7 +589,7 @@ typeof ModuleRegistry!=="undefined"
 ){
 
 
-await this._start(
+this._start(
 "ModuleRegistry",
 ()=>{
 
@@ -566,32 +603,18 @@ EventBus
 
 
 
+if(
+typeof ERP_MODULE_MANIFEST!=="undefined"
+){
+
 ModuleRegistry.loadManifest?.(
 ERP_MODULE_MANIFEST
 );
 
-
-
-}
-
-);
-
-
 }
 
 
-
-
-
-
-if(
-typeof ModuleLoader!=="undefined"
-){
-
-
-await this._start(
-"ModuleLoader",
-()=>ModuleLoader.initAll?.()
+}
 
 );
 
@@ -616,9 +639,11 @@ this.emitStart();
 
 
 Logger.log(
+
 "========== ERP READY v"+
 this.version+
 " =========="
+
 );
 
 
@@ -628,15 +653,20 @@ return this.health();
 
 
 }
+
 catch(e){
+
 
 
 this.initialized=false;
 
 
+
 Logger.error(
+
 "ERP FAILED "+
 e.message
+
 );
 
 
@@ -644,8 +674,8 @@ e.message
 throw e;
 
 
-
 }
+
 finally{
 
 
@@ -653,7 +683,6 @@ this.initializing=false;
 
 
 }
-
 
 
 },
@@ -664,6 +693,11 @@ this.initializing=false;
 
 
 
+// ============================================================
+// VALIDATION
+// ============================================================
+
+
 validate(){
 
 
@@ -672,19 +706,45 @@ EntityMetadata?.validate
 ){
 
 
-const result =
+const errors =
 EntityMetadata.validate();
 
 
 
-if(result.length){
-
+if(errors.length){
 
 throw new Error(
+
 "Metadata errors "+
-result.join(",")
+errors.join(",")
+
 );
 
+}
+
+
+}
+
+
+
+if(
+SchemaRegistry?.validate
+){
+
+
+const errors =
+SchemaRegistry.validate();
+
+
+
+if(errors.length){
+
+throw new Error(
+
+"Schema errors "+
+errors.join(",")
+
+);
 
 }
 
@@ -707,8 +767,15 @@ return true;
 emitStart(){
 
 
-EventBus?.emit?.(
+if(
+EventBus?.emit
+){
+
+
+EventBus.emit(
+
 "ERP_STARTED",
+
 {
 
 version:this.version,
@@ -718,6 +785,9 @@ time:new Date().toISOString()
 }
 
 );
+
+
+}
 
 
 },
@@ -746,13 +816,14 @@ this.initialized
 
 version:this.version,
 
+
 initialized:this.initialized,
+
 
 components:this.componentStatus,
 
-modules:
-ModuleRegistry?.health?.()
 
+startedAt:this.startedAt
 
 
 }
@@ -771,7 +842,7 @@ ModuleRegistry?.health?.()
 diagnostics(){
 
 
-return{
+return {
 
 
 version:this.version,
@@ -786,12 +857,16 @@ boot:this.bootLog,
 components:this.componentStatus,
 
 
+schema:
+SchemaRegistry?.diagnostics?.(),
+
+
+database:
+Database?.diagnostics?.(),
+
+
 repository:
-RepositoryFactory?.diagnostics?.(),
-
-
-modules:
-ModuleRegistry?.diagnostics?.()
+RepositoryFactory?.diagnostics?.()
 
 
 
@@ -809,6 +884,23 @@ ModuleRegistry?.diagnostics?.()
 reset(){
 
 
+try{
+
+
+SchemaRegistry?.reset?.();
+
+
+Database?.reset?.();
+
+
+RepositoryFactory?.reset?.();
+
+
+}
+catch(e){}
+
+
+
 this.initialized=false;
 
 this.initializing=false;
@@ -818,6 +910,7 @@ this.started={};
 this.componentStatus={};
 
 this.bootLog=[];
+
 
 
 Logger.log(
@@ -834,12 +927,15 @@ Logger.log(
 
 
 
-globalThis.SystemInit=
+
+globalThis.SystemInit =
 SystemInit;
 
 
 
 Logger.log(
+
 "SystemInit READY v"+
 SystemInit.version
+
 );

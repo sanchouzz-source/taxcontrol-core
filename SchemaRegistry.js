@@ -1,5 +1,5 @@
 // ============================================================
-// SchemaRegistry v4.0.5
+// SchemaRegistry v4.0.6
 // Enterprise Schema Registry
 // TaxControl ERP Core
 //
@@ -24,14 +24,14 @@
 // ============================================================
 
 
-console.log("SchemaRegistry v4.0.5");
+console.log("SchemaRegistry v4.0.6");
 
 
 
 const SchemaRegistry = {
 
 
-version:"4.0.5",
+version:"4.0.6",
 
 
 initialized:false,
@@ -40,9 +40,7 @@ initialized:false,
 schemas:{},
 
 
-
 source:"EntityMetadata",
-
 
 
 
@@ -56,7 +54,23 @@ init(){
 
 if(this.initialized){
 
+Logger.debug(
+"SchemaRegistry ALREADY READY"
+);
+
 return true;
+
+}
+
+
+
+if(
+typeof EntityMetadata==="undefined"
+){
+
+throw new Error(
+"SchemaRegistry requires EntityMetadata"
+);
 
 }
 
@@ -100,7 +114,7 @@ return true;
 
 
 // ============================================================
-// LOAD FROM METADATA
+// LOAD
 // ============================================================
 
 
@@ -108,18 +122,6 @@ load(){
 
 
 this.schemas={};
-
-
-
-if(
-typeof EntityMetadata==="undefined"
-){
-
-throw new Error(
-"EntityMetadata unavailable"
-);
-
-}
 
 
 
@@ -135,7 +137,6 @@ entities.length+
 " metadata entries"
 
 );
-
 
 
 
@@ -161,7 +162,6 @@ throw new Error(
 
 
 
-
 const schema =
 this.normalize(meta);
 
@@ -175,14 +175,16 @@ schema
 
 
 }
+
 catch(e){
 
 
 Logger.warn(
 
-"Schema skip invalid metadata: "+
-JSON.stringify(entity)+
-" "+e.message
+"Schema skip invalid metadata "+
+entity+
+": "+
+e.message
 
 );
 
@@ -190,14 +192,15 @@ JSON.stringify(entity)+
 }
 
 
-
 });
 
 
 
 
+// ====================================================
+// OPTIONAL SYNC FROM ENTITY REGISTRY
+// ====================================================
 
-// совместимость с EntityRegistry
 
 if(
 typeof EntityRegistry!=="undefined"
@@ -207,12 +210,18 @@ EntityRegistry.list
 
 
 EntityRegistry.list()
+
 .forEach(entity=>{
 
 
 if(
-!this.schemas[entity]
+this.schemas[entity]
 ){
+
+return;
+
+}
+
 
 
 const meta =
@@ -220,7 +229,24 @@ EntityRegistry.get(entity);
 
 
 
-if(meta){
+if(!meta){
+
+return;
+
+}
+
+
+
+try{
+
+
+this.register(
+
+entity,
+
+this.normalize(meta)
+
+);
 
 
 Logger.log(
@@ -231,16 +257,23 @@ entity
 );
 
 
-this.register(
-entity,
-this.normalize(meta)
+
+}
+catch(e){
+
+
+Logger.warn(
+
+"Registry sync failed "+
+entity+
+" "+
+e.message
+
 );
 
 
 }
 
-
-}
 
 
 });
@@ -280,7 +313,20 @@ throw new Error(
 
 
 
-if(!meta.table){
+const table =
+typeof meta.table==="string"
+
+?
+
+meta.table
+
+:
+
+null;
+
+
+
+if(!table){
 
 throw new Error(
 "Table missing"
@@ -290,14 +336,19 @@ throw new Error(
 
 
 
+
 let fields=[];
 
 
 
-// новый формат v3.1
+// ----------------------------
+// Object fields
+// ----------------------------
+
 
 if(
-meta.fields &&
+meta.fields
+&&
 !Array.isArray(meta.fields)
 ){
 
@@ -310,9 +361,12 @@ Object.keys(meta.fields)
 
 return {
 
+
 name:name,
 
-...meta.fields[name]
+
+...(meta.fields[name]||{})
+
 
 };
 
@@ -323,9 +377,14 @@ name:name,
 }
 
 
-// старый формат
 
-else if(
+// ----------------------------
+// Array fields
+// ----------------------------
+
+
+else
+if(
 Array.isArray(meta.fields)
 ){
 
@@ -339,7 +398,9 @@ if(typeof f==="string"){
 
 return {
 
+
 name:f,
+
 
 type:"STRING"
 
@@ -367,6 +428,15 @@ return {
 
 
 
+fields =
+fields.filter(
+f=>f.name
+);
+
+
+
+
+
 if(!fields.length){
 
 
@@ -380,62 +450,80 @@ throw new Error(
 
 
 
+
 return {
+
 
 
 entity:
 meta.entity,
 
 
-table:
-meta.table,
-
-
-repository:
-meta.repository,
+table,
 
 
 module:
 meta.module || "core",
 
 
+
+repository:
+meta.repository || null,
+
+
+
 idField:
-meta.idField || meta.primaryKey,
+
+meta.idField
+||
+meta.primaryKey
+||
+"ID",
+
 
 
 idPrefix:
-meta.idPrefix,
+meta.idPrefix || null,
 
 
-fields:fields,
+
+fields,
+
 
 
 softDelete:
 meta.softDelete!==false,
 
 
+
 timestamps:
 meta.timestamps!==false,
+
 
 
 audit:
 meta.audit===true,
 
 
+
+system:
+meta.system===true,
+
+
+
 relations:
 meta.relations || {},
+
 
 
 indexes:
 meta.indexes || [],
 
 
+
 events:
-meta.events || {},
+meta.events || {}
 
-
-system:
-meta.system===true
 
 
 };
@@ -468,14 +556,20 @@ throw new Error(
 
 
 
-this.schemas[entity]=schema;
+const key =
+String(entity)
+.toUpperCase();
+
+
+
+this.schemas[key]=schema;
 
 
 
 Logger.debug(
 
 "SCHEMA REGISTERED "+
-entity+
+key+
 " -> "+
 schema.table
 
@@ -502,10 +596,7 @@ return schema;
 get(entity){
 
 
-
-if(
-!entity
-){
+if(!entity){
 
 return null;
 
@@ -513,18 +604,15 @@ return null;
 
 
 
-let key =
-String(entity).toUpperCase();
+const key =
+String(entity)
+.toUpperCase();
 
 
 
 return (
 
 this.schemas[key]
-
-||
-
-this.schemas[entity]
 
 ||
 
@@ -563,7 +651,7 @@ this.schemas
 
 
 // ============================================================
-// TABLE
+// HELPERS
 // ============================================================
 
 
@@ -588,13 +676,6 @@ null;
 
 
 
-
-
-// ============================================================
-// FIELDS
-// ============================================================
-
-
 getFields(entity){
 
 
@@ -616,15 +697,14 @@ schema.fields
 
 
 
-
-
 hasField(entity,field){
 
 
 return this.getFields(entity)
 
 .some(
-f=>f.name===field
+f=>
+f.name===field
 );
 
 
@@ -670,7 +750,7 @@ entity+" missing table"
 
 if(
 !schema.fields ||
-!schema.fields.length
+schema.fields.length===0
 ){
 
 errors.push(
@@ -707,6 +787,7 @@ reset(){
 Logger.debug(
 "SchemaRegistry RESET"
 );
+
 
 
 this.schemas={};
@@ -748,7 +829,6 @@ errors.length
 
 {
 
-
 version:this.version,
 
 
@@ -758,7 +838,7 @@ tables:this.list(),
 count:this.list().length,
 
 
-errors:errors
+errors
 
 
 }
@@ -781,6 +861,7 @@ return {
 
 
 module:"SchemaRegistry",
+
 
 version:this.version,
 
@@ -812,10 +893,6 @@ count:this.list().length
 
 globalThis.SchemaRegistry =
 SchemaRegistry;
-
-
-
-SchemaRegistry.init();
 
 
 
