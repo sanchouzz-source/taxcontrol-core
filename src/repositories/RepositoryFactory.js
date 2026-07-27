@@ -1,5 +1,5 @@
 // ============================================================
-// RepositoryFactory v2.7.1
+// RepositoryFactory v2.7.2
 // Enterprise Repository Dependency Container
 // TaxControl ERP Core
 //
@@ -9,10 +9,10 @@
 // SystemInit v2.5+
 // ============================================================
 
-console.log("RepositoryFactory v2.7.1");
+console.log("RepositoryFactory v2.7.2");
 
 const RepositoryFactory = {
-  version: "2.7.1",
+  version: "2.7.2",
   apiVersion: "2.5",
 
   repositories: {},
@@ -218,7 +218,7 @@ const RepositoryFactory = {
   },
 
   // ============================================================
-  // REGISTER
+  // REGISTER (с applyCompatibility)
   // ============================================================
 
   register(entity, repo, options = {}) {
@@ -233,6 +233,8 @@ const RepositoryFactory = {
     const contract = this.validate(repo);
 
     this.repositories[entity] = repo;
+    this.applyCompatibility(repo);
+
     this.metadata[entity] = {
       version: repo.version || "unknown",
       type: repo.repositoryType || "CUSTOM",
@@ -251,6 +253,47 @@ const RepositoryFactory = {
     );
 
     return true;
+  },
+
+  // ============================================================
+  // COMPATIBILITY (добавляет getById, getAll, save)
+  // ============================================================
+
+  applyCompatibility(repo) {
+    if (!repo) return;
+
+    // getById -> findById
+    if (!repo.getById && repo.findById) {
+      repo.getById = repo.findById.bind(repo);
+    }
+
+    // getAll -> findAll
+    if (!repo.getAll && repo.findAll) {
+      repo.getAll = repo.findAll.bind(repo);
+    }
+
+    // save -> create / update
+    if (!repo.save) {
+      repo.save = function (data) {
+        let idField = null;
+        if (typeof EntityRegistry !== "undefined" && EntityRegistry.get) {
+          const meta = EntityRegistry.get(repo.entity);
+          if (meta && meta.idField) {
+            idField = meta.idField;
+          }
+        }
+        if (!idField && repo.entity) {
+          idField = repo.entity + "ID";
+        }
+
+        if (idField && data && data[idField]) {
+          return repo.update(data[idField], data);
+        }
+        return repo.create(data);
+      };
+    }
+
+    return repo;
   },
 
   // ============================================================
@@ -294,7 +337,6 @@ const RepositoryFactory = {
 
   // ============================================================
   // LEGACY COMPATIBILITY
-  // Repository registration from repositories
   // ============================================================
 
   registerLoaded(name, repository) {
