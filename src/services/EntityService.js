@@ -1,18 +1,32 @@
 // ============================================================
-// EntityService v5.1.0
+// EntityService v5.2.0
 // Enterprise Application Service Layer
 // TaxControl ERP Core
+//
+// Layer:
+//
+// Module
+//    |
+// EntityService
+//    |
+// RepositoryFactory
+//    |
+// Repository
+//    |
+// Database
+//
 // ============================================================
 
 
-console.log("EntityService v5.1.0");
+console.log("EntityService v5.2.0");
 
 
 
 const EntityService = {
 
 
-version:"5.1.0",
+version:"5.2.0",
+
 
 ready:false,
 
@@ -30,13 +44,22 @@ ready:false,
 init(){
 
 
+if(this.ready){
+
+return true;
+
+}
+
+
 this.ready=true;
+
 
 
 Logger.log(
 "EntityService READY v"+
 this.version
 );
+
 
 
 return true;
@@ -50,9 +73,8 @@ return true;
 
 
 
-
 // ============================================================
-// RESOLVE
+// ENTITY RESOLVE
 // ============================================================
 
 
@@ -60,8 +82,7 @@ resolve(entity){
 
 
 if(
-typeof EntityRegistry!=="undefined"
-&&
+typeof EntityRegistry!=="undefined" &&
 EntityRegistry.resolve
 ){
 
@@ -70,7 +91,9 @@ return EntityRegistry.resolve(entity);
 }
 
 
+
 return entity;
+
 
 },
 
@@ -80,9 +103,8 @@ return entity;
 
 
 
-
 // ============================================================
-// META
+// METADATA
 // ============================================================
 
 
@@ -94,17 +116,27 @@ entity=this.resolve(entity);
 
 
 if(
-EntityRegistry?.get
+typeof EntityRegistry!=="undefined" &&
+EntityRegistry.get
 ){
 
-return EntityRegistry.get(entity);
+const meta =
+EntityRegistry.get(entity);
+
+
+if(meta){
+
+return meta;
+
+}
 
 }
 
 
 
 if(
-EntityMetadata?.get
+typeof EntityMetadata!=="undefined" &&
+EntityMetadata.get
 ){
 
 return EntityMetadata.get(entity);
@@ -118,24 +150,8 @@ throw new Error(
 );
 
 
-},
-
-
-
-
-
-
-
-
-getTable(entity){
-
-
-return this.getMeta(entity).table;
-
 
 },
-
-
 
 
 
@@ -178,10 +194,8 @@ return RepositoryFactory.get(entity);
 
 
 
-
-
 // ============================================================
-// PREPARE
+// PREPARE DATA
 // ============================================================
 
 
@@ -194,15 +208,17 @@ const result={
 
 
 
-const meta =
+const meta=
 this.getMeta(entity);
 
 
 
+
+// ORGANIZATION
+
 if(
+meta.organization!==false &&
 typeof OrganizationContext!=="undefined"
-&&
-meta.organization!==false
 ){
 
 
@@ -215,10 +231,12 @@ OrganizationContext.get();
 
 
 
+
+// TENANT
+
 if(
+meta.tenant!==false &&
 typeof TenantContext!=="undefined"
-&&
-meta.tenant!==false
 ){
 
 
@@ -243,6 +261,66 @@ return result;
 
 
 // ============================================================
+// ID GENERATION
+// ============================================================
+
+
+generateId(meta,data){
+
+
+
+if(
+!meta.idField
+){
+
+return data;
+
+}
+
+
+
+if(
+data[meta.idField]
+){
+
+return data;
+
+}
+
+
+
+
+if(
+typeof IdService!=="undefined" &&
+IdService.generate
+){
+
+
+data[meta.idField]=
+IdService.generate(
+
+meta.idPrefix ||
+meta.idField
+
+);
+
+
+}
+
+
+
+return data;
+
+
+},
+
+
+
+
+
+
+
+// ============================================================
 // VALIDATION
 // ============================================================
 
@@ -250,20 +328,40 @@ return result;
 validate(entity,data){
 
 
+
 if(
-typeof EntityValidator==="undefined"
+typeof EntityValidator!=="undefined" &&
+EntityValidator.validate
 ){
-
-return true;
-
-}
-
 
 
 return EntityValidator.validate(
 entity,
 data
 );
+
+
+}
+
+
+
+if(
+typeof EntityMetadata!=="undefined" &&
+EntityMetadata.validate
+){
+
+
+return EntityMetadata.validate(
+entity,
+data
+);
+
+
+}
+
+
+
+return true;
 
 
 },
@@ -285,6 +383,7 @@ create(entity,data={}){
 entity=this.resolve(entity);
 
 
+
 const meta=
 this.getMeta(entity);
 
@@ -304,6 +403,13 @@ data
 
 
 
+data=this.generateId(
+meta,
+data
+);
+
+
+
 this.validate(
 entity,
 data
@@ -311,9 +417,12 @@ data
 
 
 
-const result =
+const result=
 this.getRepository(entity)
-.create(data);
+.create(
+data
+);
+
 
 
 
@@ -362,6 +471,24 @@ options
 
 
 
+// compatibility
+
+getById(entity,id,options={}){
+
+
+return this.findById(
+entity,
+id,
+options
+);
+
+
+},
+
+
+
+
+
 findAll(entity,filters={},options={}){
 
 
@@ -389,7 +516,9 @@ this.getRepository(entity);
 
 
 
-if(repo.findWhere){
+if(
+typeof repo.findWhere==="function"
+){
 
 return repo.findWhere(
 criteria,
@@ -405,6 +534,7 @@ entity,
 criteria,
 options
 );
+
 
 
 },
@@ -436,16 +566,27 @@ options
 existsBy(entity,field,value,options={}){
 
 
-return this.getRepository(entity)
-.existsBy(
+const repo=
+this.getRepository(entity);
+
+
+
+if(repo.existsBy){
+
+return repo.existsBy(
 field,
 value,
 options
 );
 
+}
+
+
+
+return false;
+
 
 },
-
 
 
 
@@ -494,6 +635,7 @@ update(entity,id,data={}){
 
 
 entity=this.resolve(entity);
+
 
 
 const meta=
@@ -548,7 +690,7 @@ entity,
 
 
 
-const result =
+const result=
 this.getRepository(entity)
 .update(
 id,
@@ -579,7 +721,7 @@ return result;
 
 
 // ============================================================
-// DELETE RESTORE
+// DELETE
 // ============================================================
 
 
@@ -587,6 +729,18 @@ delete(entity,id){
 
 
 entity=this.resolve(entity);
+
+
+
+const meta=
+this.getMeta(entity);
+
+
+
+this.checkPermission(
+meta,
+"delete"
+);
 
 
 
@@ -626,14 +780,49 @@ return result;
 
 
 
+
+
+// ============================================================
+// RESTORE
+// ============================================================
+
+
 restore(entity,id){
 
 
 entity=this.resolve(entity);
 
 
-return this.getRepository(entity)
+
+const meta=
+this.getMeta(entity);
+
+
+
+this.checkPermission(
+meta,
+"restore"
+);
+
+
+
+const result=
+this.getRepository(entity)
 .restore(id);
+
+
+
+this.emit(
+entity,
+"restored",
+null,
+result,
+"RESTORE"
+);
+
+
+
+return result;
 
 
 },
@@ -653,8 +842,11 @@ bulkCreate(entity,list=[]){
 
 
 return list.map(
-x=>
-this.create(entity,x)
+item=>
+this.create(
+entity,
+item
+)
 );
 
 
@@ -693,8 +885,23 @@ data
 transaction(callback){
 
 
+
 if(
-BaseRepository?.transaction
+typeof TransactionManager!=="undefined" &&
+TransactionManager.run
+){
+
+return TransactionManager.run(
+callback
+);
+
+}
+
+
+
+if(
+typeof BaseRepository!=="undefined" &&
+BaseRepository.transaction
 ){
 
 return BaseRepository.transaction(
@@ -702,6 +909,7 @@ callback
 );
 
 }
+
 
 
 return callback();
@@ -723,6 +931,7 @@ return callback();
 checkPermission(meta,action){
 
 
+
 if(
 typeof SecurityGuard==="undefined"
 ){
@@ -733,7 +942,7 @@ return;
 
 
 
-const permission=
+const permission =
 meta.permissions?.[action];
 
 
@@ -745,6 +954,7 @@ permission
 );
 
 }
+
 
 
 },
@@ -765,8 +975,7 @@ emit(entity,type,before,after,action){
 
 
 if(
-typeof EventBus==="undefined"
-||
+typeof EventBus==="undefined" ||
 !EventBus.emit
 ){
 
@@ -795,7 +1004,9 @@ return;
 
 
 EventBus.emit(
+
 event,
+
 {
 
 entity,
@@ -816,6 +1027,7 @@ new Date().toISOString()
 );
 
 
+
 },
 
 
@@ -825,30 +1037,67 @@ new Date().toISOString()
 
 
 // ============================================================
-// SAFE EXECUTE
+// DIAGNOSTICS
 // ============================================================
 
 
-safeExecute(name,fn){
+diagnostics(){
 
 
-try{
-
-return fn();
-
-}
-catch(e){
-
-Logger.error(
-name+
-" FAILED "+
-e.message
-);
+return{
 
 
-throw e;
+version:this.version,
 
-}
+
+ready:this.ready,
+
+
+repositoryFactory:
+typeof RepositoryFactory!=="undefined",
+
+
+entityRegistry:
+typeof EntityRegistry!=="undefined",
+
+
+eventBus:
+typeof EventBus!=="undefined",
+
+
+
+features:[
+
+"CRUD",
+
+"Validation",
+
+"AutoID",
+
+"RepositoryPattern",
+
+"OrganizationScope",
+
+"TenantScope",
+
+"SoftDelete",
+
+"Restore",
+
+"Events",
+
+"AuditReady",
+
+"VersioningReady",
+
+"BulkOperations",
+
+"Transactions"
+
+]
+
+
+};
 
 
 },
@@ -879,49 +1128,20 @@ this.ready
 
 {
 
+
 version:this.version,
 
 
 architecture:
-"Application Service Layer",
+"Enterprise Application Service Layer",
 
 
-features:[
-
-"CRUD",
-
-"RepositoryFactory",
-
-"EntityRegistry",
-
-"Metadata",
-
-"Validation",
-
-"Permissions",
-
-"OrganizationScope",
-
-"TenantScope",
-
-"SoftDelete",
-
-"Restore",
-
-"EventBus",
-
-"Audit",
-
-"Versioning",
-
-"BulkOperations",
-
-"Transactions"
-
-]
+diagnostics:
+this.diagnostics()
 
 
 }
+
 
 );
 
@@ -937,7 +1157,8 @@ features:[
 
 
 
-globalThis.EntityService=
+
+globalThis.EntityService =
 EntityService;
 
 
