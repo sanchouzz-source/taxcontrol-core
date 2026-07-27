@@ -1,3425 +1,2066 @@
 // ============================================================
-// EntityMetadata v2.0.0
-// TaxControl ERP
+// EntityMetadata v2.1.0
+// TaxControl ERP Core
 //
-// Единый каталог метаданных сущностей.
+// Enterprise Entity Contract Registry
 //
-// Изменения v2.0.0:
-// - убрано автоматическое создание бизнес-сущностей;
-// - добавлены все текущие сущности ERP;
-// - добавлена строгая проверка EntityRegistry;
-// - добавлена диагностика дубликатов;
-// - добавлена нормализация определений;
-// - добавлены permissions, events, audit, versioning;
-// - добавлена управляемая регистрация тестовых сущностей;
-// - совместимость с BaseRepository v5.5+;
-// - совместимость с SchemaRegistry v4+;
-// - расширенный health().
+// Compatible:
+// EntityRegistry v2.3+
+// SchemaRegistry v4+
+// EntityValidator v1+
+// EntityService v5+
+// BaseRepository v5.6+
+// RepositoryFactory v2.7+
+//
+// Changes:
+// - AUTO ID generation support
+// - Repository binding
+// - EntityService lifecycle compatible
+// - Validation fixes
+// - Extended client model
 // ============================================================
 
-console.log("EntityMetadata v2.0.0");
+
+console.log("EntityMetadata v2.1.0");
+
 
 
 const EntityMetadata = {
 
-  version: "2.0.0",
 
-  architecture: "Static Entity Metadata Registry",
+version:"2.1.0",
 
-  initialized: false,
+apiVersion:"2.0",
 
-  locked: false,
 
-  strictMode: true,
+architecture:
+"EntityMetadata -> EntityRegistry -> SchemaRegistry -> Repository",
 
-  allowTestEntityRegistration: true,
 
+initialized:false,
 
-  // ============================================================
-  // CLIENT
-  // ============================================================
+locked:false,
 
-  CLIENT: {
 
-    entity: "CLIENT",
+strictMode:true,
 
-    table: "Clients",
 
-    idField: "ClientID",
+allowTestEntityRegistration:true,
 
-    idPrefix: "CLI",
 
-    module: "crm",
 
-    version: 1,
-
-    softDelete: true,
-
-    timestamps: true,
-
-    audit: true,
-
-    versioning: true,
-
-    fields: [
-
-      {
-        name: "ClientID",
-        type: "ID",
-        required: true
-      },
-
-      {
-        name: "OrganizationID",
-        type: "REFERENCE",
-        required: true
-      },
-
-      {
-        name: "Name",
-        type: "STRING",
-        required: true
-      },
-
-      {
-        name: "INN",
-        type: "STRING",
-        unique: true
-      },
-
-      {
-        name: "Phone",
-        type: "STRING"
-      },
-
-      {
-        name: "Email",
-        type: "STRING"
-      },
-
-      {
-        name: "Address",
-        type: "STRING"
-      },
-
-      {
-        name: "Status",
-        type: "ENUM",
-        default: "ACTIVE"
-      },
-
-      {
-        name: "CreatedAt",
-        type: "DATETIME"
-      },
-
-      {
-        name: "UpdatedAt",
-        type: "DATETIME"
-      },
-
-      {
-        name: "Deleted",
-        type: "BOOLEAN",
-        default: false
-      }
-
-    ],
-
-    relations: {
-
-      OrganizationID: {
-        entity: "ORGANIZATION",
-        type: "MANY_TO_ONE"
-      }
-
-    },
-
-    permissions: {
-
-      create: "CLIENT_CREATE",
-
-      read: "CLIENT_READ",
-
-      update: "CLIENT_UPDATE",
-
-      delete: "CLIENT_DELETE"
-
-    },
-
-    events: {
-
-      created: "CLIENT_CREATED",
-
-      updated: "CLIENT_UPDATED",
-
-      deleted: "CLIENT_DELETED",
-
-      restored: "CLIENT_RESTORED"
-
-    }
-
-  },
-
-
-  // ============================================================
-  // TRIP
-  // ============================================================
-
-  TRIP: {
-
-    entity: "TRIP",
-
-    table: "Trips",
-
-    idField: "TripID",
-
-    idPrefix: "TRP",
-
-    module: "transport",
-
-    version: 1,
-
-    softDelete: true,
-
-    timestamps: true,
-
-    audit: true,
-
-    versioning: true,
-
-    fields: [
-
-      {
-        name: "TripID",
-        type: "ID",
-        required: true
-      },
-
-      {
-        name: "OrganizationID",
-        type: "REFERENCE",
-        required: true
-      },
-
-      {
-        name: "ClientID",
-        type: "REFERENCE"
-      },
-
-      {
-        name: "VehicleID",
-        type: "REFERENCE"
-      },
-
-      {
-        name: "DriverID",
-        type: "REFERENCE"
-      },
-
-      {
-        name: "RouteID",
-        type: "REFERENCE"
-      },
-
-      {
-        name: "CarrierID",
-        type: "REFERENCE"
-      },
-
-      {
-        name: "TransportOrderID",
-        type: "REFERENCE"
-      },
-
-      {
-        name: "ManagerID",
-        type: "REFERENCE"
-      },
-
-      {
-        name: "LogistID",
-        type: "REFERENCE"
-      },
-
-      {
-        name: "LoadingPoint",
-        type: "STRING"
-      },
-
-      {
-        name: "UnloadingPoint",
-        type: "STRING"
-      },
-
-      {
-        name: "LoadingDate",
-        type: "DATETIME"
-      },
-
-      {
-        name: "UnloadingDate",
-        type: "DATETIME"
-      },
-
-      {
-        name: "Distance",
-        type: "NUMBER"
-      },
-
-      {
-        name: "Cargo",
-        type: "STRING"
-      },
-
-      {
-        name: "Revenue",
-        type: "NUMBER",
-        default: 0
-      },
-
-      {
-        name: "PlannedCost",
-        type: "NUMBER",
-        default: 0
-      },
-
-      {
-        name: "ActualCost",
-        type: "NUMBER",
-        default: 0
-      },
-
-      {
-        name: "IsExpedition",
-        type: "BOOLEAN",
-        default: false
-      },
-
-      {
-        name: "CarrierName",
-        type: "STRING"
-      },
-
-      {
-        name: "PostalTrackNumber",
-        type: "STRING"
-      },
-
-      {
-        name: "Status",
-        type: "ENUM",
-        default: "NEW"
-      },
-
-      {
-        name: "CreatedAt",
-        type: "DATETIME"
-      },
-
-      {
-        name: "UpdatedAt",
-        type: "DATETIME"
-      },
-
-      {
-        name: "Deleted",
-        type: "BOOLEAN",
-        default: false
-      }
-
-    ],
-
-    relations: {
-
-      OrganizationID: {
-        entity: "ORGANIZATION",
-        type: "MANY_TO_ONE"
-      },
-
-      ClientID: {
-        entity: "CLIENT",
-        type: "MANY_TO_ONE"
-      },
-
-      VehicleID: {
-        entity: "VEHICLE",
-        type: "MANY_TO_ONE"
-      },
-
-      DriverID: {
-        entity: "DRIVER",
-        type: "MANY_TO_ONE"
-      },
-
-      RouteID: {
-        entity: "ROUTE",
-        type: "MANY_TO_ONE"
-      },
-
-      CarrierID: {
-        entity: "CARRIER",
-        type: "MANY_TO_ONE"
-      },
-
-      TransportOrderID: {
-        entity: "TRANSPORT_ORDER",
-        type: "MANY_TO_ONE"
-      }
-
-    },
-
-    permissions: {
-
-      create: "TRIP_CREATE",
-
-      read: "TRIP_READ",
-
-      update: "TRIP_UPDATE",
-
-      delete: "TRIP_DELETE"
-
-    },
-
-    events: {
-
-      created: "TRIP_CREATED",
-
-      updated: "TRIP_UPDATED",
-
-      deleted: "TRIP_DELETED",
-
-      restored: "TRIP_RESTORED",
-
-      statusChanged: "TRIP_STATUS_CHANGED"
-
-    }
-
-  },
-
-
-  // ============================================================
-  // ORGANIZATION
-  // ============================================================
-
-  ORGANIZATION: {
-
-    entity: "ORGANIZATION",
-
-    table: "Organizations",
-
-    idField: "OrganizationID",
-
-    idPrefix: "ORG",
-
-    module: "core",
-
-    version: 1,
-
-    softDelete: true,
-
-    timestamps: true,
-
-    audit: true,
-
-    versioning: true,
-
-    fields: [
-
-      {
-        name: "OrganizationID",
-        type: "ID",
-        required: true
-      },
-
-      {
-        name: "Name",
-        type: "STRING",
-        required: true
-      },
-
-      {
-        name: "INN",
-        type: "STRING",
-        unique: true
-      },
-
-      {
-        name: "KPP",
-        type: "STRING"
-      },
-
-      {
-        name: "TaxSystem",
-        type: "ENUM"
-      },
-
-      {
-        name: "Status",
-        type: "ENUM",
-        default: "ACTIVE"
-      },
-
-      {
-        name: "CreatedAt",
-        type: "DATETIME"
-      },
-
-      {
-        name: "UpdatedAt",
-        type: "DATETIME"
-      },
-
-      {
-        name: "Deleted",
-        type: "BOOLEAN",
-        default: false
-      }
-
-    ],
-
-    relations: {},
-
-    events: {
-
-      created: "ORGANIZATION_CREATED",
-
-      updated: "ORGANIZATION_UPDATED",
-
-      deleted: "ORGANIZATION_DELETED",
-
-      restored: "ORGANIZATION_RESTORED"
-
-    }
-
-  },
-
-
-  // ============================================================
-  // USER
-  // ============================================================
-
-  USER: {
-
-    entity: "USER",
-
-    table: "Users",
-
-    idField: "UserID",
-
-    idPrefix: "USR",
-
-    module: "security",
-
-    version: 1,
-
-    softDelete: true,
-
-    timestamps: true,
-
-    audit: true,
-
-    versioning: true,
-
-    fields: [
-
-      {
-        name: "UserID",
-        type: "ID",
-        required: true
-      },
-
-      {
-        name: "OrganizationID",
-        type: "REFERENCE"
-      },
-
-      {
-        name: "Name",
-        type: "STRING",
-        required: true
-      },
-
-      {
-        name: "Email",
-        type: "STRING",
-        unique: true
-      },
-
-      {
-        name: "RoleID",
-        type: "REFERENCE"
-      },
-
-      {
-        name: "Status",
-        type: "ENUM",
-        default: "ACTIVE"
-      },
-
-      {
-        name: "CreatedAt",
-        type: "DATETIME"
-      },
-
-      {
-        name: "UpdatedAt",
-        type: "DATETIME"
-      },
-
-      {
-        name: "Deleted",
-        type: "BOOLEAN",
-        default: false
-      }
-
-    ],
-
-    relations: {
-
-      OrganizationID: {
-        entity: "ORGANIZATION",
-        type: "MANY_TO_ONE"
-      }
-
-    },
-
-    events: {
-
-      created: "USER_CREATED",
-
-      updated: "USER_UPDATED",
-
-      deleted: "USER_DELETED",
-
-      restored: "USER_RESTORED"
-
-    }
-
-  },
-
-
-  // ============================================================
-  // CLIENT FINANCE PROFILE
-  // ============================================================
-
-  CLIENT_FINANCE_PROFILE: {
-
-    entity: "CLIENT_FINANCE_PROFILE",
-
-    table: "ClientFinanceProfiles",
-
-    idField: "ClientFinanceProfileID",
-
-    idPrefix: "CFP",
-
-    module: "finance",
-
-    version: 1,
-
-    softDelete: true,
-
-    timestamps: true,
-
-    audit: true,
-
-    versioning: true,
-
-    fields: [
-
-      {
-        name: "ClientFinanceProfileID",
-        type: "ID",
-        required: true
-      },
-
-      {
-        name: "OrganizationID",
-        type: "REFERENCE"
-      },
-
-      {
-        name: "ClientID",
-        type: "REFERENCE",
-        required: true
-      },
-
-      {
-        name: "CreditLimit",
-        type: "NUMBER",
-        default: 0
-      },
-
-      {
-        name: "PaymentDelayDays",
-        type: "NUMBER",
-        default: 0
-      },
-
-      {
-        name: "Debt",
-        type: "NUMBER",
-        default: 0
-      },
-
-      {
-        name: "Status",
-        type: "ENUM",
-        default: "ACTIVE"
-      },
-
-      {
-        name: "CreatedAt",
-        type: "DATETIME"
-      },
-
-      {
-        name: "UpdatedAt",
-        type: "DATETIME"
-      },
-
-      {
-        name: "Deleted",
-        type: "BOOLEAN",
-        default: false
-      }
-
-    ],
-
-    relations: {
-
-      ClientID: {
-        entity: "CLIENT",
-        type: "ONE_TO_ONE"
-      },
-
-      OrganizationID: {
-        entity: "ORGANIZATION",
-        type: "MANY_TO_ONE"
-      }
-
-    },
-
-    events: {
-
-      created: "CLIENT_FINANCE_PROFILE_CREATED",
-
-      updated: "CLIENT_FINANCE_PROFILE_UPDATED",
-
-      deleted: "CLIENT_FINANCE_PROFILE_DELETED",
-
-      restored: "CLIENT_FINANCE_PROFILE_RESTORED"
-
-    }
-
-  },
-
-
-  // ============================================================
-  // FINANCIAL TRANSACTION
-  // ============================================================
-
-  FINANCIAL_TRANSACTION: {
-
-    entity: "FINANCIAL_TRANSACTION",
-
-    table: "FinancialTransactions",
-
-    idField: "FinancialTransactionID",
-
-    idPrefix: "FIN",
-
-    module: "finance",
-
-    version: 1,
-
-    softDelete: true,
-
-    timestamps: true,
-
-    audit: true,
-
-    versioning: true,
-
-    fields: [
-
-      {
-        name: "FinancialTransactionID",
-        type: "ID",
-        required: true
-      },
-
-      {
-        name: "OrganizationID",
-        type: "REFERENCE",
-        required: true
-      },
-
-      {
-        name: "ClientID",
-        type: "REFERENCE"
-      },
-
-      {
-        name: "TripID",
-        type: "REFERENCE"
-      },
-
-      {
-        name: "Type",
-        type: "ENUM",
-        required: true
-      },
-
-      {
-        name: "Category",
-        type: "STRING"
-      },
-
-      {
-        name: "Amount",
-        type: "NUMBER",
-        required: true
-      },
-
-      {
-        name: "TransactionDate",
-        type: "DATETIME"
-      },
-
-      {
-        name: "Description",
-        type: "STRING"
-      },
-
-      {
-        name: "Status",
-        type: "ENUM",
-        default: "POSTED"
-      },
-
-      {
-        name: "CreatedAt",
-        type: "DATETIME"
-      },
-
-      {
-        name: "UpdatedAt",
-        type: "DATETIME"
-      },
-
-      {
-        name: "Deleted",
-        type: "BOOLEAN",
-        default: false
-      }
-
-    ],
-
-    relations: {
-
-      OrganizationID: {
-        entity: "ORGANIZATION",
-        type: "MANY_TO_ONE"
-      },
-
-      ClientID: {
-        entity: "CLIENT",
-        type: "MANY_TO_ONE"
-      },
-
-      TripID: {
-        entity: "TRIP",
-        type: "MANY_TO_ONE"
-      }
-
-    },
-
-    events: {
-
-      created: "FINANCIAL_TRANSACTION_CREATED",
-
-      updated: "FINANCIAL_TRANSACTION_UPDATED",
-
-      deleted: "FINANCIAL_TRANSACTION_DELETED",
-
-      restored: "FINANCIAL_TRANSACTION_RESTORED"
-
-    }
-
-  },
-
-
-  // ============================================================
-  // AUDIT
-  // ============================================================
-
-  AUDIT: {
-
-    entity: "AUDIT",
-
-    table: "AuditLog",
-
-    idField: "AuditID",
-
-    idPrefix: "AUD",
-
-    module: "audit",
-
-    version: 1,
-
-    softDelete: false,
-
-    timestamps: true,
-
-    audit: false,
-
-    versioning: false,
-
-    immutable: true,
-
-    appendOnly: true,
-
-    fields: [
-
-      {
-        name: "AuditID",
-        type: "ID",
-        required: true
-      },
-
-      {
-        name: "Entity",
-        type: "STRING",
-        required: true
-      },
-
-      {
-        name: "EntityID",
-        type: "STRING"
-      },
-
-      {
-        name: "Action",
-        type: "STRING",
-        required: true
-      },
-
-      {
-        name: "UserID",
-        type: "REFERENCE"
-      },
-
-      {
-        name: "Before",
-        type: "JSON"
-      },
-
-      {
-        name: "After",
-        type: "JSON"
-      },
-
-      {
-        name: "Source",
-        type: "STRING"
-      },
-
-      {
-        name: "Timestamp",
-        type: "DATETIME"
-      },
-
-      {
-        name: "CreatedAt",
-        type: "DATETIME"
-      }
-
-    ],
-
-    relations: {
-
-      UserID: {
-        entity: "USER",
-        type: "MANY_TO_ONE"
-      }
-
-    },
-
-    events: {}
-
-  },
-
-
-  // ============================================================
-  // VERSION
-  // ============================================================
-
-  VERSION: {
-
-    entity: "VERSION",
-
-    table: "Versions",
-
-    idField: "VersionID",
-
-    idPrefix: "VER",
-
-    module: "versioning",
-
-    version: 1,
-
-    softDelete: false,
-
-    timestamps: true,
-
-    audit: false,
-
-    versioning: false,
-
-    immutable: true,
-
-    appendOnly: true,
-
-    fields: [
-
-      {
-        name: "VersionID",
-        type: "ID",
-        required: true
-      },
-
-      {
-        name: "Entity",
-        type: "STRING",
-        required: true
-      },
-
-      {
-        name: "EntityID",
-        type: "STRING",
-        required: true
-      },
-
-      {
-        name: "Version",
-        type: "NUMBER",
-        required: true
-      },
-
-      {
-        name: "Data",
-        type: "JSON"
-      },
-
-      {
-        name: "Action",
-        type: "STRING"
-      },
-
-      {
-        name: "UserID",
-        type: "REFERENCE"
-      },
-
-      {
-        name: "CreatedAt",
-        type: "DATETIME"
-      }
-
-    ],
-
-    relations: {
-
-      UserID: {
-        entity: "USER",
-        type: "MANY_TO_ONE"
-      }
-
-    },
-
-    events: {}
-
-  },
-
-
-  // ============================================================
-  // KPI
-  // ============================================================
-
-  KPI: {
-
-    entity: "KPI",
-
-    table: "KPIMetrics",
-
-    idField: "KPIID",
-
-    idPrefix: "KPI",
-
-    module: "analytics",
-
-    version: 1,
-
-    softDelete: true,
-
-    timestamps: true,
-
-    audit: true,
-
-    versioning: false,
-
-    fields: [
-
-      {
-        name: "KPIID",
-        type: "ID",
-        required: true
-      },
-
-      {
-        name: "OrganizationID",
-        type: "REFERENCE"
-      },
-
-      {
-        name: "Entity",
-        type: "STRING"
-      },
-
-      {
-        name: "EntityID",
-        type: "STRING"
-      },
-
-      {
-        name: "Metric",
-        type: "STRING",
-        required: true
-      },
-
-      {
-        name: "Value",
-        type: "NUMBER",
-        default: 0
-      },
-
-      {
-        name: "Period",
-        type: "STRING"
-      },
-
-      {
-        name: "CalculatedAt",
-        type: "DATETIME"
-      },
-
-      {
-        name: "CreatedAt",
-        type: "DATETIME"
-      },
-
-      {
-        name: "UpdatedAt",
-        type: "DATETIME"
-      },
-
-      {
-        name: "Deleted",
-        type: "BOOLEAN",
-        default: false
-      }
-
-    ],
-
-    relations: {
-
-      OrganizationID: {
-        entity: "ORGANIZATION",
-        type: "MANY_TO_ONE"
-      }
-
-    },
-
-    events: {
-
-      created: "KPI_CREATED",
-
-      updated: "KPI_UPDATED",
-
-      deleted: "KPI_DELETED",
-
-      restored: "KPI_RESTORED"
-
-    }
-
-  },
-
-
-  // ============================================================
-  // TRANSPORT ORDER
-  // ============================================================
-
-  TRANSPORT_ORDER: {
-
-    entity: "TRANSPORT_ORDER",
-
-    table: "TransportOrders",
-
-    idField: "TransportOrderID",
-
-    idPrefix: "TOR",
-
-    module: "transport",
-
-    version: 1,
-
-    softDelete: true,
-
-    timestamps: true,
-
-    audit: true,
-
-    versioning: true,
-
-    fields: [
-
-      {
-        name: "TransportOrderID",
-        type: "ID",
-        required: true
-      },
-
-      {
-        name: "OrganizationID",
-        type: "REFERENCE",
-        required: true
-      },
-
-      {
-        name: "ClientID",
-        type: "REFERENCE"
-      },
-
-      {
-        name: "RouteID",
-        type: "REFERENCE"
-      },
-
-      {
-        name: "CargoID",
-        type: "REFERENCE"
-      },
-
-      {
-        name: "LoadingPoint",
-        type: "STRING"
-      },
-
-      {
-        name: "UnloadingPoint",
-        type: "STRING"
-      },
-
-      {
-        name: "PlannedLoadingDate",
-        type: "DATETIME"
-      },
-
-      {
-        name: "PlannedUnloadingDate",
-        type: "DATETIME"
-      },
-
-      {
-        name: "Price",
-        type: "NUMBER",
-        default: 0
-      },
-
-      {
-        name: "Status",
-        type: "ENUM",
-        default: "NEW"
-      },
-
-      {
-        name: "CreatedAt",
-        type: "DATETIME"
-      },
-
-      {
-        name: "UpdatedAt",
-        type: "DATETIME"
-      },
-
-      {
-        name: "Deleted",
-        type: "BOOLEAN",
-        default: false
-      }
-
-    ],
-
-    relations: {
-
-      OrganizationID: {
-        entity: "ORGANIZATION",
-        type: "MANY_TO_ONE"
-      },
-
-      ClientID: {
-        entity: "CLIENT",
-        type: "MANY_TO_ONE"
-      },
-
-      RouteID: {
-        entity: "ROUTE",
-        type: "MANY_TO_ONE"
-      },
-
-      CargoID: {
-        entity: "CARGO",
-        type: "MANY_TO_ONE"
-      }
-
-    },
-
-    events: {
-
-      created: "TRANSPORT_ORDER_CREATED",
-
-      updated: "TRANSPORT_ORDER_UPDATED",
-
-      deleted: "TRANSPORT_ORDER_DELETED",
-
-      restored: "TRANSPORT_ORDER_RESTORED",
-
-      statusChanged: "TRANSPORT_ORDER_STATUS_CHANGED"
-
-    }
-
-  },
-
-
-  // ============================================================
-  // CARRIER
-  // ============================================================
-
-  CARRIER: {
-
-    entity: "CARRIER",
-
-    table: "Carriers",
-
-    idField: "CarrierID",
-
-    idPrefix: "CAR",
-
-    module: "transport",
-
-    version: 1,
-
-    softDelete: true,
-
-    timestamps: true,
-
-    audit: true,
-
-    versioning: true,
-
-    fields: [
-
-      {
-        name: "CarrierID",
-        type: "ID",
-        required: true
-      },
-
-      {
-        name: "OrganizationID",
-        type: "REFERENCE"
-      },
-
-      {
-        name: "Name",
-        type: "STRING",
-        required: true
-      },
-
-      {
-        name: "INN",
-        type: "STRING",
-        unique: true
-      },
-
-      {
-        name: "Phone",
-        type: "STRING"
-      },
-
-      {
-        name: "Email",
-        type: "STRING"
-      },
-
-      {
-        name: "Status",
-        type: "ENUM",
-        default: "ACTIVE"
-      },
-
-      {
-        name: "CreatedAt",
-        type: "DATETIME"
-      },
-
-      {
-        name: "UpdatedAt",
-        type: "DATETIME"
-      },
-
-      {
-        name: "Deleted",
-        type: "BOOLEAN",
-        default: false
-      }
-
-    ],
-
-    relations: {
-
-      OrganizationID: {
-        entity: "ORGANIZATION",
-        type: "MANY_TO_ONE"
-      }
-
-    },
-
-    events: {
-
-      created: "CARRIER_CREATED",
-
-      updated: "CARRIER_UPDATED",
-
-      deleted: "CARRIER_DELETED",
-
-      restored: "CARRIER_RESTORED"
-
-    }
-
-  },
-
-
-  // ============================================================
-  // DRIVER
-  // ============================================================
-
-  DRIVER: {
-
-    entity: "DRIVER",
-
-    table: "Drivers",
-
-    idField: "DriverID",
-
-    idPrefix: "DRV",
-
-    module: "transport",
-
-    version: 1,
-
-    softDelete: true,
-
-    timestamps: true,
-
-    audit: true,
-
-    versioning: true,
-
-    fields: [
-
-      {
-        name: "DriverID",
-        type: "ID",
-        required: true
-      },
-
-      {
-        name: "OrganizationID",
-        type: "REFERENCE"
-      },
-
-      {
-        name: "CarrierID",
-        type: "REFERENCE"
-      },
-
-      {
-        name: "Name",
-        type: "STRING",
-        required: true
-      },
-
-      {
-        name: "Phone",
-        type: "STRING"
-      },
-
-      {
-        name: "LicenseNumber",
-        type: "STRING"
-      },
-
-      {
-        name: "Status",
-        type: "ENUM",
-        default: "ACTIVE"
-      },
-
-      {
-        name: "CreatedAt",
-        type: "DATETIME"
-      },
-
-      {
-        name: "UpdatedAt",
-        type: "DATETIME"
-      },
-
-      {
-        name: "Deleted",
-        type: "BOOLEAN",
-        default: false
-      }
-
-    ],
-
-    relations: {
-
-      OrganizationID: {
-        entity: "ORGANIZATION",
-        type: "MANY_TO_ONE"
-      },
-
-      CarrierID: {
-        entity: "CARRIER",
-        type: "MANY_TO_ONE"
-      }
-
-    },
-
-    events: {
-
-      created: "DRIVER_CREATED",
-
-      updated: "DRIVER_UPDATED",
-
-      deleted: "DRIVER_DELETED",
-
-      restored: "DRIVER_RESTORED"
-
-    }
-
-  },
-
-
-  // ============================================================
-  // VEHICLE
-  // ============================================================
-
-  VEHICLE: {
-
-    entity: "VEHICLE",
-
-    table: "Vehicles",
-
-    idField: "VehicleID",
-
-    idPrefix: "VEH",
-
-    module: "transport",
-
-    version: 1,
-
-    softDelete: true,
-
-    timestamps: true,
-
-    audit: true,
-
-    versioning: true,
-
-    fields: [
-
-      {
-        name: "VehicleID",
-        type: "ID",
-        required: true
-      },
-
-      {
-        name: "OrganizationID",
-        type: "REFERENCE"
-      },
-
-      {
-        name: "CarrierID",
-        type: "REFERENCE"
-      },
-
-      {
-        name: "RegistrationNumber",
-        type: "STRING",
-        required: true,
-        unique: true
-      },
-
-      {
-        name: "Brand",
-        type: "STRING"
-      },
-
-      {
-        name: "Model",
-        type: "STRING"
-      },
-
-      {
-        name: "VehicleType",
-        type: "ENUM"
-      },
-
-      {
-        name: "Status",
-        type: "ENUM",
-        default: "ACTIVE"
-      },
-
-      {
-        name: "CreatedAt",
-        type: "DATETIME"
-      },
-
-      {
-        name: "UpdatedAt",
-        type: "DATETIME"
-      },
-
-      {
-        name: "Deleted",
-        type: "BOOLEAN",
-        default: false
-      }
-
-    ],
-
-    relations: {
-
-      OrganizationID: {
-        entity: "ORGANIZATION",
-        type: "MANY_TO_ONE"
-      },
-
-      CarrierID: {
-        entity: "CARRIER",
-        type: "MANY_TO_ONE"
-      }
-
-    },
-
-    events: {
-
-      created: "VEHICLE_CREATED",
-
-      updated: "VEHICLE_UPDATED",
-
-      deleted: "VEHICLE_DELETED",
-
-      restored: "VEHICLE_RESTORED"
-
-    }
-
-  },
-
-
-  // ============================================================
-  // ROUTE
-  // ============================================================
-
-  ROUTE: {
-
-    entity: "ROUTE",
-
-    table: "Routes",
-
-    idField: "RouteID",
-
-    idPrefix: "RTE",
-
-    module: "transport",
-
-    version: 1,
-
-    softDelete: true,
-
-    timestamps: true,
-
-    audit: true,
-
-    versioning: true,
-
-    fields: [
-
-      {
-        name: "RouteID",
-        type: "ID",
-        required: true
-      },
-
-      {
-        name: "OrganizationID",
-        type: "REFERENCE"
-      },
-
-      {
-        name: "Name",
-        type: "STRING"
-      },
-
-      {
-        name: "LoadingPoint",
-        type: "STRING",
-        required: true
-      },
-
-      {
-        name: "UnloadingPoint",
-        type: "STRING",
-        required: true
-      },
-
-      {
-        name: "Distance",
-        type: "NUMBER",
-        default: 0
-      },
-
-      {
-        name: "PlannedDuration",
-        type: "NUMBER",
-        default: 0
-      },
-
-      {
-        name: "Status",
-        type: "ENUM",
-        default: "ACTIVE"
-      },
-
-      {
-        name: "CreatedAt",
-        type: "DATETIME"
-      },
-
-      {
-        name: "UpdatedAt",
-        type: "DATETIME"
-      },
-
-      {
-        name: "Deleted",
-        type: "BOOLEAN",
-        default: false
-      }
-
-    ],
-
-    relations: {
-
-      OrganizationID: {
-        entity: "ORGANIZATION",
-        type: "MANY_TO_ONE"
-      }
-
-    },
-
-    events: {
-
-      created: "ROUTE_CREATED",
-
-      updated: "ROUTE_UPDATED",
-
-      deleted: "ROUTE_DELETED",
-
-      restored: "ROUTE_RESTORED"
-
-    }
-
-  },
-
-
-  // ============================================================
-  // CARGO
-  // ============================================================
-
-  CARGO: {
-
-    entity: "CARGO",
-
-    table: "Cargoes",
-
-    idField: "CargoID",
-
-    idPrefix: "CRG",
-
-    module: "transport",
-
-    version: 1,
-
-    softDelete: true,
-
-    timestamps: true,
-
-    audit: true,
-
-    versioning: true,
-
-    fields: [
-
-      {
-        name: "CargoID",
-        type: "ID",
-        required: true
-      },
-
-      {
-        name: "OrganizationID",
-        type: "REFERENCE"
-      },
-
-      {
-        name: "Name",
-        type: "STRING",
-        required: true
-      },
-
-      {
-        name: "CargoType",
-        type: "ENUM"
-      },
-
-      {
-        name: "Weight",
-        type: "NUMBER",
-        default: 0
-      },
-
-      {
-        name: "Volume",
-        type: "NUMBER",
-        default: 0
-      },
-
-      {
-        name: "Description",
-        type: "STRING"
-      },
-
-      {
-        name: "Status",
-        type: "ENUM",
-        default: "ACTIVE"
-      },
-
-      {
-        name: "CreatedAt",
-        type: "DATETIME"
-      },
-
-      {
-        name: "UpdatedAt",
-        type: "DATETIME"
-      },
-
-      {
-        name: "Deleted",
-        type: "BOOLEAN",
-        default: false
-      }
-
-    ],
-
-    relations: {
-
-      OrganizationID: {
-        entity: "ORGANIZATION",
-        type: "MANY_TO_ONE"
-      }
-
-    },
-
-    events: {
-
-      created: "CARGO_CREATED",
-
-      updated: "CARGO_UPDATED",
-
-      deleted: "CARGO_DELETED",
-
-      restored: "CARGO_RESTORED"
-
-    }
-
-  }
-
-};
 
 
 // ============================================================
-// INTERNAL HELPERS
+// CLIENT
 // ============================================================
 
-EntityMetadata._isDefinition = function (value) {
-
-  return !!(
-    value &&
-    typeof value === "object" &&
-    !Array.isArray(value) &&
-    value.entity &&
-    value.table &&
-    Array.isArray(value.fields)
-  );
-
-};
-
-
-EntityMetadata._clone = function (value) {
-
-  if (
-    value === undefined ||
-    value === null
-  ) {
-    return value;
-  }
-
-  return JSON.parse(
-    JSON.stringify(value)
-  );
-
-};
-
-
-EntityMetadata._normalizeEntityName = function (entity) {
-
-  if (
-    entity &&
-    typeof entity === "object"
-  ) {
-
-    entity =
-      entity.entity ||
-      entity.name ||
-      entity.code ||
-      null;
-
-  }
-
-  if (
-    entity === undefined ||
-    entity === null
-  ) {
-    return "";
-  }
-
-  return String(entity)
-    .trim()
-    .toUpperCase();
-
-};
-
-
-EntityMetadata._normalizeDefinition = function (definition) {
-
-  const normalized =
-    this._clone(definition || {});
-
-  normalized.entity =
-    this._normalizeEntityName(
-      normalized.entity
-    );
-
-  if (!normalized.entity) {
-    throw new Error(
-      "EntityMetadata: entity required"
-    );
-  }
-
-  if (!normalized.table) {
-    normalized.table =
-      normalized.entity + "s";
-  }
-
-  if (!normalized.idField) {
-    normalized.idField =
-      normalized.entity + "ID";
-  }
-
-  if (!normalized.idPrefix) {
-    normalized.idPrefix =
-      normalized.entity
-        .replace(/[^A-Z0-9]/g, "")
-        .substring(0, 3);
-  }
-
-  if (!normalized.module) {
-    normalized.module = "core";
-  }
-
-  if (
-    normalized.version === undefined
-  ) {
-    normalized.version = 1;
-  }
-
-  if (
-    normalized.softDelete === undefined
-  ) {
-    normalized.softDelete = true;
-  }
-
-  if (
-    normalized.timestamps === undefined
-  ) {
-    normalized.timestamps = true;
-  }
 
-  if (
-    normalized.audit === undefined
-  ) {
-    normalized.audit = true;
-  }
+CLIENT:{
 
-  if (
-    normalized.versioning === undefined
-  ) {
-    normalized.versioning = true;
-  }
 
-  if (!Array.isArray(normalized.fields)) {
-    normalized.fields = [];
-  }
+entity:"CLIENT",
 
-  if (
-    !normalized.relations ||
-    typeof normalized.relations !== "object" ||
-    Array.isArray(normalized.relations)
-  ) {
-    normalized.relations = {};
-  }
 
-  if (
-    !normalized.permissions ||
-    typeof normalized.permissions !== "object" ||
-    Array.isArray(normalized.permissions)
-  ) {
-    normalized.permissions = {};
-  }
+table:"Clients",
 
-  if (
-    !normalized.events ||
-    typeof normalized.events !== "object" ||
-    Array.isArray(normalized.events)
-  ) {
-    normalized.events = {};
-  }
 
-  if (
-    !normalized.hooks ||
-    typeof normalized.hooks !== "object" ||
-    Array.isArray(normalized.hooks)
-  ) {
-    normalized.hooks = {};
-  }
+repository:"ClientRepository",
 
-  if (!Array.isArray(normalized.indexes)) {
-    normalized.indexes = [];
-  }
 
-  return normalized;
+repositoryContract:
+"BaseRepositoryV5",
 
-};
 
+idField:"ClientID",
 
-// ============================================================
-// GET
-// ============================================================
 
-EntityMetadata.get = function (entity) {
+idPrefix:"CLI",
 
-  const entityName =
-    this._normalizeEntityName(entity);
 
-  if (!entityName) {
-    return null;
-  }
+idGeneration:{
 
-  return this[entityName] || null;
 
-};
+strategy:"AUTO",
 
 
-// ============================================================
-// REQUIRE
-// ============================================================
+service:"IdService"
 
-EntityMetadata.require = function (entity) {
 
-  const entityName =
-    this._normalizeEntityName(entity);
+},
 
-  const metadata =
-    this.get(entityName);
 
-  if (!metadata) {
 
-    throw new Error(
-      "EntityMetadata not found: " +
-      entityName
-    );
+module:"crm",
 
-  }
 
-  return metadata;
+version:2,
 
-};
 
+softDelete:true,
 
-// ============================================================
-// HAS
-// ============================================================
 
-EntityMetadata.has = function (entity) {
+timestamps:true,
 
-  return !!this.get(entity);
 
-};
+audit:true,
 
 
-// ============================================================
-// REGISTER
-// ============================================================
+versioning:true,
 
-EntityMetadata.register = function (
-  definition,
-  options = {}
-) {
 
-  if (this.locked) {
 
-    throw new Error(
-      "EntityMetadata is locked"
-    );
+fields:[
 
-  }
 
-  const normalized =
-    this._normalizeDefinition(
-      definition
-    );
 
-  const entity =
-    normalized.entity;
+{
+name:"ClientID",
+type:"ID",
+required:false,
+generated:true
+},
 
-  if (
-    this[entity] &&
-    options.overwrite !== true
-  ) {
 
-    if (
-      options.silent === true
-    ) {
-      return this[entity];
-    }
 
-    throw new Error(
-      "EntityMetadata already registered: " +
-      entity
-    );
+{
+name:"OrganizationID",
+type:"REFERENCE",
+required:true
+},
 
-  }
 
-  if (
-    this[entity] &&
-    options.overwrite === true
-  ) {
 
-    Logger.warn(
-      "EntityMetadata overwrite " +
-      entity
-    );
+{
+name:"Name",
+type:"STRING",
+required:true
+},
 
-  }
 
-  this[entity] =
-    normalized;
 
-  if (options.silent !== true) {
+{
+name:"INN",
+type:"STRING",
+unique:true
+},
 
-    Logger.log(
-      "EntityMetadata REGISTERED " +
-      entity
-    );
 
-  }
 
-  return normalized;
+{
+name:"Phone",
+type:"STRING"
+},
 
-};
+
+
+{
+name:"Email",
+type:"STRING"
+},
+
+
+
+// добавлено для KPI/CRM
+
+{
+name:"ManagerID",
+type:"REFERENCE"
+},
+
+
+
+{
+name:"Rating",
+type:"NUMBER",
+default:0
+},
+
+
+
+{
+name:"Address",
+type:"STRING"
+},
+
+
+
+{
+name:"Status",
+type:"ENUM",
+default:"ACTIVE"
+},
+
+
+
+{
+name:"CreatedBy",
+type:"REFERENCE"
+},
+
+
+
+{
+name:"UpdatedBy",
+type:"REFERENCE"
+},
+
+
+
+{
+name:"CreatedAt",
+type:"DATETIME"
+},
+
+
+
+{
+name:"UpdatedAt",
+type:"DATETIME"
+},
+
+
+
+{
+name:"Deleted",
+type:"BOOLEAN",
+default:false
+}
+
+
+
+],
+
+
+
+relations:{
+
+
+
+OrganizationID:{
+
+entity:"ORGANIZATION",
+
+type:"MANY_TO_ONE"
+
+},
+
+
+
+ManagerID:{
+
+entity:"USER",
+
+type:"MANY_TO_ONE"
+
+}
+
+
+
+},
+
+
+
+permissions:{
+
+
+create:"CLIENT_CREATE",
+
+read:"CLIENT_READ",
+
+update:"CLIENT_UPDATE",
+
+delete:"CLIENT_DELETE"
+
+
+},
+
+
+
+events:{
+
+
+created:"CLIENT_CREATED",
+
+updated:"CLIENT_UPDATED",
+
+deleted:"CLIENT_DELETED",
+
+restored:"CLIENT_RESTORED"
+
+
+}
+
+
+
+},
+
+
 
 
 // ============================================================
-// REGISTER MANY
+// TRIP
 // ============================================================
 
-EntityMetadata.registerMany = function (
-  definitions,
-  options = {}
-) {
 
-  if (!Array.isArray(definitions)) {
+TRIP:{
 
-    throw new Error(
-      "EntityMetadata.registerMany: array required"
-    );
 
-  }
+entity:"TRIP",
 
-  return definitions.map(
-    definition =>
-      this.register(
-        definition,
-        options
-      )
-  );
 
-};
+table:"Trips",
 
 
-// ============================================================
-// UNREGISTER
-// ============================================================
+repository:"TripRepository",
 
-EntityMetadata.unregister = function (entity) {
 
-  if (this.locked) {
+repositoryContract:
+"BaseRepositoryV5",
 
-    throw new Error(
-      "EntityMetadata is locked"
-    );
 
-  }
+idField:"TripID",
 
-  const entityName =
-    this._normalizeEntityName(entity);
 
-  if (!this[entityName]) {
-    return false;
-  }
+idPrefix:"TRP",
 
-  delete this[entityName];
 
-  Logger.log(
-    "EntityMetadata UNREGISTERED " +
-    entityName
-  );
+idGeneration:{
 
-  return true;
 
-};
+strategy:"AUTO",
 
 
-// ============================================================
-// LIST
-// ============================================================
+service:"IdService"
 
-EntityMetadata.list = function () {
 
-  return Object.keys(this)
-    .map(key => this[key])
-    .filter(
-      item => this._isDefinition(item)
-    );
+},
 
-};
 
+module:"transport",
 
-// ============================================================
-// ENTITY NAMES
-// ============================================================
 
-EntityMetadata.entities = function () {
+version:2,
 
-  return this.list()
-    .map(meta => meta.entity);
 
-};
+softDelete:true,
 
 
-// ============================================================
-// FIND TABLE
-// ============================================================
+timestamps:true,
 
-EntityMetadata.getByTable = function (table) {
 
-  if (!table) {
-    return null;
-  }
+audit:true,
 
-  const tableName =
-    String(table).trim();
 
-  return this.list()
-    .find(
-      meta =>
-        meta.table === tableName
-    ) || null;
+versioning:true,
 
-};
 
 
-// ============================================================
-// FIND BY MODULE
-// ============================================================
+fields:[
 
-EntityMetadata.getByModule = function (moduleName) {
 
-  if (!moduleName) {
-    return [];
-  }
+{
+name:"TripID",
+type:"ID",
+required:false,
+generated:true
+},
 
-  return this.list()
-    .filter(
-      meta =>
-        meta.module === moduleName
-    );
 
-};
+{
+name:"OrganizationID",
+type:"REFERENCE",
+required:true
+},
 
 
-// ============================================================
-// FIELD
-// ============================================================
+{
+name:"ClientID",
+type:"REFERENCE"
+},
 
-EntityMetadata.getField = function (
-  entity,
-  fieldName
-) {
 
-  const meta =
-    this.get(entity);
+{
+name:"VehicleID",
+type:"REFERENCE"
+},
 
-  if (
-    !meta ||
-    !Array.isArray(meta.fields)
-  ) {
-    return null;
-  }
 
-  return meta.fields.find(
-    field =>
-      field &&
-      field.name === fieldName
-  ) || null;
+{
+name:"DriverID",
+type:"REFERENCE"
+},
 
-};
 
+{
+name:"RouteID",
+type:"REFERENCE"
+},
 
-// ============================================================
-// RELATION
-// ============================================================
 
-EntityMetadata.getRelation = function (
-  entity,
-  fieldName
-) {
+{
+name:"CarrierID",
+type:"REFERENCE"
+},
 
-  const meta =
-    this.get(entity);
 
-  if (
-    !meta ||
-    !meta.relations
-  ) {
-    return null;
-  }
+{
+name:"TransportOrderID",
+type:"REFERENCE"
+},
 
-  return meta.relations[fieldName] || null;
 
-};
+{
+name:"ManagerID",
+type:"REFERENCE"
+},
 
 
-// ============================================================
-// TEST ENTITY REGISTRATION
-// ============================================================
+{
+name:"LogistID",
+type:"REFERENCE"
+},
 
-EntityMetadata.registerTestEntity = function (
-  entity,
-  sourceMeta = {}
-) {
 
-  const entityName =
-    this._normalizeEntityName(entity);
+{
+name:"Revenue",
+type:"NUMBER",
+default:0
+},
 
-  if (
-    !entityName.startsWith("__TEST_")
-  ) {
 
-    throw new Error(
-      "EntityMetadata.registerTestEntity: " +
-      "only __TEST_ entities are allowed"
-    );
+{
+name:"PlannedCost",
+type:"NUMBER",
+default:0
+},
 
-  }
 
-  if (this.has(entityName)) {
-    return this.get(entityName);
-  }
+{
+name:"ActualCost",
+type:"NUMBER",
+default:0
+},
 
-  if (
-    this.allowTestEntityRegistration !== true
-  ) {
 
-    throw new Error(
-      "Test entity registration disabled: " +
-      entityName
-    );
+{
+name:"Status",
+type:"ENUM",
+default:"NEW"
+},
 
-  }
 
-  const idField =
-    sourceMeta.idField ||
-    entityName + "ID";
+{
+name:"CreatedAt",
+type:"DATETIME"
+},
 
-  const definition = {
 
-    entity: entityName,
+{
+name:"UpdatedAt",
+type:"DATETIME"
+},
 
-    table:
-      sourceMeta.table ||
-      entityName,
 
-    idField,
+{
+name:"Deleted",
+type:"BOOLEAN",
+default:false
+}
 
-    idPrefix:
-      sourceMeta.idPrefix ||
-      "TST",
 
-    module: "test",
+],
 
-    version: 1,
 
-    system: true,
 
-    test: true,
+relations:{
 
-    softDelete: true,
 
-    timestamps: true,
+ClientID:{
+entity:"CLIENT",
+type:"MANY_TO_ONE"
+},
 
-    audit: false,
 
-    versioning: false,
+OrganizationID:{
+entity:"ORGANIZATION",
+type:"MANY_TO_ONE"
+}
 
-    fields: [
 
-      {
-        name: idField,
-        type: "ID",
-        required: true
-      },
+},
 
-      {
-        name: "Name",
-        type: "STRING"
-      },
 
-      {
-        name: "Value",
-        type: "STRING"
-      },
 
-      {
-        name: "CreatedAt",
-        type: "DATETIME"
-      },
+events:{
 
-      {
-        name: "UpdatedAt",
-        type: "DATETIME"
-      },
 
-      {
-        name: "Deleted",
-        type: "BOOLEAN",
-        default: false
-      }
+created:"TRIP_CREATED",
 
-    ],
+updated:"TRIP_UPDATED",
 
-    relations: {},
+deleted:"TRIP_DELETED",
 
-    events: {}
+completed:"TRIP_COMPLETED"
 
-  };
 
-  Logger.log(
-    "EntityMetadata SYSTEM REGISTER " +
-    entityName
-  );
+}
 
-  return this.register(
-    definition,
-    {
-      silent: true
-    }
-  );
 
-};
+
+},
 
 
 // ============================================================
-// COMPARE WITH ENTITY REGISTRY
+// ORGANIZATION
 // ============================================================
 
-EntityMetadata.compareWithRegistry = function (
-  options = {}
-) {
 
-  const result = {
-
-    available: false,
-
-    registryEntities: [],
-
-    metadataEntities:
-      this.entities(),
-
-    missingMetadata: [],
-
-    orphanMetadata: [],
-
-    registeredTestEntities: []
-
-  };
-
-  if (
-    typeof EntityRegistry === "undefined" ||
-    typeof EntityRegistry.list !== "function"
-  ) {
-    return result;
-  }
-
-  result.available = true;
-
-  const registryEntities =
-    EntityRegistry.list()
-      .map(entity =>
-        this._normalizeEntityName(entity)
-      )
-      .filter(Boolean);
-
-  result.registryEntities =
-    registryEntities;
-
-  registryEntities.forEach(entity => {
-
-    if (this.has(entity)) {
-      return;
-    }
-
-    if (
-      entity.startsWith("__TEST_") &&
-      options.registerTestEntities !== false
-    ) {
-
-      let sourceMeta = {};
-
-      try {
-
-        if (
-          typeof EntityRegistry.get === "function"
-        ) {
-
-          sourceMeta =
-            EntityRegistry.get(entity) ||
-            {};
-
-        }
-
-      } catch (error) {
-
-        sourceMeta = {};
-
-      }
-
-      this.registerTestEntity(
-        entity,
-        sourceMeta
-      );
-
-      result.registeredTestEntities.push(
-        entity
-      );
-
-      return;
-    }
-
-    result.missingMetadata.push(
-      entity
-    );
-
-  });
-
-  const registrySet =
-    new Set(registryEntities);
-
-  this.entities()
-    .forEach(entity => {
-
-      if (
-        !registrySet.has(entity) &&
-        !["ORGANIZATION", "USER"].includes(entity)
-      ) {
-
-        result.orphanMetadata.push(
-          entity
-        );
-
-      }
-
-    });
-
-  return result;
-
-};
+ORGANIZATION:{
 
 
-// ============================================================
-// BACKWARD COMPATIBILITY
-// ============================================================
+entity:"ORGANIZATION",
 
-EntityMetadata.syncFromRegistry = function (
-  options = {}
-) {
+table:"Organizations",
 
-  const comparison =
-    this.compareWithRegistry({
-      registerTestEntities:
-        options.registerTestEntities !== false
-    });
+repository:"OrganizationRepository",
 
-  if (
-    comparison.missingMetadata.length
-  ) {
+repositoryContract:
+"BaseRepositoryV5",
 
-    const message =
-      "EntityMetadata missing definitions: " +
-      comparison.missingMetadata.join(", ");
 
-    if (
-      options.throwOnMissing === true ||
-      this.strictMode === true
-    ) {
+idField:"OrganizationID",
 
-      throw new Error(message);
+idPrefix:"ORG",
 
-    }
 
-    Logger.warn(message);
+idGeneration:{
 
-  }
+strategy:"AUTO",
 
-  return comparison;
+service:"IdService"
 
-};
+},
+
+
+module:"core",
+
+
+version:2,
+
+
+fields:[
+
+
+{
+name:"OrganizationID",
+type:"ID",
+required:false,
+generated:true
+},
+
+
+{
+name:"Name",
+type:"STRING",
+required:true
+},
+
+
+{
+name:"INN",
+type:"STRING",
+unique:true
+},
+
+
+{
+name:"KPP",
+type:"STRING"
+},
+
+
+{
+name:"Type",
+type:"ENUM"
+},
+
+
+{
+name:"TaxSystem",
+type:"ENUM"
+},
+
+
+{
+name:"CreatedAt",
+type:"DATETIME"
+},
+
+
+{
+name:"UpdatedAt",
+type:"DATETIME"
+},
+
+
+{
+name:"Deleted",
+type:"BOOLEAN",
+default:false
+}
+
+
+],
+
+
+
+permissions:{
+
+
+create:"ORGANIZATION_CREATE",
+
+read:"ORGANIZATION_READ",
+
+update:"ORGANIZATION_UPDATE",
+
+delete:"ORGANIZATION_DELETE"
+
+
+},
+
+
+events:{
+
+
+created:"ORGANIZATION_CREATED",
+
+updated:"ORGANIZATION_UPDATED",
+
+deleted:"ORGANIZATION_DELETED"
+
+
+}
+
+
+
+},
+
+
+
+
+
 
 
 // ============================================================
-// VALIDATE FIELD DEFINITIONS
+// TRANSPORT ORDER
 // ============================================================
 
-EntityMetadata.validateFields = function (
-  meta
-) {
 
-  const errors = [];
-
-  const fieldNames =
-    new Set();
-
-  meta.fields.forEach(
-    (field, index) => {
-
-      if (
-        !field ||
-        typeof field !== "object"
-      ) {
-
-        errors.push(
-          meta.entity +
-          " field #" +
-          index +
-          " invalid"
-        );
-
-        return;
-      }
-
-      if (!field.name) {
-
-        errors.push(
-          meta.entity +
-          " field #" +
-          index +
-          " missing name"
-        );
-
-        return;
-      }
-
-      if (fieldNames.has(field.name)) {
-
-        errors.push(
-          meta.entity +
-          " duplicate field " +
-          field.name
-        );
-
-      }
-
-      fieldNames.add(field.name);
-
-      if (!field.type) {
-
-        errors.push(
-          meta.entity +
-          "." +
-          field.name +
-          " missing type"
-        );
-
-      }
-
-    }
-  );
-
-  if (!fieldNames.has(meta.idField)) {
-
-    errors.push(
-      meta.entity +
-      " idField not found in fields: " +
-      meta.idField
-    );
-
-  }
-
-  if (
-    meta.timestamps === true
-  ) {
-
-    if (!fieldNames.has("CreatedAt")) {
-
-      errors.push(
-        meta.entity +
-        " timestamps enabled but CreatedAt missing"
-      );
-
-    }
-
-    if (
-      !meta.immutable &&
-      !fieldNames.has("UpdatedAt")
-    ) {
-
-      errors.push(
-        meta.entity +
-        " timestamps enabled but UpdatedAt missing"
-      );
-
-    }
-
-  }
-
-  if (
-    meta.softDelete === true &&
-    !fieldNames.has("Deleted")
-  ) {
-
-    errors.push(
-      meta.entity +
-      " softDelete enabled but Deleted missing"
-    );
-
-  }
-
-  return errors;
-
-};
+TRANSPORT_ORDER:{
 
 
-// ============================================================
-// VALIDATE RELATIONS
-// ============================================================
+entity:"TRANSPORT_ORDER",
 
-EntityMetadata.validateRelations = function (
-  meta,
-  options = {}
-) {
 
-  const errors = [];
+table:"TransportOrders",
 
-  const warnings = [];
 
-  const relations =
-    meta.relations || {};
+repository:"TransportOrderRepository",
 
-  Object.keys(relations)
-    .forEach(fieldName => {
 
-      const relation =
-        relations[fieldName];
+repositoryContract:
+"BaseRepositoryV5",
 
-      if (
-        !relation ||
-        !relation.entity
-      ) {
 
-        errors.push(
-          meta.entity +
-          "." +
-          fieldName +
-          " invalid relation"
-        );
 
-        return;
-      }
+idField:"TransportOrderID",
 
-      if (
-        !this.getField(
-          meta.entity,
-          fieldName
-        )
-      ) {
 
-        errors.push(
-          meta.entity +
-          " relation field missing: " +
-          fieldName
-        );
+idPrefix:"ORD",
 
-      }
 
-      if (
-        !this.has(relation.entity)
-      ) {
 
-        const message =
-          meta.entity +
-          "." +
-          fieldName +
-          " references missing entity " +
-          relation.entity;
+idGeneration:{
 
-        if (
-          options.strictRelations === true
-        ) {
-          errors.push(message);
-        } else {
-          warnings.push(message);
-        }
+strategy:"AUTO",
 
-      }
+service:"IdService"
 
-    });
+},
 
-  return {
-    errors,
-    warnings
-  };
 
-};
+
+module:"transport",
+
+
+version:2,
+
+
+softDelete:true,
+
+
+
+fields:[
+
+
+{
+name:"TransportOrderID",
+type:"ID",
+required:false,
+generated:true
+},
+
+
+{
+name:"OrganizationID",
+type:"REFERENCE",
+required:true
+},
+
+
+{
+name:"ClientID",
+type:"REFERENCE",
+required:true
+},
+
+
+{
+name:"CarrierID",
+type:"REFERENCE"
+},
+
+
+{
+name:"RouteID",
+type:"REFERENCE"
+},
+
+
+{
+name:"CargoID",
+type:"REFERENCE"
+},
+
+
+{
+name:"Status",
+type:"ENUM",
+default:"NEW"
+},
+
+
+{
+name:"OrderDate",
+type:"DATE"
+},
+
+
+{
+name:"Price",
+type:"NUMBER",
+default:0
+},
+
+
+{
+name:"Comment",
+type:"STRING"
+},
+
+
+{
+name:"CreatedAt",
+type:"DATETIME"
+},
+
+
+{
+name:"UpdatedAt",
+type:"DATETIME"
+},
+
+
+{
+name:"Deleted",
+type:"BOOLEAN",
+default:false
+}
+
+
+
+],
+
+
+
+relations:{
+
+
+ClientID:{
+
+entity:"CLIENT",
+
+type:"MANY_TO_ONE"
+
+},
+
+
+CarrierID:{
+
+entity:"CARRIER",
+
+type:"MANY_TO_ONE"
+
+}
+
+
+},
+
+
+
+events:{
+
+
+created:
+"TRANSPORT_ORDER_CREATED",
+
+
+updated:
+"TRANSPORT_ORDER_UPDATED",
+
+
+deleted:
+"TRANSPORT_ORDER_DELETED",
+
+
+restored:
+"TRANSPORT_ORDER_RESTORED"
+
+
+}
+
+
+
+},
+
+
+
+
+
 
 
 // ============================================================
-// VALIDATE UNIQUENESS
+// VEHICLE
 // ============================================================
 
-EntityMetadata.validateUniqueness = function () {
 
-  const errors = [];
+VEHICLE:{
 
-  const entityMap =
-    new Map();
 
-  const tableMap =
-    new Map();
+entity:"VEHICLE",
 
-  this.list()
-    .forEach(meta => {
 
-      if (entityMap.has(meta.entity)) {
+table:"Vehicles",
 
-        errors.push(
-          "Duplicate entity: " +
-          meta.entity
-        );
 
-      }
+repository:"VehicleRepository",
 
-      entityMap.set(
-        meta.entity,
-        true
-      );
 
-      if (tableMap.has(meta.table)) {
+repositoryContract:
+"BaseRepositoryV5",
 
-        errors.push(
-          "Duplicate table " +
-          meta.table +
-          ": " +
-          tableMap.get(meta.table) +
-          ", " +
-          meta.entity
-        );
 
-      } else {
 
-        tableMap.set(
-          meta.table,
-          meta.entity
-        );
+idField:"VehicleID",
 
-      }
+idPrefix:"CAR",
 
-    });
 
-  return errors;
+idGeneration:{
 
-};
+strategy:"AUTO",
 
+service:"IdService"
 
-// ============================================================
-// VALIDATE
-// ============================================================
+},
 
-EntityMetadata.validate = function (
-  options = {}
-) {
 
-  const errors = [];
 
-  const warnings = [];
+module:"transport",
 
-  const definitions =
-    this.list();
 
-  definitions.forEach(meta => {
 
-    if (!meta.entity) {
+fields:[
 
-      errors.push(
-        "Metadata missing entity"
-      );
 
-    }
+{
+name:"VehicleID",
+type:"ID",
+required:false,
+generated:true
+},
 
-    if (!meta.table) {
 
-      errors.push(
-        meta.entity +
-        " missing table"
-      );
+{
+name:"OrganizationID",
+type:"REFERENCE"
+},
 
-    }
 
-    if (!meta.idField) {
+{
+name:"Number",
+type:"STRING",
+required:true
+},
 
-      errors.push(
-        meta.entity +
-        " missing idField"
-      );
 
-    }
+{
+name:"Brand",
+type:"STRING"
+},
 
-    if (
-      !Array.isArray(meta.fields) ||
-      !meta.fields.length
-    ) {
 
-      errors.push(
-        meta.entity +
-        " has no fields"
-      );
+{
+name:"Model",
+type:"STRING"
+},
 
-      return;
-    }
 
-    errors.push(
-      ...this.validateFields(meta)
-    );
+{
+name:"VIN",
+type:"STRING"
+},
 
-    const relationValidation =
-      this.validateRelations(
-        meta,
-        options
-      );
 
-    errors.push(
-      ...relationValidation.errors
-    );
+{
+name:"Year",
+type:"NUMBER"
+},
 
-    warnings.push(
-      ...relationValidation.warnings
-    );
 
-  });
+{
+name:"Mileage",
+type:"NUMBER",
+default:0
+},
 
-  errors.push(
-    ...this.validateUniqueness()
-  );
 
-  return {
-    valid: errors.length === 0,
-    errors,
-    warnings,
-    entityCount: definitions.length
-  };
+{
+name:"Status",
+type:"ENUM",
+default:"ACTIVE"
+},
 
-};
 
+{
+name:"CreatedAt",
+type:"DATETIME"
+},
 
-// ============================================================
-// INITIALIZE
-// ============================================================
 
-EntityMetadata.init = function (
-  options = {}
-) {
+{
+name:"UpdatedAt",
+type:"DATETIME"
+},
 
-  if (
-    this.initialized &&
-    options.force !== true
-  ) {
 
-    return this.health();
+{
+name:"Deleted",
+type:"BOOLEAN",
+default:false
+}
 
-  }
 
-  Logger.log(
-    "EntityMetadata INIT v" +
-    this.version
-  );
+],
 
-  let registryComparison = null;
 
-  if (
-    options.compareRegistry !== false &&
-    typeof EntityRegistry !== "undefined"
-  ) {
 
-    registryComparison =
-      this.compareWithRegistry({
-        registerTestEntities:
-          options.registerTestEntities !== false
-      });
+events:{
 
-    if (
-      registryComparison.missingMetadata.length
-    ) {
 
-      const message =
-        "EntityMetadata missing definitions: " +
-        registryComparison
-          .missingMetadata
-          .join(", ");
+created:"VEHICLE_CREATED",
 
-      if (
-        options.strict !== false &&
-        this.strictMode === true
-      ) {
+updated:"VEHICLE_UPDATED",
 
-        throw new Error(message);
+deleted:"VEHICLE_DELETED"
 
-      }
 
-      Logger.warn(message);
+}
 
-    }
 
-  }
 
-  const validation =
-    this.validate({
-      strictRelations:
-        options.strictRelations === true
-    });
+},
 
-  if (!validation.valid) {
 
-    throw new Error(
-      "EntityMetadata validation failed: " +
-      validation.errors.join("; ")
-    );
 
-  }
 
-  this.initialized = true;
 
-  if (options.lock === true) {
-    this.lock();
-  }
-
-  Logger.log(
-    "EntityMetadata INITIALIZED entities=" +
-    validation.entityCount
-  );
-
-  return {
-    version: this.version,
-    initialized: true,
-    entityCount:
-      validation.entityCount,
-    registryComparison,
-    warnings:
-      validation.warnings
-  };
-
-};
 
 
 // ============================================================
-// LOCK
+// DRIVER
 // ============================================================
 
-EntityMetadata.lock = function () {
 
-  if (this.locked) {
-    return true;
-  }
-
-  this.list()
-    .forEach(meta => {
-
-      if (Array.isArray(meta.fields)) {
-
-        meta.fields.forEach(field => {
-          Object.freeze(field);
-        });
-
-        Object.freeze(meta.fields);
-
-      }
-
-      if (
-        meta.relations &&
-        typeof meta.relations === "object"
-      ) {
-
-        Object.keys(meta.relations)
-          .forEach(key => {
-
-            const relation =
-              meta.relations[key];
-
-            if (
-              relation &&
-              typeof relation === "object"
-            ) {
-              Object.freeze(relation);
-            }
-
-          });
-
-        Object.freeze(meta.relations);
-
-      }
-
-      if (
-        meta.permissions &&
-        typeof meta.permissions === "object"
-      ) {
-        Object.freeze(
-          meta.permissions
-        );
-      }
-
-      if (
-        meta.events &&
-        typeof meta.events === "object"
-      ) {
-        Object.freeze(
-          meta.events
-        );
-      }
-
-      if (
-        meta.hooks &&
-        typeof meta.hooks === "object"
-      ) {
-        Object.freeze(
-          meta.hooks
-        );
-      }
-
-      Object.freeze(meta);
-
-    });
-
-  this.locked = true;
-
-  Logger.log(
-    "EntityMetadata LOCKED"
-  );
-
-  return true;
-
-};
+DRIVER:{
 
 
-// ============================================================
-// UNLOCK
-// ============================================================
+entity:"DRIVER",
 
-EntityMetadata.unlock = function () {
-
-  /*
-   * Object.freeze необратим.
-   * Метод оставлен для явного контракта.
-   */
-
-  throw new Error(
-    "EntityMetadata.unlock is not supported; " +
-    "reload project to rebuild metadata"
-  );
-
-};
+table:"Drivers",
 
 
-// ============================================================
-// DIAGNOSTICS
-// ============================================================
+repository:"DriverRepository",
 
-EntityMetadata.diagnostics = function () {
 
-  const validation =
-    this.validate();
+repositoryContract:
+"BaseRepositoryV5",
 
-  let registryComparison = null;
 
-  try {
 
-    registryComparison =
-      this.compareWithRegistry({
-        registerTestEntities: false
-      });
+idField:"DriverID",
 
-  } catch (error) {
+idPrefix:"DRV",
 
-    registryComparison = {
-      available: false,
-      error: error.message
-    };
 
-  }
+idGeneration:{
 
-  const definitions =
-    this.list();
+strategy:"AUTO",
 
-  return {
+service:"IdService"
 
-    version:
-      this.version,
+},
 
-    architecture:
-      this.architecture,
 
-    initialized:
-      this.initialized,
 
-    locked:
-      this.locked,
+module:"transport",
 
-    strictMode:
-      this.strictMode,
 
-    entityCount:
-      definitions.length,
 
-    entities:
-      definitions.map(
-        meta => meta.entity
-      ),
+fields:[
 
-    tables:
-      definitions.map(
-        meta => meta.table
-      ),
 
-    modules:
-      Array.from(
-        new Set(
-          definitions.map(
-            meta => meta.module
-          )
-        )
-      ),
+{
+name:"DriverID",
+type:"ID",
+required:false,
+generated:true
+},
 
-    validation: {
 
-      valid:
-        validation.valid,
+{
+name:"OrganizationID",
+type:"REFERENCE"
+},
 
-      errors:
-        validation.errors,
 
-      warnings:
-        validation.warnings
+{
+name:"FullName",
+type:"STRING",
+required:true
+},
 
-    },
 
-    registry:
-      registryComparison,
+{
+name:"Phone",
+type:"STRING"
+},
 
-    timestamp:
-      new Date().toISOString()
 
-  };
+{
+name:"LicenseNumber",
+type:"STRING"
+},
 
-};
+
+{
+name:"Status",
+type:"ENUM",
+default:"ACTIVE"
+},
+
+
+{
+name:"CreatedAt",
+type:"DATETIME"
+},
+
+
+{
+name:"UpdatedAt",
+type:"DATETIME"
+},
+
+
+{
+name:"Deleted",
+type:"BOOLEAN",
+default:false
+}
+
+
+],
+
+
+
+events:{
+
+
+created:"DRIVER_CREATED",
+
+updated:"DRIVER_UPDATED",
+
+deleted:"DRIVER_DELETED"
+
+
+}
+
+
+
+},
 
 
 // ============================================================
-// HEALTH
+// CARRIER
 // ============================================================
 
-EntityMetadata.health = function () {
 
-  const diagnostics =
-    this.diagnostics();
+CARRIER:{
 
-  let status = "OK";
 
-  if (
-    !diagnostics.validation.valid
-  ) {
-    status = "ERROR";
-  } else if (
-    diagnostics.registry &&
-    Array.isArray(
-      diagnostics.registry.missingMetadata
-    ) &&
-    diagnostics.registry.missingMetadata.length
-  ) {
-    status = "WARNING";
-  }
+entity:"CARRIER",
 
-  const details = {
+table:"Carriers",
 
-    version:
-      this.version,
+repository:"CarrierRepository",
 
-    architecture:
-      this.architecture,
+repositoryContract:
+"BaseRepositoryV5",
 
-    initialized:
-      this.initialized,
 
-    locked:
-      this.locked,
+idField:"CarrierID",
 
-    entityCount:
-      diagnostics.entityCount,
+idPrefix:"CARIER",
 
-    entities:
-      diagnostics.entities,
 
-    modules:
-      diagnostics.modules,
+idGeneration:{
+strategy:"AUTO",
+service:"IdService"
+},
 
-    validation:
-      diagnostics.validation,
 
-    registry:
-      diagnostics.registry,
+module:"transport",
 
-    features: [
+version:2,
 
-      "StaticMetadata",
 
-      "StrictRegistryValidation",
+fields:[
 
-      "ControlledTestEntities",
 
-      "FieldValidation",
+{
+name:"CarrierID",
+type:"ID",
+required:false,
+generated:true
+},
 
-      "RelationValidation",
 
-      "DuplicateDetection",
+{
+name:"OrganizationID",
+type:"REFERENCE",
+required:true
+},
 
-      "BaseRepositoryV5Compatibility",
 
-      "SchemaRegistryCompatibility",
+{
+name:"Name",
+type:"STRING",
+required:true
+},
 
-      "Diagnostics",
 
-      "OptionalLock"
+{
+name:"INN",
+type:"STRING"
+},
 
-    ]
 
-  };
+{
+name:"Phone",
+type:"STRING"
+},
 
-  if (
-    typeof HealthContract !== "undefined" &&
-    typeof HealthContract.create === "function"
-  ) {
 
-    return HealthContract.create(
-      "EntityMetadata",
-      status,
-      details
-    );
+{
+name:"Email",
+type:"STRING"
+},
 
-  }
 
-  return {
+{
+name:"Status",
+type:"ENUM",
+default:"ACTIVE"
+},
 
-    module: "EntityMetadata",
 
-    status,
+{
+name:"CreatedAt",
+type:"DATETIME"
+},
 
-    ...details
 
-  };
+{
+name:"UpdatedAt",
+type:"DATETIME"
+},
 
-};
+
+{
+name:"Deleted",
+type:"BOOLEAN",
+default:false
+}
+
+
+],
+
+
+events:{
+
+
+created:"CARRIER_CREATED",
+
+updated:"CARRIER_UPDATED",
+
+deleted:"CARRIER_DELETED",
+
+restored:"CARRIER_RESTORED"
+
+
+}
+
+
+
+},
+
+
+
+
+
 
 
 // ============================================================
-// EXPORT
+// CARGO
 // ============================================================
 
-globalThis.EntityMetadata =
-  EntityMetadata;
+
+CARGO:{
+
+
+entity:"CARGO",
+
+table:"Cargo",
+
+repository:"CargoRepository",
+
+repositoryContract:
+"BaseRepositoryV5",
+
+
+idField:"CargoID",
+
+idPrefix:"CRG",
+
+
+idGeneration:{
+strategy:"AUTO",
+service:"IdService"
+},
+
+
+module:"transport",
+
+
+fields:[
+
+
+{
+name:"CargoID",
+type:"ID",
+generated:true
+},
+
+
+{
+name:"OrganizationID",
+type:"REFERENCE"
+},
+
+
+{
+name:"Name",
+type:"STRING",
+required:true
+},
+
+
+{
+name:"Description",
+type:"STRING"
+},
+
+
+{
+name:"Weight",
+type:"NUMBER",
+default:0
+},
+
+
+{
+name:"Volume",
+type:"NUMBER",
+default:0
+},
+
+
+{
+name:"Unit",
+type:"STRING"
+},
+
+
+{
+name:"CreatedAt",
+type:"DATETIME"
+},
+
+
+{
+name:"UpdatedAt",
+type:"DATETIME"
+},
+
+
+{
+name:"Deleted",
+type:"BOOLEAN",
+default:false
+}
+
+
+],
+
+
+
+events:{
+
+
+created:"CARGO_CREATED",
+
+updated:"CARGO_UPDATED",
+
+deleted:"CARGO_DELETED"
+
+
+}
+
+
+
+},
+
+
+
+
+
 
 
 // ============================================================
-// READY
+// ROUTE
 // ============================================================
 
-Logger.log(
-  "EntityMetadata READY v" +
-  EntityMetadata.version +
-  " definitions=" +
-  EntityMetadata.list().length
-);
+
+ROUTE:{
+
+
+entity:"ROUTE",
+
+table:"Routes",
+
+
+repository:"RouteRepository",
+
+
+repositoryContract:
+"BaseRepositoryV5",
+
+
+
+idField:"RouteID",
+
+idPrefix:"RTE",
+
+
+idGeneration:{
+strategy:"AUTO",
+service:"IdService"
+},
+
+
+
+module:"transport",
+
+
+
+fields:[
+
+
+{
+name:"RouteID",
+type:"ID",
+generated:true
+},
+
+
+{
+name:"OrganizationID",
+type:"REFERENCE"
+},
+
+
+{
+name:"Name",
+type:"STRING",
+required:true
+},
+
+
+{
+name:"From",
+type:"STRING"
+},
+
+
+{
+name:"To",
+type:"STRING"
+},
+
+
+{
+name:"Distance",
+type:"NUMBER"
+},
+
+
+{
+name:"Duration",
+type:"NUMBER"
+},
+
+
+{
+name:"CreatedAt",
+type:"DATETIME"
+},
+
+
+{
+name:"UpdatedAt",
+type:"DATETIME"
+},
+
+
+{
+name:"Deleted",
+type:"BOOLEAN",
+default:false
+}
+
+
+],
+
+
+
+events:{
+
+
+created:"ROUTE_CREATED",
+
+updated:"ROUTE_UPDATED",
+
+deleted:"ROUTE_DELETED"
+
+
+}
+
+
+
+},
+
+
+
+
+
+
+
+// ============================================================
+// FINANCIAL TRANSACTION
+// ============================================================
+
+
+FINANCIAL_TRANSACTION:{
+
+
+entity:"FINANCIAL_TRANSACTION",
+
+
+table:"FinancialTransactions",
+
+
+repository:"FinancialTransactionRepository",
+
+
+repositoryContract:
+"BaseRepositoryV5",
+
+
+
+idField:"TransactionID",
+
+
+idPrefix:"FIN",
+
+
+
+idGeneration:{
+strategy:"AUTO",
+service:"IdService"
+},
+
+
+
+module:"finance",
+
+
+version:2,
+
+
+
+fields:[
+
+
+{
+name:"TransactionID",
+type:"ID",
+generated:true
+},
+
+
+{
+name:"OrganizationID",
+type:"REFERENCE",
+required:true
+},
+
+
+{
+name:"ClientID",
+type:"REFERENCE"
+},
+
+
+{
+name:"TripID",
+type:"REFERENCE"
+},
+
+
+{
+name:"Type",
+type:"ENUM",
+required:true
+},
+
+
+{
+name:"Amount",
+type:"NUMBER",
+required:true,
+default:0
+},
+
+
+{
+name:"Direction",
+type:"ENUM"
+},
+
+
+{
+name:"Date",
+type:"DATE"
+},
+
+
+{
+name:"Comment",
+type:"STRING"
+},
+
+
+{
+name:"CreatedAt",
+type:"DATETIME"
+},
+
+
+{
+name:"UpdatedAt",
+type:"DATETIME"
+}
+
+
+],
+
+
+
+events:{
+
+
+created:
+"FINANCIAL_TRANSACTION_CREATED",
+
+
+updated:
+"FINANCIAL_TRANSACTION_UPDATED"
+
+
+}
+
+
+
+},
+
+
+
+
+
+
+
+// ============================================================
+// CLIENT FINANCE PROFILE
+// ============================================================
+
+
+CLIENT_FINANCE_PROFILE:{
+
+
+entity:"CLIENT_FINANCE_PROFILE",
+
+
+table:"ClientFinanceProfiles",
+
+
+repository:
+"ClientFinanceProfileRepository",
+
+
+repositoryContract:
+"BaseRepositoryV5",
+
+
+
+idField:"ProfileID",
+
+
+idPrefix:"CFP",
+
+
+
+module:"finance",
+
+
+
+fields:[
+
+
+{
+name:"ProfileID",
+type:"ID",
+generated:true
+},
+
+
+{
+name:"ClientID",
+type:"REFERENCE",
+required:true
+},
+
+
+{
+name:"CreditLimit",
+type:"NUMBER",
+default:0
+},
+
+
+{
+name:"Debt",
+type:"NUMBER",
+default:0
+},
+
+
+{
+name:"PaymentTerms",
+type:"NUMBER"
+},
+
+
+{
+name:"Status",
+type:"ENUM",
+default:"ACTIVE"
+},
+
+
+{
+name:"CreatedAt",
+type:"DATETIME"
+},
+
+
+{
+name:"UpdatedAt",
+type:"DATETIME"
+}
+
+
+],
+
+
+
+events:{
+
+
+created:
+"CLIENT_FINANCE_PROFILE_CREATED",
+
+
+updated:
+"CLIENT_FINANCE_PROFILE_UPDATED"
+
+
+}
+
+
+
+},
+
+
+
+
+
+
+
+// ============================================================
+// KPI
+// ============================================================
+
+
+KPI:{
+
+
+entity:"KPI",
+
+
+table:"KPI",
+
+
+repository:"KPIRepository",
+
+
+repositoryContract:
+"BaseRepositoryV5",
+
+
+
+idField:"KPIID",
+
+
+idPrefix:"KPI",
+
+
+
+module:"analytics",
+
+
+
+fields:[
+
+
+{
+name:"KPIID",
+type:"ID",
+generated:true
+},
+
+
+{
+name:"OrganizationID",
+type:"REFERENCE"
+},
+
+
+{
+name:"Name",
+type:"STRING",
+required:true
+},
+
+
+{
+name:"Value",
+type:"NUMBER",
+default:0
+},
+
+
+{
+name:"Period",
+type:"STRING"
+},
+
+
+{
+name:"Category",
+type:"STRING"
+},
+
+
+{
+name:"CreatedAt",
+type:"DATETIME"
+}
+
+
+],
+
+
+
+events:{
+
+
+created:"KPI_CREATED",
+
+updated:"KPI_UPDATED"
+
+
+}
+
+
+
+},
+
+
+// ============================================================
+// AUDIT
+// ============================================================
+
+
+AUDIT:{
+
+
+entity:"AUDIT",
+
+table:"AuditLog",
+
+repository:"AuditRepository",
+
+repositoryContract:
+"BaseRepositoryV5",
+
+
+idField:"AuditID",
+
+idPrefix:"AUD",
+
+
+module:"system",
+
+
+
+fields:[
+
+
+{
+name:"AuditID",
+type:"ID",
+generated:true
+},
+
+
+{
+name:"OrganizationID",
+type:"REFERENCE"
+},
+
+
+{
+name:"Entity",
+type:"STRING",
+required:true
+},
+
+
+{
+name:"EntityID",
+type:"STRING",
+required:true
+},
+
+
+{
+name:"Action",
+type:"ENUM",
+required:true
+},
+
+
+{
+name:"Before",
+type:"OBJECT"
+},
+
+
+{
+name:"After",
+type:"OBJECT"
+},
+
+
+{
+name:"UserID",
+type:"STRING"
+},
+
+
+{
+name:"CreatedAt",
+type:"DATETIME"
+}
+
+
+],
+
+
+
+events:{
+
+
+created:"AUDIT_CREATED"
+
+
+}
+
+
+
+},
+
+
+
+
+
+
+
+// ============================================================
+// VERSION
+// ============================================================
+
+
+VERSION:{
+
+
+entity:"VERSION",
+
+table:"EntityVersions",
+
+repository:"VersionRepository",
+
+repositoryContract:
+"BaseRepositoryV5",
+
+
+
+idField:"VersionID",
+
+idPrefix:"VER",
+
+
+
+module:"system",
+
+
+
+fields:[
+
+
+{
+name:"VersionID",
+type:"ID",
+generated:true
+},
+
+
+{
+name:"Entity",
+type:"STRING",
+required:true
+},
+
+
+{
+name:"EntityID",
+type:"STRING",
+required:true
+},
+
+
+{
+name:"Version",
+type:"NUMBER",
+default:1
+},
+
+
+{
+name:"Snapshot",
+type:"OBJECT"
+},
+
+
+{
+name:"CreatedAt",
+type:"DATETIME"
+}
+
+
+],
+
+
+
+events:{
+
+
+created:"VERSION_CREATED"
+
+
+}
+
+
+
+}
