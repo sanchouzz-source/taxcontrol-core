@@ -1,27 +1,32 @@
 // ============================================================
-// RepositoryFactory v2.5.9
+// RepositoryFactory v2.7.0
 // Enterprise Repository Dependency Container
 // TaxControl ERP Core
+//
+// Compatible:
+// BaseRepository v5.6+
+// EntityService v5.x
+// SystemInit v2.5+
 // ============================================================
 
-console.log("RepositoryFactory v2.5.9");
+
+console.log("RepositoryFactory v2.7.0");
+
 
 
 const RepositoryFactory = {
 
 
-version:"2.5.9",
+version:"2.7.0",
 
-apiVersion:"2.3",
-
+apiVersion:"2.5",
 
 
 repositories:{},
 
-pending:{},
-
 metadata:{},
 
+pending:{},
 
 
 initialized:false,
@@ -30,6 +35,9 @@ initializing:false,
 
 
 discoveryRuns:0,
+
+
+
 
 
 
@@ -47,20 +55,13 @@ Logger.debug(
 "RepositoryFactory already initialized"
 );
 
-return;
+return true;
 
 }
 
-
-if(this.initializing){
-
-return;
-
-}
 
 
 this.initializing=true;
-
 
 
 try{
@@ -72,11 +73,11 @@ Logger.log(
 
 
 
-this.loadFromRegistry();
+this.loadRegistry();
 
 
 
-this.registerAllRepositories();
+this.discovery();
 
 
 
@@ -85,14 +86,6 @@ this.autoRegister();
 
 
 this.refreshPending();
-
-
-
-this.discoverLoadedRepositories();
-
-
-
-this.recoverMissingRepositories();
 
 
 
@@ -105,19 +98,21 @@ this.initialized=true;
 
 
 Logger.log(
+
 "RepositoryFactory READY v"+
 this.version+
 " count="+
 this.count()
+
 );
 
 
 
+return true;
+
+
 }
 catch(e){
-
-
-this.initialized=false;
 
 
 Logger.error(
@@ -145,12 +140,15 @@ this.initializing=false;
 
 
 
+
+
+
 // ============================================================
 // LOAD REGISTRY
 // ============================================================
 
 
-loadFromRegistry(){
+loadRegistry(){
 
 
 if(
@@ -185,19 +183,16 @@ repo
 }
 
 
-
 });
 
 
 }
 catch(e){
 
-
 Logger.warn(
 "RepositoryRegistry load failed "+
 e.message
 );
-
 
 }
 
@@ -207,77 +202,60 @@ e.message
 
 
 
+
+
+
 // ============================================================
-// MANUAL DISCOVERY
+// DISCOVERY
 // ============================================================
 
 
-registerAllRepositories(){
+discovery(){
 
 
-const list=[
-
-
-"ClientRepository",
-
-"TripRepository",
-
-"VehicleRepository",
-
-"RouteRepository",
-
-"TransportOrderRepository",
-
-"CarrierRepository",
-
-"DriverRepository",
-
-"CargoRepository",
-
-"FinancialTransactionRepository",
-
-"ClientFinanceProfileRepository",
-
-"KPIRepository",
-
-"AuditRepository",
-
-"VersionRepository"
-
-
-];
+this.discoveryRuns++;
 
 
 
-let count=0;
+Object.keys(globalThis)
 
+.filter(
+x=>
+x.endsWith("Repository")
+)
 
-
-list.forEach(name=>{
+.forEach(name=>{
 
 
 const repo =
-this.resolveRepository(name);
+globalThis[name];
 
 
 
-if(repo){
+if(
+!repo
+){
 
-
-const entity =
-this.buildEntityName(name);
-
-
-
-if(this.register(entity,repo)){
-
-
-count++;
-
+return;
 
 }
 
 
+
+const entity =
+this.resolveEntity(
+repo,
+name
+);
+
+
+
+if(entity){
+
+this.register(
+entity,
+repo
+);
 
 }
 
@@ -286,34 +264,37 @@ count++;
 });
 
 
-
-Logger.log(
-"Manual repositories registered "+
-count
-);
-
-
-return count;
-
-
 },
 
 
 
 
+
+
+
 // ============================================================
-// NAME CONVERSION
+// ENTITY RESOLVE
 // ============================================================
 
 
-buildEntityName(repositoryName){
+resolveEntity(repo,name){
 
 
-return repositoryName
+if(repo.entity){
+
+return repo.entity;
+
+}
+
+
+return name
 
 .replace("Repository","")
 
-.replace(/([a-z])([A-Z])/g,"$1_$2")
+.replace(
+/([a-z])([A-Z])/g,
+"$1_$2"
+)
 
 .toUpperCase();
 
@@ -323,59 +304,11 @@ return repositoryName
 
 
 
-buildRepositoryName(entity){
-
-
-const special={
-
-
-KPI:"KPIRepository",
-
-AUDIT:"AuditRepository",
-
-VERSION:"VersionRepository",
-
-CRM:"CRMRepository",
-
-API:"APIRepository"
-
-
-};
-
-
-
-if(special[entity]){
-
-return special[entity];
-
-}
-
-
-
-return entity
-
-.split("_")
-
-.map(x=>
-
-x.charAt(0)+
-
-x.slice(1).toLowerCase()
-
-)
-
-.join("")+
-
-"Repository";
-
-
-},
-
 
 
 
 // ============================================================
-// AUTO REGISTER FROM ENTITY REGISTRY
+// AUTO REGISTER
 // ============================================================
 
 
@@ -393,23 +326,9 @@ return;
 
 
 EntityRegistry.list()
+
 .forEach(entity=>{
 
-
-const meta =
-EntityRegistry.get(entity);
-
-
-
-if(!meta){
-
-return;
-
-}
-
-
-
-// системные тестовые сущности
 
 if(
 entity.startsWith("__TEST_")
@@ -421,15 +340,42 @@ return;
 
 
 
+if(
+this.repositories[entity]
+){
+
+return;
+
+}
+
+
+
+const meta =
+EntityRegistry.get(entity);
+
+
+
 const repoName =
 meta.repository ||
-
 this.buildRepositoryName(entity);
 
 
 
-const repo =
+let repo =
 this.resolveRepository(repoName);
+
+
+
+if(!repo){
+
+
+repo =
+this.createFallbackRepository(
+entity
+);
+
+
+}
 
 
 
@@ -443,32 +389,6 @@ repo
 
 
 }
-else{
-
-
-this.pending[entity]={
-
-
-repository:repoName,
-
-
-created:new Date()
-
-
-};
-
-
-
-Logger.debug(
-"Repository pending "+
-entity+
-" -> "+
-repoName
-);
-
-
-
-}
 
 
 
@@ -480,15 +400,222 @@ repoName
 
 
 
+
+
+
+// ============================================================
+// BUILD NAME
+// ============================================================
+
+
+buildRepositoryName(entity){
+
+
+const special={
+
+
+KPI:"KPIRepository",
+
+AUDIT:"AuditRepository",
+
+VERSION:"VersionRepository",
+
+FINANCIAL_TRANSACTION:
+"FinancialTransactionRepository"
+
+
+};
+
+
+
+if(
+special[entity]
+){
+
+return special[entity];
+
+}
+
+
+
+return entity
+
+.split("_")
+
+.map(x=>
+
+x.charAt(0)+
+x.slice(1).toLowerCase()
+
+)
+
+.join("")
++
+"Repository";
+
+
+},
+
+
+
+
+
+
+
+// ============================================================
+// FALLBACK
+// ============================================================
+
+
+createFallbackRepository(entity){
+
+
+if(
+typeof BaseRepository==="undefined"
+){
+
+return null;
+
+}
+
+
+
+const base =
+BaseRepository;
+
+
+
+const proxy = {
+
+
+entity,
+
+
+version:
+"BaseRepository-"+base.version,
+
+
+repositoryType:
+"BASE",
+
+
+
+create(data){
+
+return base.create(
+entity,
+data
+);
+
+},
+
+
+
+findById(id){
+
+return base.findById(
+entity,
+id
+);
+
+},
+
+
+
+findAll(filters){
+
+return base.findAll(
+entity,
+filters
+);
+
+},
+
+
+
+update(id,data){
+
+return base.update(
+entity,
+id,
+data
+);
+
+},
+
+
+
+delete(id){
+
+return base.delete(
+entity,
+id
+);
+
+},
+
+
+
+restore(id){
+
+return base.restore(
+entity,
+id
+);
+
+},
+
+
+
+exists(id){
+
+return base.exists(
+entity,
+id
+);
+
+},
+
+
+
+count(filters){
+
+return base.count(
+entity,
+filters
+);
+
+}
+
+
+
+};
+
+
+
+return proxy;
+
+
+},
+
+
+
+
+
+
+
 // ============================================================
 // REGISTER
 // ============================================================
 
 
-register(entity,repository,options={}){
+register(entity,repo,options={}){
 
 
-if(!entity || !repository){
+if(
+!entity ||
+!repo
+){
 
 return false;
 
@@ -497,10 +624,10 @@ return false;
 
 
 if(
-this.repositories[entity] &&
+this.repositories[entity]
+&&
 !options.force
 ){
-
 
 return false;
 
@@ -509,14 +636,11 @@ return false;
 
 
 const contract =
-this.validate(
-entity,
-repository
-);
+this.validate(repo);
 
 
 
-this.repositories[entity]=repository;
+this.repositories[entity]=repo;
 
 
 
@@ -524,18 +648,19 @@ this.metadata[entity]={
 
 
 version:
-repository.version || "unknown",
+repo.version||"unknown",
+
+
+type:
+repo.repositoryType ||
+"CUSTOM",
 
 
 contract,
 
 
-crud:
-this.detectCRUD(repository),
-
-
-registeredAt:
-new Date()
+registered:
+new Date().toISOString()
 
 
 };
@@ -547,8 +672,13 @@ delete this.pending[entity];
 
 
 Logger.log(
+
 "RepositoryFactory REGISTER "+
-entity
+entity+
+" ["+
+this.metadata[entity].type+
+"]"
+
 );
 
 
@@ -561,232 +691,18 @@ return true;
 
 
 
-// ============================================================
-// LATE LOAD
-// ============================================================
-
-
-registerLoaded(entity,repository){
-
-
-if(
-!entity ||
-!repository
-){
-
-return false;
-
-}
-
-
-
-delete this.pending[entity];
-
-
-
-return this.register(
-entity,
-repository
-);
-
-
-},
-
-
-
-notifyLoaded(entity,repository){
-
-
-Logger.log(
-"RepositoryFactory NOTIFY LOADED "+
-entity
-);
-
-
-return this.registerLoaded(
-entity,
-repository
-);
-
-
-},
-
 
 
 
 // ============================================================
-// DISCOVERY
+// VALIDATE
 // ============================================================
 
 
-discoverLoadedRepositories(){
-
-
-this.discoveryRuns++;
-
-
-let count=0;
-
-
-
-Object.keys(globalThis)
-
-.filter(name=>
-
-name.endsWith("Repository")
-
-)
-
-.forEach(name=>{
-
-
-const repo =
-globalThis[name];
-
-
-
-if(
-!repo ||
-typeof repo!=="object"
-){
-
-return;
-
-}
-
-
-
-const entity =
-repo.entity ||
-
-this.buildEntityName(name);
-
-
-
-if(
-entity &&
-!this.repositories[entity]
-){
-
-
-if(this.register(entity,repo)){
-
-
-count++;
-
-
-Logger.log(
-"Repository DISCOVERED "+
-entity
-);
-
-
-
-}
-
-
-
-}
-
-
-
-});
-
-
-
-return count;
-
-
-},
-
-
-
-
-// ============================================================
-// RECOVERY
-// ============================================================
-
-
-recoverMissingRepositories(){
-
-
-if(
-typeof EntityRegistry==="undefined"
-){
-
-return 0;
-
-}
-
-
-
-let count=0;
-
-
-
-EntityRegistry.list()
-
-.forEach(entity=>{
-
-
-if(
-this.repositories[entity]
-){
-
-return;
-
-}
-
-
-
-const name =
-this.buildRepositoryName(entity);
-
-
-
-const repo =
-this.resolveRepository(name);
-
-
-
-if(repo){
-
-
-if(this.register(entity,repo)){
-
-
-count++;
-
-
-}
-
-
-}
-
-
-
-});
-
-
-
-return count;
-
-
-},
-
-
-
-
-// ============================================================
-// VALIDATE CONTRACT
-// ============================================================
-
-
-validate(entity,repo){
+validate(repo){
 
 
 const required=[
-
 
 "create",
 
@@ -802,128 +718,46 @@ const required=[
 
 "exists"
 
-
 ];
 
 
 
-const missing=[];
-
-
-
-required.forEach(m=>{
-
-
-if(
-typeof repo[m]!=="function"
-){
-
-missing.push(m);
-
-}
-
-
-});
-
-
-
-if(missing.length){
-
-
 return {
 
 
-status:"WARNING",
+status:
 
-missing
+required.every(
+x=>
+typeof repo[x]==="function"
+)
+
+?
+
+"OK"
+
+:
+
+"WARNING",
+
+
+
+missing:
+
+required.filter(
+x=>
+typeof repo[x]!=="function"
+)
+
 
 
 };
-
-
-}
-
-
-
-return {
-
-
-status:"OK",
-
-missing:[]
-
-
-};
-
 
 
 },
 
 
 
-
-// ============================================================
-// CRUD
-// ============================================================
-
-
-detectCRUD(repo){
-
-
-const list=[
-
-
-"create",
-
-"findById",
-
-"findAll",
-
-"update",
-
-"delete"
-
-
-];
-
-
-
-let ok=0;
-
-
-
-list.forEach(m=>{
-
-
-if(
-typeof repo[m]==="function"
-){
-
-ok++;
-
-}
-
-
-});
-
-
-
-return {
-
-
-available:ok,
-
-total:list.length,
-
-
-percent:
-Math.round(ok/list.length*100)
-
-
-};
-
-
-},
 
 
 
@@ -948,10 +782,13 @@ return globalThis[name];
 
 const key =
 Object.keys(globalThis)
+.find(
 
-.find(k=>
+k=>
 
-k.toUpperCase()==name.toUpperCase()
+k.toUpperCase()
+===
+name.toUpperCase()
 
 );
 
@@ -969,6 +806,9 @@ null;
 
 
 
+
+
+
 // ============================================================
 // PENDING
 // ============================================================
@@ -982,8 +822,8 @@ let loaded=0;
 
 
 Object.entries(this.pending)
-
-.forEach(([entity,item])=>{
+.forEach(
+([entity,item])=>{
 
 
 const repo =
@@ -995,23 +835,18 @@ item.repository
 
 if(repo){
 
-
-this.registerLoaded(
+this.register(
 entity,
 repo
 );
 
-
-
 loaded++;
-
 
 }
 
 
 
 });
-
 
 
 return loaded;
@@ -1021,25 +856,6 @@ return loaded;
 
 
 
-
-pendingReport(){
-
-
-return Object.entries(this.pending)
-
-.map(([entity,item])=>({
-
-
-entity,
-
-
-repository:item.repository
-
-
-}));
-
-
-},
 
 
 
@@ -1056,11 +872,9 @@ if(
 !this.repositories[entity]
 ){
 
-this.refreshPending();
+this.discovery();
 
-
-this.recoverMissingRepositories();
-
+this.autoRegister();
 
 }
 
@@ -1091,9 +905,7 @@ return repo;
 
 has(entity){
 
-
 return !!this.repositories[entity];
-
 
 },
 
@@ -1101,9 +913,9 @@ return !!this.repositories[entity];
 
 list(){
 
-
-return Object.keys(this.repositories);
-
+return Object.keys(
+this.repositories
+);
 
 },
 
@@ -1111,11 +923,12 @@ return Object.keys(this.repositories);
 
 count(){
 
-
 return this.list().length;
 
-
 },
+
+
+
 
 
 
@@ -1139,7 +952,7 @@ return;
 
 
 if(
-typeof RepositoryRegistry.register!=="function"
+!RepositoryRegistry.register
 ){
 
 return;
@@ -1148,19 +961,20 @@ return;
 
 
 
-Object.entries(this.repositories)
+Object.entries(
+this.repositories
+)
 
-.forEach(([entity,repo])=>{
+.forEach(
+([entity,repo])=>{
 
 
 try{
-
 
 RepositoryRegistry.register(
 entity,
 repo
 );
-
 
 
 }
@@ -1176,93 +990,6 @@ catch(e){}
 
 
 
-// ============================================================
-// REFRESH
-// ============================================================
-
-
-refresh(){
-
-
-Logger.log(
-"RepositoryFactory FULL REFRESH"
-);
-
-
-
-this.registerAllRepositories();
-
-
-this.autoRegister();
-
-
-this.refreshPending();
-
-
-this.discoverLoadedRepositories();
-
-
-const recovered =
-this.recoverMissingRepositories();
-
-
-
-this.syncRegistry();
-
-
-
-return {
-
-
-repositories:this.count(),
-
-
-recovered,
-
-
-pending:Object.keys(this.pending)
-
-
-};
-
-
-
-},
-
-
-
-
-// ============================================================
-// STATUS
-// ============================================================
-
-
-status(){
-
-
-return {
-
-
-version:this.version,
-
-
-initialized:this.initialized,
-
-
-count:this.count(),
-
-
-repositories:this.list(),
-
-
-pending:this.pendingReport()
-
-
-};
-
-
-},
-
 
 
 
@@ -1274,19 +1001,24 @@ pending:this.pendingReport()
 health(){
 
 
-const total =
+const entities =
 typeof EntityRegistry!=="undefined"
-
 ?
-EntityRegistry.list().length
-
+EntityRegistry.list()
+.filter(
+e=>
+!e.startsWith("__TEST_")
+)
 :
-0;
+[];
 
 
 
 const loaded =
-this.count();
+entities.filter(
+e=>
+this.has(e)
+);
 
 
 
@@ -1302,17 +1034,17 @@ return HealthContract.create(
 version:this.version,
 
 
-loaded,
+loaded:this.count(),
 
 
-total,
+entities:entities.length,
 
 
 coverage:
-total
+entities.length
 ?
 Math.round(
-loaded/total*100
+loaded.length/entities.length*100
 )
 :
 0,
@@ -1321,7 +1053,7 @@ loaded/total*100
 repositories:this.list(),
 
 
-pending:Object.keys(this.pending)
+types:this.metadata
 
 
 }
@@ -1335,9 +1067,44 @@ pending:Object.keys(this.pending)
 
 
 
+
+
+
 // ============================================================
-// RESET
+// DIAGNOSTICS
 // ============================================================
+
+
+diagnostics(){
+
+
+return{
+
+
+version:this.version,
+
+
+count:this.count(),
+
+
+repositories:this.metadata,
+
+
+discoveryRuns:this.discoveryRuns,
+
+
+pending:this.pending
+
+
+};
+
+
+},
+
+
+
+
+
 
 
 reset(){
@@ -1345,13 +1112,12 @@ reset(){
 
 this.repositories={};
 
-this.pending={};
-
 this.metadata={};
 
-this.initialized=false;
+this.pending={};
 
-this.initializing=false;
+
+this.initialized=false;
 
 
 Logger.log(

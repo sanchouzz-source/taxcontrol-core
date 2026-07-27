@@ -1,304 +1,257 @@
-console.log("ERP Diagnostics v4.0.0");
+// ============================================================
+// ERPDiagnostics v5.0.0
+// Enterprise ERP Diagnostic Engine
+// TaxControl ERP Core
+//
+// Compatible:
+// SystemInit v2.5+
+// Bootstrap v0.6+
+// HealthService v2.x
+// RepositoryFactory v2.5+
+// EntityService v5.x
+// CoreInfrastructureTest v2.5+
+// ============================================================
+
+
+console.log("ERPDiagnostics v5.0.0");
+
 
 
 const ERPDiagnostics = {
 
 
-version:"4.0.0",
+version:"5.0.0",
 
 
 
-// =================================================
-// MAIN
-// =================================================
+// ============================================================
+// MAIN RUN
+// ============================================================
+
 
 run(options={}){
 
 
-    const report=this.buildReport();
-
-
-    if(options.json)
-        return report;
-
-
-    this.print(report);
-
-
-    return report;
-
-},
+Logger.log(
+"========== ERP DIAGNOSTICS v5 START =========="
+);
 
 
 
-
-// =================================================
-// BUILD
-// =================================================
-
-buildReport(){
+const result={
 
 
-return {
+version:this.version,
 
 
-timestamp:new Date().toISOString(),
+timestamp:
+new Date().toISOString(),
 
 
-system:this.system(),
+
+health:{},
 
 
-components:this.components(),
+system:{},
 
 
-schema:this.schema(),
+core:{},
 
 
-database:this.database(),
+repositories:{},
 
 
-repositories:this.repositories(),
+entities:{},
 
 
-events:this.events(),
+modules:{},
 
 
-modules:this.modules(),
+events:{},
 
 
-health:this.health(),
+security:{},
 
 
-summary:this.summary()
+audit:{},
+
+
+migration:{},
+
+
+coreTest:null,
+
+
+status:"UNKNOWN"
 
 
 };
 
 
-},
+
+
+try{
 
 
 
-
-// =================================================
-// SYSTEM
-// =================================================
-
-system(){
-
-
-return {
-
-
-version:
-SystemInit?.version || null,
-
-
-initialized:
-SystemInit?.initialized || false,
-
-
-startedAt:
-SystemInit?.startedAt || null,
-
-
-uptime:
-SystemInit?.startedAt
-?
-Date.now()
--
-new Date(SystemInit.startedAt).getTime()
-:
-0
-
-
-};
-
-
-},
-
-
-
-
-
-// =================================================
-// COMPONENTS
-// =================================================
-
-
-components(){
-
-
-const check=(name)=>{
-
-
-const obj=globalThis[name];
-
-
-if(!obj)
-return "NOT_FOUND";
-
+// HEALTH SERVICE
 
 if(
-obj.ready===true ||
-obj.initialized===true ||
-obj.status==="READY"
-)
-return "READY";
+typeof HealthService!=="undefined"
+){
 
+result.health =
+HealthService.summary();
 
-return "LOADED";
-
-
-};
-
-
-
-return {
-
-
-Config:check("Config"),
-
-Logger:check("Logger"),
-
-SchemaRegistry:check("SchemaRegistry"),
-
-SchemaManager:check("SchemaManager"),
-
-Database:check("Database"),
-
-EntityRegistry:check("EntityRegistry"),
-
-RepositoryFactory:check("RepositoryFactory"),
-
-RepositoryRegistry:check("RepositoryRegistry"),
-
-EventBus:check("EventBus"),
-
-BusinessEventProcessor:check("BusinessEventProcessor"),
-
-ModuleRegistry:check("ModuleRegistry")
-
-
-};
-
-
-},
+}
 
 
 
 
+// SYSTEM
 
-// =================================================
-// SCHEMA
-// =================================================
-
-schema(){
+result.system =
+this.system();
 
 
-try{
 
 
-if(typeof SchemaRegistry!=="undefined"){
+// CORE
+
+result.core =
+this.core();
 
 
-return {
 
 
-status:
-SchemaRegistry.status,
+// REPOSITORIES
+
+result.repositories =
+this.repositories();
 
 
-initialized:
-SchemaRegistry.initialized,
 
 
-entities:
-Object.keys(
-SchemaRegistry.schemas||{}
-),
+// ENTITIES
+
+result.entities =
+this.entities();
 
 
-tables:
-Object.keys(
-SchemaRegistry.tableIndex||{}
-).length
 
 
-};
+// MODULES
+
+result.modules =
+this.modules();
+
+
+
+
+// EVENTS
+
+result.events =
+this.events();
+
+
+
+
+// SECURITY
+
+result.security =
+this.security();
+
+
+
+
+// AUDIT
+
+result.audit =
+this.audit();
+
+
+
+
+// MIGRATION
+
+result.migration =
+this.migration();
+
+
+
+
+// CORE TEST
+
+if(
+options.skipCoreTest!==true
+&&
+typeof CoreInfrastructureTest!=="undefined"
+){
+
+result.coreTest =
+CoreInfrastructureTest.run(
+{
+safe:true
+}
+);
 
 
 }
 
 
 
-}catch(e){
-
-return {
-error:e.message
-};
-
-}
 
 
-return {};
-
-},
+result.status =
+this.calculateStatus(result);
 
 
 
 
 
-
-// =================================================
-// DATABASE
-// =================================================
-
-
-database(){
-
-
-try{
-
-
-return {
-
-
-status:
-Database?.status || null,
-
-
-initialized:
-Database?.initialized || false,
-
-
-ready:
-Database?.ready || false,
-
-
-tables:
-SchemaRegistry?.tableIndex
-?
-Object.keys(
-SchemaRegistry.tableIndex
+Logger.log(
+JSON.stringify(
+result,
+null,
+2
 )
-:
-[]
+);
 
 
-};
+
+Logger.log(
+"========== ERP DIAGNOSTICS COMPLETE =========="
+);
+
+
+
+return result;
+
 
 
 }
 catch(e){
 
 
-return {
-error:e.message
-};
+
+Logger.error(
+"ERP DIAGNOSTICS FAILED "+
+e.message
+);
+
+
+
+result.status="FAILED";
+
+result.error=e.message;
+
+
+
+return result;
 
 
 }
+
 
 
 },
@@ -308,106 +261,285 @@ error:e.message
 
 
 
-// =================================================
+
+// ============================================================
+// SYSTEM
+// ============================================================
+
+
+system(){
+
+
+if(
+typeof SystemInit==="undefined"
+){
+
+return {
+available:false
+};
+
+}
+
+
+
+return{
+
+
+available:true,
+
+
+version:
+SystemInit.version,
+
+
+initialized:
+SystemInit.initialized,
+
+
+initializing:
+SystemInit.initializing,
+
+
+started:
+Object.keys(
+SystemInit.started || {}
+),
+
+
+components:
+SystemInit.componentStatus,
+
+
+failed:
+(SystemInit.bootLog||[])
+.filter(
+x=>x.status==="FAILED"
+)
+
+
+};
+
+
+},
+
+
+
+
+
+
+
+// ============================================================
+// CORE
+// ============================================================
+
+
+core(){
+
+
+const list=[
+
+
+"Config",
+
+"Logger",
+
+"EntityMetadata",
+
+"EntityRegistry",
+
+"SchemaRegistry",
+
+"SchemaManager",
+
+"Database",
+
+"BaseRepository",
+
+"RepositoryFactory",
+
+"EntityService",
+
+"EventBus"
+
+
+];
+
+
+
+const result={};
+
+
+
+list.forEach(name=>{
+
+
+result[name]=
+typeof globalThis[name]!=="undefined";
+
+
+});
+
+
+
+return result;
+
+
+},
+
+
+
+
+
+
+
+// ============================================================
 // REPOSITORIES
-// =================================================
+// ============================================================
+
 
 repositories(){
 
 
+if(
+typeof RepositoryFactory==="undefined"
+){
+
 return {
+available:false
+};
+
+}
 
 
-factory:
+
+return{
 
 
-RepositoryFactory?.registry
+available:true,
+
+
+version:
+RepositoryFactory.version,
+
+
+initialized:
+RepositoryFactory.initialized,
+
+
+count:
+RepositoryFactory.count(),
+
+
+loaded:
+RepositoryFactory.list(),
+
+
+pending:
+RepositoryFactory.pendingReport
 ?
-Object.keys(
-RepositoryFactory.registry
-)
-:
-RepositoryFactory?.repositories
-?
-Object.keys(
-RepositoryFactory.repositories
-)
+RepositoryFactory.pendingReport()
 :
 [],
 
 
 
-registry:
-
-
-RepositoryRegistry?.repositories
+missing:
+RepositoryFactory.missingRepositories
 ?
-Object.keys(
-RepositoryRegistry.repositories
+RepositoryFactory.missingRepositories()
+:
+[],
+
+
+
+health:
+RepositoryFactory.health
+?
+RepositoryFactory.health()
+:
+null
+
+
+};
+
+
+
+},
+
+
+
+
+
+
+
+// ============================================================
+// ENTITIES
+// ============================================================
+
+
+entities(){
+
+
+if(
+typeof EntityRegistry==="undefined"
+){
+
+return {
+available:false
+};
+
+}
+
+
+
+const list =
+EntityRegistry.list();
+
+
+
+let repositoryCoverage=0;
+
+
+
+if(
+typeof RepositoryFactory!=="undefined"
+){
+
+
+repositoryCoverage =
+list.length
+?
+Math.round(
+
+RepositoryFactory.list().length /
+list.length *
+100
+
 )
 :
-[]
-
-
-};
-
-
-},
-
-
-
-
-
-
-// =================================================
-// EVENTS
-// =================================================
-
-events(){
-
-
-try{
-
-
-let events=[];
-
-
-if(EventBus?.list)
-events=EventBus.list();
-
-
-else
-if(EventBus?.events)
-events=
-Object.keys(EventBus.events);
-
-
-
-return {
-
-
-ready:
-EventBus?.ready || false,
-
-
-count:
-events.length,
-
-
-events
-
-
-};
+0;
 
 
 }
-catch(e){
 
-return {
-error:e.message
+
+
+return{
+
+
+available:true,
+
+
+count:list.length,
+
+
+entities:list,
+
+
+repositoryCoverage
+
+
 };
-
-}
 
 
 
@@ -419,52 +551,50 @@ error:e.message
 
 
 
-// =================================================
+// ============================================================
 // MODULES
-// =================================================
+// ============================================================
 
 
 modules(){
 
 
-try{
-
+if(
+typeof ModuleRegistry==="undefined"
+){
 
 return {
+available:false
+};
+
+}
 
 
-count:
 
-ModuleRegistry?.modules
+return{
+
+
+available:true,
+
+
+initialized:
+ModuleRegistry.initialized===true,
+
+
+modules:
+ModuleRegistry.list
 ?
-Object.keys(ModuleRegistry.modules).length
-:
-0,
-
-
-items:
-
-ModuleRegistry?.modules
-?
-Object.keys(ModuleRegistry.modules)
+ModuleRegistry.list()
 :
 [],
 
 
 failed:
-
-ModuleRegistry?.failed || []
+ModuleRegistry.failed || []
 
 
 };
 
-
-}
-catch(e){
-
-return {};
-
-}
 
 
 },
@@ -475,157 +605,341 @@ return {};
 
 
 
-// =================================================
-// HEALTH
-// =================================================
+// ============================================================
+// EVENTS
+// ============================================================
+
+
+events(){
+
+
+if(
+typeof EventBus==="undefined"
+){
+
+return {
+available:false
+};
+
+}
+
+
+
+return{
+
+
+available:true,
+
+
+ready:
+EventBus.ready===true,
+
+
+version:
+EventBus.version,
+
+
+events:
+EventBus.list
+?
+EventBus.list()
+:
+[]
+
+
+};
+
+
+
+},
+
+
+
+
+
+
+
+// ============================================================
+// SECURITY
+// ============================================================
+
+
+security(){
+
+
+if(
+typeof SecurityGuard==="undefined"
+){
+
+return {
+available:false
+};
+
+}
+
+
+
+return{
+
+
+available:true,
+
+
+health:
+SecurityGuard.health
+?
+SecurityGuard.health()
+:
+"OK"
+
+
+};
+
+
+
+},
+
+
+
+
+
+
+
+// ============================================================
+// AUDIT
+// ============================================================
+
+
+audit(){
+
+
+if(
+typeof AuditLog==="undefined"
+){
+
+return {
+available:false
+};
+
+}
+
+
+
+return{
+
+
+available:true,
+
+
+health:
+AuditLog.health
+?
+AuditLog.health()
+:
+"OK"
+
+
+};
+
+
+
+},
+
+
+
+
+
+
+
+// ============================================================
+// MIGRATION
+// ============================================================
+
+
+migration(){
+
+
+if(
+typeof MigrationManager==="undefined"
+){
+
+return {
+available:false
+};
+
+}
+
+
+
+return{
+
+
+available:true,
+
+
+health:
+MigrationManager.health
+?
+MigrationManager.health()
+:
+"OK"
+
+
+};
+
+
+
+},
+
+
+
+
+
+
+
+// ============================================================
+// STATUS CALCULATOR
+// ============================================================
+
+
+calculateStatus(data){
+
+
+let critical=0;
+
+let warning=0;
+
+
+
+
+
+// system
+
+if(
+!data.system.initialized
+){
+
+warning++;
+
+}
+
+
+
+
+
+// repositories
+
+if(
+data.repositories.available
+&&
+data.repositories.missing.length
+){
+
+warning++;
+
+}
+
+
+
+
+
+// entity coverage
+
+if(
+data.entities.repositoryCoverage<80
+){
+
+warning++;
+
+}
+
+
+
+
+
+// modules
+
+if(
+data.modules.failed
+&&
+data.modules.failed.length
+){
+
+critical++;
+
+}
+
+
+
+
+
+// core test
+
+if(
+data.coreTest?.summary?.failed>0
+){
+
+critical++;
+
+}
+
+
+
+
+
+if(critical>0){
+
+return "CRITICAL";
+
+}
+
+
+
+if(warning>0){
+
+return "WARNING";
+
+}
+
+
+
+return "HEALTHY";
+
+
+},
+
+
+
+
+
+
+
+// ============================================================
+// HEALTH CONTRACT
+// ============================================================
 
 
 health(){
 
 
-try{
-
-
-if(SystemInit?.health)
-
-return SystemInit.health();
-
-
-
-return {
-
-status:"UNKNOWN"
-
-};
-
-
-}
-catch(e){
-
-return {
-
-status:"ERROR",
-
-error:e.message
-
-};
-
-}
-
-
-
-},
-
-
-
-
-
-
-// =================================================
-// SUMMARY
-// =================================================
-
-summary(){
-
-
-const h=this.health();
-
-
-return {
-
-
-status:
-h?.status || "UNKNOWN",
-
-
-critical:
-
-
+const report =
+this.run(
 {
-
-
-database:
-Database?.initialized || false,
-
-
-eventBus:
-EventBus?.ready || false,
-
-
-processor:
-BusinessEventProcessor?.ready || false
-
-
+skipCoreTest:true
 }
-
-
-
-};
-
-
-},
-
-
-
-
-
-
-// =================================================
-// DIAGNOSTICS
-// =================================================
-
-
-diagnostics(){
-
-return this.buildReport();
-
-},
-
-
-
-
-
-
-// =================================================
-// PRINT
-// =================================================
-
-
-print(r){
-
-
-Logger.log(
-"========== ERP DIAGNOSTICS v"+
-this.version+
-" =========="
 );
 
 
 
-Logger.log(
-JSON.stringify(
-r.summary,
-null,
-2
-)
+return HealthContract.create(
+
+"ERPDiagnostics",
+
+report.status,
+
+report
+
 );
-
-
-
-Logger.log(
-JSON.stringify(
-r.components,
-null,
-2
-)
-);
-
-
-
-Logger.log(
-"========== END =========="
-);
-
 
 
 }
@@ -637,32 +951,15 @@ Logger.log(
 
 
 
-// GLOBAL
 
 
-globalThis.ERPDiagnostics=
+
+globalThis.ERPDiagnostics =
 ERPDiagnostics;
 
 
 
-globalThis.erpDiag=
-()=>ERPDiagnostics.run();
-
-
-
-globalThis.erpDiagJSON=
-()=>ERPDiagnostics.run({
-json:true
-});
-
-
-
-globalThis.erpHealth=
-()=>ERPDiagnostics.health();
-
-
-
 Logger.log(
-"ERP Diagnostics READY v"+
+"ERPDiagnostics READY v"+
 ERPDiagnostics.version
 );

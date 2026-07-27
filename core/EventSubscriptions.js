@@ -1,598 +1,644 @@
-console.log("EventSubscriptions");
+// ============================================================
+// EventSubscriptions v1.0.0
+// Enterprise ERP Event Subscription Manager
+// TaxControl ERP Core
+//
+// Compatible:
+// EventBus v2.x
+// EntityEvents v0.6+
+// DashboardEngine
+// HealthService v2+
+// ModuleRegistry
+// ============================================================
+
+
+console.log("EventSubscriptions v1.0.0");
+
 
 
 const EventSubscriptions = {
 
 
-    version:"0.3.0",
+version:"1.0.0",
 
-    initialized:false,
 
-    subscriptions:[],
+initialized:false,
 
 
+started:false,
 
-    /*
-    =====================================
-    INIT
-    =====================================
-    */
 
+subscriptions:[],
 
-    initEventSubscriptions(){
 
+stats:{
 
-        if(this.initialized){
 
+received:0,
 
-            Logger.log(
-                "EventSubscriptions ALREADY INITIALIZED"
-            );
 
+processed:0,
 
-            return;
 
+failed:0
 
-        }
 
+},
 
 
 
-        Logger.log(
-            "EVENT SUBSCRIPTIONS INIT START"
-        );
 
 
 
 
+// ============================================================
+// INIT
+// ============================================================
 
-        this.registerDashboardEvents([
 
+init(){
 
-            /*
-            CLIENT
-            */
 
-            EntityEvents?.CLIENT?.CREATED,
+return this.initEventSubscriptions();
 
-            EntityEvents?.CLIENT?.UPDATED,
 
-            EntityEvents?.CLIENT?.DELETED,
+},
 
-            EntityEvents?.CLIENT?.RESTORED,
 
 
 
-            /*
-            TRIP
-            */
 
-            EntityEvents?.TRIP?.CREATED,
 
-            EntityEvents?.TRIP?.UPDATED,
 
-            EntityEvents?.TRIP?.DELETED,
+initEventSubscriptions(){
 
-            EntityEvents?.TRIP?.RESTORED,
 
 
+if(this.initialized){
 
 
-            /*
-            TRANSPORT ORDER
-            */
+Logger.debug(
+"EventSubscriptions already initialized"
+);
 
 
-            EntityEvents?.TRANSPORT_ORDER?.CREATED,
+return true;
 
-            EntityEvents?.TRANSPORT_ORDER?.UPDATED,
 
-            EntityEvents?.TRANSPORT_ORDER?.DELETED,
+}
 
-            EntityEvents?.TRANSPORT_ORDER?.RESTORED,
 
 
 
 
-            /*
-            CARRIER
-            */
+if(
+typeof EventBus==="undefined"
+){
 
 
-            EntityEvents?.CARRIER?.CREATED,
+throw new Error(
+"EventBus unavailable"
+);
 
-            EntityEvents?.CARRIER?.UPDATED,
 
-            EntityEvents?.CARRIER?.DELETED,
+}
 
 
 
 
+Logger.log(
+"EVENT SUBSCRIPTIONS INIT START"
+);
 
-            /*
-            DRIVER
-            */
 
 
-            EntityEvents?.DRIVER?.CREATED,
 
-            EntityEvents?.DRIVER?.UPDATED,
+this.registerEntityEvents();
 
 
 
+this.initialized=true;
 
+this.started=true;
 
-            /*
-            VEHICLE
-            */
 
 
-            EntityEvents?.VEHICLE?.CREATED,
+Logger.log(
+"EventSubscriptions READY v"+
+this.version
+);
 
-            EntityEvents?.VEHICLE?.UPDATED,
 
 
+return true;
 
 
+},
 
-            /*
-            ROUTE
-            */
 
 
-            EntityEvents?.ROUTE?.CREATED,
 
-            EntityEvents?.ROUTE?.UPDATED,
 
 
 
+// ============================================================
+// ENTITY EVENTS
+// ============================================================
 
 
-            /*
-            CARGO
-            */
+registerEntityEvents(){
 
 
-            EntityEvents?.CARGO?.CREATED,
 
-            EntityEvents?.CARGO?.UPDATED
+const events=[
 
 
 
+// CLIENT
 
-        ]);
+EntityEvents?.CLIENT?.CREATED,
 
+EntityEvents?.CLIENT?.UPDATED,
 
+EntityEvents?.CLIENT?.DELETED,
 
+EntityEvents?.CLIENT?.RESTORED,
 
 
-        this.initialized=true;
 
 
+// TRIP
 
-        Logger.log(
-            "EVENT SUBSCRIPTIONS READY v"+
-            this.version
-        );
+EntityEvents?.TRIP?.CREATED,
 
+EntityEvents?.TRIP?.UPDATED,
 
+EntityEvents?.TRIP?.DELETED,
 
-        Logger.log(
-            JSON.stringify(
-                this.subscriptions
-            )
-        );
+EntityEvents?.TRIP?.RESTORED,
 
 
-    },
 
 
+// TRANSPORT ORDER
 
+EntityEvents?.TRANSPORT_ORDER?.CREATED,
 
+EntityEvents?.TRANSPORT_ORDER?.UPDATED,
 
+EntityEvents?.TRANSPORT_ORDER?.DELETED,
 
+EntityEvents?.TRANSPORT_ORDER?.RESTORED,
 
 
 
-    /*
-    =====================================
-    REGISTER DASHBOARD EVENTS
-    =====================================
-    */
 
+// CARRIER
 
-    registerDashboardEvents(events){
+EntityEvents?.CARRIER?.CREATED,
 
+EntityEvents?.CARRIER?.UPDATED,
 
 
-        events.forEach(event=>{
 
 
-            if(!event){
+// DRIVER
 
+EntityEvents?.DRIVER?.CREATED,
 
-                Logger.warn(
-                    "SKIP EMPTY EVENT"
-                );
+EntityEvents?.DRIVER?.UPDATED,
 
 
-                return;
 
 
-            }
+// VEHICLE
 
+EntityEvents?.VEHICLE?.CREATED,
 
+EntityEvents?.VEHICLE?.UPDATED,
 
 
-            this.subscribe(
 
 
-                event,
+// ROUTE
 
+EntityEvents?.ROUTE?.CREATED,
 
-                (payload)=>{
+EntityEvents?.ROUTE?.UPDATED,
 
 
-                    this.dashboardRefreshHandler(payload);
 
 
-                },
+// CARGO
 
+EntityEvents?.CARGO?.CREATED,
 
-                {
+EntityEvents?.CARGO?.UPDATED
 
 
-                    name:
-                    "Dashboard_"+event
 
+];
 
-                }
 
 
-            );
+events
+.filter(Boolean)
+.forEach(event=>{
 
 
+this.subscribe(
 
-        });
+event,
 
+payload=>
+this.onEntityChanged(payload),
 
-    },
+{
 
+name:
+"Dashboard_"+event,
 
 
+group:
+"DASHBOARD"
 
+}
 
+);
 
 
 
+});
 
-    /*
-    =====================================
-    SUBSCRIBE
-    =====================================
-    */
 
 
-    subscribe(event,handler,options={}){
+},
 
 
 
-        if(!event || !handler){
 
 
-            Logger.error(
-                "INVALID EVENT SUBSCRIPTION"
-            );
 
 
-            return false;
+// ============================================================
+// SUBSCRIBE
+// ============================================================
 
 
-        }
+subscribe(event,handler,options={}){
 
 
+if(
+!event ||
+!handler
+){
 
+return false;
 
+}
 
 
-        const exists =
 
-        this.subscriptions.some(
 
-            item=>
+if(
+this.subscriptions.some(
+x=>x.event===event
+)
+){
 
-            item.event===event
+Logger.debug(
+"EVENT EXISTS "+event
+);
 
-        );
 
+return false;
 
+}
 
 
 
-        if(exists){
 
 
+EventBus.subscribe(
 
-            Logger.debug(
+event,
 
-                "SUBSCRIPTION EXISTS: "+
-                event
+payload=>{
 
-            );
 
+try{
 
-            return false;
 
+this.stats.received++;
 
-        }
 
+handler(payload);
 
 
+this.stats.processed++;
 
 
+}
+catch(e){
 
-        if(
-            typeof EventBus==="undefined"
-        ){
 
+this.stats.failed++;
 
-            Logger.error(
-                "EventBus NOT FOUND"
-            );
 
+Logger.error(
+"EVENT HANDLER ERROR "+
+event+
+" "+
+e.message
+);
 
-            return false;
 
+}
 
-        }
 
 
+},
 
+{
 
 
+name:
+options.name ||
+"Subscription_"+event
 
-        EventBus.subscribe(
 
-            event,
+}
 
-            handler,
 
-            {
 
+);
 
-                name:
 
-                options.name ||
 
-                "EventSubscriptions_"+event
 
 
-            }
+this.subscriptions.push({
 
 
-        );
+event,
 
 
+name:
+options.name || null,
 
 
+group:
+options.group || "GENERAL",
 
 
-        this.subscriptions.push({
+status:"ACTIVE",
 
 
-            event:event,
+createdAt:
+new Date().toISOString()
 
 
-            handler:
+});
 
-            options.name ||
 
-            handler.name ||
 
-            "anonymous",
 
 
+Logger.log(
+"SUBSCRIBED "+event
+);
 
-            status:"ACTIVE",
 
 
+return true;
 
-            createdAt:
 
-            new Date().toISOString()
+},
 
 
-        });
 
 
 
 
 
+// ============================================================
+// ENTITY CHANGE HANDLER
+// ============================================================
 
-        Logger.log(
 
-            "SUBSCRIBED: "+
-            event
+onEntityChanged(payload){
 
-        );
 
 
+Logger.debug(
 
-        return true;
+"ENTITY EVENT "+
 
+(
+payload.event ||
+"unknown"
+)
 
-    },
+);
 
 
 
+this.refreshDashboard();
 
 
 
+},
 
 
 
-    /*
-    =====================================
-    DASHBOARD HANDLER
-    =====================================
-    */
 
 
-    dashboardRefreshHandler(payload){
 
 
+// ============================================================
+// DASHBOARD
+// ============================================================
 
-        Logger.debug(
 
-            "DASHBOARD EVENT "+
+refreshDashboard(){
 
-            payload.event+
 
-            " ENTITY "+
 
-            payload.entityId
+try{
 
-        );
 
+if(
+typeof DashboardEngine!=="undefined"
+&&
+DashboardEngine.render
+){
 
 
+DashboardEngine.render(true);
 
 
-        this.refreshDashboard();
+}
 
 
 
-    },
+}
+catch(e){
 
 
+Logger.error(
 
+"DASHBOARD REFRESH FAILED "+
+e.message
 
+);
 
 
+}
 
 
 
-    /*
-    =====================================
-    DASHBOARD
-    =====================================
-    */
+},
 
 
-    refreshDashboard(){
 
 
-        try{
 
 
-            if(
 
-                typeof DashboardEngine!=="undefined"
+// ============================================================
+// RESET
+// ============================================================
 
-                &&
 
-                typeof DashboardEngine.render==="function"
+reset(){
 
-            ){
 
 
-                DashboardEngine.render(true);
+if(
+typeof EventBus!=="undefined"
+&&
+EventBus.unsubscribe
+){
 
 
-            }
+this.subscriptions.forEach(item=>{
 
 
+EventBus.unsubscribe(
+item.event,
+item.name
+);
 
-        }
 
-        catch(error){
+});
 
 
-            Logger.error(
+}
 
-                "DASHBOARD REFRESH ERROR: "+
 
-                error.message
 
-            );
 
+this.subscriptions=[];
 
-        }
 
+this.initialized=false;
 
-    },
 
+this.started=false;
 
 
+this.stats={
 
 
+received:0,
 
+processed:0,
 
+failed:0
 
 
-    /*
-    =====================================
-    HEALTH
-    =====================================
-    */
+};
 
 
-    health(){
 
+Logger.log(
+"EventSubscriptions RESET"
+);
 
-        return HealthContract.create(
 
+},
 
-            "EventSubscriptions",
 
 
-            this.initialized
 
-            ?
 
-            "OK"
 
-            :
 
-            "WARNING",
+// ============================================================
+// HEALTH
+// ============================================================
 
 
+health(){
 
 
-            {
 
+return HealthContract.create(
 
-                version:this.version,
+"EventSubscriptions",
 
+this.initialized
+?
+"OK"
+:
+"WARNING",
 
-                initialized:this.initialized,
+{
 
 
-                subscriptions:
-                this.subscriptions.length,
+version:this.version,
 
 
+initialized:this.initialized,
 
-                events:
 
-                this.subscriptions.map(
+subscriptions:
+this.subscriptions.length,
 
-                    s=>s.event
 
-                )
+groups:
+[
+...new Set(
+this.subscriptions.map(
+x=>x.group
+)
+)
+],
 
 
-            }
+stats:this.stats,
 
 
-        );
+events:
+this.subscriptions.map(
+x=>x.event
+)
 
 
-    }
+
+}
+
+);
+
+
+
+}
 
 
 
 };
+
+
 
 
 
@@ -603,10 +649,7 @@ EventSubscriptions;
 
 
 
-
 Logger.log(
-
 "EventSubscriptions READY v"+
 EventSubscriptions.version
-
 );

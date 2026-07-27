@@ -1,26 +1,60 @@
-console.log("ModuleLoader");
+// ============================================================
+// ModuleLoader v1.2.0
+// TaxControl ERP Core
+//
+// Responsibility:
+//
+// - Register infrastructure components
+// - Load module manifest
+// - Prepare ModuleRegistry
+// - Diagnostics
+//
+// NOT responsible:
+// - Module lifecycle
+// - Dependency resolution
+// - Module start/stop
+//
+// Compatible:
+// SystemInit v2.6.x
+// ModuleRegistry v2.3.x
+//
+// ============================================================
+
+
+console.log("ModuleLoader v1.2.0");
+
 
 
 const ModuleLoader = {
 
 
-version:"0.7.0",
-
-
-loaded:[],
-
-
-coreLoaded:[],
+version:"1.2.0",
 
 
 initialized:false,
 
 
+coreLoaded:[],
 
-coreOrder:[
+
+manifestLoaded:false,
 
 
-"Logger",
+
+startedAt:null,
+
+
+
+
+
+
+
+// ============================================================
+// CORE REGISTRY
+// ============================================================
+
+
+coreComponents:[
 
 
 "AuditConstants",
@@ -30,21 +64,9 @@ coreOrder:[
 "RoleConstants",
 
 
-
-"Database",
-
-"SchemaManager",
-
-
-
 "EntityConstants",
 
 "EntityEvents",
-
-"EntityMetadata",
-
-"EntityRegistry",
-
 
 
 "ClientValidator",
@@ -52,52 +74,12 @@ coreOrder:[
 "TripValidator",
 
 
-
-"EventBus",
-
-
-
-"SecurityGuard",
-
-
-
 "AuditLog",
 
 "AuditEventHandler",
 
 
-
-"BaseRepository",
-
-
-
-"ClientRepository",
-
-
-"TripRepository",
-"KPIRepository",
-"RepositoryFactory",
-"EntityService"
-
-],
-
-
-
-
-
-moduleOrder:[
-
-
-"ClientEventHandler",
-
-"TripEventHandler",
-
-
-"FinanceEngine",
-
-"KPIEngine",
-
-"DashboardEngine"
+"SecurityGuard"
 
 
 ],
@@ -107,294 +89,38 @@ moduleOrder:[
 
 
 
-loadCore(){
 
+// ============================================================
+// INIT
+// ============================================================
 
 
-Logger.log(
-"CORE LOADER START"
-);
-
-
-
-
-this.coreOrder.forEach(name=>{
-
-
-if(
-this.coreLoaded.includes(name)
-){
-
-return;
-
-}
-
-
-
-const component =
-globalThis[name];
-
-Logger.log(
-"CHECK CORE "
-+
-name
-+
-": "
-+
-!!component
-);
-
-
-if(component){
-
-
-
-const priorities={
-
-
-Logger:0,
-
-AuditConstants:1,
-
-PermissionConstants:2,
-
-RoleConstants:3,
-
-
-Database:10,
-
-SchemaManager:11,
-ClientValidator:24,
-
-TripValidator:25,
-
-EntityConstants:20,
-
-EntityEvents:21,
-
-EntityMetadata:22,
-
-EntityRegistry:23,
-
-
-EventBus:30,
-
-
-SecurityGuard:40,
-
-AuditLog:41,
-
-AuditEventHandler:42,
-
-
-BaseRepository:50,
-
-
-ClientRepository:51,
-
-TripRepository:52,
-KPIRepository:53,
-RepositoryFactory:54,
-EntityService:55
-};
-
-
-
-CoreRegistry.register(
-
-name,
-
-component,
-
-priorities[name] || 100
-
-);
-
-
-
-this.coreLoaded.push(
-
-name
-
-);
-
-
-
-}
-
-
-else{
-
-
-Logger.warn(
-
-"CORE NOT FOUND "
-+
-name
-
-);
-
-
-}
-
-
-
-});
-
-
-
-
-Logger.log(
-
-"CORE LOADER COMPLETE"
-
-);
-
-
-
-},
-
-
-
-
-
-
-
-loadModules(){
-
-
-
-Logger.log(
-
-"MODULE LOADER START"
-
-);
-
-
-
-
-this.moduleOrder.forEach(name=>{
-
-
-if(
-this.loaded.includes(name)
-){
-
-return;
-
-}
-
-
-
-
-const module =
-globalThis[name];
-
-
-
-
-if(module){
-
-
-
-ModuleRegistry.register(
-
-name,
-
-module
-
-);
-
-
-
-this.loaded.push(
-
-name
-
-);
-
-
-
-Logger.log(
-
-"MODULE LOADED "
-+
-name
-
-);
-
-
-
-}
-
-
-else{
-
-
-Logger.warn(
-
-"MODULE NOT FOUND "
-+
-name
-
-);
-
-
-
-}
-
-
-
-});
-
-
-
-
-
-Logger.log(
-
-"MODULE LOADER COMPLETE"
-
-);
-
-
-
-},
-
-
-
-
-
-
-
-initAll(){
-
+init(){
 
 
 if(this.initialized){
 
 
-Logger.log(
-
-"MODULE LOADER ALREADY READY"
-
+Logger.debug(
+"ModuleLoader already initialized"
 );
 
 
-return;
+return true;
 
 
 }
 
 
 
-
-
 Logger.log(
-
-"SYSTEM COMPONENT INITIALIZATION START"
-
+"========== MODULE LOADER INIT =========="
 );
+
+
+
+this.startedAt =
+new Date().toISOString();
 
 
 
@@ -403,17 +129,7 @@ this.loadCore();
 
 
 
-CoreRegistry.initAll();
-
-
-
-
-this.loadModules();
-
-
-
-ModuleRegistry.initAll();
-
+this.loadManifest();
 
 
 
@@ -421,14 +137,252 @@ this.initialized=true;
 
 
 
+Logger.log(
+"ModuleLoader READY v"+
+this.version
+);
+
+
+
+return true;
+
+
+},
+
+
+
+
+
+
+
+// ============================================================
+// CORE LOADING
+// ============================================================
+
+
+loadCore(){
+
+
+
+Logger.log(
+"CORE COMPONENT REGISTRATION START"
+);
+
+
+
+let count=0;
+
+
+
+for(
+const name of this.coreComponents
+){
+
+
+
+if(
+this.coreLoaded.includes(name)
+){
+
+continue;
+
+}
+
+
+
+const component =
+globalThis[name];
+
+
+
+if(!component){
+
+
+Logger.warn(
+"CORE COMPONENT MISSING "+
+name
+);
+
+
+continue;
+
+}
+
+
+
+
+
+try{
+
+
+if(
+typeof CoreRegistry!=="undefined"
+&&
+CoreRegistry.register
+){
+
+
+
+CoreRegistry.register(
+
+name,
+
+component
+
+);
+
+
+}
+
+
+
+
+this.coreLoaded.push(name);
+
+
+
+count++;
+
+
+
+Logger.log(
+"CORE REGISTERED "+
+name
+);
+
+
+
+}
+catch(e){
+
+
+
+Logger.error(
+
+"CORE REGISTER FAILED "+
+name+
+" "+
+e.message
+
+);
+
+
+
+}
+
+
+
+}
+
+
+
+Logger.log(
+"CORE REGISTRATION COMPLETE count="+
+count
+);
+
+
+
+return count;
+
+
+},
+
+
+
+
+
+
+
+// ============================================================
+// MANIFEST
+// ============================================================
+
+
+loadManifest(){
+
+
+
+if(
+typeof ModuleRegistry==="undefined"
+){
+
+
+throw new Error(
+"ModuleRegistry unavailable"
+);
+
+
+}
+
+
+
+if(
+typeof ERP_MODULE_MANIFEST==="undefined"
+){
+
+
+Logger.warn(
+"ERP_MODULE_MANIFEST NOT FOUND"
+);
+
+
+
+return 0;
+
+
+}
+
+
+
+
+
+try{
+
+
+
+const count =
+ModuleRegistry.loadManifest(
+ERP_MODULE_MANIFEST
+);
+
+
+
+this.manifestLoaded=true;
+
+
 
 Logger.log(
 
-"MODULE LOADER READY v"
-+
-this.version
+"MODULE MANIFEST LOADED count="+
+count
 
 );
+
+
+
+return count;
+
+
+
+}
+catch(e){
+
+
+
+Logger.error(
+
+"MANIFEST LOAD FAILED "+
+e.message
+
+);
+
+
+
+throw e;
+
+
+}
 
 
 
@@ -440,11 +394,195 @@ this.version
 
 
 
-getStatus(){
+// ============================================================
+// START DELEGATION
+// ============================================================
+
+
+async start(){
 
 
 
-return {
+if(
+typeof ModuleRegistry==="undefined"
+){
+
+
+throw new Error(
+"ModuleRegistry unavailable"
+);
+
+
+}
+
+
+
+return ModuleRegistry.startAll();
+
+
+},
+
+
+
+
+
+
+
+// ============================================================
+// STOP
+// ============================================================
+
+
+async stop(){
+
+
+if(
+typeof ModuleRegistry!=="undefined"
+&&
+ModuleRegistry.stopAll
+){
+
+
+return ModuleRegistry.stopAll();
+
+
+}
+
+
+
+return true;
+
+
+},
+
+
+
+
+
+
+
+// ============================================================
+// MODULE ACCESS
+// ============================================================
+
+
+listModules(){
+
+
+if(
+typeof ModuleRegistry==="undefined"
+){
+
+return [];
+
+}
+
+
+
+return ModuleRegistry.list();
+
+
+},
+
+
+
+
+
+
+
+// ============================================================
+// STATUS
+// ============================================================
+
+
+status(){
+
+
+
+return{
+
+
+version:this.version,
+
+
+initialized:this.initialized,
+
+
+startedAt:this.startedAt,
+
+
+manifestLoaded:this.manifestLoaded,
+
+
+coreLoaded:this.coreLoaded,
+
+
+modules:
+this.listModules()
+
+
+};
+
+
+},
+
+
+
+
+
+
+
+// ============================================================
+// HEALTH
+// ============================================================
+
+
+health(){
+
+
+
+const status =
+this.status();
+
+
+
+let state =
+this.initialized
+?
+"OK"
+:
+"WARNING";
+
+
+
+return HealthContract.create(
+
+"ModuleLoader",
+
+state,
+
+status
+
+);
+
+
+},
+
+
+
+
+
+
+
+// ============================================================
+// DIAGNOSTICS
+// ============================================================
+
+
+diagnostics(){
+
+
+return{
 
 
 version:this.version,
@@ -456,11 +594,23 @@ initialized:this.initialized,
 coreLoaded:this.coreLoaded,
 
 
-modulesLoaded:this.loaded
+manifestLoaded:this.manifestLoaded,
+
+
+moduleRegistry:
+
+typeof ModuleRegistry!=="undefined"
+
+?
+
+ModuleRegistry.diagnostics()
+
+:
+
+null
 
 
 };
-
 
 
 },
@@ -471,46 +621,30 @@ modulesLoaded:this.loaded
 
 
 
-health(){
+// ============================================================
+// RESET
+// ============================================================
+
+
+reset(){
+
+
+this.initialized=false;
+
+
+this.coreLoaded=[];
+
+
+this.manifestLoaded=false;
+
+
+this.startedAt=null;
 
 
 
-return HealthContract.create(
-
-"ModuleLoader",
-
-this.initialized
-
-?
-
-"OK"
-
-:
-
-"WARNING",
-
-
-{
-
-
-version:this.version,
-
-
-core:this.coreLoaded,
-
-
-modules:this.loaded,
-
-
-initialized:this.initialized
-
-
-}
-
-
-
+Logger.log(
+"ModuleLoader RESET"
 );
-
 
 
 }
@@ -523,5 +657,44 @@ initialized:this.initialized
 
 
 
+
+
+// ============================================================
+// GLOBAL
+// ============================================================
+
+
 globalThis.ModuleLoader =
 ModuleLoader;
+
+
+
+
+
+
+// ============================================================
+// COMMANDS
+// ============================================================
+
+
+globalThis.moduleLoaderHealth =
+()=>ModuleLoader.health();
+
+
+
+globalThis.moduleLoaderDiag =
+()=>ModuleLoader.diagnostics();
+
+
+
+globalThis.moduleLoaderStatus =
+()=>ModuleLoader.status();
+
+
+
+
+
+Logger.log(
+"ModuleLoader GLOBAL READY v"+
+ModuleLoader.version
+);

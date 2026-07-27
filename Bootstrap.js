@@ -1,32 +1,62 @@
 // ============================================================
-// Bootstrap v0.6.0
+// Bootstrap v2.0.0
 // ERP Startup Controller
 // TaxControl ERP Core
 //
 // Compatible:
-// SystemInit v2.4.x
+//
+// SystemInit v2.5+
+// ERPDiagnostics v4+
+// TestRunner v2+
 // Inspector
 // HealthContract
 // ============================================================
 
 
-console.log("Bootstrap v0.6.0");
+console.log("Bootstrap v2.0.0");
+
+
+
+globalThis.__ERP_STATE__ =
+globalThis.__ERP_STATE__
+||
+{
+
+
+started:false,
+
+starting:false,
+
+failed:false,
+
+startedAt:null,
+
+error:null
+
+};
+
+
+
+
 
 
 
 const Bootstrap = {
 
 
-version:"0.6.0",
+version:"2.0.0",
 
 
-started:false,
 
 
-starting:false,
+get state(){
+
+return globalThis.__ERP_STATE__;
+
+},
 
 
-startedAt:null,
+
 
 
 
@@ -39,23 +69,32 @@ startedAt:null,
 async start(){
 
 
-if(this.started){
+const state=this.state;
+
+
+
+if(state.started){
+
 
 Logger.warn(
 "ERP already started"
 );
 
+
 return this.health();
+
 
 }
 
 
 
-if(this.starting){
+if(state.starting){
+
 
 Logger.warn(
 "ERP startup already running"
 );
+
 
 return;
 
@@ -63,38 +102,60 @@ return;
 
 
 
-this.starting=true;
+state.starting=true;
+
+state.failed=false;
+
+
+
+Logger.log(
+"========== ERP BOOT START =========="
+);
 
 
 
 try{
 
 
-Logger.log(
-"🚀 ERP BOOT START"
-);
-
-
-
-this.startedAt =
+state.startedAt =
 new Date().toISOString();
 
 
 
 
-// главный запуск
+// -------------------------
+// SYSTEM INIT
+// -------------------------
+
+
+if(
+typeof SystemInit==="undefined"
+){
+
+throw new Error(
+"SystemInit unavailable"
+);
+
+}
+
+
+
 
 const result =
 await SystemInit.init();
 
 
 
-this.started=true;
+
+
+state.started=true;
+
+state.starting=false;
 
 
 
 Logger.log(
-"✅ ERP BOOT COMPLETE"
+"========== ERP BOOT COMPLETE =========="
 );
 
 
@@ -107,9 +168,18 @@ return result;
 catch(e){
 
 
+
+state.failed=true;
+
+state.error=e.message;
+
+state.started=false;
+
+
+
 Logger.error(
 
-"❌ ERP BOOT FAILED "+
+"ERP BOOT FAILED "+
 e.message
 
 );
@@ -124,7 +194,7 @@ throw e;
 finally{
 
 
-this.starting=false;
+state.starting=false;
 
 
 }
@@ -132,6 +202,50 @@ this.starting=false;
 
 
 },
+
+
+
+
+
+
+
+// ============================================================
+// STOP
+// ============================================================
+
+
+stop(){
+
+
+Logger.log(
+"ERP SHUTDOWN"
+);
+
+
+
+if(
+typeof SystemInit!=="undefined"
+&&
+SystemInit.reset
+){
+
+
+SystemInit.reset();
+
+
+}
+
+
+
+this.reset();
+
+
+
+return true;
+
+
+},
+
 
 
 
@@ -150,28 +264,28 @@ try{
 
 
 if(
-typeof SystemInit!=="undefined" &&
+typeof SystemInit!=="undefined"
+&&
 SystemInit.health
 ){
 
 
-return SystemInit.health();
+return {
+
+
+bootstrap:this.state,
+
+
+system:
+SystemInit.health()
+
+
+
+};
 
 
 }
 
-
-
-if(
-typeof Inspector!=="undefined" &&
-Inspector.inspect
-){
-
-
-return Inspector.inspect();
-
-
-}
 
 
 
@@ -180,11 +294,7 @@ return {
 
 status:"UNKNOWN",
 
-message:
-"Health services unavailable",
-
-timestamp:
-new Date().toISOString()
+bootstrap:this.state
 
 
 };
@@ -195,16 +305,12 @@ new Date().toISOString()
 catch(e){
 
 
-return{
+return {
 
 
 status:"FAILED",
 
-error:e.message,
-
-
-timestamp:
-new Date().toISOString()
+error:e.message
 
 
 };
@@ -231,32 +337,64 @@ new Date().toISOString()
 diagnostics(){
 
 
-return{
+
+return {
 
 
 version:this.version,
 
 
-started:this.started,
-
-
-starting:this.starting,
-
-
-startedAt:this.startedAt,
-
+state:this.state,
 
 
 system:
+
 typeof SystemInit!=="undefined"
+
+&&
+
+SystemInit.diagnostics
+
 ?
+
 SystemInit.diagnostics()
+
 :
+
+null,
+
+
+
+repositories:
+
+typeof RepositoryFactory!=="undefined"
+
+?
+
+RepositoryFactory.diagnostics?.()
+
+:
+
+null,
+
+
+
+tests:
+
+typeof TestRunner!=="undefined"
+
+?
+
+TestRunner.health?.()
+
+:
+
 null
 
 
 
 };
+
 
 
 },
@@ -275,16 +413,104 @@ null
 reset(){
 
 
-this.started=false;
 
-this.starting=false;
+globalThis.__ERP_STATE__={
 
-this.startedAt=null;
+
+started:false,
+
+starting:false,
+
+failed:false,
+
+startedAt:null,
+
+error:null
+
+
+};
+
 
 
 Logger.log(
-"Bootstrap RESET"
+"Bootstrap RESET COMPLETE"
 );
+
+
+
+},
+
+
+
+
+
+
+
+// ============================================================
+// READY CHECK
+// ============================================================
+
+
+isReady(){
+
+
+return (
+
+this.state.started
+
+&&
+
+typeof SystemInit!=="undefined"
+
+&&
+
+SystemInit.initialized
+
+);
+
+
+
+},
+
+
+
+
+
+
+
+// ============================================================
+// HEALTH CONTRACT
+// ============================================================
+
+
+healthContract(){
+
+
+
+return HealthContract.create(
+
+"Bootstrap",
+
+this.isReady()
+?
+"OK"
+:
+"WARNING",
+
+{
+
+
+version:this.version,
+
+
+state:this.state
+
+
+}
+
+
+);
+
 
 
 }
@@ -292,6 +518,10 @@ Logger.log(
 
 
 };
+
+
+
+
 
 
 
@@ -315,27 +545,81 @@ Bootstrap;
 // ============================================================
 
 
-globalThis.bootERP = function(){
+
+globalThis.startERP=function(){
+
 
 return Bootstrap.start();
 
+
 };
 
 
 
-globalThis.bootHealth = function(){
+globalThis.bootERP=function(){
+
+
+return Bootstrap.start();
+
+
+};
+
+
+
+
+
+globalThis.erpHealth=function(){
+
 
 return Bootstrap.health();
 
+
 };
 
 
 
-globalThis.bootDiag = function(){
+globalThis.bootHealth=function(){
+
+
+return Bootstrap.health();
+
+
+};
+
+
+
+
+
+globalThis.erpDiag=function(){
+
 
 return Bootstrap.diagnostics();
 
+
 };
+
+
+
+globalThis.bootDiag=function(){
+
+
+return Bootstrap.diagnostics();
+
+
+};
+
+
+
+
+
+globalThis.resetERP=function(){
+
+
+return Bootstrap.reset();
+
+
+};
+
 
 
 
@@ -353,16 +637,27 @@ Logger.log(
 );
 
 
+
+Logger.log(
+" startERP()"
+);
+
+
 Logger.log(
 " bootERP()"
 );
 
 
 Logger.log(
-" bootHealth()"
+" erpHealth()"
 );
 
 
 Logger.log(
-" bootDiag()"
+" erpDiag()"
+);
+
+
+Logger.log(
+" resetERP()"
 );

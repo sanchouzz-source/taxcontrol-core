@@ -1,173 +1,837 @@
 // ============================================================
-// KPISubscriptions v1.2.0 – Адаптер бизнес-событий → KPI команды
+// KPISubscriptions v2.0.0
+// Business Events -> KPI Commands Adapter
+// TaxControl ERP Core
+//
+// Compatible:
+// EventBus v2.x
+// KPIEngine
+// ModuleRegistry
+// HealthService v2+
+// ERPDiagnostics v5+
 // ============================================================
-console.log("KPISubscriptions v1.2");
+
+
+console.log("KPISubscriptions v2.0.0");
+
+
 
 const KPISubscriptions = {
-  version: "1.2.0",
-  initialized: false,
-  _handlers: {},            // хранилище ссылок на обработчики для отписки
 
-  // ---- КАРТА СОБЫТИЙ: событие → метод-обработчик ----
-  eventMap: {
-    "TRIP_COMPLETED": "onTripCompleted",
-    "FINANCIAL_TRANSACTION_CREATED": "onTransactionCreated"
-  },
 
-  // ---- ИНИЦИАЛИЗАЦИЯ ----
-  init() {
-    if (this.initialized) {
-      Logger.log("KPISubscriptions ALREADY INITIALIZED");
-      return;
-    }
+version:"2.0.0",
 
-    if (typeof EventBus === "undefined") {
-      throw new Error("KPISubscriptions: EventBus unavailable");
-    }
 
-    // Проверяем KPIEngine (не обязательная зависимость, но нужна для работы)
-    if (typeof KPIEngine === "undefined") {
-      Logger.warn("KPISubscriptions: KPIEngine not available, updates will be logged only");
-    }
+ready:false,
 
-    this.register();
-    this.initialized = true;
-    Logger.log("KPISubscriptions READY v" + this.version);
-  },
 
-  // ---- РЕГИСТРАЦИЯ ПОДПИСОК (по карте событий) ----
-  register() {
-    try {
-      for (const [eventName, handlerName] of Object.entries(this.eventMap)) {
-        // Создаём обработчик с привязкой контекста
-        const handler = (event) => this[handlerName](event);
-        // Сохраняем ссылку для последующей отписки
-        this._handlers[handlerName] = handler;
+registered:false,
 
-        EventBus.subscribe(eventName, handler, {
-          name: "KPI_" + handlerName
-        });
-        Logger.debug(`KPISubscriptions: subscribed to ${eventName}`);
-      }
-    } catch (e) {
-      Logger.error("KPISubscriptions: subscription failed – " + e.message);
-      throw e;
-    }
-  },
 
-  // ---- ОСТАНОВКА (отписка по сохранённым ссылкам) ----
-  stop() {
-    if (!this.initialized) return;
+subscriptions:[],
 
-    try {
-      for (const [eventName, handlerName] of Object.entries(this.eventMap)) {
-        const handler = this._handlers[handlerName];
-        if (handler) {
-          EventBus.off(eventName, handler);
-          delete this._handlers[handlerName];
-        }
-      }
-      this.initialized = false;
-      Logger.log("KPISubscriptions STOPPED");
-    } catch (e) {
-      Logger.error("KPISubscriptions: stop failed – " + e.message);
-    }
-  },
 
-  // ---- ОБРАБОТЧИКИ (генерируют KPI команды) ----
-  onTripCompleted(event) {
-    try {
-      const trip = this._extract(event);
-      if (!trip) {
-        Logger.warn("KPISubscriptions: TRIP_COMPLETED without payload");
-        return;
-      }
+stats:{
 
-      // Формируем KPI команду (универсальный формат)
-      const command = {
-        type: "REVENUE_UPDATED",
-        source: "TRIP_COMPLETED",
-        entityId: trip.TripID || trip.id,
-        payload: {
-          revenue: trip.Revenue || trip.revenue || 0,
-          trip: trip
-        }
-      };
 
-      Logger.log(`KPI: Trip completed ${command.entityId}, revenue ${command.payload.revenue}`);
+received:0,
 
-      // Отправляем команду в KPIEngine
-      if (typeof KPIEngine !== "undefined" && typeof KPIEngine.handleCommand === "function") {
-        KPIEngine.handleCommand(command);
-      } else {
-        Logger.debug("KPIEngine.handleCommand not available");
-      }
-    } catch (e) {
-      Logger.error("KPISubscriptions TRIP_COMPLETED ERROR: " + e.message);
-    }
-  },
 
-  onTransactionCreated(event) {
-    try {
-      const transaction = this._extract(event);
-      if (!transaction) {
-        Logger.warn("KPISubscriptions: FINANCIAL_TRANSACTION_CREATED without payload");
-        return;
-      }
+processed:0,
 
-      const command = {
-        type: "TRANSACTION_CREATED",
-        source: "FINANCIAL_TRANSACTION_CREATED",
-        entityId: transaction.TransactionID || transaction.id,
-        payload: {
-          transaction: transaction,
-          amount: transaction.Amount || transaction.amount || 0
-        }
-      };
 
-      Logger.log(`KPI: Transaction created ${command.entityId}`);
+failed:0
 
-      if (typeof KPIEngine !== "undefined" && typeof KPIEngine.handleCommand === "function") {
-        KPIEngine.handleCommand(command);
-      } else {
-        Logger.debug("KPIEngine.handleCommand not available");
-      }
-    } catch (e) {
-      Logger.error("KPISubscriptions FINANCIAL_TRANSACTION_CREATED ERROR: " + e.message);
-    }
-  },
 
-  // ---- ВСПОМОГАТЕЛЬНЫЙ МЕТОД ИЗВЛЕЧЕНИЯ ДАННЫХ ----
-  _extract(event) {
-    if (!event) return null;
-    return event.after ?? event.data ?? event;
-  },
+},
 
-  // ---- HEALTH ----
-  health() {
-    return HealthContract.create(
-      "KPISubscriptions",
-      this.initialized ? "OK" : "WARNING",
-      {
-        version: this.version,
-        initialized: this.initialized,
-        subscriptions: Object.keys(this.eventMap)
-      }
-    );
-  }
-};
 
-// ---- РЕГИСТРАЦИЯ В ModuleRegistry (phase: SERVICES) ----
-if (typeof ModuleRegistry !== "undefined") {
-  ModuleRegistry.register("KPISubscriptions", {
-    version: KPISubscriptions.version,
-    phase: "SERVICES",                     // Теперь в слое SERVICES
-    dependencies: ["EventBus"],            // KPIEngine не обязателен – проверяем через typeof
-    init: () => KPISubscriptions.init(),
-    stop: () => KPISubscriptions.stop(),
-    health: () => KPISubscriptions.health()
-  });
+
+
+
+
+
+// ============================================================
+// EVENT MAP
+// ============================================================
+
+
+eventMap:{
+
+
+TRIP_COMPLETED:
+"onTripCompleted",
+
+
+FINANCIAL_TRANSACTION_CREATED:
+"onTransactionCreated",
+
+
+TRANSPORT_ORDER_CREATED:
+"onTransportOrderCreated",
+
+
+TRANSPORT_ORDER_UPDATED:
+"onTransportOrderUpdated"
+
+
+},
+
+
+
+
+
+
+
+// ============================================================
+// INIT
+// ============================================================
+
+
+init(){
+
+
+if(this.ready){
+
+Logger.debug(
+"KPISubscriptions already READY"
+);
+
+return true;
+
 }
 
-globalThis.KPISubscriptions = KPISubscriptions;
-Logger.log("KPISubscriptions LOADED v" + KPISubscriptions.version);
+
+
+if(
+typeof EventBus==="undefined"
+){
+
+throw new Error(
+"EventBus unavailable"
+);
+
+}
+
+
+
+if(
+typeof KPIEngine==="undefined"
+){
+
+Logger.warn(
+"KPIEngine unavailable, commands will be logged"
+);
+
+}
+
+
+
+this.register();
+
+
+this.ready=true;
+
+
+
+Logger.log(
+"KPISubscriptions READY v"+
+this.version
+);
+
+
+
+return true;
+
+
+},
+
+
+
+
+
+
+
+// ============================================================
+// REGISTER
+// ============================================================
+
+
+register(){
+
+
+if(this.registered){
+
+return;
+
+}
+
+
+
+Object.entries(this.eventMap)
+.forEach(([event,handlerName])=>{
+
+
+this.subscribe(
+
+event,
+
+payload=>
+this[handlerName](payload),
+
+"KPI_"+handlerName
+
+);
+
+
+
+});
+
+
+
+this.registered=true;
+
+
+},
+
+
+
+
+
+
+
+// ============================================================
+// SUBSCRIBE
+// ============================================================
+
+
+subscribe(event,handler,name){
+
+
+if(
+!event ||
+!handler
+){
+
+return false;
+
+}
+
+
+
+EventBus.subscribe(
+
+event,
+
+payload=>{
+
+
+try{
+
+
+this.stats.received++;
+
+
+handler(payload);
+
+
+this.stats.processed++;
+
+
+}
+catch(e){
+
+
+this.stats.failed++;
+
+
+Logger.error(
+
+"KPI EVENT ERROR "+
+event+
+" "+
+e.message
+
+);
+
+
+}
+
+
+
+},
+
+
+{
+
+
+name,
+
+
+module:
+"KPISubscriptions"
+
+
+}
+
+
+
+);
+
+
+
+this.subscriptions.push({
+
+
+event,
+
+
+name,
+
+
+status:"ACTIVE",
+
+
+createdAt:
+new Date().toISOString()
+
+
+});
+
+
+
+Logger.log(
+"KPI SUBSCRIBED "+
+event
+);
+
+
+
+return true;
+
+
+},
+
+
+
+
+
+
+
+// ============================================================
+// KPI COMMAND DISPATCH
+// ============================================================
+
+
+dispatch(command){
+
+
+
+Logger.debug(
+"KPI COMMAND "+
+command.type
+);
+
+
+
+if(
+typeof KPIEngine!=="undefined"
+&&
+typeof KPIEngine.handleCommand==="function"
+){
+
+
+return KPIEngine.handleCommand(
+command
+);
+
+
+}
+
+
+
+Logger.debug(
+"KPIEngine.handleCommand unavailable"
+);
+
+
+return false;
+
+
+},
+
+
+
+
+
+
+
+// ============================================================
+// TRIP COMPLETED
+// ============================================================
+
+
+onTripCompleted(event){
+
+
+const trip =
+this.extract(event);
+
+
+
+if(!trip){
+
+return;
+
+}
+
+
+
+this.dispatch({
+
+
+type:
+"REVENUE_UPDATED",
+
+
+source:
+"TRIP_COMPLETED",
+
+
+entityId:
+trip.TripID || trip.id,
+
+
+
+payload:{
+
+
+revenue:
+trip.Revenue || 0,
+
+
+trip
+
+
+}
+
+
+});
+
+
+
+},
+
+
+
+
+
+
+
+// ============================================================
+// FINANCIAL TRANSACTION
+// ============================================================
+
+
+onTransactionCreated(event){
+
+
+
+const transaction =
+this.extract(event);
+
+
+
+if(!transaction){
+
+return;
+
+}
+
+
+
+this.dispatch({
+
+
+type:
+"TRANSACTION_CREATED",
+
+
+source:
+"FINANCIAL_TRANSACTION_CREATED",
+
+
+entityId:
+transaction.TransactionID ||
+transaction.id,
+
+
+
+payload:{
+
+
+amount:
+transaction.Amount || 0,
+
+
+transaction
+
+
+}
+
+
+
+});
+
+
+
+},
+
+
+
+
+
+
+
+// ============================================================
+// TRANSPORT ORDER
+// ============================================================
+
+
+onTransportOrderCreated(event){
+
+
+const order =
+this.extract(event);
+
+
+
+if(!order){
+
+return;
+
+}
+
+
+
+this.dispatch({
+
+
+type:
+"ORDER_CREATED",
+
+
+source:
+"TRANSPORT_ORDER_CREATED",
+
+
+entityId:
+order.TransportOrderID ||
+order.id,
+
+
+payload:{
+order
+}
+
+
+});
+
+
+},
+
+
+
+
+
+
+
+onTransportOrderUpdated(event){
+
+
+
+const order =
+this.extract(event);
+
+
+
+if(!order){
+
+return;
+
+}
+
+
+
+this.dispatch({
+
+
+type:
+"ORDER_UPDATED",
+
+
+source:
+"TRANSPORT_ORDER_UPDATED",
+
+
+entityId:
+order.TransportOrderID ||
+order.id,
+
+
+payload:{
+order
+}
+
+
+});
+
+
+},
+
+
+
+
+
+
+
+// ============================================================
+// EXTRACT
+// ============================================================
+
+
+extract(event){
+
+
+if(!event){
+
+return null;
+
+}
+
+
+
+return (
+
+event.after ||
+
+event.data ||
+
+event.payload ||
+
+event
+
+);
+
+
+
+},
+
+
+
+
+
+
+
+// ============================================================
+// STOP
+// ============================================================
+
+
+stop(){
+
+
+
+this.ready=false;
+
+
+this.registered=false;
+
+
+
+Logger.log(
+"KPISubscriptions STOPPED"
+);
+
+
+
+},
+
+
+
+
+
+
+
+// ============================================================
+// RESET
+// ============================================================
+
+
+reset(){
+
+
+this.stop();
+
+
+this.subscriptions=[];
+
+
+this.stats={
+
+
+received:0,
+
+processed:0,
+
+failed:0
+
+
+};
+
+
+},
+
+
+
+
+
+
+
+// ============================================================
+// HEALTH
+// ============================================================
+
+
+health(){
+
+
+return HealthContract.create(
+
+"KPISubscriptions",
+
+this.ready
+?
+"OK"
+:
+"WARNING",
+
+{
+
+
+version:this.version,
+
+
+ready:this.ready,
+
+
+registered:this.registered,
+
+
+subscriptions:
+this.subscriptions.map(
+x=>x.event
+),
+
+
+stats:this.stats
+
+
+
+}
+
+);
+
+
+
+}
+
+
+
+};
+
+
+
+
+
+
+
+// ============================================================
+// MODULE REGISTRATION
+// ============================================================
+
+
+if(
+typeof ModuleRegistry!=="undefined"
+){
+
+
+ModuleRegistry.register(
+
+"KPISubscriptions",
+
+
+{
+
+
+version:
+KPISubscriptions.version,
+
+
+phase:
+"APPLICATION",
+
+
+priority:
+70,
+
+
+dependencies:[
+
+"EventBus"
+
+],
+
+
+
+init(){
+return KPISubscriptions.init();
+},
+
+
+
+stop(){
+return KPISubscriptions.stop();
+},
+
+
+
+health(){
+return KPISubscriptions.health();
+}
+
+
+
+}
+
+);
+
+
+
+}
+
+
+
+
+
+
+
+globalThis.KPISubscriptions =
+KPISubscriptions;
+
+
+
+Logger.log(
+"KPISubscriptions LOADED v"+
+KPISubscriptions.version
+);

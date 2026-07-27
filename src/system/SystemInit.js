@@ -1,28 +1,22 @@
 // ============================================================
-// SystemInit v2.4.0
+// SystemInit v2.7.0
 // Enterprise ERP Bootstrap Orchestrator
 // TaxControl ERP Core
-//
-// Compatible:
-// EntityMetadata v2.x
-// SchemaRegistry v4.x
-// SchemaManager v4.x
-// BaseRepository v5.x
-// RepositoryFactory v2.5.x
 // ============================================================
 
 
-console.log("SystemInit v2.4.0");
+console.log("SystemInit v2.7.0");
 
 
 
-const SystemInit = {
+const SystemInit={
 
 
-version:"2.4.0",
+version:"2.7.0",
 
 
 initialized:false,
+
 
 initializing:false,
 
@@ -40,9 +34,8 @@ componentStatus:{},
 
 
 
-// ============================================================
-// DEPENDENCY GRAPH
-// ============================================================
+
+
 
 
 dependencyGraph:{
@@ -54,10 +47,10 @@ Config:[],
 Logger:[],
 
 
-// ENTITY FOUNDATION
+HealthContract:[],
 
-EntityMetadata:[
-],
+
+EntityMetadata:[],
 
 
 EntityRegistry:[
@@ -66,31 +59,34 @@ EntityRegistry:[
 
 
 SchemaRegistry:[
-"EntityMetadata",
 "EntityRegistry"
 ],
 
 
-// CORE
 
 SchemaManager:[
-"SchemaRegistry",
-"EntityMetadata"
-],
-
-
-Database:[
-"SchemaManager"
-],
-
-
-BaseRepository:[
-"Database",
 "SchemaRegistry"
 ],
 
 
-// REPOSITORIES
+
+SpreadsheetAdapter:[
+],
+
+
+
+Database:[
+"SchemaManager",
+"SpreadsheetAdapter"
+],
+
+
+
+BaseRepository:[
+"Database"
+],
+
+
 
 RepositoryFactory:[
 "EntityRegistry",
@@ -98,10 +94,14 @@ RepositoryFactory:[
 ],
 
 
-// EVENTS
 
-ERPEventContract:[
+EntityService:[
+"RepositoryFactory"
 ],
+
+
+
+ERPEventContract:[],
 
 
 EventBus:[
@@ -109,9 +109,25 @@ EventBus:[
 ],
 
 
+
 BusinessEventProcessor:[
 "EventBus"
+],
+
+
+
+ModuleRegistry:[
+"EventBus",
+"EntityService"
+],
+
+
+
+ModuleLoader:[
+"ModuleRegistry"
 ]
+
+
 
 },
 
@@ -119,9 +135,6 @@ BusinessEventProcessor:[
 
 
 
-// ============================================================
-// CRITICAL COMPONENTS
-// ============================================================
 
 
 criticalComponents:[
@@ -131,15 +144,19 @@ criticalComponents:[
 
 "Logger",
 
-"EntityMetadata",
-
 "SchemaManager",
 
 "Database",
 
 "BaseRepository",
 
+"RepositoryFactory",
+
+"EntityService",
+
 "EventBus"
+
+
 
 ],
 
@@ -147,17 +164,14 @@ criticalComponents:[
 
 
 
-// ============================================================
-// PHASE MAP
-// ============================================================
 
 
 componentPhase:{
 
 
-Config:"BOOTSTRAP",
+Config:"BOOT",
 
-Logger:"BOOTSTRAP",
+Logger:"BOOT",
 
 
 EntityMetadata:"ENTITY",
@@ -169,19 +183,28 @@ SchemaRegistry:"ENTITY",
 
 SchemaManager:"CORE",
 
-Database:"CORE",
 
-BaseRepository:"CORE",
-
-
-RepositoryFactory:"ENTITY",
+SpreadsheetAdapter:"STORAGE",
 
 
-ERPEventContract:"EVENT",
+Database:"STORAGE",
+
+
+BaseRepository:"REPOSITORY",
+
+RepositoryFactory:"REPOSITORY",
+
+
+EntityService:"APPLICATION",
+
 
 EventBus:"EVENT",
 
-BusinessEventProcessor:"EVENT"
+
+ModuleRegistry:"MODULE",
+
+ModuleLoader:"MODULE"
+
 
 
 },
@@ -190,9 +213,6 @@ BusinessEventProcessor:"EVENT"
 
 
 
-// ============================================================
-// STATE
-// ============================================================
 
 
 _syncStarted(name){
@@ -203,11 +223,14 @@ this.started[name]=true;
 
 this.componentStatus[name]={
 
+
 status:"OK",
 
-timestamp:new Date().toISOString()
+time:new Date().toISOString()
+
 
 };
+
 
 
 },
@@ -216,24 +239,16 @@ timestamp:new Date().toISOString()
 
 
 
-// ============================================================
-// COMPONENT START
-// ============================================================
 
 
-async _start(name,fn,phase){
+async _start(name,fn){
 
 
-if(this.started[name]){
-
-return true;
-
-}
+if(this.started[name]) return true;
 
 
 
-const deps =
-this.dependencyGraph[name] || [];
+const deps=this.dependencyGraph[name]||[];
 
 
 
@@ -244,11 +259,9 @@ if(!this.started[dep]){
 
 
 throw new Error(
-
 name+
-" dependency missing: "+
+" dependency missing "+
 dep
-
 );
 
 
@@ -260,12 +273,10 @@ dep
 
 
 
-
 try{
 
 
-const start =
-Date.now();
+const start=Date.now();
 
 
 
@@ -273,20 +284,16 @@ await fn();
 
 
 
-const duration =
-Date.now()-start;
-
-
-
 this.bootLog.push({
 
 name,
 
-phase,
+phase:this.componentPhase[name],
 
 status:"OK",
 
-duration
+duration:
+Date.now()-start
 
 });
 
@@ -297,14 +304,8 @@ this._syncStarted(name);
 
 
 Logger.log(
-
-phase+
-" | "+
-name+
-" READY "+
-duration+
-"ms"
-
+"READY "+
+name
 );
 
 
@@ -312,22 +313,9 @@ duration+
 return true;
 
 
+
 }
 catch(e){
-
-
-
-this.bootLog.push({
-
-name,
-
-phase,
-
-status:"FAILED",
-
-error:e.message
-
-});
 
 
 
@@ -341,14 +329,22 @@ error:e.message
 
 
 
-Logger.error(
+this.bootLog.push({
 
-phase+
-" | "+
+name,
+
+status:"FAILED",
+
+error:e.message
+
+});
+
+
+
+Logger.error(
 name+
 " FAILED "+
 e.message
-
 );
 
 
@@ -369,56 +365,36 @@ return false;
 }
 
 
-
 },
 
 
 
 
 
-// ============================================================
-// SAFE INIT
-// ============================================================
 
 
-async safeInit(name){
+safeInit(name,args){
 
 
-const obj =
-globalThis[name];
+const obj=globalThis[name];
 
 
-
-if(!obj){
-
-return false;
-
-}
+if(!obj)return true;
 
 
 
 if(
-typeof obj.init!=="function"
+typeof obj.init==="function"
 ){
 
-this._syncStarted(name);
 
-return true;
+return obj.init(args);
+
 
 }
 
 
-
-return this._start(
-
-name,
-
-()=>obj.init(),
-
-this.componentPhase[name] || "CORE"
-
-);
-
+return true;
 
 
 },
@@ -427,243 +403,207 @@ this.componentPhase[name] || "CORE"
 
 
 
-// ============================================================
-// MAIN START
-// ============================================================
 
 
 async init(){
 
 
-if(this.initialized){
-
+if(this.initialized)
 return this.health();
 
-}
 
 
-
-if(this.initializing){
-
+if(this.initializing)
 return;
-
-}
 
 
 
 this.initializing=true;
 
 
+this.startedAt=
+new Date().toISOString();
+
+
 
 Logger.log(
-"========== ERP BOOT START =========="
+"========== ERP START =========="
 );
-
-
-
-this.startedAt =
-new Date().toISOString();
 
 
 
 try{
 
 
-// ================================
-// BOOTSTRAP
-// ================================
-
 
 await this._start(
-
 "Config",
-
-()=>Config?.init?.(),
-
-"BOOTSTRAP"
-
+()=>this.safeInit("Config")
 );
 
 
 
 await this._start(
-
 "Logger",
-
-()=>Logger?.init?.(),
-
-"BOOTSTRAP"
-
+()=>this.safeInit("Logger")
 );
 
 
 
-
-
-// ================================
-// ENTITY FOUNDATION
-// ================================
-
-
 await this._start(
-
 "EntityMetadata",
-
-()=>EntityMetadata.init({
-
-strict:false,
-
-compareRegistry:true,
-
-registerTestEntities:true
-
-}),
-
-"ENTITY"
-
+()=>this.safeInit("EntityMetadata")
 );
 
 
 
 await this._start(
-
 "EntityRegistry",
-
-()=>EntityRegistry.init(),
-
-"ENTITY"
-
+()=>this.safeInit("EntityRegistry")
 );
 
 
 
-
 await this._start(
-
 "SchemaRegistry",
-
-()=>SchemaRegistry.init(),
-
-"ENTITY"
-
+()=>this.safeInit("SchemaRegistry")
 );
 
 
 
-
-// ================================
-// CORE
-// ================================
-
-
 await this._start(
-
 "SchemaManager",
-
-()=>SchemaManager.init(),
-
-"CORE"
-
+()=>this.safeInit("SchemaManager")
 );
 
 
 
 await this._start(
+"SpreadsheetAdapter",
+()=>this.safeInit("SpreadsheetAdapter")
+);
 
+
+
+await this._start(
 "Database",
-
-()=>Database.init(),
-
-"CORE"
-
+()=>this.safeInit("Database")
 );
 
 
 
-
 await this._start(
-
 "BaseRepository",
-
-()=>BaseRepository.init(Database),
-
-"CORE"
-
+()=>BaseRepository.init(Database)
 );
 
 
 
-
-
-// ================================
-// REPOSITORIES
-// ================================
-
-
 await this._start(
-
 "RepositoryFactory",
+()=>RepositoryFactory.init()
+);
 
-()=>RepositoryFactory.init(),
 
-"ENTITY"
 
+RepositoryFactory.refresh?.();
+
+
+
+
+
+await this._start(
+"EntityService",
+()=>this.safeInit("EntityService")
 );
 
 
 
 
 
-// ================================
-// EVENTS
-// ================================
-
-
 await this._start(
-
 "ERPEventContract",
-
-()=>ERPEventContract.init?.(),
-
-"EVENT"
-
+()=>this.safeInit("ERPEventContract")
 );
 
 
 
 await this._start(
-
 "EventBus",
-
-()=>EventBus.init(),
-
-"EVENT"
-
+()=>this.safeInit("EventBus")
 );
+
+
 
 
 
 await this._start(
-
 "BusinessEventProcessor",
-
-()=>BusinessEventProcessor.init(),
-
-"EVENT"
-
+()=>this.safeInit("BusinessEventProcessor")
 );
 
 
 
 
 
-// ================================
-// VALIDATION
-// ================================
+
+if(
+typeof ModuleRegistry!=="undefined"
+){
+
+
+await this._start(
+"ModuleRegistry",
+()=>{
+
+
+ModuleRegistry.init?.();
+
+
+ModuleRegistry.setEventBus?.(
+EventBus
+);
+
+
+
+ModuleRegistry.loadManifest?.(
+ERP_MODULE_MANIFEST
+);
+
+
+
+}
+
+);
+
+
+}
+
+
+
+
+
+
+if(
+typeof ModuleLoader!=="undefined"
+){
+
+
+await this._start(
+"ModuleLoader",
+()=>ModuleLoader.initAll?.()
+
+);
+
+
+}
+
+
+
+
 
 
 this.validate();
-
 
 
 
@@ -671,18 +611,15 @@ this.initialized=true;
 
 
 
-Logger.log(
+this.emitStart();
 
+
+
+Logger.log(
 "========== ERP READY v"+
 this.version+
 " =========="
-
 );
-
-
-
-
-this.emitStart();
 
 
 
@@ -694,18 +631,18 @@ return this.health();
 catch(e){
 
 
-Logger.error(
-
-"ERP START FAILED "+
-e.message
-
-);
-
-
 this.initialized=false;
 
 
+Logger.error(
+"ERP FAILED "+
+e.message
+);
+
+
+
 throw e;
+
 
 
 }
@@ -727,21 +664,12 @@ this.initializing=false;
 
 
 
-// ============================================================
-// VALIDATION
-// ============================================================
-
-
 validate(){
 
 
-Logger.log(
-"ERP VALIDATION START"
-);
-
-
-
-if(typeof EntityMetadata!=="undefined"){
+if(
+EntityMetadata?.validate
+){
 
 
 const result =
@@ -749,13 +677,12 @@ EntityMetadata.validate();
 
 
 
-if(!result.valid){
+if(result.length){
 
 
 throw new Error(
-
-"Metadata validation failed"
-
+"Metadata errors "+
+result.join(",")
 );
 
 
@@ -766,37 +693,7 @@ throw new Error(
 
 
 
-if(typeof RepositoryFactory!=="undefined"){
-
-
-const missing =
-RepositoryFactory.missingRepositories();
-
-
-
-if(missing.length){
-
-
-Logger.warn(
-
-"Missing repositories: "+
-missing.join(",")
-
-);
-
-
-}
-
-
-
-}
-
-
-
-Logger.log(
-"ERP VALIDATION COMPLETE"
-);
-
+return true;
 
 
 },
@@ -805,38 +702,22 @@ Logger.log(
 
 
 
-
-// ============================================================
-// EVENT
-// ============================================================
 
 
 emitStart(){
 
 
-if(
-typeof EventBus!=="undefined" &&
-EventBus.emit
-){
-
-
-EventBus.emit(
-
+EventBus?.emit?.(
 "ERP_STARTED",
-
 {
 
 version:this.version,
 
-timestamp:new Date().toISOString()
+time:new Date().toISOString()
 
 }
 
 );
-
-
-}
-
 
 
 },
@@ -845,10 +726,6 @@ timestamp:new Date().toISOString()
 
 
 
-
-// ============================================================
-// HEALTH
-// ============================================================
 
 
 health(){
@@ -869,22 +746,13 @@ this.initialized
 
 version:this.version,
 
-
 initialized:this.initialized,
-
-
-startedAt:this.startedAt,
-
 
 components:this.componentStatus,
 
+modules:
+ModuleRegistry?.health?.()
 
-repositories:
-typeof RepositoryFactory!=="undefined"
-?
-RepositoryFactory.list()
-:
-[]
 
 
 }
@@ -899,10 +767,6 @@ RepositoryFactory.list()
 
 
 
-// ============================================================
-// DIAGNOSTICS
-// ============================================================
-
 
 diagnostics(){
 
@@ -913,93 +777,69 @@ return{
 version:this.version,
 
 
-initialized:this.initialized,
-
-
 startedAt:this.startedAt,
 
 
-started:Object.keys(this.started),
+boot:this.bootLog,
 
 
 components:this.componentStatus,
 
 
-boot:this.bootLog
+repository:
+RepositoryFactory?.diagnostics?.(),
+
+
+modules:
+ModuleRegistry?.diagnostics?.()
 
 
 
 };
+
+
+},
+
+
+
+
+
+
+
+reset(){
+
+
+this.initialized=false;
+
+this.initializing=false;
+
+this.started={};
+
+this.componentStatus={};
+
+this.bootLog=[];
+
+
+Logger.log(
+"SystemInit RESET"
+);
 
 
 }
 
 
 
-
 };
 
 
 
 
-
-globalThis.SystemInit =
+globalThis.SystemInit=
 SystemInit;
-
-
-
-
-
-// ============================================================
-// COMMANDS
-// ============================================================
-
-
-globalThis.startERP=function(){
-
-return SystemInit.init();
-
-};
-
-
-
-globalThis.erpHealth=function(){
-
-return SystemInit.health();
-
-};
-
-
-
-globalThis.erpDiag=function(){
-
-return SystemInit.diagnostics();
-
-};
 
 
 
 Logger.log(
 "SystemInit READY v"+
 SystemInit.version
-);
-
-
-Logger.log(
-"ERP COMMANDS READY:"
-);
-
-
-Logger.log(
-" startERP()"
-);
-
-
-Logger.log(
-" erpHealth()"
-);
-
-
-Logger.log(
-" erpDiag()"
 );

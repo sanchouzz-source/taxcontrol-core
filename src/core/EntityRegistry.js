@@ -1,409 +1,757 @@
-console.log("EntityRegistry");
+// ============================================================
+// EntityRegistry v2.3.0
+// Enterprise Entity Metadata Registry
+// TaxControl ERP Core
+// ============================================================
+
+
+console.log("EntityRegistry v2.3.0");
+
 
 const EntityRegistry = {
-  version: "2.2.1",
-  ready: false,
 
-  aliases: {
-    ClientFinanceProfiles: "CLIENT_FINANCE_PROFILE",
-    FinancialTransactions: "FINANCIAL_TRANSACTION",
-    AuditLogs: "AUDIT",
-    Versions: "VERSION",
-    TransportOrders: "TRANSPORT_ORDER",
-    Carriers: "CARRIER",
-    Drivers: "DRIVER",
-    Vehicles: "VEHICLE",
-    Routes: "ROUTE",
-    Cargoes: "CARGO"
-  },
 
-  // ----- СУЩЕСТВУЮЩИЕ СУЩНОСТИ -----
-  CLIENT: {
-    entity: "CLIENT",
-    module: "core",
-    table: "Clients",
-    idField: "ClientID",
-    idPrefix: "CLI",
-    repository: "ClientRepository",
-    audit: true,
-    softDelete: true,
-    timestamps: true,
-    events: {
-      created: "CLIENT_CREATED",
-      updated: "CLIENT_UPDATED",
-      deleted: "CLIENT_DELETED",
-      restored: "CLIENT_RESTORED"
-    }
-  },
+version:"2.3.0",
 
-  TRIP: {
-    entity: "TRIP",
-    module: "core",
-    table: "Trips",
-    idField: "TripID",
-    idPrefix: "TRP",
-    repository: "TripRepository",
-    audit: true,
-    softDelete: true,
-    timestamps: true,
-    events: {
-      created: "TRIP_CREATED",
-      updated: "TRIP_UPDATED",
-      deleted: "TRIP_DELETED",
-      restored: "TRIP_RESTORED"
-    }
-  },
+ready:false,
 
-  CLIENT_FINANCE_PROFILE: {
-    entity: "CLIENT_FINANCE_PROFILE",
-    module: "finance",
-    table: "ClientFinanceProfiles",
-    idField: "FinanceProfileID",
-    idPrefix: "FP",
-    repository: "ClientFinanceProfileRepository",
-    audit: true,
-    softDelete: true,
-    timestamps: true,
-    events: {
-      created: "CLIENT_FINANCE_PROFILE_CREATED",
-      updated: "CLIENT_FINANCE_PROFILE_UPDATED",
-      deleted: "CLIENT_FINANCE_PROFILE_DELETED",
-      restored: "CLIENT_FINANCE_PROFILE_RESTORED"
-    }
-  },
+initialized:false,
 
-  FINANCIAL_TRANSACTION: {
-    entity: "FINANCIAL_TRANSACTION",
-    module: "finance",
-    table: "FinancialTransactions",
-    idField: "TransactionID",
-    idPrefix: "FIN",
-    repository: "FinancialTransactionRepository",
-    audit: true,
-    softDelete: false,
-    timestamps: true,
-    events: {
-      created: "FINANCIAL_TRANSACTION_CREATED",
-      updated: "FINANCIAL_TRANSACTION_UPDATED",
-      deleted: "FINANCIAL_TRANSACTION_DELETED"
-    }
-  },
 
-  AUDIT: {
-    entity: "AUDIT",
-    module: "core",
-    table: "AuditLog",
-    idField: "AuditID",
-    idPrefix: "AUD",
-    repository: "AuditRepository",
-    audit: false,
-    softDelete: false,
-    timestamps: true,
-    events: {}
-  },
 
-  VERSION: {
-    entity: "VERSION",
-    module: "core",
-    table: "Versions",
-    idField: "VersionID",
-    idPrefix: "VER",
-    repository: "VersionRepository",
-    audit: true,
-    softDelete: false,
-    timestamps: true,
-    events: {}
-  },
 
-  KPI: {
-    entity: "KPI",
-    module: "analytics",
-    table: "KPIMetrics",
-    idField: "KPIID",
-    idPrefix: "KPI",
-    repository: "KPIRepository",
-    audit: true,
-    softDelete: true,
-    timestamps: true,
-    events: {
-      created: "KPI_CREATED",
-      updated: "KPI_UPDATED"
-    }
-  },
 
-  // ----- НОВЫЕ ЛОГИСТИЧЕСКИЕ СУЩНОСТИ -----
-  TRANSPORT_ORDER: {
-    entity: "TRANSPORT_ORDER",
-    module: "logistics",
-    table: "TransportOrders",
-    idField: "TransportOrderID",
-    idPrefix: "TO",
-    repository: "TransportOrderRepository",
-    audit: true,
-    softDelete: true,
-    timestamps: true,
-    events: {
-      created: "TRANSPORT_ORDER_CREATED",
-      updated: "TRANSPORT_ORDER_UPDATED",
-      deleted: "TRANSPORT_ORDER_DELETED",
-      restored: "TRANSPORT_ORDER_RESTORED"
-    }
-  },
+aliases:{
 
-  CARRIER: {
-    entity: "CARRIER",
-    module: "logistics",
-    table: "Carriers",
-    idField: "CarrierID",
-    idPrefix: "CAR",
-    repository: "CarrierRepository",
-    audit: true,
-    softDelete: true,
-    timestamps: true,
-    events: {
-      created: "CARRIER_CREATED",
-      updated: "CARRIER_UPDATED",
-      deleted: "CARRIER_DELETED",
-      restored: "CARRIER_RESTORED"
-    }
-  },
 
-  DRIVER: {
-    entity: "DRIVER",
-    module: "logistics",
-    table: "Drivers",
-    idField: "DriverID",
-    idPrefix: "DRV",
-    repository: "DriverRepository",
-    audit: true,
-    softDelete: true,
-    timestamps: true,
-    events: {
-      created: "DRIVER_CREATED",
-      updated: "DRIVER_UPDATED",
-      deleted: "DRIVER_DELETED",
-      restored: "DRIVER_RESTORED"
-    }
-  },
+ClientFinanceProfiles:
+"CLIENT_FINANCE_PROFILE",
 
-  VEHICLE: {
-    entity: "VEHICLE",
-    module: "logistics",
-    table: "Vehicles",
-    idField: "VehicleID",
-    idPrefix: "VEH",
-    repository: "VehicleRepository",
-    audit: true,
-    softDelete: true,
-    timestamps: true,
-    events: {
-      created: "VEHICLE_CREATED",
-      updated: "VEHICLE_UPDATED",
-      deleted: "VEHICLE_DELETED",
-      restored: "VEHICLE_RESTORED"
-    }
-  },
 
-  ROUTE: {
-    entity: "ROUTE",
-    module: "logistics",
-    table: "Routes",
-    idField: "RouteID",
-    idPrefix: "RTE",
-    repository: "RouteRepository",
-    audit: true,
-    softDelete: true,
-    timestamps: true,
-    events: {
-      created: "ROUTE_CREATED",
-      updated: "ROUTE_UPDATED",
-      deleted: "ROUTE_DELETED",
-      restored: "ROUTE_RESTORED"
-    }
-  },
+FinancialTransactions:
+"FINANCIAL_TRANSACTION",
 
-  CARGO: {
-    entity: "CARGO",
-    module: "logistics",
-    table: "Cargoes",
-    idField: "CargoID",
-    idPrefix: "CRG",
-    repository: "CargoRepository",
-    audit: true,
-    softDelete: true,
-    timestamps: true,
-    events: {
-      created: "CARGO_CREATED",
-      updated: "CARGO_UPDATED",
-      deleted: "CARGO_DELETED",
-      restored: "CARGO_RESTORED"
-    }
-  },
 
-  // ============================================================
-  // SYSTEM TEST ENTITIES
-  // ============================================================
-  __TEST_DATABASE: {
-    entity: "__TEST_DATABASE",
-    module: "system",
-    table: "__TEST_DATABASE",
-    idField: "id",
-    idPrefix: "DB",
-    repository: "BaseRepository",
-    audit: false,
-    softDelete: false,
-    timestamps: true,
-    system: true,
-    events: {}
-  },
+AuditLogs:
+"AUDIT",
 
-  __TEST_EVENTS: {
-    entity: "__TEST_EVENTS",
-    module: "system",
-    table: "__TEST_EVENTS",
-    idField: "id",
-    idPrefix: "EVT",
-    repository: "BaseRepository",
-    audit: false,
-    softDelete: false,
-    timestamps: true,
-    system: true,
-    events: {}
-  },
 
-  __TEST_REPOSITORY: {
-    entity: "__TEST_REPOSITORY",
-    module: "system",
-    table: "__TEST_REPOSITORY",
-    idField: "id",
-    idPrefix: "REP",
-    repository: "BaseRepository",
-    audit: false,
-    softDelete: false,
-    timestamps: true,
-    system: true,
-    events: {}
-  }
+Versions:
+"VERSION",
+
+
+TransportOrders:
+"TRANSPORT_ORDER",
+
+
+Carriers:
+"CARRIER",
+
+
+Drivers:
+"DRIVER",
+
+
+Vehicles:
+"VEHICLE",
+
+
+Routes:
+"ROUTE",
+
+
+Cargoes:
+"CARGO"
+
+
+},
+
+
+
+
+
+// ============================================================
+// ENTITIES
+// ============================================================
+
+
+CLIENT:{
+entity:"CLIENT",
+module:"core",
+table:"Clients",
+idField:"ClientID",
+idPrefix:"CLI",
+repository:"ClientRepository",
+audit:true,
+softDelete:true,
+timestamps:true,
+events:{
+created:"CLIENT_CREATED",
+updated:"CLIENT_UPDATED",
+deleted:"CLIENT_DELETED",
+restored:"CLIENT_RESTORED"
+}
+},
+
+
+
+TRIP:{
+entity:"TRIP",
+module:"core",
+table:"Trips",
+idField:"TripID",
+idPrefix:"TRP",
+repository:"TripRepository",
+audit:true,
+softDelete:true,
+timestamps:true,
+events:{
+created:"TRIP_CREATED",
+updated:"TRIP_UPDATED",
+deleted:"TRIP_DELETED",
+restored:"TRIP_RESTORED"
+}
+},
+
+
+
+CLIENT_FINANCE_PROFILE:{
+entity:"CLIENT_FINANCE_PROFILE",
+module:"finance",
+table:"ClientFinanceProfiles",
+idField:"FinanceProfileID",
+idPrefix:"FP",
+repository:"ClientFinanceProfileRepository",
+audit:true,
+softDelete:true,
+timestamps:true,
+events:{}
+},
+
+
+
+FINANCIAL_TRANSACTION:{
+entity:"FINANCIAL_TRANSACTION",
+module:"finance",
+table:"FinancialTransactions",
+idField:"TransactionID",
+idPrefix:"FIN",
+repository:"FinancialTransactionRepository",
+audit:true,
+softDelete:false,
+timestamps:true,
+events:{}
+},
+
+
+
+AUDIT:{
+entity:"AUDIT",
+module:"system",
+table:"AuditLog",
+idField:"AuditID",
+idPrefix:"AUD",
+repository:"AuditRepository",
+audit:false,
+softDelete:false,
+timestamps:true,
+events:{}
+},
+
+
+
+VERSION:{
+entity:"VERSION",
+module:"system",
+table:"Versions",
+idField:"VersionID",
+idPrefix:"VER",
+repository:"VersionRepository",
+audit:false,
+softDelete:false,
+timestamps:true,
+events:{}
+},
+
+
+
+KPI:{
+entity:"KPI",
+module:"analytics",
+table:"KPIMetrics",
+idField:"KPIID",
+idPrefix:"KPI",
+repository:"KPIRepository",
+audit:true,
+softDelete:true,
+timestamps:true,
+events:{}
+},
+
+
+
+TRANSPORT_ORDER:{
+entity:"TRANSPORT_ORDER",
+module:"logistics",
+table:"TransportOrders",
+idField:"TransportOrderID",
+idPrefix:"TO",
+repository:"TransportOrderRepository",
+audit:true,
+softDelete:true,
+timestamps:true,
+events:{}
+},
+
+
+
+CARRIER:{
+entity:"CARRIER",
+module:"logistics",
+table:"Carriers",
+idField:"CarrierID",
+idPrefix:"CAR",
+repository:"CarrierRepository",
+audit:true,
+softDelete:true,
+timestamps:true,
+events:{}
+},
+
+
+
+DRIVER:{
+entity:"DRIVER",
+module:"logistics",
+table:"Drivers",
+idField:"DriverID",
+idPrefix:"DRV",
+repository:"DriverRepository",
+audit:true,
+softDelete:true,
+timestamps:true,
+events:{}
+},
+
+
+
+VEHICLE:{
+entity:"VEHICLE",
+module:"logistics",
+table:"Vehicles",
+idField:"VehicleID",
+idPrefix:"VEH",
+repository:"VehicleRepository",
+audit:true,
+softDelete:true,
+timestamps:true,
+events:{}
+},
+
+
+
+ROUTE:{
+entity:"ROUTE",
+module:"logistics",
+table:"Routes",
+idField:"RouteID",
+idPrefix:"RTE",
+repository:"RouteRepository",
+audit:true,
+softDelete:true,
+timestamps:true,
+events:{}
+},
+
+
+
+CARGO:{
+entity:"CARGO",
+module:"logistics",
+table:"Cargoes",
+idField:"CargoID",
+idPrefix:"CRG",
+repository:"CargoRepository",
+audit:true,
+softDelete:true,
+timestamps:true,
+events:{}
+},
+
+
+
+
+// ============================================================
+// SYSTEM
+// ============================================================
+
+
+__TEST_DATABASE:{
+entity:"__TEST_DATABASE",
+module:"system",
+table:"__TEST_DATABASE",
+idField:"id",
+repository:"BaseRepository",
+system:true
+},
+
+
+__TEST_EVENTS:{
+entity:"__TEST_EVENTS",
+module:"system",
+table:"__TEST_EVENTS",
+idField:"id",
+repository:"BaseRepository",
+system:true
+},
+
+
+__TEST_REPOSITORY:{
+entity:"__TEST_REPOSITORY",
+module:"system",
+table:"__TEST_REPOSITORY",
+idField:"id",
+repository:"BaseRepository",
+system:true
+}
+
+
+
+
+
 };
 
-/*
-==============================
-API
-==============================
-*/
 
-// ----- RESOLVE (с нормализацией и диагностикой) -----
-EntityRegistry.resolve = function (entity) {
-  if (!entity) {
-    throw new Error("Entity is empty");
-  }
 
-  const normalized = String(entity).trim();
 
-  // alias
-  if (this.aliases[normalized]) {
-    return this.aliases[normalized];
-  }
 
-  // прямое совпадение
-  if (this.has(normalized)) {
-    return normalized;
-  }
 
-  // uppercase поиск
-  const upper = normalized.toUpperCase();
-  if (this.has(upper)) {
-    return upper;
-  }
 
-  throw new Error(
-    "Unknown entity: " + entity +
-    " available=" + this.list().join(",")
-  );
+// ============================================================
+// INIT
+// ============================================================
+
+
+EntityRegistry.init=function(){
+
+
+if(this.initialized){
+
+return true;
+
+}
+
+
+this.initialized=true;
+
+this.ready=true;
+
+
+
+Logger.log(
+"EntityRegistry INIT v"+
+this.version+
+" entities="+
+this.list().length
+);
+
+
+
+return true;
+
+
 };
 
-// ----- GET -----
-EntityRegistry.get = function (entity) {
-  entity = this.resolve(entity);
-  const meta = this[entity];
-  if (!meta) {
-    throw new Error("Entity metadata missing: " + entity);
-  }
-  return meta;
+
+
+
+
+
+
+
+// ============================================================
+// RESOLVE
+// ============================================================
+
+
+EntityRegistry.resolve=function(value){
+
+
+
+if(!value){
+
+throw new Error(
+"Entity empty"
+);
+
+}
+
+
+
+let key =
+String(value).trim();
+
+
+
+// alias
+
+if(this.aliases[key]){
+
+return this.aliases[key];
+
+}
+
+
+
+// direct
+
+if(this.has(key)){
+
+return key;
+
+}
+
+
+
+// uppercase
+
+key =
+key.toUpperCase();
+
+
+if(this.has(key)){
+
+return key;
+
+}
+
+
+
+// table search
+
+const table =
+this.list()
+.find(e=>
+this[e].table===value
+);
+
+
+if(table){
+
+return table;
+
+}
+
+
+
+// repository search
+
+const repo =
+this.list()
+.find(e=>
+this[e].repository===value
+);
+
+
+
+if(repo){
+
+return repo;
+
+}
+
+
+
+
+throw new Error(
+"Unknown entity "+
+value
+);
+
+
 };
 
-// ----- HAS (улучшенный: проверяет и entity, и table) -----
-EntityRegistry.has = function (entity) {
-  const item = this[entity];
-  return !!(
-    item &&
-    typeof item === "object" &&
-    item.entity &&
-    item.table
-  );
+
+
+
+
+
+
+
+// ============================================================
+// GET
+// ============================================================
+
+
+EntityRegistry.get=function(entity){
+
+
+const key =
+this.resolve(entity);
+
+
+
+return this[key];
+
+
 };
 
-// ----- LIST -----
-EntityRegistry.list = function () {
-  return Object.keys(this).filter(key => {
-    const item = this[key];
-    return (item && typeof item === "object" && item.entity && item.table);
-  });
+
+
+
+
+
+
+
+EntityRegistry.has=function(entity){
+
+
+return !!(
+this[entity] &&
+typeof this[entity]==="object" &&
+this[entity].entity
+);
+
+
 };
 
-// ----- GET REPOSITORY -----
-EntityRegistry.getRepository = function (entity) {
-  return this.get(entity).repository;
+
+
+
+
+
+
+
+EntityRegistry.list=function(){
+
+
+return Object.keys(this)
+
+.filter(k=>{
+
+
+const x=this[k];
+
+
+return x &&
+typeof x==="object" &&
+x.entity &&
+x.table;
+
+
+});
+
+
 };
 
-// ----- GET TABLE -----
-EntityRegistry.getTable = function (entity) {
-  return this.get(entity).table;
+
+
+
+
+
+
+
+// ============================================================
+// SEARCH
+// ============================================================
+
+
+EntityRegistry.getByTable=function(table){
+
+
+return this.list()
+
+.find(e=>
+
+this[e].table===table
+
+)
+
+||null;
+
+
 };
 
-// ----- GET ID PREFIX -----
-EntityRegistry.getIdPrefix = function (entity) {
-  return this.get(entity).idPrefix;
+
+
+EntityRegistry.getByRepository=function(repo){
+
+
+return this.list()
+
+.find(e=>
+
+this[e].repository===repo
+
+)
+
+||null;
+
+
 };
 
-// ----- VALIDATE SCHEMA LINKS -----
-EntityRegistry.validateSchemaLinks = function () {
-  const result = [];
 
-  this.list().forEach(entity => {
-    try {
-      const schema = SchemaRegistry.get(entity);
-      result.push({
-        entity: entity,
-        schema: true,
-        table: schema.table
-      });
-    } catch (e) {
-      result.push({
-        entity: entity,
-        schema: false,
-        error: e.message
-      });
-    }
-  });
 
-  return result;
+
+
+
+
+
+EntityRegistry.getRepository=function(entity){
+
+
+return this.get(entity).repository;
+
+
 };
 
-// ----- HEALTH -----
-EntityRegistry.health = function () {
-  return HealthContract.create(
-    "EntityRegistry",
-    this.ready ? "OK" : "WARNING",
-    {
-      version: this.version,
-      entities: this.list(),
-      count: this.list().length
-    }
-  );
+
+
+EntityRegistry.getTable=function(entity){
+
+
+return this.get(entity).table;
+
+
 };
 
-EntityRegistry.ready = true;
-globalThis.EntityRegistry = EntityRegistry;
 
-Logger.log("EntityRegistry READY v" + EntityRegistry.version);
+
+
+
+
+
+
+// ============================================================
+// VALIDATION
+// ============================================================
+
+
+EntityRegistry.validate=function(){
+
+
+const errors=[];
+
+
+
+this.list()
+.forEach(entity=>{
+
+
+const meta=this[entity];
+
+
+
+if(!meta.idField){
+
+errors.push(
+entity+" missing idField"
+);
+
+}
+
+
+if(!meta.table){
+
+errors.push(
+entity+" missing table"
+);
+
+}
+
+
+if(!meta.repository){
+
+errors.push(
+entity+" missing repository"
+);
+
+}
+
+
+
+});
+
+
+
+return errors;
+
+
+};
+
+
+
+
+
+
+
+
+// ============================================================
+// HEALTH
+// ============================================================
+
+
+EntityRegistry.health=function(){
+
+
+const errors =
+this.validate();
+
+
+
+return HealthContract.create(
+
+"EntityRegistry",
+
+errors.length
+?
+"WARNING"
+:
+"OK",
+
+{
+
+
+version:this.version,
+
+
+initialized:this.initialized,
+
+
+entities:this.list(),
+
+
+count:this.list().length,
+
+
+errors
+
+
+}
+
+
+);
+
+
+};
+
+
+
+
+
+
+
+
+globalThis.EntityRegistry =
+EntityRegistry;
+
+
+
+EntityRegistry.init();
+
+
+
+Logger.log(
+"EntityRegistry READY v"+
+EntityRegistry.version
+);
