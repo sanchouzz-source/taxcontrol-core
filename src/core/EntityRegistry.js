@@ -1,7 +1,13 @@
 // ============================================================
-// EntityRegistry v2.5.0
+// EntityRegistry v2.5.1
 // Enterprise Runtime Entity Registry
 // TaxControl ERP Core
+//
+// Fix:
+// - Metadata normalization
+// - Object fields support
+// - Array fields support
+// - SchemaBuilder compatibility
 //
 // Architecture:
 //
@@ -11,7 +17,10 @@
 // EntityRegistry
 //        |
 //        v
-// RepositoryFactory
+// SchemaRegistry
+//        |
+//        v
+// SchemaManager
 //
 // Compatible:
 // EntityMetadata v3.1+
@@ -22,18 +31,17 @@
 // ============================================================
 
 
-console.log("EntityRegistry v2.5.0");
+console.log("EntityRegistry v2.5.1");
 
 
 
 const EntityRegistry = {
 
 
-version:"2.5.0",
+version:"2.5.1",
 
 
 initialized:false,
-
 
 ready:false,
 
@@ -41,11 +49,9 @@ ready:false,
 entities:{},
 
 
+
 aliases:{
 
-
-
-// names
 
 CLIENT:"CLIENT",
 Client:"CLIENT",
@@ -83,8 +89,6 @@ Cargoes:"CARGO",
 
 
 
-// prefixes
-
 CLI:"CLIENT",
 
 TRP:"TRIP",
@@ -108,7 +112,6 @@ KPI:"KPI",
 AUD:"AUDIT",
 
 VER:"VERSION"
-
 
 },
 
@@ -163,7 +166,6 @@ this.createCompatibilityObjects();
 
 this.initialized=true;
 
-
 this.ready=true;
 
 
@@ -191,12 +193,11 @@ return true;
 
 
 // ============================================================
-// LOAD
+// LOAD FROM METADATA
 // ============================================================
 
 
 loadFromMetadata(){
-
 
 
 this.entities={};
@@ -225,17 +226,76 @@ return;
 
 
 const key =
-String(name)
+String(
+meta.entity || name
+)
 .toUpperCase();
 
 
 
-this.entities[key]=meta;
+this.entities[key] = {
+
+
+entity:key,
+
+
+module:
+meta.module || "CORE",
+
+
+table:
+meta.table || null,
+
+
+idField:
+meta.idField ||
+meta.primaryKey ||
+"ID",
+
+
+idPrefix:
+meta.idPrefix || null,
+
+
+repository:
+meta.repository || null,
+
+
+fields:
+this.normalizeFields(
+meta.fields
+),
+
+
+
+softDelete:
+meta.softDelete!==false,
+
+
+timestamps:
+meta.timestamps!==false,
+
+
+audit:
+meta.audit===true,
+
+
+relations:
+meta.relations || {},
+
+
+indexes:
+meta.indexes || [],
+
+
+events:
+meta.events || {}
+
+};
 
 
 
 });
-
 
 
 },
@@ -247,13 +307,140 @@ this.entities[key]=meta;
 
 
 // ============================================================
-// OLD COMPATIBILITY
-// EntityRegistry.CLIENT
+// NORMALIZE FIELDS
+// ============================================================
+
+
+normalizeFields(fields){
+
+
+if(!fields){
+
+return [];
+
+}
+
+
+
+
+
+// array format
+
+if(Array.isArray(fields)){
+
+
+return fields.map(f=>{
+
+
+if(typeof f==="string"){
+
+
+return {
+
+
+name:f,
+
+type:"STRING",
+
+required:false
+
+};
+
+
+}
+
+
+
+return {
+
+
+name:f.name,
+
+type:f.type || "STRING",
+
+required:f.required===true,
+
+
+default:f.default
+
+
+};
+
+
+});
+
+
+}
+
+
+
+
+
+
+// object format
+
+if(
+typeof fields==="object"
+){
+
+
+return Object.keys(fields)
+
+.map(name=>{
+
+
+const f =
+fields[name] || {};
+
+
+
+return {
+
+
+name:name,
+
+
+type:
+f.type || "STRING",
+
+
+required:
+f.required===true,
+
+
+default:
+f.default
+
+
+};
+
+
+});
+
+
+}
+
+
+
+
+
+
+return [];
+
+},
+
+
+
+
+
+
+
+// ============================================================
+// COMPATIBILITY
 // ============================================================
 
 
 createCompatibilityObjects(){
-
 
 
 Object.keys(this.entities)
@@ -261,9 +448,7 @@ Object.keys(this.entities)
 .forEach(key=>{
 
 
-if(
-this[key]
-){
+if(this[key]){
 
 return;
 
@@ -280,17 +465,13 @@ key,
 {
 
 
-get(){
-
-return EntityRegistry.entities[key];
-
-},
+get:()=>this.entities[key],
 
 
 configurable:true
 
-}
 
+}
 
 );
 
@@ -308,7 +489,7 @@ configurable:true
 
 
 // ============================================================
-// NORMALIZE
+// NORMALIZE ENTITY NAME
 // ============================================================
 
 
@@ -362,8 +543,6 @@ this.normalize(original);
 
 
 
-// alias
-
 if(this.aliases[original]){
 
 return this.aliases[original];
@@ -381,10 +560,6 @@ return this.aliases[normalized];
 
 
 
-
-
-// direct
-
 if(this.entities[normalized]){
 
 return normalized;
@@ -395,12 +570,7 @@ return normalized;
 
 
 
-
-// prefix
-
-for(
-const key of this.list()
-){
+for(const key of this.list()){
 
 
 const meta =
@@ -410,9 +580,7 @@ this.entities[key];
 
 if(
 meta.idPrefix &&
-normalized.startsWith(
-meta.idPrefix
-)
+normalized.startsWith(meta.idPrefix)
 ){
 
 return key;
@@ -427,20 +595,18 @@ return key;
 
 
 
-// table
 
-for(
-const key of this.list()
-){
+for(const key of this.list()){
+
+
+const meta =
+this.entities[key];
+
 
 
 if(
-
-this.entities[key].table
-.toUpperCase()
-===
-normalized
-
+meta.table &&
+meta.table.toUpperCase()===normalized
 ){
 
 return key;
@@ -455,22 +621,17 @@ return key;
 
 
 
-// repository
+for(const key of this.list()){
 
-for(
-const key of this.list()
-){
+
+const meta =
+this.entities[key];
+
 
 
 if(
-
-this.entities[key].repository
-&&
-this.entities[key].repository
-.toUpperCase()
-===
-normalized
-
+meta.repository &&
+meta.repository.toUpperCase()===normalized
 ){
 
 return key;
@@ -484,18 +645,13 @@ return key;
 
 
 
-
-// camelCase
 
 const camel =
-
 original
-
 .replace(
 /([a-z])([A-Z])/g,
 "$1_$2"
 )
-
 .toUpperCase();
 
 
@@ -536,18 +692,12 @@ return this.entities[
 this.resolve(entity)
 ];
 
-
 },
 
 
 
 
 
-
-
-// ============================================================
-// HAS
-// ============================================================
 
 
 has(entity){
@@ -555,18 +705,12 @@ has(entity){
 
 return !!this.entities[entity];
 
-
 },
 
 
 
 
 
-
-
-// ============================================================
-// LIST
-// ============================================================
 
 
 list(){
@@ -575,7 +719,6 @@ list(){
 return Object.keys(
 this.entities
 );
-
 
 },
 
@@ -592,49 +735,35 @@ this.entities
 
 getRepository(entity){
 
-
-return this.get(entity)
-.repository;
-
+return this.get(entity)?.repository;
 
 },
-
-
-
 
 
 getTable(entity){
 
-
-return this.get(entity)
-.table;
-
+return this.get(entity)?.table;
 
 },
-
-
-
 
 
 getIdField(entity){
 
-
-return this.get(entity)
-.idField;
-
+return this.get(entity)?.idField;
 
 },
 
 
-
-
-
 getPrefix(entity){
 
+return this.get(entity)?.idPrefix;
 
-return this.get(entity)
-.idPrefix;
+},
 
+
+getFields(entity){
+
+return this.get(entity)?.fields || [];
 
 },
 
@@ -654,9 +783,7 @@ validate(){
 
 const errors=[];
 
-
 const tables={};
-
 
 const repositories={};
 
@@ -675,8 +802,7 @@ this.entities[key];
 if(!meta.table){
 
 errors.push(
-key+
-" table missing"
+key+" table missing"
 );
 
 }
@@ -686,8 +812,7 @@ key+
 if(!meta.idField){
 
 errors.push(
-key+
-" idField missing"
+key+" idField missing"
 );
 
 }
@@ -695,14 +820,25 @@ key+
 
 
 if(
-meta.table
-&&
+!meta.fields ||
+!meta.fields.length
+){
+
+errors.push(
+key+" fields empty"
+);
+
+}
+
+
+
+
+if(
 tables[meta.table]
 ){
 
 errors.push(
-"Duplicate table "+
-meta.table
+"Duplicate table "+meta.table
 );
 
 }
@@ -713,16 +849,13 @@ tables[meta.table]=key;
 
 
 
-
 if(
-meta.repository
-&&
+meta.repository &&
 repositories[meta.repository]
 ){
 
 errors.push(
-"Duplicate repository "+
-meta.repository
+"Duplicate repository "+meta.repository
 );
 
 }
@@ -730,7 +863,6 @@ meta.repository
 
 
 repositories[meta.repository]=key;
-
 
 
 });
@@ -756,8 +888,7 @@ return errors;
 health(){
 
 
-const errors =
-this.validate();
+const errors=this.validate();
 
 
 
@@ -832,11 +963,6 @@ count:this.list().length
 
 
 
-
-
-// ============================================================
-// RESET
-// ============================================================
 
 
 reset(){
