@@ -1,5 +1,5 @@
 // ============================================================
-// RepositoryFactory v2.7.0
+// RepositoryFactory v2.7.1
 // Enterprise Repository Dependency Container
 // TaxControl ERP Core
 //
@@ -9,1138 +9,425 @@
 // SystemInit v2.5+
 // ============================================================
 
-
-console.log("RepositoryFactory v2.7.0");
-
-
+console.log("RepositoryFactory v2.7.1");
 
 const RepositoryFactory = {
+  version: "2.7.1",
+  apiVersion: "2.5",
 
+  repositories: {},
+  metadata: {},
+  pending: {},
 
-version:"2.7.0",
+  initialized: false,
+  initializing: false,
 
-apiVersion:"2.5",
+  discoveryRuns: 0,
 
+  // ============================================================
+  // INIT
+  // ============================================================
 
-repositories:{},
+  init() {
+    if (this.initialized) {
+      Logger.debug("RepositoryFactory already initialized");
+      return true;
+    }
 
-metadata:{},
+    this.initializing = true;
 
-pending:{},
+    try {
+      Logger.log("RepositoryFactory INIT");
 
+      this.loadRegistry();
+      this.discovery();
+      this.autoRegister();
+      this.refreshPending();
+      this.syncRegistry();
 
-initialized:false,
+      this.initialized = true;
 
-initializing:false,
+      Logger.log(
+        "RepositoryFactory READY v" +
+          this.version +
+          " count=" +
+          this.count()
+      );
 
+      return true;
+    } catch (e) {
+      Logger.error("RepositoryFactory FAILED " + e.message);
+      throw e;
+    } finally {
+      this.initializing = false;
+    }
+  },
 
-discoveryRuns:0,
+  // ============================================================
+  // LOAD REGISTRY
+  // ============================================================
 
+  loadRegistry() {
+    if (typeof RepositoryRegistry === "undefined") {
+      return;
+    }
 
+    try {
+      RepositoryRegistry.list().forEach((entity) => {
+        const repo = RepositoryRegistry.get(entity);
+        if (repo) {
+          this.register(entity, repo);
+        }
+      });
+    } catch (e) {
+      Logger.warn("RepositoryRegistry load failed " + e.message);
+    }
+  },
 
+  // ============================================================
+  // DISCOVERY
+  // ============================================================
 
+  discovery() {
+    this.discoveryRuns++;
 
+    Object.keys(globalThis)
+      .filter((x) => x.endsWith("Repository"))
+      .forEach((name) => {
+        const repo = globalThis[name];
+        if (!repo) {
+          return;
+        }
+        const entity = this.resolveEntity(repo, name);
+        if (entity) {
+          this.register(entity, repo);
+        }
+      });
+  },
 
-// ============================================================
-// INIT
-// ============================================================
+  // ============================================================
+  // ENTITY RESOLVE
+  // ============================================================
 
+  resolveEntity(repo, name) {
+    if (repo.entity) {
+      return repo.entity;
+    }
+    return name
+      .replace("Repository", "")
+      .replace(/([a-z])([A-Z])/g, "$1_$2")
+      .toUpperCase();
+  },
 
-init(){
+  // ============================================================
+  // AUTO REGISTER
+  // ============================================================
 
+  autoRegister() {
+    if (typeof EntityRegistry === "undefined") {
+      return;
+    }
 
-if(this.initialized){
+    EntityRegistry.list().forEach((entity) => {
+      if (entity.startsWith("__TEST_")) {
+        return;
+      }
+      if (this.repositories[entity]) {
+        return;
+      }
 
-Logger.debug(
-"RepositoryFactory already initialized"
-);
+      const meta = EntityRegistry.get(entity);
+      const repoName = meta.repository || this.buildRepositoryName(entity);
+      let repo = this.resolveRepository(repoName);
 
-return true;
+      if (!repo) {
+        repo = this.createFallbackRepository(entity);
+      }
 
-}
+      if (repo) {
+        this.register(entity, repo);
+      }
+    });
+  },
 
+  // ============================================================
+  // BUILD NAME
+  // ============================================================
 
+  buildRepositoryName(entity) {
+    const special = {
+      KPI: "KPIRepository",
+      AUDIT: "AuditRepository",
+      VERSION: "VersionRepository",
+      FINANCIAL_TRANSACTION: "FinancialTransactionRepository",
+    };
 
-this.initializing=true;
+    if (special[entity]) {
+      return special[entity];
+    }
 
+    return entity
+      .split("_")
+      .map((x) => x.charAt(0) + x.slice(1).toLowerCase())
+      .join("") + "Repository";
+  },
 
-try{
+  // ============================================================
+  // FALLBACK
+  // ============================================================
 
+  createFallbackRepository(entity) {
+    if (typeof BaseRepository === "undefined") {
+      return null;
+    }
+
+    const base = BaseRepository;
+
+    const proxy = {
+      entity,
+      version: "BaseRepository-" + base.version,
+      repositoryType: "BASE",
+
+      create(data) {
+        return base.create(entity, data);
+      },
+      findById(id) {
+        return base.findById(entity, id);
+      },
+      findAll(filters) {
+        return base.findAll(entity, filters);
+      },
+      update(id, data) {
+        return base.update(entity, id, data);
+      },
+      delete(id) {
+        return base.delete(entity, id);
+      },
+      restore(id) {
+        return base.restore(entity, id);
+      },
+      exists(id) {
+        return base.exists(entity, id);
+      },
+      count(filters) {
+        return base.count(entity, filters);
+      },
+    };
+
+    return proxy;
+  },
+
+  // ============================================================
+  // REGISTER
+  // ============================================================
+
+  register(entity, repo, options = {}) {
+    if (!entity || !repo) {
+      return false;
+    }
+
+    if (this.repositories[entity] && !options.force) {
+      return false;
+    }
+
+    const contract = this.validate(repo);
+
+    this.repositories[entity] = repo;
+    this.metadata[entity] = {
+      version: repo.version || "unknown",
+      type: repo.repositoryType || "CUSTOM",
+      contract,
+      registered: new Date().toISOString(),
+    };
+
+    delete this.pending[entity];
+
+    Logger.log(
+      "RepositoryFactory REGISTER " +
+        entity +
+        " [" +
+        this.metadata[entity].type +
+        "]"
+    );
+
+    return true;
+  },
+
+  // ============================================================
+  // VALIDATE
+  // ============================================================
+
+  validate(repo) {
+    const required = [
+      "create",
+      "findById",
+      "findAll",
+      "update",
+      "delete",
+      "restore",
+      "exists",
+    ];
+
+    return {
+      status: required.every((x) => typeof repo[x] === "function")
+        ? "OK"
+        : "WARNING",
+      missing: required.filter((x) => typeof repo[x] !== "function"),
+    };
+  },
+
+  // ============================================================
+  // RESOLVE
+  // ============================================================
+
+  resolveRepository(name) {
+    if (globalThis[name]) {
+      return globalThis[name];
+    }
+
+    const key = Object.keys(globalThis).find(
+      (k) => k.toUpperCase() === name.toUpperCase()
+    );
+
+    return key ? globalThis[key] : null;
+  },
+
+  // ============================================================
+  // LEGACY COMPATIBILITY
+  // Repository registration from repositories
+  // ============================================================
+
+  registerLoaded(name, repository) {
+    if (!name || !repository) {
+      Logger.warn("RepositoryFactory.registerLoaded invalid");
+      return false;
+    }
+
+    const entity = this.resolveEntity(repository, name);
+    return this.register(entity, repository);
+  },
+
+  // ============================================================
+  // PENDING
+  // ============================================================
+
+  refreshPending() {
+    let loaded = 0;
+
+    Object.entries(this.pending).forEach(([entity, item]) => {
+      const repo = this.resolveRepository(item.repository);
+      if (repo) {
+        this.register(entity, repo);
+        loaded++;
+      }
+    });
+
+    return loaded;
+  },
+
+  // ============================================================
+  // ACCESS
+  // ============================================================
+
+  get(entity) {
+    if (!this.repositories[entity]) {
+      this.discovery();
+      this.autoRegister();
+    }
+
+    const repo = this.repositories[entity];
+    if (!repo) {
+      throw new Error("Repository not found " + entity);
+    }
+
+    return repo;
+  },
+
+  has(entity) {
+    return !!this.repositories[entity];
+  },
+
+  list() {
+    return Object.keys(this.repositories);
+  },
+
+  count() {
+    return this.list().length;
+  },
+
+  // ============================================================
+  // SYNC
+  // ============================================================
+
+  syncRegistry() {
+    if (typeof RepositoryRegistry === "undefined") {
+      return;
+    }
+
+    if (!RepositoryRegistry.register) {
+      return;
+    }
+
+    Object.entries(this.repositories).forEach(([entity, repo]) => {
+      try {
+        RepositoryRegistry.register(entity, repo);
+      } catch (e) {}
+    });
+  },
+
+  // ============================================================
+  // HEALTH
+  // ============================================================
+
+  health() {
+    const entities =
+      typeof EntityRegistry !== "undefined"
+        ? EntityRegistry.list().filter((e) => !e.startsWith("__TEST_"))
+        : [];
+
+    const loaded = entities.filter((e) => this.has(e));
+
+    return HealthContract.create(
+      "RepositoryFactory",
+      "OK",
+      {
+        version: this.version,
+        loaded: this.count(),
+        entities: entities.length,
+        coverage: entities.length
+          ? Math.round((loaded.length / entities.length) * 100)
+          : 0,
+        repositories: this.list(),
+        types: this.metadata,
+      }
+    );
+  },
+
+  // ============================================================
+  // DIAGNOSTICS
+  // ============================================================
+
+  diagnostics() {
+    return {
+      version: this.version,
+      count: this.count(),
+      repositories: this.metadata,
+      discoveryRuns: this.discoveryRuns,
+      pending: this.pending,
+    };
+  },
+
+  reset() {
+    this.repositories = {};
+    this.metadata = {};
+    this.pending = {};
+    this.initialized = false;
+    Logger.log("RepositoryFactory RESET");
+  },
+};
+
+globalThis.RepositoryFactory = RepositoryFactory;
 
 Logger.log(
-"RepositoryFactory INIT"
-);
-
-
-
-this.loadRegistry();
-
-
-
-this.discovery();
-
-
-
-this.autoRegister();
-
-
-
-this.refreshPending();
-
-
-
-this.syncRegistry();
-
-
-
-this.initialized=true;
-
-
-
-Logger.log(
-
-"RepositoryFactory READY v"+
-this.version+
-" count="+
-this.count()
-
-);
-
-
-
-return true;
-
-
-}
-catch(e){
-
-
-Logger.error(
-"RepositoryFactory FAILED "+
-e.message
-);
-
-
-throw e;
-
-
-}
-finally{
-
-
-this.initializing=false;
-
-
-}
-
-
-
-},
-
-
-
-
-
-
-
-// ============================================================
-// LOAD REGISTRY
-// ============================================================
-
-
-loadRegistry(){
-
-
-if(
-typeof RepositoryRegistry==="undefined"
-){
-
-return;
-
-}
-
-
-
-try{
-
-
-RepositoryRegistry.list()
-.forEach(entity=>{
-
-
-const repo =
-RepositoryRegistry.get(entity);
-
-
-
-if(repo){
-
-this.register(
-entity,
-repo
-);
-
-}
-
-
-});
-
-
-}
-catch(e){
-
-Logger.warn(
-"RepositoryRegistry load failed "+
-e.message
-);
-
-}
-
-
-},
-
-
-
-
-
-
-
-// ============================================================
-// DISCOVERY
-// ============================================================
-
-
-discovery(){
-
-
-this.discoveryRuns++;
-
-
-
-Object.keys(globalThis)
-
-.filter(
-x=>
-x.endsWith("Repository")
-)
-
-.forEach(name=>{
-
-
-const repo =
-globalThis[name];
-
-
-
-if(
-!repo
-){
-
-return;
-
-}
-
-
-
-const entity =
-this.resolveEntity(
-repo,
-name
-);
-
-
-
-if(entity){
-
-this.register(
-entity,
-repo
-);
-
-}
-
-
-
-});
-
-
-},
-
-
-
-
-
-
-
-// ============================================================
-// ENTITY RESOLVE
-// ============================================================
-
-
-resolveEntity(repo,name){
-
-
-if(repo.entity){
-
-return repo.entity;
-
-}
-
-
-return name
-
-.replace("Repository","")
-
-.replace(
-/([a-z])([A-Z])/g,
-"$1_$2"
-)
-
-.toUpperCase();
-
-
-},
-
-
-
-
-
-
-
-// ============================================================
-// AUTO REGISTER
-// ============================================================
-
-
-autoRegister(){
-
-
-if(
-typeof EntityRegistry==="undefined"
-){
-
-return;
-
-}
-
-
-
-EntityRegistry.list()
-
-.forEach(entity=>{
-
-
-if(
-entity.startsWith("__TEST_")
-){
-
-return;
-
-}
-
-
-
-if(
-this.repositories[entity]
-){
-
-return;
-
-}
-
-
-
-const meta =
-EntityRegistry.get(entity);
-
-
-
-const repoName =
-meta.repository ||
-this.buildRepositoryName(entity);
-
-
-
-let repo =
-this.resolveRepository(repoName);
-
-
-
-if(!repo){
-
-
-repo =
-this.createFallbackRepository(
-entity
-);
-
-
-}
-
-
-
-if(repo){
-
-
-this.register(
-entity,
-repo
-);
-
-
-}
-
-
-
-});
-
-
-},
-
-
-
-
-
-
-
-// ============================================================
-// BUILD NAME
-// ============================================================
-
-
-buildRepositoryName(entity){
-
-
-const special={
-
-
-KPI:"KPIRepository",
-
-AUDIT:"AuditRepository",
-
-VERSION:"VersionRepository",
-
-FINANCIAL_TRANSACTION:
-"FinancialTransactionRepository"
-
-
-};
-
-
-
-if(
-special[entity]
-){
-
-return special[entity];
-
-}
-
-
-
-return entity
-
-.split("_")
-
-.map(x=>
-
-x.charAt(0)+
-x.slice(1).toLowerCase()
-
-)
-
-.join("")
-+
-"Repository";
-
-
-},
-
-
-
-
-
-
-
-// ============================================================
-// FALLBACK
-// ============================================================
-
-
-createFallbackRepository(entity){
-
-
-if(
-typeof BaseRepository==="undefined"
-){
-
-return null;
-
-}
-
-
-
-const base =
-BaseRepository;
-
-
-
-const proxy = {
-
-
-entity,
-
-
-version:
-"BaseRepository-"+base.version,
-
-
-repositoryType:
-"BASE",
-
-
-
-create(data){
-
-return base.create(
-entity,
-data
-);
-
-},
-
-
-
-findById(id){
-
-return base.findById(
-entity,
-id
-);
-
-},
-
-
-
-findAll(filters){
-
-return base.findAll(
-entity,
-filters
-);
-
-},
-
-
-
-update(id,data){
-
-return base.update(
-entity,
-id,
-data
-);
-
-},
-
-
-
-delete(id){
-
-return base.delete(
-entity,
-id
-);
-
-},
-
-
-
-restore(id){
-
-return base.restore(
-entity,
-id
-);
-
-},
-
-
-
-exists(id){
-
-return base.exists(
-entity,
-id
-);
-
-},
-
-
-
-count(filters){
-
-return base.count(
-entity,
-filters
-);
-
-}
-
-
-
-};
-
-
-
-return proxy;
-
-
-},
-
-
-
-
-
-
-
-// ============================================================
-// REGISTER
-// ============================================================
-
-
-register(entity,repo,options={}){
-
-
-if(
-!entity ||
-!repo
-){
-
-return false;
-
-}
-
-
-
-if(
-this.repositories[entity]
-&&
-!options.force
-){
-
-return false;
-
-}
-
-
-
-const contract =
-this.validate(repo);
-
-
-
-this.repositories[entity]=repo;
-
-
-
-this.metadata[entity]={
-
-
-version:
-repo.version||"unknown",
-
-
-type:
-repo.repositoryType ||
-"CUSTOM",
-
-
-contract,
-
-
-registered:
-new Date().toISOString()
-
-
-};
-
-
-
-delete this.pending[entity];
-
-
-
-Logger.log(
-
-"RepositoryFactory REGISTER "+
-entity+
-" ["+
-this.metadata[entity].type+
-"]"
-
-);
-
-
-
-return true;
-
-
-},
-
-
-
-
-
-
-
-// ============================================================
-// VALIDATE
-// ============================================================
-
-
-validate(repo){
-
-
-const required=[
-
-"create",
-
-"findById",
-
-"findAll",
-
-"update",
-
-"delete",
-
-"restore",
-
-"exists"
-
-];
-
-
-
-return {
-
-
-status:
-
-required.every(
-x=>
-typeof repo[x]==="function"
-)
-
-?
-
-"OK"
-
-:
-
-"WARNING",
-
-
-
-missing:
-
-required.filter(
-x=>
-typeof repo[x]!=="function"
-)
-
-
-
-};
-
-
-},
-
-
-
-
-
-
-
-// ============================================================
-// RESOLVE
-// ============================================================
-
-
-resolveRepository(name){
-
-
-if(
-globalThis[name]
-){
-
-return globalThis[name];
-
-}
-
-
-
-const key =
-Object.keys(globalThis)
-.find(
-
-k=>
-
-k.toUpperCase()
-===
-name.toUpperCase()
-
-);
-
-
-
-return key
-?
-globalThis[key]
-:
-null;
-
-
-},
-
-
-
-
-
-
-
-// ============================================================
-// PENDING
-// ============================================================
-
-
-refreshPending(){
-
-
-let loaded=0;
-
-
-
-Object.entries(this.pending)
-.forEach(
-([entity,item])=>{
-
-
-const repo =
-this.resolveRepository(
-item.repository
-);
-
-
-
-if(repo){
-
-this.register(
-entity,
-repo
-);
-
-loaded++;
-
-}
-
-
-
-});
-
-
-return loaded;
-
-
-},
-
-
-
-
-
-
-
-// ============================================================
-// ACCESS
-// ============================================================
-
-
-get(entity){
-
-
-if(
-!this.repositories[entity]
-){
-
-this.discovery();
-
-this.autoRegister();
-
-}
-
-
-
-const repo =
-this.repositories[entity];
-
-
-
-if(!repo){
-
-throw new Error(
-"Repository not found "+
-entity
-);
-
-}
-
-
-
-return repo;
-
-
-},
-
-
-
-has(entity){
-
-return !!this.repositories[entity];
-
-},
-
-
-
-list(){
-
-return Object.keys(
-this.repositories
-);
-
-},
-
-
-
-count(){
-
-return this.list().length;
-
-},
-
-
-
-
-
-
-
-// ============================================================
-// SYNC
-// ============================================================
-
-
-syncRegistry(){
-
-
-if(
-typeof RepositoryRegistry==="undefined"
-){
-
-return;
-
-}
-
-
-
-if(
-!RepositoryRegistry.register
-){
-
-return;
-
-}
-
-
-
-Object.entries(
-this.repositories
-)
-
-.forEach(
-([entity,repo])=>{
-
-
-try{
-
-RepositoryRegistry.register(
-entity,
-repo
-);
-
-
-}
-catch(e){}
-
-
-
-});
-
-
-},
-
-
-
-
-
-
-
-// ============================================================
-// HEALTH
-// ============================================================
-
-
-health(){
-
-
-const entities =
-typeof EntityRegistry!=="undefined"
-?
-EntityRegistry.list()
-.filter(
-e=>
-!e.startsWith("__TEST_")
-)
-:
-[];
-
-
-
-const loaded =
-entities.filter(
-e=>
-this.has(e)
-);
-
-
-
-return HealthContract.create(
-
-"RepositoryFactory",
-
-"OK",
-
-{
-
-
-version:this.version,
-
-
-loaded:this.count(),
-
-
-entities:entities.length,
-
-
-coverage:
-entities.length
-?
-Math.round(
-loaded.length/entities.length*100
-)
-:
-0,
-
-
-repositories:this.list(),
-
-
-types:this.metadata
-
-
-}
-
-
-);
-
-
-},
-
-
-
-
-
-
-
-// ============================================================
-// DIAGNOSTICS
-// ============================================================
-
-
-diagnostics(){
-
-
-return{
-
-
-version:this.version,
-
-
-count:this.count(),
-
-
-repositories:this.metadata,
-
-
-discoveryRuns:this.discoveryRuns,
-
-
-pending:this.pending
-
-
-};
-
-
-},
-
-
-
-
-
-
-
-reset(){
-
-
-this.repositories={};
-
-this.metadata={};
-
-this.pending={};
-
-
-this.initialized=false;
-
-
-Logger.log(
-"RepositoryFactory RESET"
-);
-
-
-}
-
-
-
-};
-
-
-
-
-
-globalThis.RepositoryFactory =
-RepositoryFactory;
-
-
-
-Logger.log(
-"RepositoryFactory GLOBAL READY v"+
-RepositoryFactory.version
+  "RepositoryFactory GLOBAL READY v" + RepositoryFactory.version
 );
