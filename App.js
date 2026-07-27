@@ -1,651 +1,878 @@
-console.log("App");
+// ============================================================
+// App v3.2.0
+// TaxControl ERP Application Facade
+//
+// Application lifecycle controller
+//
+// Architecture:
+//
+// App
+//  |
+//  v
+// SystemInit
+//  |
+//  v
+// ERP Core
+//
+// ============================================================
 
 
-/**
- * ============================================================
- * App v3.1.0
- *
- * TaxControl ERP Application Facade
- *
- * Application lifecycle controller
- *
- * ============================================================
- */
+console.log("App v3.2.0");
+
 
 
 const App = {
 
 
-    version:"3.1.0",
+version:"3.2.0",
 
-    apiVersion:"3.0",
+apiVersion:"3.2",
 
-    name:"TaxControl ERP",
+name:"TaxControl ERP",
 
-    platform:"Google Apps Script",
+platform:"Google Apps Script",
 
 
-    state:{
 
-        started:false,
+state:{
 
-        starting:false,
 
-        startedAt:null,
+started:false,
 
-        lastError:null
+starting:false,
 
-    },
+startedAt:null,
 
+lastError:null
 
 
+},
 
 
-    // ============================================================
-    // INIT
-    // ============================================================
 
-    init(){
 
 
-        Logger.log(
-            "APP INIT"
-        );
 
 
-        if(
-            typeof CoreFunctions==="undefined"
-        ){
+// ============================================================
+// INIT
+// ============================================================
 
-            throw new Error(
-                "CoreFunctions not loaded"
-            );
 
-        }
+init(){
 
 
-        return true;
 
+Logger.log(
+"APP INIT"
+);
 
-    },
 
 
+if(
+typeof SystemInit==="undefined"
+){
 
+throw new Error(
+"SystemInit not loaded"
+);
 
+}
 
 
 
-    // ============================================================
-    // START ERP
-    // ============================================================
+return true;
 
 
-    async start(){
+},
 
 
-        this.init();
 
 
 
-        if(this.state.started){
 
-            Logger.warn(
-                "ERP already started"
-            );
 
-            return {
+// ============================================================
+// START ERP
+// ============================================================
 
-                status:"ALREADY_STARTED",
 
-                startedAt:
-                this.state.startedAt
+start(){
 
-            };
 
-        }
+this.init();
 
 
 
-        if(this.state.starting){
+if(this.state.started){
 
-            throw new Error(
-                "ERP startup already running"
-            );
 
-        }
+Logger.warn(
+"ERP already started"
+);
 
 
 
+return {
 
-        try{
+status:"ALREADY_STARTED",
 
+startedAt:this.state.startedAt
 
-            this.state.starting=true;
+};
 
 
+}
 
-            Logger.log(
-                "========== ERP BOOT START =========="
-            );
 
 
 
-            const result =
-                await CoreFunctions.start();
+if(this.state.starting){
 
 
+throw new Error(
+"ERP startup already running"
+);
 
-            this.state.started=true;
 
-            this.state.starting=false;
+}
 
-            this.state.startedAt =
-                new Date();
 
 
 
-            Logger.log(
-                "========== ERP BOOT COMPLETE =========="
-            );
+try{
 
 
+this.state.starting=true;
 
-            return {
 
-                status:"READY",
 
-                result,
+Logger.log(
+"========== ERP BOOT START =========="
+);
 
-                startedAt:
-                this.state.startedAt
 
-            };
 
 
-        }
-        catch(e){
 
+const result =
+SystemInit.init();
 
-            this.state.starting=false;
 
-            this.state.lastError =
-                e.message;
 
 
 
-            Logger.error(
-                "ERP START FAILED "
-                +e.message
-            );
 
+this.state.started=true;
 
-            throw e;
 
+this.state.starting=false;
 
-        }
 
+this.state.startedAt =
+new Date();
 
 
-    },
 
 
+Logger.log(
+"========== ERP BOOT COMPLETE =========="
+);
 
 
 
 
+return {
 
 
-    // ============================================================
-    // HEALTH
-    // ============================================================
+status:"READY",
 
 
-    health(){
+result,
 
 
-        try{
+startedAt:
+this.state.startedAt
 
 
-            const modules={};
+};
 
 
 
-            if(
-                typeof CoreFunctions!=="undefined"
-            ){
 
-                modules.core =
-                    CoreFunctions.health();
+}
+catch(e){
 
-            }
 
+this.state.starting=false;
 
 
-            if(
-                typeof RepositoryFactory!=="undefined"
-            ){
+this.state.lastError =
+e.message;
 
-                modules.repositories =
-                    RepositoryFactory.health();
 
-            }
 
+Logger.error(
 
+"ERP START FAILED "+
+e.message
 
-            if(
-                typeof SchemaRegistry!=="undefined"
-            ){
+);
 
-                modules.schema =
-                    SchemaRegistry.health();
 
-            }
 
+throw e;
 
 
-            return {
+}
 
 
-                module:"App",
 
-                version:this.version,
+},
 
-                status:
-                this.state.started
-                ?"OK"
-                :"WARNING",
 
 
-                state:this.state,
 
 
-                modules,
 
 
-                timestamp:
-                new Date().toISOString()
+// ============================================================
+// HEALTH
+// ============================================================
 
 
-            };
+health(){
 
 
-        }
-        catch(e){
 
+const modules={};
 
-            return {
 
 
-                module:"App",
+try{
 
-                status:"ERROR",
 
-                error:e.message,
 
+if(
+typeof SystemInit!=="undefined"
+){
 
-                timestamp:
-                new Date().toISOString()
+modules.system =
+SystemInit.health();
 
+}
 
-            };
 
 
-        }
+if(
+typeof EntityMetadata!=="undefined"
+){
 
+modules.metadata =
+EntityMetadata.health?.();
 
+}
 
-    },
 
 
+if(
+typeof EntityRegistry!=="undefined"
+){
 
+modules.entityRegistry =
+EntityRegistry.health?.();
 
+}
 
 
 
-    // ============================================================
-    // DIAGNOSTICS
-    // ============================================================
+if(
+typeof SchemaRegistry!=="undefined"
+){
 
+modules.schemaRegistry =
+SchemaRegistry.health?.();
 
-    diagnostics(){
+}
 
 
-        return {
 
+if(
+typeof SchemaManager!=="undefined"
+){
 
-            application:this.name,
+modules.schemaManager =
+SchemaManager.health?.();
 
-            version:this.version,
+}
 
 
-            state:this.state,
 
+if(
+typeof Database!=="undefined"
+){
 
-            core:
-            typeof CoreFunctions!=="undefined"
-            ?
-            CoreFunctions.diagnostics?.()
-            :
-            null,
+modules.database =
+Database.health?.();
 
+}
 
 
-            repositories:
-            typeof RepositoryFactory!=="undefined"
-            ?
-            RepositoryFactory.diagnostics()
-            :
-            null,
 
+if(
+typeof RepositoryFactory!=="undefined"
+){
 
+modules.repositories =
+RepositoryFactory.health?.();
 
-            schema:
-            typeof SchemaRegistry!=="undefined"
-            ?
-            SchemaRegistry.diagnostics()
-            :
-            null,
+}
 
 
-            timestamp:
-            new Date().toISOString()
 
+if(
+typeof EntityService!=="undefined"
+){
 
-        };
+modules.entityService =
+EntityService.health?.();
 
+}
 
-    },
 
 
 
 
 
+return {
 
 
+module:"App",
 
-    // ============================================================
-    // RESET DEVELOPMENT
-    // ============================================================
 
+version:this.version,
 
-    reset(){
 
+status:
+this.state.started
+?
+"OK"
+:
+"WARNING",
 
-        Logger.warn(
-            "ERP RESET START"
-        );
 
 
+state:this.state,
 
-        try{
 
+modules,
 
 
-            this.state={
+timestamp:
+new Date().toISOString()
 
-                started:false,
 
-                starting:false,
+};
 
-                startedAt:null,
 
-                lastError:null
 
-            };
+}
+catch(e){
 
 
 
+return {
 
 
-            // глобальное состояние
+module:"App",
 
-            globalThis.__ERP_STATE__={
 
-                started:false,
+status:"ERROR",
 
-                starting:false,
 
-                startedAt:null
+error:e.message,
 
-            };
 
+timestamp:
+new Date().toISOString()
 
 
+};
 
 
+}
 
 
-            // SystemInit
 
-            if(
-                typeof SystemInit!=="undefined"
-            ){
+},
 
-                SystemInit.initialized=false;
 
-                SystemInit.started={};
 
-                SystemInit.bootLog=[];
 
-            }
 
 
 
+// ============================================================
+// DIAGNOSTICS
+// ============================================================
 
 
+diagnostics(){
 
 
 
-            // SchemaRegistry
+return {
 
-            if(
-                typeof SchemaRegistry!=="undefined"
-            ){
 
-                SchemaRegistry.reinitialize?.();
 
-            }
+application:this.name,
 
 
+version:this.version,
 
 
+state:this.state,
 
 
 
-            // SchemaManager
+system:
 
-            if(
-                typeof SchemaManager!=="undefined"
-            ){
+typeof SystemInit!=="undefined"
 
-                SchemaManager.initialized=false;
+?
 
-                SchemaManager.schema={};
+SystemInit.diagnostics?.()
 
-            }
+:
 
+null,
 
 
 
 
+metadata:
 
+typeof EntityMetadata!=="undefined"
 
-            // RepositoryFactory
+?
 
-            if(
-                typeof RepositoryFactory!=="undefined"
-            ){
+EntityMetadata.list?.()
 
-                RepositoryFactory.reset?.();
+:
 
-            }
+null,
 
 
 
 
 
+registry:
 
+typeof EntityRegistry!=="undefined"
 
-            // RepositoryRegistry
+?
 
-            if(
-                typeof RepositoryRegistry!=="undefined"
-                &&
-                RepositoryRegistry.reset
-            ){
+EntityRegistry.diagnostics?.()
 
-                RepositoryRegistry.reset();
+:
 
-            }
+null,
 
 
 
 
 
+schema:
 
+typeof SchemaRegistry!=="undefined"
 
-            // Database
+?
 
-            if(
-                typeof Database!=="undefined"
-            ){
+SchemaRegistry.diagnostics?.()
 
-                Database.initialized=false;
+:
 
-            }
+null,
 
 
 
 
 
+database:
 
+typeof Database!=="undefined"
 
+?
 
-            // EventBus
+Database.diagnostics?.()
 
-            if(
-                typeof EventBus!=="undefined"
-            ){
+:
 
-                EventBus.handlers={};
+null,
 
-            }
 
 
 
 
+repositories:
 
+typeof RepositoryFactory!=="undefined"
 
+?
 
-            // Modules
+RepositoryFactory.diagnostics?.()
 
-            if(
-                typeof ModuleRegistry!=="undefined"
-                &&
-                ModuleRegistry.reset
-            ){
+:
 
-                ModuleRegistry.reset();
+null,
 
-            }
 
 
 
 
+timestamp:
+new Date().toISOString()
 
-            Logger.log(
-                "ERP RESET COMPLETE"
-            );
 
 
+};
 
-            return {
 
+},
 
-                status:"OK",
 
-                message:
-                "ERP reset completed"
 
 
-            };
 
 
 
-        }
-        catch(e){
+// ============================================================
+// RESET DEVELOPMENT
+// ============================================================
 
 
-            Logger.error(
-                "ERP RESET FAILED "
-                +e.message
-            );
+reset(){
 
 
 
-            return {
+Logger.warn(
+"ERP RESET START"
+);
 
-                status:"ERROR",
 
-                error:e.message
 
-            };
+try{
 
 
-        }
 
 
 
-    },
+this.state={
 
 
+started:false,
 
+starting:false,
 
+startedAt:null,
 
+lastError:null
 
 
+};
 
-    // ============================================================
-    // INFO
-    // ============================================================
 
 
-    info(){
 
 
-        return {
+globalThis.__ERP_STATE__={
 
 
-            application:this.name,
+started:false,
 
+starting:false,
 
-            version:this.version,
+startedAt:null
 
 
-            apiVersion:this.apiVersion,
+};
 
 
-            platform:this.platform,
 
 
-            architecture:
-            [
-                "SystemInit",
-                "CoreFunctions",
-                "SchemaRegistry",
-                "RepositoryFactory",
-                "ModuleRegistry"
-            ],
 
 
-            timestamp:
-            new Date().toISOString()
+// System
 
+if(
+typeof SystemInit!=="undefined"
+){
 
-        };
+SystemInit.reset?.();
 
+}
 
-    }
+
+
+
+
+// Metadata
+
+if(
+typeof EntityMetadata!=="undefined"
+){
+
+EntityMetadata.reset?.();
+
+}
+
+
+
+
+
+// Registry
+
+if(
+typeof EntityRegistry!=="undefined"
+){
+
+EntityRegistry.reset?.();
+
+}
+
+
+
+
+
+// Schema Registry
+
+if(
+typeof SchemaRegistry!=="undefined"
+){
+
+SchemaRegistry.reset?.();
+
+}
+
+
+
+
+
+// Schema Manager
+
+if(
+typeof SchemaManager!=="undefined"
+){
+
+SchemaManager.initialized=false;
+
+SchemaManager.schema={};
+
+}
+
+
+
+
+
+// Database
+
+if(
+typeof Database!=="undefined"
+){
+
+
+Database.initialized=false;
+
+Database.status="CREATED";
+
+Database.lastError=null;
+
+Database._metaCache={};
+
+
+}
+
+
+
+
+
+// Repository
+
+if(
+typeof RepositoryFactory!=="undefined"
+){
+
+RepositoryFactory.reset?.();
+
+}
+
+
+
+
+
+if(
+typeof RepositoryRegistry!=="undefined"
+){
+
+RepositoryRegistry.reset?.();
+
+}
+
+
+
+
+
+
+// Events
+
+if(
+typeof EventBus!=="undefined"
+){
+
+EventBus.handlers={};
+
+}
+
+
+
+
+
+// Modules
+
+if(
+typeof ModuleRegistry!=="undefined"
+){
+
+ModuleRegistry.reset?.();
+
+}
+
+
+
+
+
+Logger.log(
+"ERP RESET COMPLETE"
+);
+
+
+
+
+return {
+
+
+status:"OK",
+
+message:
+"ERP reset completed"
+
+
+};
+
+
+
+
+}
+catch(e){
+
+
+
+Logger.error(
+
+"ERP RESET FAILED "+
+e.message
+
+);
+
+
+
+return {
+
+
+status:"ERROR",
+
+error:e.message
+
+
+};
+
+
+
+}
+
+
+
+},
+
+
+
+
+
+
+
+// ============================================================
+// INFO
+// ============================================================
+
+
+info(){
+
+
+
+return {
+
+
+application:this.name,
+
+
+version:this.version,
+
+
+apiVersion:this.apiVersion,
+
+
+platform:this.platform,
+
+
+
+architecture:[
+
+
+"App",
+
+"SystemInit",
+
+"EntityMetadata",
+
+"EntityRegistry",
+
+"SchemaRegistry",
+
+"SchemaManager",
+
+"Database",
+
+"RepositoryFactory",
+
+"EntityService",
+
+"ModuleRegistry"
+
+
+],
+
+
+
+timestamp:
+new Date().toISOString()
+
+
+
+};
+
+
+}
+
 
 
 };
@@ -664,49 +891,41 @@ const App = {
 
 
 
-async function erpStart(){
+function erpStart(){
 
-    return App.start();
+return App.start();
 
 }
-
-
 
 
 
 function erpHealth(){
 
-    return App.health();
+return App.health();
 
 }
-
-
 
 
 
 function erpDiag(){
 
-    return App.diagnostics();
+return App.diagnostics();
 
 }
-
-
 
 
 
 function erpReset(){
 
-    return App.reset();
+return App.reset();
 
 }
 
 
 
-
-
 function erpInfo(){
 
-    return App.info();
+return App.info();
 
 }
 
@@ -720,7 +939,9 @@ globalThis.App=App;
 
 
 
-
 Logger.log(
-    "App READY v"+App.version
+
+"App READY v"+
+App.version
+
 );

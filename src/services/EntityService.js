@@ -1,5 +1,5 @@
 // ============================================================
-// EntityService v5.2.0
+// EntityService v5.3.0 CORE
 // Enterprise Application Service Layer
 // TaxControl ERP Core
 //
@@ -15,20 +15,39 @@
 //    |
 // Database
 //
+// Compatible:
+//
+// EntityRegistry v2.5.1
+// SchemaRegistry v4.0.6
+// RepositoryFactory v2.8.0
+// BaseRepository v5.7+
+//
 // ============================================================
 
 
-console.log("EntityService v5.2.0");
+console.log("EntityService v5.3.0");
 
 
 
 const EntityService = {
 
 
-version:"5.2.0",
+
+version:"5.3.0",
 
 
 ready:false,
+
+
+cacheEnabled:true,
+
+
+cache:{},
+
+
+bulkLimit:500,
+
+
 
 
 
@@ -49,6 +68,14 @@ if(this.ready){
 return true;
 
 }
+
+
+
+Logger.log(
+"EntityService INIT v"+
+this.version
+);
+
 
 
 this.ready=true;
@@ -81,8 +108,21 @@ return true;
 resolve(entity){
 
 
+
+if(!entity){
+
+throw new Error(
+"Entity required"
+);
+
+}
+
+
+
+
 if(
-typeof EntityRegistry!=="undefined" &&
+typeof EntityRegistry!=="undefined"
+&&
 EntityRegistry.resolve
 ){
 
@@ -92,7 +132,36 @@ return EntityRegistry.resolve(entity);
 
 
 
-return entity;
+
+
+if(
+typeof SchemaRegistry!=="undefined"
+&&
+SchemaRegistry.get
+){
+
+
+const schema =
+SchemaRegistry.get(entity);
+
+
+
+if(schema?.entity){
+
+return schema.entity;
+
+}
+
+
+}
+
+
+
+
+
+return String(entity)
+.toUpperCase();
+
 
 
 },
@@ -111,17 +180,25 @@ return entity;
 getMeta(entity){
 
 
-entity=this.resolve(entity);
+
+entity =
+this.resolve(entity);
 
 
+
+
+
+// primary source
 
 if(
-typeof EntityRegistry!=="undefined" &&
+typeof EntityRegistry!=="undefined"
+&&
 EntityRegistry.get
 ){
 
 const meta =
 EntityRegistry.get(entity);
+
 
 
 if(meta){
@@ -130,23 +207,70 @@ return meta;
 
 }
 
+
 }
 
 
 
+
+
+
+// schema fallback
+
 if(
-typeof EntityMetadata!=="undefined" &&
+typeof SchemaRegistry!=="undefined"
+&&
+SchemaRegistry.get
+){
+
+const schema =
+SchemaRegistry.get(entity);
+
+
+
+if(schema){
+
+return schema;
+
+}
+
+
+}
+
+
+
+
+
+
+// metadata fallback
+
+if(
+typeof EntityMetadata!=="undefined"
+&&
 EntityMetadata.get
 ){
 
-return EntityMetadata.get(entity);
+const meta =
+EntityMetadata.get(entity);
+
+
+
+if(meta){
+
+return meta;
 
 }
+
+
+}
+
+
 
 
 
 throw new Error(
-"Metadata missing "+entity
+"Metadata missing "+
+entity
 );
 
 
@@ -167,7 +291,11 @@ throw new Error(
 getRepository(entity){
 
 
-entity=this.resolve(entity);
+
+entity =
+this.resolve(entity);
+
+
 
 
 
@@ -183,7 +311,10 @@ throw new Error(
 
 
 
+
+
 return RepositoryFactory.get(entity);
+
 
 
 },
@@ -202,28 +333,48 @@ return RepositoryFactory.get(entity);
 prepareData(entity,data={}){
 
 
+
 const result={
 ...data
 };
 
 
 
-const meta=
+const meta =
 this.getMeta(entity);
 
 
 
 
-// ORGANIZATION
+
+// Organization scope
+
+const organizationEnabled =
+
+meta.organization!==false
+
+||
+
+meta.options?.organization===true;
+
+
+
+
+
 
 if(
-meta.organization!==false &&
+organizationEnabled
+&&
 typeof OrganizationContext!=="undefined"
 ){
 
 
+if(
+!result.OrganizationID
+){
+
+
 result.OrganizationID =
-result.OrganizationID ||
 OrganizationContext.get();
 
 
@@ -231,21 +382,52 @@ OrganizationContext.get();
 
 
 
+}
 
-// TENANT
+
+
+
+
+
+// Tenant scope
+
+const tenantEnabled =
+
+meta.tenant!==false
+
+||
+
+meta.options?.tenant===true;
+
+
+
+
 
 if(
-meta.tenant!==false &&
+tenantEnabled
+&&
 typeof TenantContext!=="undefined"
 ){
 
 
+if(
+!result.TenantID
+){
+
+
 result.TenantID =
-result.TenantID ||
 TenantContext.get();
 
 
 }
+
+
+
+}
+
+
+
+
 
 
 
@@ -265,12 +447,22 @@ return result;
 // ============================================================
 
 
-generateId(meta,data){
+generateId(entity,data){
+
+
+
+const meta =
+this.getMeta(entity);
+
+
+
+const idField =
+meta.idField;
 
 
 
 if(
-!meta.idField
+!idField
 ){
 
 return data;
@@ -279,8 +471,10 @@ return data;
 
 
 
+
+
 if(
-data[meta.idField]
+data[idField]
 ){
 
 return data;
@@ -290,22 +484,26 @@ return data;
 
 
 
+
 if(
-typeof IdService!=="undefined" &&
+typeof IdService!=="undefined"
+&&
 IdService.generate
 ){
 
 
-data[meta.idField]=
+data[idField]=
+
 IdService.generate(
 
 meta.idPrefix ||
-meta.idField
+idField
 
 );
 
 
 }
+
 
 
 
@@ -330,31 +528,21 @@ validate(entity,data){
 
 
 if(
-typeof EntityValidator!=="undefined" &&
+typeof EntityValidator!=="undefined"
+&&
 EntityValidator.validate
 ){
 
 
+
 return EntityValidator.validate(
-entity,
+
+this.resolve(entity),
+
 data
+
 );
 
-
-}
-
-
-
-if(
-typeof EntityMetadata!=="undefined" &&
-EntityMetadata.validate
-){
-
-
-return EntityMetadata.validate(
-entity,
-data
-);
 
 
 }
@@ -380,12 +568,18 @@ return true;
 create(entity,data={}){
 
 
-entity=this.resolve(entity);
+
+entity =
+this.resolve(entity);
 
 
 
-const meta=
+
+
+const meta =
 this.getMeta(entity);
+
+
 
 
 
@@ -396,17 +590,25 @@ meta,
 
 
 
-data=this.prepareData(
+
+
+data =
+this.prepareData(
 entity,
 data
 );
 
 
 
-data=this.generateId(
-meta,
+
+
+data =
+this.generateId(
+entity,
 data
 );
+
+
 
 
 
@@ -417,22 +619,40 @@ data
 
 
 
-const result=
-this.getRepository(entity)
-.create(
-data
-);
+
+
+
+const repo =
+this.getRepository(entity);
+
+
+
+
+
+const result =
+repo.create(data);
+
+
 
 
 
 
 this.emit(
+
 entity,
+
 "created",
+
 null,
+
 result,
+
 "CREATE"
+
 );
+
+
+
 
 
 
@@ -455,14 +675,24 @@ return result;
 findById(entity,id,options={}){
 
 
-entity=this.resolve(entity);
+
+entity =
+this.resolve(entity);
+
+
+
 
 
 return this.getRepository(entity)
+
 .findById(
+
 id,
+
 options
+
 );
+
 
 
 },
@@ -471,7 +701,7 @@ options
 
 
 
-// compatibility
+
 
 getById(entity,id,options={}){
 
@@ -489,17 +719,29 @@ options
 
 
 
+
+
 findAll(entity,filters={},options={}){
 
 
-entity=this.resolve(entity);
+
+entity =
+this.resolve(entity);
+
+
+
 
 
 return this.getRepository(entity)
+
 .findAll(
+
 filters,
+
 options
+
 );
+
 
 
 },
@@ -508,11 +750,16 @@ options
 
 
 
+
+
 findWhere(entity,criteria={},options={}){
 
 
-const repo=
+
+const repo =
 this.getRepository(entity);
+
+
 
 
 
@@ -520,12 +767,16 @@ if(
 typeof repo.findWhere==="function"
 ){
 
+
 return repo.findWhere(
 criteria,
 options
 );
 
+
 }
+
+
 
 
 
@@ -545,14 +796,12 @@ options
 
 
 
-exists(entity,id,options={}){
+exists(entity,id){
 
 
 return this.getRepository(entity)
-.exists(
-id,
-options
-);
+
+.exists(id);
 
 
 },
@@ -563,21 +812,24 @@ options
 
 
 
-existsBy(entity,field,value,options={}){
+existsBy(entity,field,value){
 
 
-const repo=
+
+const repo =
 this.getRepository(entity);
 
 
 
-if(repo.existsBy){
+if(
+repo.existsBy
+){
 
 return repo.existsBy(
 field,
-value,
-options
+value
 );
+
 
 }
 
@@ -597,16 +849,16 @@ return false;
 count(entity,filters={}){
 
 
-const repo=
+const repo =
 this.getRepository(entity);
 
 
 
-if(repo.count){
+if(
+repo.count
+){
 
-return repo.count(
-filters
-);
+return repo.count(filters);
 
 }
 
@@ -615,17 +867,12 @@ filters
 return this.findAll(
 entity,
 filters
-).length;
+)
+.length;
+
 
 
 },
-
-
-
-
-
-
-
 // ============================================================
 // UPDATE
 // ============================================================
@@ -634,11 +881,12 @@ filters
 update(entity,id,data={}){
 
 
-entity=this.resolve(entity);
+entity =
+this.resolve(entity);
 
 
 
-const meta=
+const meta =
 this.getMeta(entity);
 
 
@@ -650,62 +898,129 @@ meta,
 
 
 
-const before=
+
+
+const before =
 this.findById(
+
 entity,
+
 id,
+
 {
 includeDeleted:true
 }
+
 );
+
+
 
 
 
 if(!before){
 
 throw new Error(
+
 entity+
 " not found "+
 id
+
 );
 
 }
 
 
 
-data=this.prepareData(
+
+
+
+data =
+this.prepareData(
 entity,
 data
 );
+
+
 
 
 
 this.validate(
+
 entity,
+
 {
+
 ...before,
+
 ...data
+
 }
+
 );
 
 
 
-const result=
+
+
+const result =
+
 this.getRepository(entity)
+
 .update(
+
 id,
+
 data
+
 );
+
+
+
+
+
+
+this.invalidateCache(
+entity,
+id
+);
+
+
 
 
 
 this.emit(
+
 entity,
+
 "updated",
+
 before,
+
 result,
+
 "UPDATE"
+
 );
+
+
+
+
+
+this.audit(
+
+"UPDATE",
+
+entity,
+
+id,
+
+before,
+
+result
+
+);
+
+
 
 
 
@@ -728,11 +1043,13 @@ return result;
 delete(entity,id){
 
 
-entity=this.resolve(entity);
+
+entity =
+this.resolve(entity);
 
 
 
-const meta=
+const meta =
 this.getMeta(entity);
 
 
@@ -744,30 +1061,83 @@ meta,
 
 
 
-const before=
+
+
+
+const before =
 this.findById(
+
 entity,
+
 id,
+
 {
 includeDeleted:true
 }
+
 );
 
 
 
-const result=
+
+
+
+const result =
+
 this.getRepository(entity)
+
 .delete(id);
 
 
 
-this.emit(
+
+
+
+this.invalidateCache(
 entity,
-"deleted",
-before,
-result,
-"DELETE"
+id
 );
+
+
+
+
+
+
+this.emit(
+
+entity,
+
+"deleted",
+
+before,
+
+result,
+
+"DELETE"
+
+);
+
+
+
+
+
+
+this.audit(
+
+"DELETE",
+
+entity,
+
+id,
+
+before,
+
+result
+
+);
+
+
+
 
 
 
@@ -790,11 +1160,13 @@ return result;
 restore(entity,id){
 
 
-entity=this.resolve(entity);
+
+entity =
+this.resolve(entity);
 
 
 
-const meta=
+const meta =
 this.getMeta(entity);
 
 
@@ -806,19 +1178,45 @@ meta,
 
 
 
-const result=
+
+
+const result =
+
 this.getRepository(entity)
+
 .restore(id);
 
 
 
-this.emit(
+
+
+
+this.invalidateCache(
 entity,
-"restored",
-null,
-result,
-"RESTORE"
+id
 );
+
+
+
+
+
+
+this.emit(
+
+entity,
+
+"restored",
+
+null,
+
+result,
+
+"RESTORE"
+
+);
+
+
+
 
 
 
@@ -834,20 +1232,72 @@ return result;
 
 
 // ============================================================
-// BULK
+// BULK CREATE
 // ============================================================
 
 
 bulkCreate(entity,list=[]){
 
 
-return list.map(
-item=>
+
+if(
+!Array.isArray(list)
+){
+
+throw new Error(
+"Bulk data must be array"
+);
+
+}
+
+
+
+
+
+const result=[];
+
+
+
+for(
+let i=0;
+i<list.length;
+i+=this.bulkLimit
+){
+
+
+
+const batch =
+list.slice(
+i,
+i+this.bulkLimit
+);
+
+
+
+
+batch.forEach(item=>{
+
+
+result.push(
+
 this.create(
 entity,
 item
 )
+
 );
+
+
+
+});
+
+
+
+}
+
+
+
+return result;
 
 
 },
@@ -856,16 +1306,27 @@ item
 
 
 
-bulkUpdate(entity,ids,data){
+
+
+// ============================================================
+// BULK UPDATE
+// ============================================================
+
+
+bulkUpdate(entity,ids,data={}){
+
 
 
 return ids.map(
+
 id=>
+
 this.update(
 entity,
 id,
 data
 )
+
 );
 
 
@@ -887,28 +1348,39 @@ transaction(callback){
 
 
 if(
-typeof TransactionManager!=="undefined" &&
+typeof TransactionManager!=="undefined"
+&&
 TransactionManager.run
 ){
+
 
 return TransactionManager.run(
 callback
 );
 
+
 }
 
 
 
+
+
+
 if(
-typeof BaseRepository!=="undefined" &&
+typeof BaseRepository!=="undefined"
+&&
 BaseRepository.transaction
 ){
+
 
 return BaseRepository.transaction(
 callback
 );
 
+
 }
+
+
 
 
 
@@ -924,7 +1396,7 @@ return callback();
 
 
 // ============================================================
-// PERMISSION
+// PERMISSIONS
 // ============================================================
 
 
@@ -942,16 +1414,32 @@ return;
 
 
 
+
+
+const permissions =
+meta.permissions ||
+meta.options?.permissions;
+
+
+
+
+
+
 const permission =
-meta.permissions?.[action];
+permissions?.[action];
+
+
+
 
 
 
 if(permission){
 
+
 SecurityGuard.check(
 permission
 );
+
 
 }
 
@@ -975,7 +1463,8 @@ emit(entity,type,before,after,action){
 
 
 if(
-typeof EventBus==="undefined" ||
+typeof EventBus==="undefined"
+||
 !EventBus.emit
 ){
 
@@ -985,13 +1474,21 @@ return;
 
 
 
-const meta=
+
+
+
+const meta =
 this.getMeta(entity);
+
+
+
 
 
 
 const event =
 meta.events?.[type];
+
+
 
 
 
@@ -1003,26 +1500,287 @@ return;
 
 
 
+
+
 EventBus.emit(
 
 event,
 
 {
 
+
 entity,
 
 action,
+
 
 before,
 
 after,
 
+
 source:"EntityService",
+
 
 timestamp:
 new Date().toISOString()
 
+
 }
+
+
+);
+
+
+
+},
+
+
+
+
+
+
+
+// ============================================================
+// AUDIT
+// ============================================================
+
+
+audit(action,entity,id,before,after){
+
+
+
+if(
+typeof AuditLog==="undefined"
+){
+
+return;
+
+}
+
+
+
+if(
+typeof AuditLog.write!=="function"
+){
+
+return;
+
+}
+
+
+
+
+
+AuditLog.write({
+
+action,
+
+
+entity,
+
+
+entityId:id,
+
+
+before,
+
+
+after,
+
+
+source:"EntityService",
+
+
+timestamp:
+new Date().toISOString()
+
+
+});
+
+
+
+},
+
+
+
+
+
+
+
+// ============================================================
+// CACHE
+// ============================================================
+
+
+cacheKey(entity,id){
+
+
+return entity+
+":"+
+id;
+
+
+},
+
+
+
+
+
+
+
+getCached(entity,id){
+
+
+
+if(
+!this.cacheEnabled
+){
+
+return null;
+
+}
+
+
+
+return this.cache[
+this.cacheKey(entity,id)
+]
+||
+null;
+
+
+},
+
+
+
+
+
+
+
+setCache(entity,id,data){
+
+
+
+if(
+!this.cacheEnabled
+){
+
+return data;
+
+}
+
+
+
+
+
+this.cache[
+
+this.cacheKey(entity,id)
+
+]=data;
+
+
+
+return data;
+
+
+},
+
+
+
+
+
+
+
+invalidateCache(entity,id){
+
+
+
+delete this.cache[
+
+this.cacheKey(
+entity,
+id
+)
+
+];
+
+
+},
+
+
+
+
+
+
+
+clearCache(){
+
+
+this.cache={};
+
+
+},
+
+
+
+
+
+
+
+// ============================================================
+// HEALTH
+// ============================================================
+
+
+health(){
+
+
+
+return HealthContract.create(
+
+"EntityService",
+
+this.ready
+?
+"OK"
+:
+"WARNING",
+
+{
+
+
+version:this.version,
+
+
+repositoryFactory:
+
+typeof RepositoryFactory!=="undefined",
+
+
+entityRegistry:
+
+typeof EntityRegistry!=="undefined",
+
+
+eventBus:
+
+typeof EventBus!=="undefined",
+
+
+cache:
+
+this.cacheEnabled,
+
+
+bulkLimit:
+
+this.bulkLimit
+
+
+}
+
 
 );
 
@@ -1044,7 +1802,11 @@ new Date().toISOString()
 diagnostics(){
 
 
-return{
+
+return {
+
+
+module:"EntityService",
 
 
 version:this.version,
@@ -1053,28 +1815,65 @@ version:this.version,
 ready:this.ready,
 
 
-repositoryFactory:
+cacheSize:
+
+Object.keys(
+this.cache
+).length,
+
+
+
+bulkLimit:
+
+this.bulkLimit,
+
+
+
+dependencies:{
+
+
+RepositoryFactory:
+
 typeof RepositoryFactory!=="undefined",
 
 
-entityRegistry:
+EntityRegistry:
+
 typeof EntityRegistry!=="undefined",
 
 
-eventBus:
+SchemaRegistry:
+
+typeof SchemaRegistry!=="undefined",
+
+
+EventBus:
+
 typeof EventBus!=="undefined",
+
+
+AuditLog:
+
+typeof AuditLog!=="undefined"
+
+
+},
+
 
 
 
 features:[
 
+
 "CRUD",
+
+"RepositoryPattern",
+
+"MetadataResolution",
 
 "Validation",
 
 "AutoID",
-
-"RepositoryPattern",
 
 "OrganizationScope",
 
@@ -1086,18 +1885,23 @@ features:[
 
 "Events",
 
-"AuditReady",
+"Audit",
 
-"VersioningReady",
+"Cache",
 
 "BulkOperations",
 
-"Transactions"
+"Transactions",
+
+"Permissions"
+
 
 ]
 
 
+
 };
+
 
 
 },
@@ -1109,44 +1913,32 @@ features:[
 
 
 // ============================================================
-// HEALTH
+// RESET
 // ============================================================
 
 
-health(){
+reset(){
 
 
-return HealthContract.create(
 
-"EntityService",
-
-this.ready
-?
-"OK"
-:
-"WARNING",
-
-{
+this.cache={};
 
 
-version:this.version,
+this.ready=false;
 
 
-architecture:
-"Enterprise Application Service Layer",
 
-
-diagnostics:
-this.diagnostics()
-
-
-}
-
-
+Logger.log(
+"EntityService RESET"
 );
 
 
+
 }
+
+
+
+
 
 
 
@@ -1164,6 +1956,8 @@ EntityService;
 
 
 Logger.log(
+
 "EntityService GLOBAL READY v"+
 EntityService.version
+
 );
