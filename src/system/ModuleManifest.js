@@ -837,39 +837,94 @@ events:[
 
 
 
-
-
-
 // ============================================================
-// API
+// MANIFEST API v2.1.1
+// Non enumerable methods
 // ============================================================
 
 
-ERP_MODULE_MANIFEST.list=function(){
+Object.defineProperty(
+ERP_MODULE_MANIFEST,
+"manifestVersion",
+{
+    enumerable:false,
+    value:"2.1.1"
+});
+
+
+
+
+// ------------------------------------------------------------
+// LIST
+// ------------------------------------------------------------
+
+Object.defineProperty(
+ERP_MODULE_MANIFEST,
+"list",
+{
+
+enumerable:false,
+
+
+value:function(){
 
 
 return Object.keys(this)
 
-.filter(
-x=>
-typeof this[x]==="object"
+.filter(name=>{
+
+
+const item=this[name];
+
+
+return (
+
+item &&
+
+typeof item==="object" &&
+
+item.moduleDefinition &&
+
+item.moduleDefinition.name
+
 );
 
 
-};
+});
+
+
+}
+
+});
 
 
 
 
 
 
-ERP_MODULE_MANIFEST.get=function(name){
+// ------------------------------------------------------------
+// GET
+// ------------------------------------------------------------
+
+
+Object.defineProperty(
+ERP_MODULE_MANIFEST,
+"get",
+{
+
+enumerable:false,
+
+
+value:function(name){
 
 
 return this[name] || null;
 
 
-};
+}
+
+
+});
 
 
 
@@ -877,7 +932,20 @@ return this[name] || null;
 
 
 
-ERP_MODULE_MANIFEST.validate=function(){
+// ------------------------------------------------------------
+// VALIDATE
+// ------------------------------------------------------------
+
+
+Object.defineProperty(
+ERP_MODULE_MANIFEST,
+"validate",
+{
+
+enumerable:false,
+
+
+value:function(){
 
 
 const errors=[];
@@ -888,17 +956,18 @@ this.list()
 .forEach(name=>{
 
 
-const item=this[name];
+const module=this[name];
 
 
-const d=item.moduleDefinition;
+const d=
+module.moduleDefinition;
 
 
 
 if(!d.name){
 
 errors.push(
-name+" name missing"
+name+": name missing"
 );
 
 }
@@ -908,17 +977,31 @@ name+" name missing"
 if(!d.phase){
 
 errors.push(
-name+" phase missing"
+name+": phase missing"
 );
 
 }
 
 
 
-if(!Array.isArray(d.dependencies)){
+if(
+!Array.isArray(d.dependencies)
+){
 
 errors.push(
-name+" dependencies missing"
+name+": dependencies missing"
+);
+
+}
+
+
+
+if(
+typeof module.init!=="function"
+){
+
+errors.push(
+name+": init missing"
 );
 
 }
@@ -932,7 +1015,10 @@ name+" dependencies missing"
 return errors;
 
 
-};
+}
+
+
+});
 
 
 
@@ -940,7 +1026,25 @@ return errors;
 
 
 
-ERP_MODULE_MANIFEST.health=function(){
+// ------------------------------------------------------------
+// HEALTH
+// ------------------------------------------------------------
+
+
+Object.defineProperty(
+ERP_MODULE_MANIFEST,
+"health",
+{
+
+enumerable:false,
+
+
+value:function(){
+
+
+
+const errors=
+this.validate();
 
 
 
@@ -948,12 +1052,18 @@ return HealthContract.create(
 
 "ERP_MODULE_MANIFEST",
 
+
+errors.length
+?
+"WARNING"
+:
 "OK",
+
 
 {
 
 
-version:"2.1.0",
+version:this.manifestVersion,
 
 
 modules:this.list(),
@@ -962,7 +1072,7 @@ modules:this.list(),
 count:this.list().length,
 
 
-errors:this.validate()
+errors
 
 
 }
@@ -972,12 +1082,22 @@ errors:this.validate()
 
 
 
-};
+}
+
+
+
+});
 
 
 
 
 
+
+
+
+// ============================================================
+// GLOBAL
+// ============================================================
 
 
 globalThis.ERP_MODULE_MANIFEST =
@@ -987,7 +1107,9 @@ ERP_MODULE_MANIFEST;
 
 Logger.log(
 
-"ModuleManifest READY v2.1.0 modules="+
+"ModuleManifest READY v"+
+ERP_MODULE_MANIFEST.manifestVersion+
+" modules="+
 ERP_MODULE_MANIFEST.list().length
 
 );
