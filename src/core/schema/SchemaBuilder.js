@@ -1,31 +1,21 @@
 // ============================================================
-// SchemaBuilder v4.1.0
+// SchemaBuilder v4.1.1
 // ERP TexControl Core
 //
-// Metadata compiler
-//
-// Compatible:
-// EntityMetadata v3.x
-// SchemaManager v4.1.2
-// SchemaRegistry v4.x
-// EntityValidator v1.1
+// Fix:
+// EntityMetadata v3 object list support
+// Prevent nested metadata corruption
 // ============================================================
 
 
-console.log("SchemaBuilder v4.1.0");
+console.log("SchemaBuilder v4.1.1");
 
 
-
-const SchemaBuilder = {
-
-version:"4.1.0",
+const SchemaBuilder={
 
 
+version:"4.1.1",
 
-
-// ============================================================
-// BUILD
-// ============================================================
 
 
 build(){
@@ -34,14 +24,12 @@ build(){
 const schema={};
 
 
-
 let entities=[];
 
 
-
-// ------------------------------------------------------------
-// SOURCE PRIORITY
-// ------------------------------------------------------------
+// ====================================================
+// LOAD METADATA
+// ====================================================
 
 
 if(
@@ -55,95 +43,95 @@ entities =
 EntityMetadata.list();
 
 
-
 }
-else
-if(
-typeof SchemaRegistry!=="undefined"
-&&
-SchemaRegistry.list
-){
-
-
-entities =
-SchemaRegistry.list();
-
-
-}
-
-
-
 
 
 Logger.log(
-"SchemaBuilder entities="+
-entities.length
+"SchemaBuilder entities="+entities.length
 );
 
 
 
+// ====================================================
+// BUILD
+// ====================================================
 
 
+entities.forEach(item=>{
 
 
-for(
-const item of entities
-){
-
-
-let meta;
+let meta=null;
 
 
 
 try{
 
 
+// Уже объект metadata
+
+if(
+typeof item==="object"
+){
+
 meta =
+JSON.parse(
+JSON.stringify(item)
+);
+
+}
+
+
+// строка
+
+else
+if(
 typeof item==="string"
+){
 
-?
+meta =
+EntityMetadata.get(item);
 
-(
-EntityMetadata.get
-?
-EntityMetadata.get(item)
-:
-SchemaRegistry.get(item)
-)
-
-:
-
-item;
+}
 
 
 
 }
 catch(e){
 
-
 Logger.warn(
-"Metadata load failed "+
+"Metadata error "+
 item+
 " "+
 e.message
 );
 
-
-continue;
-
+return;
 
 }
 
 
 
 
+if(!meta){
+
+return;
+
+}
+
+
+
+// защита от битого объекта
 
 if(
-!meta ||
-!meta.table
+typeof meta.table!=="string"
 ){
 
-continue;
+Logger.warn(
+"Schema skip invalid metadata "+
+JSON.stringify(meta.entity)
+);
+
+return;
 
 }
 
@@ -151,8 +139,7 @@ continue;
 
 
 const fields =
-this.extractFields(meta);
-
+this.normalizeFields(meta.fields || meta.columns);
 
 
 
@@ -160,18 +147,13 @@ this.extractFields(meta);
 if(!fields.length){
 
 
-throw new Error(
-
-"Entity "+
-(
-meta.entity ||
-meta.name ||
-meta.table
-)
-+
-" has no fields"
-
+Logger.warn(
+"Schema entity without fields "+
+meta.entity
 );
+
+
+return;
 
 
 }
@@ -180,47 +162,24 @@ meta.table
 
 
 
-
-schema[meta.table]={
-
-
-
-table:
-meta.table,
-
+schema[meta.entity]={
 
 
 entity:
 meta.entity,
 
 
-
-module:
-meta.module || null,
-
+table:
+meta.table,
 
 
-repository:
-meta.repository || null,
-
-
-
-primaryKey:
-
-meta.primaryKey
-
-||
+idField:
 
 meta.idField
-
 ||
-
-null,
-
-
-
-idPrefix:
-meta.idPrefix || null,
+meta.primaryKey
+||
+"ID",
 
 
 
@@ -229,55 +188,32 @@ fields,
 
 
 softDelete:
-meta.softDelete !== false,
+meta.softDelete!==false,
 
 
 
 timestamps:
-meta.timestamps !== false,
-
+meta.timestamps!==false,
 
 
 audit:
-meta.audit === true,
-
-
-
-versioning:
-meta.versioning === true,
-
+meta.audit===true,
 
 
 relations:
-meta.relations || {},
-
+meta.relations||{},
 
 
 indexes:
-meta.indexes || [],
-
-
-
-permissions:
-meta.permissions || {},
-
-
-
-events:
-meta.events || {},
-
-
-
-uid:
-meta.uid || meta.table
-
+meta.indexes||[]
 
 
 };
 
 
 
-}
+
+});
 
 
 
@@ -292,16 +228,10 @@ return schema;
 
 
 
-// ============================================================
-// FIELD EXTRACTION
-// ============================================================
+normalizeFields(fields){
 
 
-extractFields(meta){
-
-
-
-if(!meta){
+if(!fields){
 
 return [];
 
@@ -309,44 +239,91 @@ return [];
 
 
 
-
-let raw =
-meta.fields
-||
-meta.columns
-||
-[];
+let result=[];
 
 
 
-
-
-// ============================================================
-// NEW FORMAT
-// fields:{}
-// ============================================================
-
+// object format
 
 if(
-!Array.isArray(raw)
+!Array.isArray(fields)
 &&
-typeof raw==="object"
+typeof fields==="object"
 ){
 
 
+Object.keys(fields)
+.forEach(name=>{
 
-raw =
-Object.keys(raw)
-.map(name=>{
+
+const f =
+fields[name]||{};
+
+
+
+result.push({
+
+
+name,
+
+
+type:
+f.type||
+"STRING",
+
+
+required:
+f.required===true
+
+
+});
+
+
+});
+
+
+}
+
+
+// array format
+
+else
+if(Array.isArray(fields)){
+
+
+result =
+fields.map(f=>{
+
+
+if(typeof f==="string"){
+
+return {
+
+name:f,
+
+type:"STRING",
+
+required:false
+
+};
+
+}
+
 
 
 return {
 
 
-name:name,
+name:
+f.name,
 
 
-...raw[name]
+type:
+f.type||"STRING",
+
+
+required:
+f.required===true
 
 
 };
@@ -359,256 +336,8 @@ name:name,
 
 
 
-
-
-
-
-// ============================================================
-// OLD FORMAT
-// fields:[]
-// ============================================================
-
-
-return raw
-
-.map(field=>{
-
-
-
-if(
-typeof field==="string"
-){
-
-
-return {
-
-
-name:field,
-
-
-type:"STRING",
-
-
-required:false,
-
-
-active:true
-
-
-
-};
-
-
-}
-
-
-
-
-
-
-const name =
-
-field.name
-
-||
-
-field.key
-
-||
-
-field.field
-
-||
-
-field.column;
-
-
-
-
-
-if(!name){
-
-return null;
-
-}
-
-
-
-
-
-
-return {
-
-
-
-name,
-
-
-
-type:
-String(
-field.type ||
-"STRING"
-).toUpperCase(),
-
-
-
-required:
-field.required===true,
-
-
-
-default:
-field.default,
-
-
-
-unique:
-field.unique===true,
-
-
-
-format:
-field.format || null,
-
-
-
-maxLength:
-field.maxLength || null,
-
-
-
-generated:
-field.generated===true,
-
-
-
-onDelete:
-field.onDelete || null,
-
-
-
-precision:
-field.precision || null,
-
-
-
-scale:
-field.scale || null,
-
-
-
-values:
-field.values || null,
-
-
-
-index:
-field.index===true,
-
-
-
-relation:
-field.relation || field.reference || null,
-
-
-
-nullable:
-
-field.nullable!==undefined
-
-?
-
-field.nullable
-
-:
-
-!field.required,
-
-
-
-active:
-
-field.active!==undefined
-
-?
-
-field.active
-
-:
-
-true
-
-
-
-};
-
-
-
-})
-
-.filter(Boolean);
-
-
-
-},
-
-
-
-
-
-
-
-// ============================================================
-// DIAGNOSTICS
-// ============================================================
-
-
-diagnostics(){
-
-
-return {
-
-
-module:
-"SchemaBuilder",
-
-
-version:
-this.version,
-
-
-timestamp:
-new Date()
-.toISOString()
-
-
-};
-
-
-},
-
-
-
-
-
-
-
-health(){
-
-
-return HealthContract.create(
-
-"SchemaBuilder",
-
-"OK",
-
-{
-
-version:this.version
-
-}
-
+return result.filter(
+x=>x.name
 );
 
 
@@ -616,14 +345,13 @@ version:this.version
 
 
 
+
+
 };
 
 
 
-
-
-
-globalThis.SchemaBuilder =
+globalThis.SchemaBuilder=
 SchemaBuilder;
 
 
