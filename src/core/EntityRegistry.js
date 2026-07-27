@@ -1,5 +1,5 @@
 // ============================================================
-// EntityRegistry v2.3.2
+// EntityRegistry v2.3.3
 // Enterprise Entity Metadata Registry
 // TaxControl ERP Core
 //
@@ -10,10 +10,10 @@
 // BaseRepository v5.6.x
 // ============================================================
 
-console.log("EntityRegistry v2.3.2");
+console.log("EntityRegistry v2.3.3");
 
 const EntityRegistry = {
-  version: "2.3.2",
+  version: "2.3.3",
   ready: false,
   initialized: false,
 
@@ -42,7 +42,7 @@ const EntityRegistry = {
     RTE: "ROUTE",
     CRG: "CARGO",
     FIN: "FINANCIAL_TRANSACTION",
-    ORG: "ORGANIZATION",   // если ORGANIZATION добавлена
+    ORG: "ORGANIZATION",
     KPI: "KPI",
     AUD: "AUDIT",
     VER: "VERSION",
@@ -279,7 +279,7 @@ EntityRegistry.init = function () {
 };
 
 // ============================================================
-// RESOLVE v2.3.2 (с поддержкой алиасов и префиксов)
+// RESOLVE v2.3.3 (с поддержкой префиксов в начале строки)
 // ============================================================
 EntityRegistry.resolve = function (value) {
   if (!value) {
@@ -304,13 +304,15 @@ EntityRegistry.resolve = function (value) {
     return key;
   }
 
-  // 4. Поиск по префиксу idPrefix
-  const prefixEntity = this.list().find(entity => {
-    const meta = this[entity];
-    return meta.idPrefix && meta.idPrefix.toUpperCase() === key;
-  });
-  if (prefixEntity) {
-    return prefixEntity;
+  // 4. Поиск по префиксу idPrefix в начале строки (сначала более длинные префиксы)
+  const prefixCandidates = this.list()
+    .filter(entity => {
+      const meta = this[entity];
+      return meta.idPrefix && key.startsWith(meta.idPrefix);
+    })
+    .sort((a, b) => (this[b].idPrefix.length - this[a].idPrefix.length)); // сортировка по убыванию длины
+  if (prefixCandidates.length > 0) {
+    return prefixCandidates[0];
   }
 
   // 5. Поиск по имени таблицы

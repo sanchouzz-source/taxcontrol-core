@@ -1,5 +1,5 @@
 // ============================================================
-// BaseRepository v5.7.1
+// BaseRepository v5.7.2
 // Enterprise Repository Base
 // TaxControl ERP Core
 //
@@ -10,10 +10,10 @@
 // EntityService v5+
 // ============================================================
 
-console.log("BaseRepository v5.7.1");
+console.log("BaseRepository v5.7.2");
 
 const BaseRepository = {
-  version: "5.7.1",
+  version: "5.7.2",
 
   architecture:
     "EntityService -> RepositoryFactory -> Repository -> Database",
@@ -44,7 +44,7 @@ const BaseRepository = {
   },
 
   // ============================================================
-  // REQUIRE ADAPTER (добавлен)
+  // REQUIRE ADAPTER
   // ============================================================
   _requireAdapter() {
     if (!this._initialized) {
@@ -79,9 +79,9 @@ const BaseRepository = {
 
   // ============================================================
   // CREATE (универсальный: статический / экземплярный)
+  // Исправлено: восстановление объекта, если адаптер вернул null/true
   // ============================================================
   create(entityOrData, dataOrOptions = {}, options = {}) {
-    // Убедимся, что адаптер готов
     this._requireAdapter();
 
     let entity, data, opts;
@@ -113,7 +113,12 @@ const BaseRepository = {
       EntityValidator.validate(entity, payload);
     }
 
-    const result = this._adapter.insert(entity, payload);
+    let result = this._adapter.insert(entity, payload);
+
+    // ---- Исправление: если адаптер вернул null или не-объект, восстанавливаем ----
+    if (!result || typeof result !== "object") {
+      result = { ...payload };
+    }
 
     repo.emit(meta.events?.created, null, result, "CREATE");
     repo.audit("CREATE", payload[idField], null, result);

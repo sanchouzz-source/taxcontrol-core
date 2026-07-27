@@ -1,5 +1,5 @@
 // ============================================================
-// Database v4.2.0
+// Database v4.2.1
 // TaxControl ERP Core
 //
 // Storage Engine
@@ -17,1035 +17,377 @@
 // SystemInit v2.5+
 // ============================================================
 
-
-console.log("Database v4.2.0");
-
-
+console.log("Database v4.2.1");
 
 const Database = {
+  version: "4.2.1",
+
+  architecture:
+    "Repository -> Database -> SpreadsheetAdapter",
 
+  initialized: false,
+
+  status: "CREATED",
 
-version:"4.2.0",
+  lastError: null,
+
+  _adapter: null,
+
+  _metaCache: {},
+
+  _stats: {
+    queries: 0,
+    inserts: 0,
+    updates: 0,
+    deletes: 0,
+    restores: 0,
+    bulkInserts: 0,
+    adapterCalls: 0,
+    transactions: 0
+  },
 
+  // ============================================================
+  // INIT
+  // ============================================================
 
-architecture:
-"Repository -> Database -> SpreadsheetAdapter",
+  init(adapter) {
+    if (this.initialized) {
+      return true;
+    }
 
+    try {
+      this.status = "INITIALIZING";
+
+      this._adapter = adapter || SpreadsheetAdapter;
 
-initialized:false,
+      if (!this._adapter) {
+        throw new Error("SpreadsheetAdapter unavailable");
+      }
 
+      this.buildMetadata();
+
+      this.initialized = true;
+      this.status = "READY";
 
-status:"CREATED",
+      Logger.log(
+        "Database READY v" +
+          this.version +
+          " adapter=" +
+          this.adapterName()
+      );
 
+      return true;
+    } catch (e) {
+      this.status = "FAILED";
+      this.lastError = e.message;
+      Logger.error("Database INIT FAILED " + e.message);
+      throw e;
+    }
+  },
 
-lastError:null,
+  // ============================================================
+  // REQUIRE
+  // ============================================================
 
+  _require() {
+    if (!this.initialized) {
+      this.init();
+    }
+  },
 
-_adapter:null,
+  // ============================================================
+  // ADAPTER INFO
+  // ============================================================
 
+  adapterName() {
+    return this._adapter?.version
+      ? "SpreadsheetAdapter v" + this._adapter.version
+      : "unknown";
+  },
 
-_metaCache:{},
+  // ============================================================
+  // METADATA
+  // ============================================================
 
+  buildMetadata() {
+    this._metaCache = {};
 
+    if (typeof SchemaRegistry === "undefined") {
+      throw new Error("SchemaRegistry unavailable");
+    }
 
+    const entities = SchemaRegistry.list();
 
-_stats:{
+    entities.forEach((entity) => {
+      const name = typeof entity === "string" ? entity : entity.entity;
+      if (!name) return;
 
+      const meta = SchemaRegistry.get(name);
+      if (meta) {
+        this._metaCache[name] = meta;
+      }
+    });
 
-queries:0,
+    Logger.log(
+      "Database metadata loaded " + Object.keys(this._metaCache).length
+    );
+  },
 
-inserts:0,
+  getMeta(entity) {
+    this._require();
 
-updates:0,
+    entity = this.resolveEntity(entity);
 
-deletes:0,
+    let meta = this._metaCache[entity];
 
-restores:0,
+    if (!meta) {
+      this.buildMetadata();
+      meta = this._metaCache[entity];
+    }
 
-bulkInserts:0,
+    if (!meta) {
+      throw new Error("Metadata missing " + entity);
+    }
 
-adapterCalls:0,
+    return meta;
+  },
 
-transactions:0
+  resolveEntity(entity) {
+    if (typeof EntityRegistry !== "undefined" && EntityRegistry.resolve) {
+      return EntityRegistry.resolve(entity);
+    }
+    return entity;
+  },
 
+  table(entity) {
+    return this.getMeta(entity).table;
+  },
 
-},
+  idField(entity) {
+    const meta = this.getMeta(entity);
+    return meta.idField || meta.primaryKey || "id";
+  },
 
+  // ============================================================
+  // CREATE (исправлен: всегда возвращает объект)
+  // ============================================================
 
+  insert(entity, data) {
+    this._require();
 
+    const meta = this.getMeta(entity);
 
+    if (!this._adapter.appendObject) {
+      throw new Error("Adapter appendObject missing");
+    }
 
+    // Выполняем вставку через адаптер
+    this._adapter.appendObject(meta.table, data);
 
-// ============================================================
-// INIT
-// ============================================================
+    this._stats.inserts++;
+    this._stats.adapterCalls++;
 
+    // ВАЖНО: Repository всегда получает объект
+    // Возвращаем копию данных (они уже обогащены системными полями в BaseRepository)
+    return { ...data };
+  },
 
-init(adapter){
+  // ============================================================
+  // BULK
+  // ============================================================
 
+  bulkInsert(entity, items = []) {
+    if (!items.length) {
+      return [];
+    }
 
-if(this.initialized){
+    const meta = this.getMeta(entity);
 
-return true;
+    let result;
 
-}
+    if (this._adapter.bulkInsert) {
+      result = this._adapter.bulkInsert(meta.table, items);
+    } else {
+      result = items.map((x) => this.insert(entity, x));
+    }
 
+    this._stats.bulkInserts++;
 
+    return result;
+  },
 
-try{
+  // ============================================================
+  // READ
+  // ============================================================
 
+  find(entity, id) {
+    const meta = this.getMeta(entity);
 
-this.status="INITIALIZING";
+    const result = this._adapter.findById(
+      meta.table,
+      this.idField(entity),
+      id
+    );
 
+    this._stats.adapterCalls++;
 
+    return result;
+  },
 
-this._adapter =
-adapter ||
-SpreadsheetAdapter;
+  findAll(entity) {
+    const meta = this.getMeta(entity);
 
+    return this._adapter.findAll(meta.table);
+  },
 
+  query(entity, filters = {}) {
+    const rows = this.findAll(entity);
 
-if(!this._adapter){
+    this._stats.queries++;
 
-throw new Error(
-"SpreadsheetAdapter unavailable"
-);
+    return rows.filter((row) => {
+      return Object.keys(filters).every(
+        (key) => String(row[key]) === String(filters[key])
+      );
+    });
+  },
 
-}
+  findWhere(entity, criteria = {}) {
+    return this.query(entity, criteria);
+  },
 
+  count(entity, filters = {}) {
+    return this.query(entity, filters).length;
+  },
 
+  // ============================================================
+  // UPDATE
+  // ============================================================
 
-this.buildMetadata();
+  update(entity, id, data) {
+    const meta = this.getMeta(entity);
 
+    if (!this._adapter.updateById) {
+      throw new Error("Adapter updateById missing");
+    }
 
+    const result = this._adapter.updateById(
+      meta.table,
+      this.idField(entity),
+      id,
+      data
+    );
 
-this.initialized=true;
+    this._stats.updates++;
 
+    return result;
+  },
 
-this.status="READY";
+  // ============================================================
+  // DELETE
+  // ============================================================
 
+  delete(entity, id) {
+    const meta = this.getMeta(entity);
 
+    let result;
 
-Logger.log(
+    if (this._adapter.delete) {
+      result = this._adapter.delete(
+        meta.table,
+        this.idField(entity),
+        id
+      );
+    } else {
+      throw new Error("Adapter delete missing");
+    }
 
-"Database READY v"+
-this.version+
-" adapter="+
-this.adapterName()
+    this._stats.deletes++;
 
-);
+    return result;
+  },
 
+  restore(entity, id) {
+    const meta = this.getMeta(entity);
 
+    const result = this._adapter.restore(
+      meta.table,
+      this.idField(entity),
+      id
+    );
 
-return true;
+    this._stats.restores++;
 
+    return result;
+  },
 
-}
-catch(e){
+  exists(entity, id) {
+    return !!this.find(entity, id);
+  },
 
+  // ============================================================
+  // TRANSACTION
+  // ============================================================
 
-this.status="FAILED";
+  transaction(callback) {
+    this._stats.transactions++;
 
-this.lastError=e.message;
+    if (this._adapter.transaction) {
+      return this._adapter.transaction(callback);
+    }
 
+    return callback();
+  },
 
-Logger.error(
-"Database INIT FAILED "+
-e.message
-);
+  // ============================================================
+  // CACHE
+  // ============================================================
 
+  clearCache() {
+    this._metaCache = {};
 
-throw e;
+    if (this._adapter.clearCache) {
+      this._adapter.clearCache();
+    }
+  },
 
+  // ============================================================
+  // DIAGNOSTICS
+  // ============================================================
 
-}
+  diagnostics() {
+    return {
+      module: "Database",
+      version: this.version,
+      status: this.status,
+      initialized: this.initialized,
+      architecture: this.architecture,
+      adapter: this.adapterName(),
+      entities: Object.keys(this._metaCache),
+      stats: this._stats,
+      error: this.lastError
+    };
+  },
 
+  // ============================================================
+  // HEALTH
+  // ============================================================
 
-},
+  health() {
+    const data = this.diagnostics();
 
+    if (typeof HealthContract !== "undefined") {
+      return HealthContract.create(
+        "Database",
+        this.status === "READY" ? "OK" : "WARNING",
+        data
+      );
+    }
 
-
-
-
-
-
-// ============================================================
-// REQUIRE
-// ============================================================
-
-
-_require(){
-
-
-if(!this.initialized){
-
-this.init();
-
-}
-
-
-},
-
-
-
-
-
-
-
-// ============================================================
-// ADAPTER INFO
-// ============================================================
-
-
-adapterName(){
-
-
-return this._adapter?.version
-
-?
-
-"SpreadsheetAdapter v"+
-this._adapter.version
-
-:
-
-"unknown";
-
-
-},
-
-
-
-
-
-
-
-// ============================================================
-// METADATA
-// ============================================================
-
-
-buildMetadata(){
-
-
-this._metaCache={};
-
-
-
-if(
-typeof SchemaRegistry==="undefined"
-){
-
-throw new Error(
-"SchemaRegistry unavailable"
-);
-
-}
-
-
-
-const entities =
-SchemaRegistry.list();
-
-
-
-entities.forEach(entity=>{
-
-
-const name =
-typeof entity==="string"
-
-?
-
-entity
-
-:
-
-entity.entity;
-
-
-
-if(!name){
-
-return;
-
-}
-
-
-
-const meta =
-SchemaRegistry.get(name);
-
-
-
-if(meta){
-
-this._metaCache[name]=meta;
-
-}
-
-
-
-});
-
-
-
-Logger.log(
-
-"Database metadata loaded "+
-Object.keys(this._metaCache).length
-
-);
-
-
-
-},
-
-
-
-
-
-
-
-getMeta(entity){
-
-
-this._require();
-
-
-
-entity =
-this.resolveEntity(entity);
-
-
-
-let meta =
-this._metaCache[entity];
-
-
-
-if(!meta){
-
-
-this.buildMetadata();
-
-
-meta =
-this._metaCache[entity];
-
-
-}
-
-
-
-if(!meta){
-
-throw new Error(
-"Metadata missing "+
-entity
-);
-
-}
-
-
-
-return meta;
-
-
-},
-
-
-
-
-
-
-
-resolveEntity(entity){
-
-
-if(
-typeof EntityRegistry!=="undefined"
-&&
-EntityRegistry.resolve
-){
-
-return EntityRegistry.resolve(entity);
-
-}
-
-
-
-return entity;
-
-
-},
-
-
-
-
-
-
-
-table(entity){
-
-
-return this.getMeta(entity).table;
-
-
-},
-
-
-
-
-
-
-
-idField(entity){
-
-
-const meta =
-this.getMeta(entity);
-
-
-
-return (
-
-meta.idField ||
-
-meta.primaryKey ||
-
-"id"
-
-);
-
-
-},
-
-
-
-
-
-
-
-// ============================================================
-// CREATE
-// ============================================================
-
-
-insert(entity,data){
-
-
-this._require();
-
-
-
-const meta =
-this.getMeta(entity);
-
-
-
-let result;
-
-
-
-if(
-this._adapter.appendObject
-){
-
-result =
-this._adapter.appendObject(
-meta.table,
-data
-);
-
-
-}
-
-else{
-
-
-throw new Error(
-"Adapter appendObject missing"
-);
-
-
-}
-
-
-
-this._stats.inserts++;
-
-this._stats.adapterCalls++;
-
-
-
-return result || data;
-
-
-},
-
-
-
-
-
-
-
-// ============================================================
-// BULK
-// ============================================================
-
-
-bulkInsert(entity,items=[]){
-
-
-if(!items.length){
-
-return [];
-
-}
-
-
-
-const meta =
-this.getMeta(entity);
-
-
-
-let result;
-
-
-
-if(
-this._adapter.bulkInsert
-){
-
-result =
-this._adapter.bulkInsert(
-meta.table,
-items
-);
-
-
-}
-else{
-
-
-result =
-items.map(
-x=>
-this.insert(entity,x)
-);
-
-
-}
-
-
-
-this._stats.bulkInserts++;
-
-
-
-return result;
-
-
-},
-
-
-
-
-
-
-
-// ============================================================
-// READ
-// ============================================================
-
-
-find(entity,id){
-
-
-const meta =
-this.getMeta(entity);
-
-
-
-const result =
-this._adapter.findById(
-
-meta.table,
-
-this.idField(entity),
-
-id
-
-);
-
-
-
-this._stats.adapterCalls++;
-
-
-
-return result;
-
-
-},
-
-
-
-
-
-
-
-findAll(entity){
-
-
-const meta =
-this.getMeta(entity);
-
-
-
-return this._adapter.findAll(
-meta.table
-);
-
-
-},
-
-
-
-
-
-
-
-query(entity,filters={}){
-
-
-const rows =
-this.findAll(entity);
-
-
-
-this._stats.queries++;
-
-
-
-return rows.filter(row=>{
-
-
-return Object.keys(filters)
-.every(
-
-key=>
-
-String(row[key])
-===
-String(filters[key])
-
-);
-
-
-});
-
-
-},
-
-
-
-
-
-
-
-findWhere(entity,criteria={}){
-
-
-return this.query(
-entity,
-criteria
-);
-
-
-},
-
-
-
-
-
-
-
-count(entity,filters={}){
-
-
-return this.query(
-entity,
-filters
-).length;
-
-
-},
-
-
-
-
-
-
-
-// ============================================================
-// UPDATE
-// ============================================================
-
-
-update(entity,id,data){
-
-
-const meta =
-this.getMeta(entity);
-
-
-
-if(
-!this._adapter.updateById
-){
-
-throw new Error(
-"Adapter updateById missing"
-);
-
-}
-
-
-
-const result =
-this._adapter.updateById(
-
-meta.table,
-
-this.idField(entity),
-
-id,
-
-data
-
-);
-
-
-
-this._stats.updates++;
-
-
-return result;
-
-
-},
-
-
-
-
-
-
-
-// ============================================================
-// DELETE
-// ============================================================
-
-
-delete(entity,id){
-
-
-const meta =
-this.getMeta(entity);
-
-
-
-let result;
-
-
-
-if(
-this._adapter.delete
-){
-
-
-result =
-this._adapter.delete(
-
-meta.table,
-
-this.idField(entity),
-
-id
-
-);
-
-
-}
-
-else{
-
-
-throw new Error(
-"Adapter delete missing"
-);
-
-
-}
-
-
-
-this._stats.deletes++;
-
-
-
-return result;
-
-
-},
-
-
-
-
-
-
-
-restore(entity,id){
-
-
-const meta =
-this.getMeta(entity);
-
-
-
-const result =
-this._adapter.restore(
-
-meta.table,
-
-this.idField(entity),
-
-id
-
-);
-
-
-
-this._stats.restores++;
-
-
-
-return result;
-
-
-},
-
-
-
-
-
-
-
-exists(entity,id){
-
-
-return !!this.find(
-entity,
-id
-);
-
-
-},
-
-
-
-
-
-
-
-// ============================================================
-// TRANSACTION
-// ============================================================
-
-
-transaction(callback){
-
-
-this._stats.transactions++;
-
-
-
-if(
-this._adapter.transaction
-){
-
-return this._adapter.transaction(
-callback
-);
-
-
-}
-
-
-
-return callback();
-
-
-},
-
-
-
-
-
-
-
-// ============================================================
-// CACHE
-// ============================================================
-
-
-clearCache(){
-
-
-this._metaCache={};
-
-
-
-if(
-this._adapter.clearCache
-){
-
-this._adapter.clearCache();
-
-}
-
-
-
-},
-
-
-
-
-
-
-
-// ============================================================
-// DIAGNOSTICS
-// ============================================================
-
-
-diagnostics(){
-
-
-return{
-
-
-module:
-"Database",
-
-
-version:
-this.version,
-
-
-status:
-this.status,
-
-
-initialized:
-this.initialized,
-
-
-architecture:
-this.architecture,
-
-
-adapter:
-this.adapterName(),
-
-
-entities:
-Object.keys(
-this._metaCache
-),
-
-
-stats:
-this._stats,
-
-
-error:
-this.lastError
-
-
+    return data;
+  }
 };
 
+globalThis.Database = Database;
 
-},
-
-
-
-
-
-
-
-// ============================================================
-// HEALTH
-// ============================================================
-
-
-health(){
-
-
-const data =
-this.diagnostics();
-
-
-
-if(
-typeof HealthContract!=="undefined"
-){
-
-
-return HealthContract.create(
-
-"Database",
-
-this.status==="READY"
-
-?
-
-"OK"
-
-:
-
-"WARNING",
-
-data
-
-);
-
-
-}
-
-
-
-return data;
-
-
-}
-
-
-
-};
-
-
-
-
-
-globalThis.Database =
-Database;
-
-
-
-Logger.log(
-"Database REGISTERED v"+
-Database.version
-);
+Logger.log("Database REGISTERED v" + Database.version);

@@ -1,5 +1,5 @@
 // ============================================================
-// RepositoryFactory v2.7.2
+// RepositoryFactory v2.7.3
 // Enterprise Repository Dependency Container
 // TaxControl ERP Core
 //
@@ -9,10 +9,10 @@
 // SystemInit v2.5+
 // ============================================================
 
-console.log("RepositoryFactory v2.7.2");
+console.log("RepositoryFactory v2.7.3");
 
 const RepositoryFactory = {
-  version: "2.7.2",
+  version: "2.7.3",
   apiVersion: "2.5",
 
   repositories: {},
@@ -232,8 +232,9 @@ const RepositoryFactory = {
 
     const contract = this.validate(repo);
 
-    this.repositories[entity] = repo;
-    this.applyCompatibility(repo);
+    // Применяем совместимость и сохраняем обновлённый репозиторий
+    const adaptedRepo = this.applyCompatibility(repo);
+    this.repositories[entity] = adaptedRepo;
 
     this.metadata[entity] = {
       version: repo.version || "unknown",
@@ -260,7 +261,7 @@ const RepositoryFactory = {
   // ============================================================
 
   applyCompatibility(repo) {
-    if (!repo) return;
+    if (!repo) return repo;
 
     // getById -> findById
     if (!repo.getById && repo.findById) {
