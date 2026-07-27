@@ -1,17 +1,24 @@
 // ============================================================
-// EntityRegistry v2.3.0
+// EntityRegistry v2.3.1
 // Enterprise Entity Metadata Registry
 // TaxControl ERP Core
+//
+// Compatible:
+// EntityMetadata v2.1.x
+// EntityService v5.x
+// RepositoryFactory v2.7.x
+// BaseRepository v5.6.x
 // ============================================================
 
 
-console.log("EntityRegistry v2.3.0");
+console.log("EntityRegistry v2.3.1");
+
 
 
 const EntityRegistry = {
 
 
-version:"2.3.0",
+version:"2.3.1",
 
 ready:false,
 
@@ -19,6 +26,10 @@ initialized:false,
 
 
 
+
+// ============================================================
+// ALIASES
+// ============================================================
 
 
 aliases:{
@@ -65,7 +76,6 @@ Cargoes:
 
 
 },
-
 
 
 
@@ -282,7 +292,7 @@ events:{}
 
 
 // ============================================================
-// SYSTEM
+// SYSTEM TEST ENTITIES
 // ============================================================
 
 
@@ -291,6 +301,7 @@ entity:"__TEST_DATABASE",
 module:"system",
 table:"__TEST_DATABASE",
 idField:"id",
+idPrefix:"TESTDB",
 repository:"BaseRepository",
 system:true
 },
@@ -301,6 +312,7 @@ entity:"__TEST_EVENTS",
 module:"system",
 table:"__TEST_EVENTS",
 idField:"id",
+idPrefix:"TESTEV",
 repository:"BaseRepository",
 system:true
 },
@@ -311,15 +323,15 @@ entity:"__TEST_REPOSITORY",
 module:"system",
 table:"__TEST_REPOSITORY",
 idField:"id",
+idPrefix:"TESTRP",
 repository:"BaseRepository",
 system:true
 }
 
 
 
-
-
 };
+
 
 
 
@@ -342,6 +354,7 @@ return true;
 }
 
 
+
 this.initialized=true;
 
 this.ready=true;
@@ -359,7 +372,6 @@ this.list().length
 
 return true;
 
-
 };
 
 
@@ -369,8 +381,10 @@ return true;
 
 
 
+
+
 // ============================================================
-// RESOLVE
+// RESOLVE v2.3.1
 // ============================================================
 
 
@@ -393,6 +407,7 @@ String(value).trim();
 
 
 
+
 // alias
 
 if(this.aliases[key]){
@@ -400,6 +415,8 @@ if(this.aliases[key]){
 return this.aliases[key];
 
 }
+
+
 
 
 
@@ -413,10 +430,13 @@ return key;
 
 
 
+
+
 // uppercase
 
 key =
 key.toUpperCase();
+
 
 
 if(this.has(key)){
@@ -427,13 +447,61 @@ return key;
 
 
 
+
+
+
+
+// prefix search
+// CLI -> CLIENT
+
+
+const prefix =
+this.list()
+.find(entity=>{
+
+
+const meta=this[entity];
+
+
+return meta.idPrefix &&
+meta.idPrefix.toUpperCase()===key;
+
+
+});
+
+
+
+if(prefix){
+
+return prefix;
+
+}
+
+
+
+
+
+
+
 // table search
+
 
 const table =
 this.list()
-.find(e=>
-this[e].table===value
-);
+.find(entity=>{
+
+
+const meta=this[entity];
+
+
+return meta.table &&
+meta.table.toUpperCase()
+===
+String(value).toUpperCase();
+
+
+});
+
 
 
 if(table){
@@ -444,13 +512,28 @@ return table;
 
 
 
+
+
+
+
 // repository search
+
 
 const repo =
 this.list()
-.find(e=>
-this[e].repository===value
-);
+.find(entity=>{
+
+
+const meta=this[entity];
+
+
+return meta.repository &&
+meta.repository.toUpperCase()
+===
+String(value).toUpperCase();
+
+
+});
 
 
 
@@ -463,13 +546,43 @@ return repo;
 
 
 
+
+
+
+// camelCase conversion
+
+
+const normalized =
+key.replace(
+/([a-z])([A-Z])/g,
+"$1_$2"
+)
+.toUpperCase();
+
+
+
+if(this.has(normalized)){
+
+return normalized;
+
+}
+
+
+
+
+
+
+
 throw new Error(
 "Unknown entity "+
 value
 );
 
 
+
 };
+
+
 
 
 
@@ -486,12 +599,9 @@ value
 EntityRegistry.get=function(entity){
 
 
-const key =
-this.resolve(entity);
-
-
-
-return this[key];
+return this[
+this.resolve(entity)
+];
 
 
 };
@@ -502,14 +612,26 @@ return this[key];
 
 
 
+// ============================================================
+// HAS
+// ============================================================
+
 
 EntityRegistry.has=function(entity){
 
 
 return !!(
-this[entity] &&
-typeof this[entity]==="object" &&
+
+this[entity]
+
+&&
+
+typeof this[entity]==="object"
+
+&&
+
 this[entity].entity
+
 );
 
 
@@ -522,21 +644,28 @@ this[entity].entity
 
 
 
+// ============================================================
+// LIST
+// ============================================================
+
+
 EntityRegistry.list=function(){
 
 
 return Object.keys(this)
-
-.filter(k=>{
-
-
-const x=this[k];
+.filter(key=>{
 
 
-return x &&
-typeof x==="object" &&
-x.entity &&
-x.table;
+const item=this[key];
+
+
+return item
+&&
+typeof item==="object"
+&&
+item.entity
+&&
+item.table;
 
 
 });
@@ -559,37 +688,61 @@ x.table;
 EntityRegistry.getByTable=function(table){
 
 
-return this.list()
-
+const entity =
+this.list()
 .find(e=>
 
 this[e].table===table
 
-)
+);
 
-||null;
 
+return entity || null;
 
 };
+
+
 
 
 
 EntityRegistry.getByRepository=function(repo){
 
 
-return this.list()
-
+const entity =
+this.list()
 .find(e=>
 
 this[e].repository===repo
 
-)
+);
 
-||null;
 
+return entity || null;
 
 };
 
+
+
+
+
+
+EntityRegistry.getByPrefix=function(prefix){
+
+
+const entity =
+this.list()
+.find(e=>
+
+
+this[e].idPrefix===prefix
+
+
+);
+
+
+return entity || null;
+
+};
 
 
 
@@ -602,8 +755,9 @@ EntityRegistry.getRepository=function(entity){
 
 return this.get(entity).repository;
 
-
 };
+
+
 
 
 
@@ -611,7 +765,6 @@ EntityRegistry.getTable=function(entity){
 
 
 return this.get(entity).table;
-
 
 };
 
@@ -651,6 +804,7 @@ entity+" missing idField"
 }
 
 
+
 if(!meta.table){
 
 errors.push(
@@ -658,6 +812,7 @@ entity+" missing table"
 );
 
 }
+
 
 
 if(!meta.repository){
@@ -675,7 +830,6 @@ entity+" missing repository"
 
 
 return errors;
-
 
 };
 
@@ -728,7 +882,6 @@ errors
 
 
 }
-
 
 );
 

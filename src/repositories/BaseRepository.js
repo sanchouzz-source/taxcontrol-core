@@ -1,51 +1,41 @@
 // ============================================================
-// BaseRepository v5.6.0
+// BaseRepository v5.7.0
 // Enterprise Repository Base
 // TaxControl ERP Core
 //
-// Architecture:
-//
-// EntityService
-//       |
-// RepositoryFactory
-//       |
-// BaseRepository
-//       |
-// Database
-//       |
-// SpreadsheetAdapter
-//
-// Responsibilities:
-// - CRUD
-// - Soft Delete
-// - Restore
-// - Validation hooks
-// - Audit hooks
-// - EventBus integration
-// - Versioning hooks
-// - Organization scope
-// - Pagination
-// - Bulk operations
-// - Diagnostics
+// Compatible:
+// Database v4.2+
+// EntityRegistry v2.3+
+// RepositoryFactory v2.7+
+// EntityService v5+
 // ============================================================
 
 
-console.log("BaseRepository v5.6.0");
+console.log("BaseRepository v5.7.0");
 
 
 
 const BaseRepository = {
 
 
-version:"5.6.0",
+version:"5.7.0",
+
 
 architecture:
-"Repository -> Database -> SpreadsheetAdapter",
+"EntityService -> RepositoryFactory -> Repository -> Database",
 
 
 _initialized:false,
 
+
 _adapter:null,
+
+
+entity:null,
+
+
+
+
 
 
 // ============================================================
@@ -57,10 +47,6 @@ init(database){
 
 
 if(this._initialized){
-
-Logger.debug(
-"BaseRepository already initialized"
-);
 
 return true;
 
@@ -83,7 +69,7 @@ null
 if(!this._adapter){
 
 throw new Error(
-"BaseRepository: Database unavailable"
+"BaseRepository Database unavailable"
 );
 
 }
@@ -103,6 +89,37 @@ this.version
 
 return true;
 
+},
+
+
+
+
+
+
+
+// ============================================================
+// FACTORY CREATE
+// ============================================================
+
+
+createRepository(entity){
+
+
+const repo =
+Object.create(this);
+
+
+repo.entity=entity;
+
+
+repo._initialized=false;
+
+
+repo.init();
+
+
+return repo;
+
 
 },
 
@@ -113,66 +130,25 @@ return true;
 
 
 // ============================================================
-// REQUIRE
+// META
 // ============================================================
 
 
-_require(){
+getMeta(){
 
 
-if(!this._initialized){
-
-this.init();
-
-}
-
-
-
-return this._adapter;
-
-
-},
-
-
-
-
-
-
-
-// ============================================================
-// METADATA
-// ============================================================
-
-
-getMeta(entity){
-
-
-if(
-typeof EntityRegistry!=="undefined"
-&&
-EntityRegistry.get
-){
-
-return EntityRegistry.get(entity);
-
-}
-
-
-
-if(
-typeof SchemaRegistry!=="undefined"
-&&
-SchemaRegistry.get
-){
-
-return SchemaRegistry.get(entity);
-
-}
-
-
+if(!this.entity){
 
 throw new Error(
-"Metadata missing "+entity
+"Repository entity not defined"
+);
+
+}
+
+
+
+return EntityRegistry.get(
+this.entity
 );
 
 
@@ -189,47 +165,33 @@ throw new Error(
 // ============================================================
 
 
-create(entity,data={},options={}){
+create(data={},options={}){
 
 
-this._require();
+const meta=this.getMeta();
 
 
-const meta =
-this.getMeta(entity);
-
-
-
-let payload={
-...data
-};
-
-
-
-// ID
 
 const idField =
 meta.idField ||
-entity+"ID";
+"ID";
+
+
+
+const payload={
+...data
+};
+
 
 
 
 if(!payload[idField]){
 
 
-if(
-typeof IdService==="undefined"
-){
-
-throw new Error(
-"IdService unavailable"
-);
-
-}
-
-
 payload[idField]=
-IdService.generate(entity);
+IdService.generate(
+this.entity
+);
 
 
 }
@@ -250,13 +212,11 @@ false
 if(
 options.validate!==false
 &&
-typeof EntityValidator!=="undefined"
-&&
-EntityValidator.validate
+EntityValidator?.validate
 ){
 
 EntityValidator.validate(
-entity,
+this.entity,
 payload
 );
 
@@ -265,23 +225,16 @@ payload
 
 
 
+
 const result =
-this._adapter.insert(
-entity,
+Database.insert(
+this.entity,
 payload
 );
 
 
 
-this.afterCreate(
-entity,
-result
-);
-
-
-
 this.emit(
-entity,
 meta.events?.created,
 null,
 result,
@@ -292,7 +245,6 @@ result,
 
 this.audit(
 "CREATE",
-entity,
 payload[idField],
 null,
 result
@@ -312,26 +264,22 @@ return result;
 
 
 // ============================================================
-// FIND BY ID
+// FIND
 // ============================================================
 
 
-findById(entity,id,options={}){
+findById(id,options={}){
 
 
-this._require();
-
-
-
-const record =
-this._adapter.find(
-entity,
+const result =
+Database.find(
+this.entity,
 id
 );
 
 
 
-if(!record){
+if(!result){
 
 return null;
 
@@ -339,8 +287,7 @@ return null;
 
 
 
-const meta =
-this.getMeta(entity);
+const meta=this.getMeta();
 
 
 
@@ -351,7 +298,7 @@ options.includeDeleted!==true
 ){
 
 if(
-this.isDeleted(record,meta)
+this.isDeleted(result)
 ){
 
 return null;
@@ -362,7 +309,7 @@ return null;
 
 
 
-return record;
+return result;
 
 
 },
@@ -373,36 +320,18 @@ return record;
 
 
 
-// ============================================================
-// FIND ALL
-// ============================================================
-
-
-findAll(entity,filters={},options={}){
-
-
-this._require();
-
+findAll(filters={},options={}){
 
 
 let rows =
-this._adapter.query(
-entity,
+Database.query(
+this.entity,
 filters
 );
 
 
 
-if(!Array.isArray(rows)){
-
-rows=[];
-
-}
-
-
-
-const meta =
-this.getMeta(entity);
+const meta=this.getMeta();
 
 
 
@@ -414,7 +343,7 @@ options.includeDeleted!==true
 
 rows =
 rows.filter(
-r=>!this.isDeleted(r,meta)
+x=>!this.isDeleted(x)
 );
 
 }
@@ -432,64 +361,10 @@ return rows;
 
 
 
-// ============================================================
-// FIND WHERE
-// ============================================================
+findWhere(criteria={}){
 
 
-findWhere(entity,field,value){
-
-
-return this.findAll(
-entity,
-{
-[field]:value
-}
-);
-
-
-},
-
-
-
-
-
-
-
-// ============================================================
-// EXISTS
-// ============================================================
-
-
-exists(entity,id){
-
-
-return !!this.findById(
-entity,
-id
-);
-
-
-},
-
-
-
-
-
-
-
-// ============================================================
-// COUNT
-// ============================================================
-
-
-count(entity,filters={}){
-
-
-return this.findAll(
-entity,
-filters
-).length;
+return this.findAll(criteria);
 
 
 },
@@ -505,16 +380,11 @@ filters
 // ============================================================
 
 
-update(entity,id,data={},options={}){
-
-
-this._require();
-
+update(id,data={}){
 
 
 const old =
 this.findById(
-entity,
 id,
 {
 includeDeleted:true
@@ -526,7 +396,7 @@ includeDeleted:true
 if(!old){
 
 throw new Error(
-entity+
+this.entity+
 " not found "+
 id
 );
@@ -535,14 +405,15 @@ id
 
 
 
-let payload={
+
+const payload={
 ...data
 };
 
 
 
 this.applySystemFields(
-this.getMeta(entity),
+this.getMeta(),
 payload,
 true
 );
@@ -550,9 +421,10 @@ true
 
 
 
+
 const result =
-this._adapter.update(
-entity,
+Database.update(
+this.entity,
 id,
 payload
 );
@@ -560,22 +432,10 @@ payload
 
 
 this.emit(
-entity,
-this.getMeta(entity)
-.events?.updated,
+this.getMeta().events?.updated,
 old,
 result,
 "UPDATE"
-);
-
-
-
-this.audit(
-"UPDATE",
-entity,
-id,
-old,
-result
 );
 
 
@@ -596,58 +456,19 @@ return result;
 // ============================================================
 
 
-delete(entity,id){
+delete(id){
 
 
-const meta =
-this.getMeta(entity);
-
-
-
-const old =
-this.findById(
-entity,
-id,
-{
-includeDeleted:true
-}
-);
+const meta=this.getMeta();
 
 
 
-if(!old){
-
-throw new Error(
-entity+
-" not found"
-);
-
-}
+if(
+meta.softDelete!==false
+){
 
 
-
-let result;
-
-
-
-if(meta.softDelete===false){
-
-
-result =
-this._adapter.delete(
-entity,
-id
-);
-
-
-
-}
-else{
-
-
-result =
-this._adapter.update(
-entity,
+return this.update(
 id,
 {
 
@@ -660,22 +481,14 @@ new Date().toISOString()
 
 );
 
-
 }
 
 
 
-this.emit(
-entity,
-meta.events?.deleted,
-old,
-result,
-"DELETE"
+return Database.delete(
+this.entity,
+id
 );
-
-
-
-return result;
 
 
 },
@@ -686,31 +499,10 @@ return result;
 
 
 
-// ============================================================
-// RESTORE
-// ============================================================
+restore(id){
 
 
-restore(entity,id){
-
-
-const meta =
-this.getMeta(entity);
-
-
-
-if(meta.softDelete===false){
-
-throw new Error(
-"Restore unavailable "+entity
-);
-
-}
-
-
-
-return this._adapter.update(
-entity,
+return this.update(
 id,
 {
 
@@ -732,51 +524,108 @@ DeletedAt:null
 
 
 // ============================================================
-// PAGINATION
+// EXISTS
 // ============================================================
 
 
-paginate(
-entity,
-page=1,
-limit=50,
-filters={}
-){
+exists(id){
 
 
-const rows =
-this.findAll(
-entity,
-filters
+return !!this.findById(id);
+
+
+},
+
+
+
+existsBy(field,value){
+
+
+return this.findAll({
+
+[field]:value
+
+}).length>0;
+
+
+},
+
+
+
+
+
+
+
+count(filters={}){
+
+
+return this.findAll(filters).length;
+
+
+},
+
+
+
+
+
+
+
+// ============================================================
+// LEGACY COMPATIBILITY
+// ============================================================
+
+
+getById(id,options={}){
+
+
+return this.findById(
+id,
+options
 );
 
 
-
-const start =
-(page-1)*limit;
+},
 
 
 
-return {
+getAll(filters={},options={}){
 
 
-data:
-rows.slice(
-start,
-start+limit
-),
+return this.findAll(
+filters,
+options
+);
 
 
-page,
-
-limit,
+},
 
 
-total:
-rows.length
+
+save(data){
 
 
-};
+const meta=this.getMeta();
+
+
+const idField=
+meta.idField;
+
+
+
+if(data[idField]){
+
+
+return this.update(
+data[idField],
+data
+);
+
+
+}
+
+
+
+return this.create(data);
 
 
 },
@@ -792,15 +641,11 @@ rows.length
 // ============================================================
 
 
-bulkCreate(entity,list=[]){
+bulkCreate(list=[]){
 
 
 return list.map(
-x=>
-this.create(
-entity,
-x
-)
+x=>this.create(x)
 );
 
 
@@ -808,17 +653,61 @@ x
 
 
 
-bulkUpdate(entity,ids,data){
+bulkUpdate(ids,data){
 
 
 return ids.map(
-id=>
-this.update(
-entity,
-id,
-data
-)
+id=>this.update(id,data)
 );
+
+
+},
+
+
+
+
+
+
+
+// ============================================================
+// TRANSACTION
+// ============================================================
+
+
+transaction(callback){
+
+
+if(
+typeof LockService!=="undefined"
+){
+
+
+const lock =
+LockService.getScriptLock();
+
+
+
+lock.waitLock(10000);
+
+
+
+try{
+
+return callback();
+
+}
+finally{
+
+lock.releaseLock();
+
+}
+
+
+}
+
+
+
+return callback();
 
 
 },
@@ -865,9 +754,9 @@ data.UpdatedAt=now;
 if(
 typeof OrganizationContext!=="undefined"
 &&
-!data.OrganizationID
-&&
 meta.organization!==false
+&&
+!data.OrganizationID
 ){
 
 data.OrganizationID =
@@ -889,23 +778,18 @@ return data;
 
 
 // ============================================================
-// SOFT DELETE
+// DELETE CHECK
 // ============================================================
 
 
-isDeleted(record,meta){
+isDeleted(row){
 
 
-const field =
-meta.deleteField ||
-"Deleted";
-
-
-return record[field]===true
+return row.Deleted===true
 ||
-record[field]=="true"
+row.Deleted==="true"
 ||
-record[field]==1;
+row.Deleted==1;
 
 
 },
@@ -921,13 +805,12 @@ record[field]==1;
 // ============================================================
 
 
-emit(entity,event,before,after,action){
+emit(event,before,after,action){
 
 
 if(
-!event
-||
-typeof EventBus==="undefined"
+!event ||
+!EventBus?.emit
 ){
 
 return;
@@ -937,10 +820,12 @@ return;
 
 
 EventBus.emit(
+
 event,
+
 {
 
-entity,
+entity:this.entity,
 
 action,
 
@@ -972,32 +857,19 @@ new Date().toISOString()
 // ============================================================
 
 
-audit(
-action,
-entity,
-id,
-before,
-after
-){
+audit(action,id,before,after){
 
 
 if(
-typeof AuditLog==="undefined"
-||
-!AuditLog.write
+AuditLog?.write
 ){
-
-return;
-
-}
-
 
 
 AuditLog.write({
 
 action,
 
-entity,
+entity:this.entity,
 
 entityId:id,
 
@@ -1011,15 +883,10 @@ new Date().toISOString()
 });
 
 
+}
+
+
 },
-
-
-
-
-
-
-
-afterCreate(){},
 
 
 
@@ -1050,33 +917,14 @@ this._initialized
 
 version:this.version,
 
+entity:this.entity,
 
 database:
-!!this._adapter,
-
-
-features:[
-
-"CRUD",
-
-"SoftDelete",
-
-"Restore",
-
-"Audit",
-
-"Events",
-
-"Validation",
-
-"Bulk",
-
-"Pagination"
-
-]
+!!this._adapter
 
 
 }
+
 
 );
 
@@ -1098,19 +946,14 @@ return {
 version:this.version,
 
 
+entity:this.entity,
+
+
 initialized:this._initialized,
 
 
 adapter:
-this._adapter
-?
-"Database"
-:
-null,
-
-
-timestamp:
-new Date().toISOString()
+!!this._adapter
 
 
 };
