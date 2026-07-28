@@ -1,31 +1,22 @@
 // ============================================================
-// RepositoryRegistry v2.0.0
+// RepositoryRegistry v2.1.0
 // Enterprise Repository Registry
 // TaxControl ERP Core
 //
-// Architecture:
-//
-// Repository
-//      |
-//      v
-// RepositoryRegistry
-//      |
-//      v
-// RepositoryFactory
-//      |
-//      v
-// EntityRegistry
+// Dynamic Repository Registration
 //
 // Compatible:
 //
 // RepositoryFactory v3+
-// EntityRegistry v2.5+
+// EntityRegistry v2.6+
+// SchemaManager v4.2+
 // BaseRepository v5.7+
+//
 // ============================================================
 
 
 console.log(
-"RepositoryRegistry v2.0.0"
+"RepositoryRegistry v2.1.0"
 );
 
 
@@ -33,12 +24,17 @@ console.log(
 const RepositoryRegistry = {
 
 
-version:"2.0.0",
+// ============================================================
+// META
+// ============================================================
+
+
+version:"2.1.0",
 
 ready:false,
 
-
 repositories:{},
+
 
 
 aliases:{
@@ -51,9 +47,11 @@ Clients:"CLIENT",
 Client:"CLIENT",
 
 
+
 TRIP:"TRIP",
 
 Trip:"TRIP",
+
 
 
 VEHICLE:"VEHICLE",
@@ -61,9 +59,11 @@ VEHICLE:"VEHICLE",
 Vehicle:"VEHICLE",
 
 
+
 DRIVER:"DRIVER",
 
 Driver:"DRIVER",
+
 
 
 CARRIER:"CARRIER",
@@ -71,25 +71,16 @@ CARRIER:"CARRIER",
 Carrier:"CARRIER",
 
 
+
 ROUTE:"ROUTE",
 
 Route:"ROUTE",
 
 
+
 CARGO:"CARGO",
 
-Cargo:"CARGO",
-
-
-KPI:"KPI",
-
-
-AUDIT:"AUDIT",
-
-VERSION:"VERSION",
-
-
-FAILED_EVENT:"FAILED_EVENT"
+Cargo:"CARGO"
 
 
 },
@@ -117,147 +108,11 @@ return true;
 
 
 Logger.log(
-"RepositoryRegistry INIT"
+"RepositoryRegistry INIT v"+
+this.version
 );
 
 
-
-
-
-// регистрация уже загруженных
-
-const loaded = {
-
-
-CLIENT:
-typeof ClientRepository!=="undefined"
-?
-ClientRepository:null,
-
-
-TRIP:
-typeof TripRepository!=="undefined"
-?
-TripRepository:null,
-
-
-VEHICLE:
-typeof VehicleRepository!=="undefined"
-?
-VehicleRepository:null,
-
-
-DRIVER:
-typeof DriverRepository!=="undefined"
-?
-DriverRepository:null,
-
-
-CARRIER:
-typeof CarrierRepository!=="undefined"
-?
-CarrierRepository:null,
-
-
-ROUTE:
-typeof RouteRepository!=="undefined"
-?
-RouteRepository:null,
-
-
-CARGO:
-typeof CargoRepository!=="undefined"
-?
-CargoRepository:null,
-
-
-CLIENT_FINANCE_PROFILE:
-typeof ClientFinanceProfileRepository!=="undefined"
-?
-ClientFinanceProfileRepository:null,
-
-
-FINANCIAL_TRANSACTION:
-typeof FinancialTransactionRepository!=="undefined"
-?
-FinancialTransactionRepository:null,
-
-
-KPI:
-typeof KPIRepository!=="undefined"
-?
-KPIRepository:null,
-
-
-AUDIT:
-typeof AuditRepository!=="undefined"
-?
-AuditRepository:null,
-
-
-VERSION:
-typeof VersionRepository!=="undefined"
-?
-VersionRepository:null,
-
-
-FAILED_EVENT:
-typeof FailedEventRepository!=="undefined"
-?
-FailedEventRepository:null
-
-
-};
-
-
-
-
-
-Object.keys(loaded)
-.forEach(entity=>{
-
-
-if(loaded[entity]){
-
-
-this.register(
-entity,
-loaded[entity],
-{
-force:true
-}
-
-);
-
-
-}
-
-
-
-});
-
-
-
-
-
-
-if(
-typeof CoreRegistry!=="undefined"
-&&
-CoreRegistry.register
-){
-
-
-CoreRegistry.register(
-
-"Repositories",
-
-this.repositories
-
-);
-
-
-}
 
 
 
@@ -265,11 +120,17 @@ this.ready=true;
 
 
 
+this.syncFactory();
+
+
+
+this.publish();
+
+
+
 Logger.log(
 
-"RepositoryRegistry READY v"+
-this.version+
-" count="+
+"RepositoryRegistry READY count="+
 this.count()
 
 );
@@ -298,7 +159,7 @@ normalize(entity){
 if(!entity){
 
 throw new Error(
-"Repository entity empty"
+"RepositoryRegistry entity required"
 );
 
 }
@@ -347,18 +208,18 @@ this.normalize(entity);
 
 
 
-if(
-!repository
-){
+
+if(!repository){
 
 throw new Error(
 
-"Repository missing "+
+"RepositoryRegistry repository missing "+
 key
 
 );
 
 }
+
 
 
 
@@ -370,20 +231,10 @@ this.repositories[key]
 ){
 
 
-Logger.warn(
-
-"Repository already exists "+
-key
-
-);
-
-
-
 return this.repositories[key];
 
 
 }
-
 
 
 
@@ -394,14 +245,72 @@ this.repositories[key]=repository;
 
 Logger.debug(
 
-"Repository registered "+
+"RepositoryRegistry REGISTER "+
 key
 
 );
 
 
 
+
+
+this.syncFactoryEntity(
+key,
+repository
+);
+
+
+
 return repository;
+
+
+},
+
+
+
+
+
+
+
+// ============================================================
+// LATE LOAD SUPPORT
+// ============================================================
+
+
+notifyLoaded(
+entity,
+repository
+){
+
+
+return this.register(
+
+entity,
+
+repository,
+
+{
+force:true
+}
+
+);
+
+
+},
+
+
+
+
+registerLoaded(
+entity,
+repository
+){
+
+
+return this.notifyLoaded(
+entity,
+repository
+);
 
 
 },
@@ -432,12 +341,14 @@ this.repositories[key];
 
 if(!repo){
 
+
 throw new Error(
 
-"Repository not found "+
+"RepositoryRegistry repository not found "+
 key
 
 );
+
 
 }
 
@@ -447,7 +358,6 @@ return repo;
 
 
 },
-
 
 
 
@@ -476,11 +386,22 @@ return this.get(entity);
 has(entity){
 
 
+try{
+
+
 const key =
 this.normalize(entity);
 
 
 return !!this.repositories[key];
+
+
+}
+catch(e){
+
+return false;
+
+}
 
 
 },
@@ -522,7 +443,167 @@ return this.list().length;
 
 
 // ============================================================
-// HEALTH REPORT
+// FACTORY SYNC
+// ============================================================
+
+
+syncFactoryEntity(
+entity,
+repository
+){
+
+
+try{
+
+
+if(
+typeof RepositoryFactory==="undefined"
+){
+
+return false;
+
+}
+
+
+
+
+if(
+typeof RepositoryFactory.register==="function"
+){
+
+
+RepositoryFactory.register(
+
+entity,
+
+repository,
+
+{
+force:true
+}
+
+);
+
+
+return true;
+
+
+}
+
+
+
+}
+catch(e){
+
+
+Logger.warn(
+
+"Factory sync failed "+
+entity+
+" "+
+e.message
+
+);
+
+
+}
+
+
+
+return false;
+
+
+},
+
+
+
+
+
+
+
+syncFactory(){
+
+
+this.list()
+.forEach(entity=>{
+
+
+this.syncFactoryEntity(
+
+entity,
+
+this.repositories[entity]
+
+);
+
+
+});
+
+
+
+},
+
+
+
+
+
+
+
+// ============================================================
+// CORE REGISTRY
+// ============================================================
+
+
+publish(){
+
+
+try{
+
+
+if(
+typeof CoreRegistry!=="undefined"
+&&
+CoreRegistry.register
+){
+
+
+CoreRegistry.register(
+
+"Repositories",
+
+this.repositories
+
+);
+
+
+}
+
+
+
+}
+catch(e){
+
+
+Logger.warn(
+"RepositoryRegistry publish skipped "+
+e.message
+);
+
+
+}
+
+
+
+},
+
+
+
+
+
+
+
+// ============================================================
+// HEALTH
 // ============================================================
 
 
@@ -545,7 +626,12 @@ entity,
 
 
 version:
-repo.version || "unknown",
+repo.version || "-",
+
+
+
+table:
+repo.table || "-",
 
 
 
@@ -576,28 +662,17 @@ null
 
 
 
-// ============================================================
-// HEALTH
-// ============================================================
-
-
 health(){
 
 
-return HealthContract.create(
 
-"RepositoryRegistry",
-
-this.ready
-?
-"OK"
-:
-"WARNING",
-
-{
+const data={
 
 
 version:this.version,
+
+
+ready:this.ready,
 
 
 count:this.count(),
@@ -606,9 +681,53 @@ count:this.count(),
 repositories:this.list()
 
 
-}
+};
+
+
+
+const status =
+this.ready
+?
+"OK"
+:
+"WARNING";
+
+
+
+
+if(
+typeof HealthContract!=="undefined"
+&&
+HealthContract.create
+){
+
+
+return HealthContract.create(
+
+"RepositoryRegistry",
+
+status,
+
+data
 
 );
+
+
+}
+
+
+
+
+return {
+
+
+module:"RepositoryRegistry",
+
+status,
+
+...data
+
+};
 
 
 }
@@ -623,6 +742,12 @@ repositories:this.list()
 
 
 
+
+// ============================================================
+// GLOBAL
+// ============================================================
+
+
 globalThis.RepositoryRegistry =
 RepositoryRegistry;
 
@@ -630,10 +755,19 @@ RepositoryRegistry;
 
 
 
+
+
+
+// ============================================================
+// SAFE BOOT
+// ============================================================
+
+
 try{
 
 
 RepositoryRegistry.init();
+
 
 
 }
@@ -649,6 +783,7 @@ e.message
 
 
 }
+
 
 
 
