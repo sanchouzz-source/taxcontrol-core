@@ -1,6 +1,6 @@
 // ============================================================
-// TripRepository v3.1.0
-// Enterprise Repository
+// TripRepository v3.2.0
+// Enterprise Transport Repository
 // TaxControl ERP Core
 //
 // Entity:
@@ -8,10 +8,7 @@
 //
 // Architecture:
 //
-// EntityService
-//      |
-//      v
-// RepositoryFactory v3
+// TripService
 //      |
 //      v
 // TripRepository
@@ -22,27 +19,27 @@
 //      v
 // Database
 //
+// Prepared:
+//
+// TransportModule
+// FinanceEngine
+// KPIEngine
+// EventBus
+// Mobile API
+//
 // Compatible:
 //
 // EntityMetadata v3+
 // EntityRegistry v2.5+
 // SchemaManager v4.2+
-// SchemaRegistry v4+
 // BaseRepository v5.7+
 // RepositoryFactory v3+
-// RepositoryRegistry v1.1+
-//
-// Prepared:
-//
-// EventBus
-// AuditLog
-// FinanceEngine
-// KPIEngine
+// RepositoryRegistry v2+
 // ============================================================
 
 
 console.log(
-"TripRepository v3.1.0"
+"TripRepository v3.2.0"
 );
 
 
@@ -50,13 +47,12 @@ console.log(
 const TripRepository = {
 
 
-
 // ============================================================
 // META
 // ============================================================
 
 
-version:"3.1.0",
+version:"3.2.0",
 
 entity:"TRIP",
 
@@ -66,8 +62,13 @@ initialized:false,
 
 base:null,
 
+
 architecture:
-"BaseRepository v5.7+ Enterprise",
+"Enterprise Transport Repository"
+
+,
+
+
 
 
 
@@ -101,12 +102,10 @@ throw new Error(
 
 
 
-
 this.base =
 BaseRepository.createRepository(
 this.entity
 );
-
 
 
 
@@ -115,7 +114,7 @@ this.initialized=true;
 
 
 Logger.log(
-"TripRepository INIT READY v"+
+"TripRepository READY v"+
 this.version
 );
 
@@ -233,6 +232,9 @@ options
 
 
 
+
+
+
 get(
 id,
 options={}
@@ -246,6 +248,8 @@ options
 
 
 },
+
+
 
 
 
@@ -329,11 +333,6 @@ options
 
 
 
-// ============================================================
-// SEARCH
-// ============================================================
-
-
 search(
 criteria={}
 ){
@@ -384,7 +383,8 @@ options
 return this.findAll(
 filters,
 options
-).length;
+)
+.length;
 
 
 },
@@ -413,16 +413,12 @@ id,
 
 
 
-const base =
-this.getBase();
-
-
-
 if(
-typeof base.exists==="function"
+this.getBase().exists
 ){
 
-return base.exists(
+return this.getBase()
+.exists(
 id,
 options
 );
@@ -445,11 +441,6 @@ options
 
 
 
-// ============================================================
-// EXISTS BY
-// ============================================================
-
-
 existsBy(
 field,
 value,
@@ -457,20 +448,28 @@ options={}
 ){
 
 
-const rows =
-this.findAll(
+return this.findAll(
+
 {
+
 [field]:value
+
 },
+
 options
-);
 
-
-
-return rows.length>0;
+)
+.length>0;
 
 
 },
+
+
+
+
+
+
+
 // ============================================================
 // UPDATE
 // ============================================================
@@ -525,11 +524,6 @@ return result;
 
 
 
-// ============================================================
-// DELETE
-// ============================================================
-
-
 delete(
 id,
 options={}
@@ -556,11 +550,6 @@ options
 
 
 
-
-
-// ============================================================
-// RESTORE
-// ============================================================
 
 
 restore(
@@ -604,39 +593,13 @@ options={}
 ){
 
 
-const base =
-this.getBase();
-
-
-
-if(
-typeof base.paginate==="function"
-){
-
-return base.paginate(
+return this.getBase()
+.paginate(
 page,
 limit,
 filters,
 options
 );
-
-}
-
-
-
-return {
-
-page,
-
-limit,
-
-data:
-this.findAll(
-filters,
-options
-)
-
-};
 
 
 },
@@ -648,7 +611,7 @@ options
 
 
 // ============================================================
-// BULK CREATE
+// BULK
 // ============================================================
 
 
@@ -683,11 +646,6 @@ options
 
 
 
-
-
-// ============================================================
-// BULK UPDATE
-// ============================================================
 
 
 bulkUpdate(
@@ -745,16 +703,12 @@ throw new Error(
 
 
 
-const base =
-this.getBase();
-
-
-
 if(
-typeof base.transaction==="function"
+this.getBase().transaction
 ){
 
-return base.transaction(
+return this.getBase()
+.transaction(
 callback
 );
 
@@ -766,19 +720,17 @@ return callback();
 
 
 },
-
-
-
-
-
-
-
 // ============================================================
 // TRIP BUSINESS METHODS
 // ============================================================
 
 
-// поиск по номеру рейса
+// ============================================================
+// SEARCH
+// ============================================================
+
+
+// по номеру рейса
 
 findByNumber(number){
 
@@ -791,6 +743,7 @@ TripNumber:number
 
 
 },
+
 
 
 
@@ -822,17 +775,31 @@ Status:status
 findActive(){
 
 
-return this.findWhere({
+const statuses=[
 
-Status:[
+
 "NEW",
+
 "PLANNED",
+
+"ASSIGNED",
+
 "LOADING",
+
 "IN_TRANSIT"
 
-]
 
-});
+];
+
+
+
+return this.findAll()
+.filter(
+x=>
+statuses.includes(
+x.Status
+)
+);
 
 
 },
@@ -842,18 +809,13 @@ Status:[
 
 
 
-
-// завершенные
 
 findCompleted(){
 
 
-return this.findWhere({
-
-Status:
+return this.findByStatus(
 "COMPLETED"
-
-});
+);
 
 
 },
@@ -864,17 +826,12 @@ Status:
 
 
 
-// отмененные
-
 findCancelled(){
 
 
-return this.findWhere({
-
-Status:
+return this.findByStatus(
 "CANCELLED"
-
-});
+);
 
 
 },
@@ -890,6 +847,7 @@ Status:
 // ============================================================
 
 
+
 findByClient(clientId){
 
 
@@ -901,6 +859,7 @@ ClientID:clientId
 
 
 },
+
 
 
 
@@ -922,6 +881,7 @@ VehicleID:vehicleId
 
 
 
+
 findByDriver(driverId){
 
 
@@ -933,6 +893,7 @@ DriverID:driverId
 
 
 },
+
 
 
 
@@ -954,6 +915,7 @@ CarrierID:carrierId
 
 
 
+
 findByRoute(routeId){
 
 
@@ -965,6 +927,7 @@ RouteID:routeId
 
 
 },
+
 
 
 
@@ -989,15 +952,333 @@ OrganizationID:orgId
 
 
 // ============================================================
-// FINANCE PREPARED API
+// EXPEDITION
 // ============================================================
+
+
+
+findExpeditionTrips(){
+
+
+return this.findWhere({
+
+Expedition:true
+
+});
+
+
+},
+
+
+
+
+
+
+
+isExpedition(tripId){
+
+
+const trip =
+this.findById(
+tripId
+);
+
+
+
+return !!trip?.Expedition;
+
+
+},
+
+
+
+
+
+
+
+// ============================================================
+// LIFE CYCLE
+// ============================================================
+
+
+
+changeStatus(
+tripId,
+status
+){
+
+
+const result =
+this.update(
+
+tripId,
+
+{
+
+Status:status
+
+}
+
+);
+
+
+
+this.emit(
+
+"TRIP_STATUS_CHANGED",
+
+{
+
+tripId,
+
+status
+
+}
+
+);
+
+
+
+return result;
+
+
+},
+
+
+
+
+
+
+
+startTrip(tripId){
+
+
+return this.changeStatus(
+
+tripId,
+
+"IN_TRANSIT"
+
+);
+
+
+},
+
+
+
+
+
+
+
+completeTrip(tripId){
+
+
+return this.changeStatus(
+
+tripId,
+
+"COMPLETED"
+
+);
+
+
+},
+
+
+
+
+
+
+
+cancelTrip(tripId,reason=""){
+
+
+const result =
+this.update(
+
+tripId,
+
+{
+
+Status:"CANCELLED",
+
+CancelReason:reason
+
+}
+
+);
+
+
+
+this.emit(
+
+"TRIP_CANCELLED",
+
+{
+
+tripId,
+
+reason
+
+}
+
+);
+
+
+
+return result;
+
+
+},
+
+
+
+
+
+
+
+// ============================================================
+// ASSIGNMENTS
+// ============================================================
+
+
+
+assignVehicle(
+tripId,
+vehicleId
+){
+
+
+const result =
+this.update(
+
+tripId,
+
+{
+
+VehicleID:vehicleId
+
+}
+
+);
+
+
+
+this.emit(
+
+"TRIP_VEHICLE_ASSIGNED",
+
+{
+
+tripId,
+
+vehicleId
+
+}
+
+);
+
+
+
+return result;
+
+
+},
+
+
+
+
+
+
+
+assignDriver(
+tripId,
+driverId
+){
+
+
+const result =
+this.update(
+
+tripId,
+
+{
+
+DriverID:driverId
+
+}
+
+);
+
+
+
+this.emit(
+
+"TRIP_DRIVER_ASSIGNED",
+
+{
+
+tripId,
+
+driverId
+
+}
+
+);
+
+
+
+return result;
+
+
+},
+
+
+
+
+
+
+
+assignCarrier(
+tripId,
+carrierId
+){
+
+
+return this.update(
+
+tripId,
+
+{
+
+CarrierID:carrierId
+
+}
+
+);
+
+
+},
+
+
+
+
+
+
+
+// ============================================================
+// FINANCE
+// ============================================================
+
 
 
 getRevenue(tripId){
 
 
 const trip =
-this.findById(tripId);
+this.findById(
+tripId
+);
 
 
 
@@ -1012,11 +1293,15 @@ trip?.Revenue || 0
 
 
 
+
+
 getCost(tripId){
 
 
 const trip =
-this.findById(tripId);
+this.findById(
+tripId
+);
 
 
 
@@ -1026,6 +1311,68 @@ trip?.Cost || 0
 
 
 },
+
+
+
+
+
+
+
+calculateCost(tripId){
+
+
+const trip =
+this.findById(
+tripId
+);
+
+
+
+return {
+
+
+fuel:
+Number(
+trip?.FuelCost || 0
+),
+
+
+driver:
+Number(
+trip?.DriverCost || 0
+),
+
+
+repair:
+Number(
+trip?.RepairCost || 0
+),
+
+
+toll:
+Number(
+trip?.TollCost || 0
+),
+
+
+carrier:
+Number(
+trip?.CarrierCost || 0
+),
+
+
+total:
+Number(
+trip?.Cost || 0
+)
+
+
+};
+
+
+},
+
+
 
 
 
@@ -1046,9 +1393,81 @@ this.getCost(tripId)
 
 
 },
+
+
+
+
+
+
+
+getProfitability(tripId){
+
+
+const revenue =
+this.getRevenue(
+tripId
+);
+
+
+
+const cost =
+this.getCost(
+tripId
+);
+
+
+
+const margin =
+revenue-cost;
+
+
+
+return {
+
+
+tripId,
+
+
+revenue,
+
+
+cost,
+
+
+margin,
+
+
+marginPercent:
+
+revenue
+?
+
+(
+margin/revenue*100
+)
+
+.toFixed(2)
+
+:
+
+0
+
+
+};
+
+
+},
+
+
+
+
+
+
+
 // ============================================================
-// KPI PREPARED API
+// KPI
 // ============================================================
+
 
 
 getTripKPI(tripId){
@@ -1063,22 +1482,31 @@ tripId
 
 return {
 
+
 tripId,
+
 
 status:
 trip?.Status || null,
 
 
 revenue:
-Number(trip?.Revenue || 0),
+this.getRevenue(
+tripId
+),
 
 
 cost:
-Number(trip?.Cost || 0),
+this.getCost(
+tripId
+),
 
 
 margin:
-this.getMargin(tripId)
+this.getMargin(
+tripId
+)
+
 
 };
 
@@ -1107,14 +1535,20 @@ return {
 driverId,
 
 
-trips:
+total:
 trips.length,
 
 
 completed:
+
 trips.filter(
-t=>t.Status==="COMPLETED"
-).length
+
+t=>
+t.Status==="COMPLETED"
+
+)
+
+.length
 
 
 };
@@ -1144,14 +1578,20 @@ return {
 vehicleId,
 
 
-trips:
+total:
 trips.length,
 
 
 completed:
+
 trips.filter(
-t=>t.Status==="COMPLETED"
-).length
+
+t=>
+t.Status==="COMPLETED"
+
+)
+
+.length
 
 
 };
@@ -1166,12 +1606,123 @@ t=>t.Status==="COMPLETED"
 
 
 // ============================================================
-// METADATA
+// DOCUMENT CONTROL
+// ============================================================
+
+
+
+checkDocuments(tripId){
+
+
+const trip =
+this.findById(
+tripId
+);
+
+
+
+return {
+
+
+tripId,
+
+
+hasAct:
+!!trip?.Act,
+
+
+hasTTN:
+!!trip?.TTN,
+
+
+hasOriginals:
+!!trip?.OriginalDocuments,
+
+
+postalTrack:
+trip?.PostalTrack || null
+
+
+};
+
+
+},
+
+
+
+
+
+
+
+// ============================================================
+// EVENT BUS
+// ============================================================
+
+
+
+emit(
+event,
+data
+){
+
+
+try{
+
+
+if(
+typeof EventBus!=="undefined"
+&&
+typeof EventBus.emit==="function"
+){
+
+
+EventBus.emit(
+
+event,
+
+{
+
+entity:this.entity,
+
+data
+
+}
+
+);
+
+
+}
+
+
+}
+catch(e){
+
+
+Logger.warn(
+
+"TripRepository Event skipped "+
+e.message
+
+);
+
+
+}
+
+
+},
+
+
+
+
+
+
+
+// ============================================================
+// META
 // ============================================================
 
 
 getMeta(){
-
 
 
 if(
@@ -1198,23 +1749,17 @@ return schema;
 
 
 
-
-
 if(
 typeof EntityRegistry!=="undefined"
 &&
 EntityRegistry.get
 ){
 
-
 return EntityRegistry.get(
 this.entity
 );
 
-
 }
-
-
 
 
 
@@ -1242,140 +1787,11 @@ idField:"TripID"
 
 
 // ============================================================
-// EVENT BUS
-// ============================================================
-
-
-emit(
-event,
-data
-){
-
-
-try{
-
-
-if(
-typeof EventBus!=="undefined"
-&&
-typeof EventBus.emit==="function"
-){
-
-
-EventBus.emit(
-
-event,
-
-{
-
-entity:this.entity,
-
-data:data
-
-}
-
-);
-
-
-}
-
-
-
-}
-catch(e){
-
-
-Logger.warn(
-
-"TripRepository EventBus skipped: "+
-e.message
-
-);
-
-
-}
-
-
-},
-
-
-
-
-
-
-
-// ============================================================
-// AUDIT
-// ============================================================
-
-
-audit(
-action,
-data={}
-){
-
-
-try{
-
-
-if(
-typeof AuditLog!=="undefined"
-&&
-typeof AuditLog.write==="function"
-){
-
-
-AuditLog.write(
-
-{
-
-entity:this.entity,
-
-action,
-
-data
-
-}
-
-);
-
-
-}
-
-
-
-}
-catch(e){
-
-
-Logger.warn(
-
-"TripRepository Audit skipped: "+
-e.message
-
-);
-
-
-}
-
-
-},
-
-
-
-
-
-
-
-// ============================================================
 // VALIDATION
 // ============================================================
 
 
-requireId(
-id,
-method
-){
+requireId(id,method){
 
 
 if(
@@ -1387,7 +1803,8 @@ id===""
 
 throw new Error(
 
-"TripRepository."+
+"TripRepository."
++
 method+
 ": id required"
 
@@ -1408,10 +1825,8 @@ return true;
 
 
 
-requireObject(
-data,
-method
-){
+
+requireObject(data,method){
 
 
 if(
@@ -1423,9 +1838,10 @@ Array.isArray(data)
 
 throw new Error(
 
-"TripRepository."+
+"TripRepository."
++
 method+
-": data must object"
+": object required"
 
 );
 
@@ -1457,14 +1873,7 @@ if(
 typeof RepositoryFactory==="undefined"
 ){
 
-
-Logger.warn(
-"TripRepository RepositoryFactory unavailable"
-);
-
-
 return false;
-
 
 }
 
@@ -1477,12 +1886,12 @@ this.entity,
 this,
 
 {
+
 force:true
+
 }
 
 );
-
-
 
 
 
@@ -1493,7 +1902,6 @@ typeof RepositoryRegistry!=="undefined"
 RepositoryRegistry.register
 ){
 
-
 RepositoryRegistry.register(
 
 this.entity,
@@ -1501,7 +1909,6 @@ this.entity,
 this
 
 );
-
 
 }
 
@@ -1545,27 +1952,17 @@ module:
 "TripRepository",
 
 
-
 version:
 this.version,
-
 
 
 entity:
 this.entity,
 
 
-
 table:
 meta?.table ||
 this.table,
-
-
-
-idField:
-meta?.idField ||
-"TripID",
-
 
 
 initialized:
@@ -1577,7 +1974,7 @@ layers:{
 
 
 metadata:
-!!meta,
+typeof EntityRegistry!=="undefined",
 
 
 schema:
@@ -1601,7 +1998,6 @@ typeof RepositoryRegistry!=="undefined"
 
 
 registered:
-
 
 typeof RepositoryFactory!=="undefined"
 &&
@@ -1664,14 +2060,11 @@ data.layers.metadata
 
 
 
-
 if(
 typeof HealthContract!=="undefined"
 &&
 HealthContract.create
 ){
-
-
 
 return HealthContract.create(
 
@@ -1683,11 +2076,7 @@ data
 
 );
 
-
-
 }
-
-
 
 
 
@@ -1747,7 +2136,6 @@ TripRepository.init();
 TripRepository.register();
 
 
-
 }
 catch(e){
 
@@ -1761,7 +2149,6 @@ e.message
 
 
 }
-
 
 
 

@@ -1,448 +1,1138 @@
 // ============================================================
-// KPIRepository v1.2.0
-// TaxControl ERP
+// KPIRepository v3.0.0
+// Enterprise Repository
+// TaxControl ERP Core
 //
-// Repository for KPI entity
+// Entity:
+// KPI
+//
+// Architecture:
+//
+// KPIEngine
+//      |
+//      v
+// KPIRepository
+//      |
+//      v
+// BaseRepository
+//      |
+//      v
+// Database
+//
 // Compatible:
-// - BaseRepository v5.4.3+
-// - RepositoryFactory v2.5.8+
-// - RepositoryRegistry v1.1.0+
+//
+// EntityMetadata v3+
+// EntityRegistry v2.5+
+// SchemaManager v4.2+
+// BaseRepository v5.7+
+// RepositoryFactory v3+
+// RepositoryRegistry v1.1+
 // ============================================================
 
-console.log("KPIRepository v1.2.0");
+
+console.log(
+"KPIRepository v3.0.0"
+);
+
+
+
 
 
 const KPIRepository = {
 
-  version: "1.2.0",
 
-  entity: "KPI",
+// ============================================================
+// META
+// ============================================================
 
-  table: "KPIMetrics",
 
+version:"3.0.0",
 
-  // ============================================================
-  // CREATE
-  // ============================================================
+entity:"KPI",
 
-  create(data = {}) {
+table:"KPIMetrics",
 
-    if (
-      !data ||
-      typeof data !== "object" ||
-      Array.isArray(data)
-    ) {
-      throw new Error(
-        "KPIRepository.create: data must be an object"
-      );
-    }
+initialized:false,
 
-    return BaseRepository.create(
-      this.entity,
-      data
-    );
+base:null,
 
-  },
 
 
-  // ============================================================
-  // FIND BY ID
-  // ============================================================
 
-  findById(id, options = {}) {
 
-    this.requireId(
-      id,
-      "findById"
-    );
 
-    return BaseRepository.findById(
-      this.entity,
-      id,
-      options
-    );
 
-  },
 
+// ============================================================
+// INIT
+// ============================================================
 
-  // ============================================================
-  // GET ALIAS
-  // ============================================================
 
-  get(id, options = {}) {
+init(){
 
-    return this.findById(
-      id,
-      options
-    );
 
-  },
+if(this.initialized){
 
+return true;
 
-  // ============================================================
-  // EXISTS
-  // ============================================================
+}
 
-  exists(id, options = {}) {
 
-    this.requireId(
-      id,
-      "exists"
-    );
 
-    return BaseRepository.exists(
-      this.entity,
-      id,
-      options
-    );
+if(
+typeof BaseRepository==="undefined"
+){
 
-  },
+throw new Error(
+"KPIRepository: BaseRepository unavailable"
+);
 
+}
 
-  // ============================================================
-  // FIND ALL
-  // ============================================================
 
-  findAll(filters = {}, options = {}) {
 
-    return BaseRepository.findAll(
-      this.entity,
-      filters || {},
-      options || {}
-    );
+this.base =
+BaseRepository.createRepository(
+this.entity
+);
 
-  },
 
 
-  // ============================================================
-  // UPDATE
-  // ============================================================
+this.initialized=true;
 
-  update(id, data = {}) {
 
-    this.requireId(
-      id,
-      "update"
-    );
 
-    if (
-      !data ||
-      typeof data !== "object" ||
-      Array.isArray(data)
-    ) {
-      throw new Error(
-        "KPIRepository.update: data must be an object"
-      );
-    }
+Logger.log(
+"KPIRepository INIT READY v"+
+this.version
+);
 
-    return BaseRepository.update(
-      this.entity,
-      id,
-      data
-    );
-
-  },
-
-
-  // ============================================================
-  // DELETE
-  // ============================================================
 
-  delete(id) {
 
-    this.requireId(
-      id,
-      "delete"
-    );
+return true;
 
-    return BaseRepository.delete(
-      this.entity,
-      id
-    );
 
-  },
+},
 
 
-  // ============================================================
-  // RESTORE
-  // ============================================================
 
-  restore(id) {
-
-    this.requireId(
-      id,
-      "restore"
-    );
-
-    return BaseRepository.restore(
-      this.entity,
-      id
-    );
-
-  },
-
-
-  // ============================================================
-  // COUNT
-  // ============================================================
 
-  count(filters = {}, options = {}) {
-
-    if (
-      typeof BaseRepository.count === "function"
-    ) {
-      return BaseRepository.count(
-        this.entity,
-        filters || {},
-        options || {}
-      );
-    }
-
-    const rows = this.findAll(
-      filters,
-      options
-    );
-
-    return Array.isArray(rows)
-      ? rows.length
-      : 0;
 
-  },
 
 
-  // ============================================================
-  // EXISTS BY FIELD
-  // ============================================================
+// ============================================================
+// BASE
+// ============================================================
 
-  existsBy(field, value, options = {}) {
 
-    if (!field) {
-      throw new Error(
-        "KPIRepository.existsBy: field required"
-      );
-    }
+getBase(){
 
-    if (
-      typeof BaseRepository.existsBy === "function"
-    ) {
-      return BaseRepository.existsBy(
-        this.entity,
-        field,
-        value,
-        options
-      );
-    }
 
-    const rows = this.findAll(
-      {
-        [field]: value
-      },
-      options
-    );
+if(!this.initialized){
 
-    return Array.isArray(rows) &&
-      rows.length > 0;
+this.init();
 
-  },
+}
 
 
-  // ============================================================
-  // METADATA
-  // ============================================================
+return this.base;
 
-  getMeta() {
 
-    if (
-      typeof SchemaRegistry !== "undefined" &&
-      typeof SchemaRegistry.get === "function"
-    ) {
-      const schema =
-        SchemaRegistry.get(this.entity);
+},
 
-      if (schema) {
-        return schema;
-      }
-    }
 
-    if (
-      typeof EntityRegistry !== "undefined" &&
-      typeof EntityRegistry.get === "function"
-    ) {
-      const metadata =
-        EntityRegistry.get(this.entity);
 
-      if (metadata) {
-        return metadata;
-      }
-    }
 
-    return {
-      entity: this.entity,
-      table: this.table
-    };
 
-  },
 
 
-  // ============================================================
-  // ID VALIDATION
-  // ============================================================
+// ============================================================
+// CREATE
+// ============================================================
 
-  requireId(id, method) {
 
-    if (
-      id === undefined ||
-      id === null ||
-      id === ""
-    ) {
-      throw new Error(
-        "KPIRepository." +
-        method +
-        ": id required"
-      );
-    }
+create(data={},options={}){
 
-    return true;
 
-  },
+this.requireObject(
+data,
+"create"
+);
 
 
-  // ============================================================
-  // HEALTH
-  // ============================================================
 
-  health() {
+return this.getBase()
+.create(
+data,
+options
+);
 
-    let metadata = null;
-    let error = null;
 
-    try {
-      metadata = this.getMeta();
-    } catch (e) {
-      error = e.message;
-    }
+},
 
-    const details = {
 
-      version: this.version,
 
-      entity: this.entity,
 
-      table:
-        metadata && metadata.table
-          ? metadata.table
-          : this.table,
 
-      baseRepository:
-        typeof BaseRepository !== "undefined",
 
-      repositoryFactory:
-        typeof RepositoryFactory !== "undefined",
 
-      registered:
-        typeof RepositoryFactory !== "undefined" &&
-        typeof RepositoryFactory.has === "function"
-          ? RepositoryFactory.has(this.entity)
-          : false,
+// ============================================================
+// READ
+// ============================================================
 
-      error
 
-    };
+findById(id,options={}){
 
-    const status =
-      details.baseRepository && !error
-        ? "OK"
-        : "WARNING";
 
-    if (
-      typeof HealthContract !== "undefined" &&
-      typeof HealthContract.create === "function"
-    ) {
-      return HealthContract.create(
-        "KPIRepository",
-        status,
-        details
-      );
-    }
+this.requireId(
+id,
+"findById"
+);
 
-    return {
-      module: "KPIRepository",
-      status,
-      ...details
-    };
 
-  }
+
+return this.getBase()
+.findById(
+id,
+options
+);
+
+
+},
+
+
+
+
+
+
+
+get(id,options={}){
+
+
+return this.findById(
+id,
+options
+);
+
+
+},
+
+
+
+
+
+
+
+findAll(filters={},options={}){
+
+
+return this.getBase()
+.findAll(
+filters,
+options
+);
+
+
+},
+
+
+
+
+
+
+
+findWhere(criteria={},options={}){
+
+
+const base =
+this.getBase();
+
+
+
+if(
+typeof base.findWhere==="function"
+){
+
+return base.findWhere(
+criteria,
+options
+);
+
+}
+
+
+
+return this.findAll(
+criteria,
+options
+);
+
+
+},
+
+
+
+
+
+
+
+// ============================================================
+// KPI BUSINESS METHODS
+// ============================================================
+
+
+
+findByOrganization(orgId){
+
+
+return this.findWhere({
+
+OrganizationID:orgId
+
+});
+
+
+},
+
+
+
+
+
+
+
+findByPeriod(
+period
+){
+
+
+return this.findWhere({
+
+Period:period
+
+});
+
+
+},
+
+
+
+
+
+
+
+findByMetric(
+metric
+){
+
+
+return this.findWhere({
+
+Metric:metric
+
+});
+
+
+},
+
+
+
+
+
+
+
+getCurrent(
+organizationId,
+metric
+){
+
+
+const rows =
+this.findWhere({
+
+OrganizationID:organizationId,
+
+Metric:metric
+
+});
+
+
+
+if(!rows.length){
+
+return null;
+
+}
+
+
+
+return rows[0];
+
+
+},
+
+
+
+
+
+
+
+saveMetric(
+data={}
+){
+
+
+if(
+!data.OrganizationID
+){
+
+throw new Error(
+"KPIRepository.saveMetric OrganizationID required"
+);
+
+}
+
+
+
+if(
+!data.Metric
+){
+
+throw new Error(
+"KPIRepository.saveMetric Metric required"
+);
+
+}
+
+
+
+const current =
+this.getCurrent(
+
+data.OrganizationID,
+
+data.Metric
+
+);
+
+
+
+if(current){
+
+
+return this.update(
+
+current.ID,
+
+data
+
+);
+
+
+}
+
+
+
+return this.create(
+data
+);
+
+
+},
+
+
+
+
+
+
+
+// ============================================================
+// UPDATE
+// ============================================================
+
+
+update(id,data={},options={}){
+
+
+this.requireId(
+id,
+"update"
+);
+
+
+
+this.requireObject(
+data,
+"update"
+);
+
+
+
+return this.getBase()
+.update(
+id,
+data,
+options
+);
+
+
+},
+
+
+
+
+
+
+
+delete(id,options={}){
+
+
+this.requireId(
+id,
+"delete"
+);
+
+
+
+return this.getBase()
+.delete(
+id,
+options
+);
+
+
+},
+
+
+
+
+
+
+
+restore(id,options={}){
+
+
+this.requireId(
+id,
+"restore"
+);
+
+
+
+return this.getBase()
+.restore(
+id,
+options
+);
+
+
+},
+
+
+
+
+
+
+
+// ============================================================
+// COMMON
+// ============================================================
+
+
+exists(id,options={}){
+
+
+this.requireId(
+id,
+"exists"
+);
+
+
+
+return this.getBase()
+.exists(
+id,
+options
+);
+
+
+},
+
+
+
+
+
+
+
+existsBy(field,value,options={}){
+
+
+return this.getBase()
+.existsBy(
+field,
+value,
+options
+);
+
+
+},
+
+
+
+
+
+
+
+count(filters={},options={}){
+
+
+if(
+this.getBase().count
+){
+
+return this.getBase()
+.count(
+filters,
+options
+);
+
+}
+
+
+
+return this.findAll(
+filters,
+options
+).length;
+
+
+},
+
+
+
+
+
+
+
+paginate(
+page=1,
+limit=50,
+filters={},
+options={}
+){
+
+
+return this.getBase()
+.paginate(
+page,
+limit,
+filters,
+options
+);
+
+
+},
+
+
+
+
+
+
+
+// ============================================================
+// BULK
+// ============================================================
+
+
+bulkCreate(items=[],options={}){
+
+
+if(
+!Array.isArray(items)
+){
+
+throw new Error(
+"KPIRepository.bulkCreate items must array"
+);
+
+}
+
+
+
+return this.getBase()
+.bulkCreate(
+items,
+options
+);
+
+
+},
+
+
+
+
+
+
+
+bulkUpdate(ids=[],data={},options={}){
+
+
+if(
+!Array.isArray(ids)
+){
+
+throw new Error(
+"KPIRepository.bulkUpdate ids must array"
+);
+
+}
+
+
+
+return this.getBase()
+.bulkUpdate(
+ids,
+data,
+options
+);
+
+
+},
+
+
+
+
+
+
+
+// ============================================================
+// TRANSACTION
+// ============================================================
+
+
+transaction(callback){
+
+
+if(
+typeof callback!=="function"
+){
+
+throw new Error(
+"KPIRepository.transaction callback required"
+);
+
+}
+
+
+
+const base =
+this.getBase();
+
+
+
+if(base.transaction){
+
+return base.transaction(
+callback
+);
+
+}
+
+
+
+return callback();
+
+
+},
+
+
+
+
+
+
+
+// ============================================================
+// META
+// ============================================================
+
+
+getMeta(){
+
+
+if(
+typeof EntityRegistry!=="undefined"
+&&
+EntityRegistry.get
+){
+
+return EntityRegistry.get(
+this.entity
+);
+
+}
+
+
+
+return {
+
+entity:this.entity,
+
+table:this.table,
+
+idField:"KPIID"
 
 };
 
 
+},
+
+
+
+
+
+
+
 // ============================================================
-// GLOBAL EXPORT
+// VALIDATION
 // ============================================================
 
-globalThis.KPIRepository =
-  KPIRepository;
+
+requireId(id,method){
 
 
-// ============================================================
-// LATE REGISTRATION
-// Работает, если RepositoryFactory уже загружена.
-// ============================================================
+if(
+id===undefined ||
+id===null ||
+id===""
+){
 
-try {
+throw new Error(
 
-  if (
-    typeof RepositoryFactory !== "undefined"
-  ) {
+"KPIRepository."
++
+method+
+": id required"
 
-    if (
-      typeof RepositoryFactory.notifyLoaded === "function"
-    ) {
-      RepositoryFactory.notifyLoaded(
-        KPIRepository.entity,
-        KPIRepository
-      );
-    }
-
-    else if (
-      typeof RepositoryFactory.registerLoaded === "function"
-    ) {
-      RepositoryFactory.registerLoaded(
-        KPIRepository.entity,
-        KPIRepository
-      );
-    }
-
-    else if (
-      typeof RepositoryFactory.register === "function"
-    ) {
-      RepositoryFactory.register(
-        KPIRepository.entity,
-        KPIRepository
-      );
-    }
-
-  }
-
-} catch (e) {
-
-  Logger.warn(
-    "KPIRepository registration deferred: " +
-    e.message
-  );
+);
 
 }
+
+
+},
+
+
+
+
+
+
+
+requireObject(obj,method){
+
+
+if(
+!obj ||
+typeof obj!=="object" ||
+Array.isArray(obj)
+){
+
+throw new Error(
+
+"KPIRepository."
++
+method+
+": object required"
+
+);
+
+}
+
+
+},
+
+
+
+
+
+
+
+// ============================================================
+// REGISTER
+// ============================================================
+
+
+register(){
+
+
+if(
+typeof RepositoryFactory==="undefined"
+){
+
+return false;
+
+}
+
+
+
+RepositoryFactory.register(
+
+this.entity,
+
+this,
+
+{
+force:true
+}
+
+);
+
+
+
+if(
+typeof RepositoryRegistry!=="undefined"
+&&
+RepositoryRegistry.register
+){
+
+RepositoryRegistry.register(
+
+this.entity,
+
+this
+
+);
+
+}
+
+
+
+return true;
+
+
+},
+
+
+
+
+
+
+
+// ============================================================
+// DIAGNOSTICS
+// ============================================================
+
+
+diagnostics(){
+
+
+let meta=null;
+
+
+try{
+
+meta=this.getMeta();
+
+}
+catch(e){}
+
+
+
+return {
+
+
+module:
+"KPIRepository",
+
+
+version:
+this.version,
+
+
+entity:
+this.entity,
+
+
+table:
+meta?.table ||
+this.table,
+
+
+initialized:
+this.initialized,
+
+
+
+layers:{
+
+
+metadata:
+!!meta,
+
+
+baseRepository:
+typeof BaseRepository!=="undefined",
+
+
+factory:
+typeof RepositoryFactory!=="undefined",
+
+
+registry:
+typeof RepositoryRegistry!=="undefined"
+
+
+},
+
+
+
+registered:
+
+typeof RepositoryFactory!=="undefined"
+&&
+RepositoryFactory.has
+?
+RepositoryFactory.has(this.entity)
+:
+false,
+
+
+
+timestamp:
+new Date()
+.toISOString()
+
+
+};
+
+
+},
+
+
+
+
+
+
+
+// ============================================================
+// HEALTH
+// ============================================================
+
+
+health(){
+
+
+const data =
+this.diagnostics();
+
+
+
+const status =
+data.layers.baseRepository &&
+data.layers.metadata
+
+?
+"OK"
+:
+"WARNING";
+
+
+
+if(
+typeof HealthContract!=="undefined"
+&&
+HealthContract.create
+){
+
+return HealthContract.create(
+
+"KPIRepository",
+
+status,
+
+data
+
+);
+
+}
+
+
+
+return {
+
+module:"KPIRepository",
+
+status,
+
+...data
+
+};
+
+
+}
+
+
+
+};
+
+
+
+
+
+
+
+
+
+// ============================================================
+// GLOBAL
+// ============================================================
+
+
+globalThis.KPIRepository =
+KPIRepository;
+
+
+
+
+
+
+
+
+
+// ============================================================
+// SAFE START
+// ============================================================
+
+
+try{
+
+
+KPIRepository.init();
+
+
+KPIRepository.register();
+
+
+}
+catch(e){
+
+
+Logger.warn(
+
+"KPIRepository deferred: "+
+e.message
+
+);
+
+
+}
+
+
+
+
+
 
 
 Logger.log(
-  "KPIRepository READY v" +
-  KPIRepository.version
-);
-if(typeof RepositoryFactory!=="undefined"){
 
-RepositoryFactory.registerLoaded(
-"KPI",
-KPIRepository
-);
+"KPIRepository GLOBAL READY v"+
+KPIRepository.version
 
-}
+);

@@ -1,5 +1,5 @@
 // ============================================================
-// VehicleRepository v3.0.1
+// VehicleRepository v3.1.0
 // Enterprise Repository
 // TaxControl ERP Core
 //
@@ -8,10 +8,7 @@
 //
 // Architecture:
 //
-// EntityService
-//      |
-//      v
-// RepositoryFactory
+// FleetService
 //      |
 //      v
 // VehicleRepository
@@ -29,12 +26,12 @@
 // SchemaManager v4.2+
 // BaseRepository v5.7+
 // RepositoryFactory v3+
-// RepositoryRegistry v1.1+
+// RepositoryRegistry v2+
 // ============================================================
 
 
 console.log(
-"VehicleRepository v3.0.1"
+"VehicleRepository v3.1.0"
 );
 
 
@@ -44,13 +41,12 @@ console.log(
 const VehicleRepository = {
 
 
-
 // ============================================================
 // META
 // ============================================================
 
 
-version:"3.0.1",
+version:"3.1.0",
 
 entity:"VEHICLE",
 
@@ -59,9 +55,6 @@ table:"Vehicles",
 initialized:false,
 
 base:null,
-
-auditReady:true,
-
 
 
 
@@ -108,7 +101,7 @@ this.initialized=true;
 
 
 Logger.log(
-"VehicleRepository READY v"+
+"VehicleRepository INIT READY v"+
 this.version
 );
 
@@ -152,24 +145,41 @@ return this.base;
 
 
 // ============================================================
-// CRUD
+// CREATE
 // ============================================================
 
 
 create(data={},options={}){
 
 
-return this.getBase()
+const result =
+this.getBase()
 .create(
 data,
 options
 );
 
 
+this.emit(
+"VEHICLE_CREATED",
+result
+);
+
+
+return result;
+
+
 },
 
 
 
+
+
+
+
+// ============================================================
+// READ
+// ============================================================
 
 
 findById(id,options={}){
@@ -194,7 +204,6 @@ options
 
 
 
-
 get(id,options={}){
 
 
@@ -205,7 +214,6 @@ options
 
 
 },
-
 
 
 
@@ -253,7 +261,9 @@ this.getBase();
 
 
 
-if(base.findWhere){
+if(
+typeof base.findWhere==="function"
+){
 
 return base.findWhere(
 criteria,
@@ -279,25 +289,8 @@ options
 
 
 // ============================================================
-// VEHICLE BUSINESS METHODS
+// VEHICLE SEARCH
 // ============================================================
-
-
-
-findByNumber(number){
-
-
-return this.findWhere({
-
-Number:number
-
-});
-
-
-},
-
-
-
 
 
 
@@ -318,12 +311,12 @@ PlateNumber:plate
 
 
 
-findActive(){
+findByVin(vin){
 
 
 return this.findWhere({
 
-Active:true
+VIN:vin
 
 });
 
@@ -335,29 +328,12 @@ Active:true
 
 
 
-findByDriver(driverId){
+findByInternalNumber(number){
 
 
 return this.findWhere({
 
-DriverID:driverId
-
-});
-
-
-},
-
-
-
-
-
-
-findByOrganization(orgId){
-
-
-return this.findWhere({
-
-OrganizationID:orgId
+InternalNumber:number
 
 });
 
@@ -386,6 +362,443 @@ Type:type
 
 
 
+findByOrganization(orgId){
+
+
+return this.findWhere({
+
+OrganizationID:orgId
+
+});
+
+
+},
+
+
+
+
+
+
+findByDriver(driverId){
+
+
+return this.findWhere({
+
+DriverID:driverId
+
+});
+
+
+},
+
+
+
+
+
+
+
+// ============================================================
+// STATUS
+// ============================================================
+
+
+findByStatus(status){
+
+
+return this.findWhere({
+
+Status:status
+
+});
+
+
+},
+
+
+
+
+
+
+
+findActive(){
+
+
+return this.findByStatus(
+"ACTIVE"
+);
+
+
+},
+
+
+
+
+
+
+
+findAvailable(){
+
+
+return this.findWhere({
+
+Status:"ACTIVE",
+
+Available:true
+
+});
+
+
+},
+
+
+
+
+
+
+
+findRepair(){
+
+
+return this.findByStatus(
+"REPAIR"
+);
+
+
+},
+
+
+
+
+
+
+
+findBlocked(){
+
+
+return this.findByStatus(
+"BLOCKED"
+);
+
+
+},
+
+
+
+
+
+
+
+// ============================================================
+// DRIVER MANAGEMENT
+// ============================================================
+
+
+assignDriver(
+vehicleId,
+driverId
+){
+
+
+this.requireId(
+vehicleId,
+"assignDriver"
+);
+
+
+this.requireId(
+driverId,
+"assignDriver"
+);
+
+
+
+const result =
+this.update(
+
+vehicleId,
+
+{
+
+DriverID:driverId
+
+}
+
+);
+
+
+
+this.emit(
+"VEHICLE_DRIVER_ASSIGNED",
+{
+vehicleId,
+driverId
+}
+);
+
+
+
+return result;
+
+
+},
+
+
+
+
+
+
+
+removeDriver(
+vehicleId
+){
+
+
+this.requireId(
+vehicleId,
+"removeDriver"
+);
+
+
+
+return this.update(
+
+vehicleId,
+
+{
+
+DriverID:null
+
+}
+
+);
+
+
+},
+
+
+
+
+
+
+
+// ============================================================
+// MILEAGE
+// ============================================================
+
+
+getMileage(vehicleId){
+
+
+const vehicle =
+this.findById(
+vehicleId
+);
+
+
+
+return Number(
+
+vehicle?.Mileage || 0
+
+);
+
+
+},
+
+
+
+
+
+
+
+updateMileage(
+vehicleId,
+mileage
+){
+
+
+this.requireId(
+vehicleId,
+"updateMileage"
+);
+
+
+
+if(
+Number(mileage)<0
+){
+
+throw new Error(
+"Vehicle mileage cannot be negative"
+);
+
+}
+
+
+
+const result =
+this.update(
+
+vehicleId,
+
+{
+
+Mileage:Number(mileage),
+
+MileageUpdatedAt:
+new Date()
+
+}
+
+);
+
+
+
+this.emit(
+
+"VEHICLE_MILEAGE_UPDATED",
+
+{
+
+vehicleId,
+
+mileage
+
+}
+
+);
+
+
+
+return result;
+
+
+},
+
+
+
+
+
+
+
+// ============================================================
+// MAINTENANCE
+// ============================================================
+
+
+findMaintenanceDue(days=30){
+
+
+const vehicles =
+this.findAll();
+
+
+
+const now =
+new Date();
+
+
+
+return vehicles.filter(vehicle=>{
+
+
+if(
+!vehicle.NextMaintenanceDate
+){
+
+return false;
+
+}
+
+
+
+const date =
+new Date(
+vehicle.NextMaintenanceDate
+);
+
+
+
+const diff =
+(date-now)
+/
+86400000;
+
+
+
+return diff<=days;
+
+
+});
+
+
+},
+
+
+
+
+
+
+
+// ============================================================
+// STATUS CHANGE
+// ============================================================
+
+
+changeStatus(
+vehicleId,
+status
+){
+
+
+this.requireId(
+vehicleId,
+"changeStatus"
+);
+
+
+
+const result =
+this.update(
+
+vehicleId,
+
+{
+
+Status:status
+
+}
+
+);
+
+
+
+this.emit(
+
+"VEHICLE_STATUS_CHANGED",
+
+{
+
+vehicleId,
+
+status
+
+}
+
+);
+
+
+
+return result;
+
+
+},
+
+
+
+
+
+
 
 // ============================================================
 // UPDATE
@@ -402,12 +815,33 @@ id,
 
 
 
-return this.getBase()
+const result =
+this.getBase()
 .update(
 id,
 data,
 options
 );
+
+
+
+this.emit(
+
+"VEHICLE_UPDATED",
+
+{
+
+id,
+
+data
+
+}
+
+);
+
+
+
+return result;
 
 
 },
@@ -474,34 +908,11 @@ options
 
 
 // ============================================================
-// EXISTS
+// COMMON
 // ============================================================
 
 
 exists(id,options={}){
-
-
-this.requireId(
-id,
-"exists"
-);
-
-
-
-const base =
-this.getBase();
-
-
-
-if(base.exists){
-
-return base.exists(
-id,
-options
-);
-
-}
-
 
 
 return !!this.findById(
@@ -521,30 +932,12 @@ options
 existsBy(field,value,options={}){
 
 
-const base =
-this.getBase();
-
-
-
-if(base.existsBy){
-
-return base.existsBy(
+return this.getBase()
+.existsBy(
 field,
 value,
 options
 );
-
-}
-
-
-
-return this.findWhere(
-{
-[field]:value
-},
-options
-)
-.length>0;
 
 
 },
@@ -558,14 +951,12 @@ options
 count(filters={},options={}){
 
 
-const base =
-this.getBase();
+if(
+this.getBase().count
+){
 
-
-
-if(base.count){
-
-return base.count(
+return this.getBase()
+.count(
 filters,
 options
 );
@@ -577,8 +968,32 @@ options
 return this.findAll(
 filters,
 options
-)
-.length;
+).length;
+
+
+},
+
+
+
+
+
+
+
+paginate(
+page=1,
+limit=50,
+filters={},
+options={}
+){
+
+
+return this.getBase()
+.paginate(
+page,
+limit,
+filters,
+options
+);
 
 
 },
@@ -597,7 +1012,9 @@ options
 bulkCreate(items=[],options={}){
 
 
-if(!Array.isArray(items)){
+if(
+!Array.isArray(items)
+){
 
 throw new Error(
 "VehicleRepository.bulkCreate items must array"
@@ -623,16 +1040,6 @@ options
 
 
 bulkUpdate(ids=[],data={},options={}){
-
-
-if(!Array.isArray(ids)){
-
-throw new Error(
-"VehicleRepository.bulkUpdate ids must array"
-);
-
-}
-
 
 
 return this.getBase()
@@ -671,14 +1078,12 @@ throw new Error(
 
 
 
-const base =
-this.getBase();
+if(
+this.getBase().transaction
+){
 
-
-
-if(base.transaction){
-
-return base.transaction(
+return this.getBase()
+.transaction(
 callback
 );
 
@@ -687,6 +1092,63 @@ callback
 
 
 return callback();
+
+
+},
+
+
+
+
+
+
+
+// ============================================================
+// EVENTS
+// ============================================================
+
+
+emit(type,payload){
+
+
+try{
+
+
+if(
+typeof EventBus!=="undefined"
+&&
+EventBus.emit
+){
+
+
+EventBus.emit(
+
+type,
+
+{
+
+entity:this.entity,
+
+payload
+
+}
+
+);
+
+
+}
+
+
+}
+catch(e){
+
+
+Logger.warn(
+"VehicleRepository event skipped "+
+e.message
+);
+
+
+}
 
 
 },
@@ -718,6 +1180,7 @@ this.entity
 );
 
 
+
 if(schema){
 
 return schema;
@@ -725,9 +1188,6 @@ return schema;
 }
 
 }
-
-
-
 
 
 
@@ -745,10 +1205,7 @@ this.entity
 
 
 
-
-
 return {
-
 
 entity:this.entity,
 
@@ -813,11 +1270,6 @@ if(
 typeof RepositoryFactory==="undefined"
 ){
 
-Logger.warn(
-"VehicleRepository Factory unavailable"
-);
-
-
 return false;
 
 }
@@ -840,12 +1292,12 @@ force:true
 
 
 
-
 if(
 typeof RepositoryRegistry!=="undefined"
 &&
 RepositoryRegistry.register
 ){
+
 
 RepositoryRegistry.register(
 
@@ -854,6 +1306,7 @@ this.entity,
 this
 
 );
+
 
 }
 
@@ -906,18 +1359,8 @@ meta?.table ||
 this.table,
 
 
-idField:
-meta?.idField ||
-"VehicleID",
-
-
-
 initialized:
 this.initialized,
-
-
-auditReady:
-this.auditReady,
 
 
 
@@ -990,8 +1433,10 @@ this.diagnostics();
 
 
 const status =
-data.layers.baseRepository &&
-data.layers.schema
+data.layers.baseRepository
+&&
+data.layers.metadata
+
 ?
 "OK"
 :
@@ -1042,6 +1487,7 @@ status,
 
 
 
+
 // ============================================================
 // GLOBAL
 // ============================================================
@@ -1049,6 +1495,7 @@ status,
 
 globalThis.VehicleRepository =
 VehicleRepository;
+
 
 
 

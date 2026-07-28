@@ -1,12 +1,23 @@
 // ============================================================
-// VersionRepository v1.1.0
+// VersionRepository v1.2.0
+// Enterprise System Repository
 // TaxControl ERP Core
 //
 // System Repository for Version History
 //
+// Rules:
+// - Append Only
+// - Immutable records
+// - No update
+// - No delete
+// - Full audit history
+//
 // Architecture:
 //
-// Versioning
+// SchemaManager
+//      |
+//      v
+// SchemaSnapshot
 //      |
 //      v
 // VersionRepository
@@ -18,23 +29,19 @@
 // Database
 //
 //
-// Rules:
-// - Append Only
-// - Immutable records
-// - No update
-// - No delete
-//
 // Compatible:
-// BaseRepository v5.7+
-// RepositoryFactory v3+
-// RepositoryRegistry v1.1+
+// EntityMetadata v3+
 // EntityRegistry v2.5+
 // SchemaRegistry v4+
+// SchemaManager v4.2+
+// BaseRepository v5.7+
+// RepositoryFactory v3.1+
+// RepositoryRegistry v1.1+
 // ============================================================
 
 
 console.log(
-"VersionRepository v1.1.0"
+"VersionRepository v1.2.0"
 );
 
 
@@ -42,12 +49,14 @@ console.log(
 const VersionRepository = {
 
 
+// ============================================================
+// META
+// ============================================================
 
-version:"1.1.0",
 
+version:"1.2.0",
 
 entity:"VERSION",
-
 
 table:"Versions",
 
@@ -57,6 +66,11 @@ architecture:
 
 
 initialized:false,
+
+
+registered:false,
+
+
 
 
 
@@ -79,7 +93,8 @@ return true;
 
 
 Logger.log(
-"VersionRepository INIT"
+"VersionRepository INIT v"+
+this.version
 );
 
 
@@ -111,7 +126,7 @@ return true;
 
 
 // ============================================================
-// SAFE REGISTER
+// REGISTER
 // ============================================================
 
 
@@ -126,8 +141,9 @@ typeof RepositoryFactory==="undefined"
 ){
 
 Logger.warn(
-"RepositoryFactory unavailable"
+"VersionRepository: RepositoryFactory unavailable"
 );
+
 
 return false;
 
@@ -136,7 +152,7 @@ return false;
 
 
 
-// ждём EntityRegistry
+// Проверяем metadata
 
 if(
 typeof EntityRegistry!=="undefined"
@@ -150,14 +166,15 @@ this.entity
 
 
 Logger.warn(
-"VersionRepository waiting ENTITY metadata"
+"VersionRepository metadata not ready, deferred"
 );
 
 
 return false;
 
-
 }
+
+
 
 
 
@@ -173,6 +190,9 @@ force:true
 }
 
 );
+
+
+
 
 
 
@@ -196,6 +216,11 @@ this
 
 
 
+
+this.registered=true;
+
+
+
 Logger.log(
 "VersionRepository REGISTERED"
 );
@@ -215,9 +240,35 @@ e.message
 );
 
 
-
 return false;
 
+
+}
+
+
+},
+
+
+
+
+
+
+
+// ============================================================
+// BASE CHECK
+// ============================================================
+
+
+requireBase(){
+
+
+if(
+typeof BaseRepository==="undefined"
+){
+
+throw new Error(
+"VersionRepository requires BaseRepository"
+);
 
 }
 
@@ -236,6 +287,9 @@ return false;
 
 
 create(data={},options={}){
+
+
+this.requireBase();
 
 
 this.requireObject(
@@ -278,6 +332,9 @@ skipVersioning:true
 findById(id,options={}){
 
 
+this.requireBase();
+
+
 this.requireId(
 id,
 "findById"
@@ -308,6 +365,7 @@ includeDeleted:true
 
 
 
+
 get(id,options={}){
 
 
@@ -328,10 +386,7 @@ options
 findAll(filters={},options={}){
 
 
-this.requireObject(
-filters,
-"findAll"
-);
+this.requireBase();
 
 
 
@@ -363,11 +418,19 @@ includeDeleted:true
 findWhere(field,value,options={}){
 
 
+this.requireBase();
+
+
 this.requireField(
 field,
 "findWhere"
 );
 
+
+
+if(
+typeof BaseRepository.findWhere==="function"
+){
 
 
 return BaseRepository.findWhere(
@@ -385,6 +448,23 @@ value,
 includeDeleted:true
 
 }
+
+);
+
+
+}
+
+
+
+return this.findAll(
+
+{
+
+[field]:value
+
+},
+
+options
 
 );
 
@@ -458,9 +538,13 @@ options={}
 
 const rows =
 this.findByEntity(
+
 entity,
+
 entityId,
+
 options
+
 );
 
 
@@ -498,12 +582,36 @@ a.Version||0
 
 
 
+findByHash(hash){
+
+
+return this.findWhere(
+
+"Hash",
+
+hash
+
+);
+
+
+},
+
+
+
+
+
+
+
 // ============================================================
 // COMMON
 // ============================================================
 
 
 count(filters={},options={}){
+
+
+this.requireBase();
+
 
 
 return BaseRepository.count(
@@ -528,7 +636,13 @@ includeDeleted:true
 
 
 
+
+
 exists(id,options={}){
+
+
+this.requireBase();
+
 
 
 return BaseRepository.exists(
@@ -564,6 +678,10 @@ options={}
 ){
 
 
+this.requireBase();
+
+
+
 return BaseRepository.paginate(
 
 this.entity,
@@ -594,7 +712,7 @@ includeDeleted:true
 
 
 // ============================================================
-// IMMUTABLE BLOCK
+// IMMUTABLE
 // ============================================================
 
 
@@ -603,12 +721,13 @@ update(){
 
 throw new Error(
 
-"VersionRepository.update forbidden. Records immutable"
+"VersionRepository.update forbidden: immutable history"
 
 );
 
 
 },
+
 
 
 
@@ -617,12 +736,13 @@ delete(){
 
 throw new Error(
 
-"VersionRepository.delete forbidden. Records immutable"
+"VersionRepository.delete forbidden: immutable history"
 
 );
 
 
 },
+
 
 
 
@@ -674,9 +794,12 @@ return {
 
 entity:this.entity,
 
+
 table:this.table,
 
+
 idField:"VersionID",
+
 
 softDelete:false
 
@@ -709,7 +832,9 @@ id===""
 
 throw new Error(
 
-"VersionRepository."+name+
+"VersionRepository."
++
+name+
 ": id required"
 
 );
@@ -722,6 +847,9 @@ throw new Error(
 
 
 
+
+
+
 requireObject(obj,name){
 
 
@@ -730,19 +858,22 @@ if(
 typeof obj!=="object"
 ){
 
-
 throw new Error(
 
-"VersionRepository."+name+
+"VersionRepository."
++
+name+
 ": object required"
 
 );
-
 
 }
 
 
 },
+
+
+
 
 
 
@@ -754,7 +885,9 @@ if(!field){
 
 throw new Error(
 
-"VersionRepository."+name+
+"VersionRepository."
++
+name+
 ": field required"
 
 );
@@ -777,6 +910,18 @@ throw new Error(
 
 
 diagnostics(){
+
+
+let meta=null;
+
+
+try{
+
+meta=this.getMeta();
+
+}
+catch(e){}
+
 
 
 return {
@@ -804,7 +949,17 @@ immutable:true,
 appendOnly:true,
 
 
+initialized:
+this.initialized,
+
+
 registered:
+this.registered,
+
+
+
+factory:
+
 typeof RepositoryFactory!=="undefined"
 &&
 RepositoryFactory.has
@@ -812,19 +967,30 @@ RepositoryFactory.has
 RepositoryFactory.has(
 this.entity
 )
-:false,
+:
+false,
+
+
+
+registry:
+
+typeof RepositoryRegistry!=="undefined",
+
+
+
+metadata:
+!!meta,
+
 
 
 baseRepository:
 typeof BaseRepository!=="undefined",
 
 
-metadata:
-this.getMeta(),
-
 
 timestamp:
-new Date().toISOString()
+new Date()
+.toISOString()
 
 
 };
@@ -846,17 +1012,23 @@ new Date().toISOString()
 health(){
 
 
-const d =
+const data =
 this.diagnostics();
 
 
 
 const status =
-d.baseRepository &&
-d.metadata
+
+data.baseRepository
+&&
+data.metadata
+
 ?
+
 "OK"
+
 :
+
 "WARNING";
 
 
@@ -874,7 +1046,7 @@ return HealthContract.create(
 
 status,
 
-d
+data
 
 );
 
@@ -885,11 +1057,12 @@ d
 
 return {
 
-module:"VersionRepository",
+module:
+"VersionRepository",
 
 status,
 
-...d
+...data
 
 };
 
@@ -899,8 +1072,6 @@ status,
 
 
 };
-
-
 
 
 
@@ -923,7 +1094,7 @@ VersionRepository;
 
 
 // ============================================================
-// AUTO INIT SAFE
+// SAFE START
 // ============================================================
 
 
@@ -939,7 +1110,7 @@ catch(e){
 
 Logger.warn(
 
-"VersionRepository init deferred "+
+"VersionRepository deferred: "+
 e.message
 
 );
