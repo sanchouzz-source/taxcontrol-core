@@ -1,7 +1,11 @@
 // ============================================================
-// EntityMetadata v3.2.0
+// EntityMetadata v3.3.0
 // Enterprise Entity Contract Registry
 // TaxControl ERP Core
+//
+// Sprint 1.2 Metadata Refactor
+//
+// Single Source Of Truth
 //
 // Compatible:
 // EntityRegistry v2.4+
@@ -12,1398 +16,2752 @@
 // BaseRepository v5.7+
 // ============================================================
 
-console.log("EntityMetadata v3.2.0");
+
+console.log("EntityMetadata v3.3.0");
+
+
 
 const EntityMetadata = {
-  version: "3.2.0",
-  apiVersion: "3.1",
 
-  architecture:
-    "EntityMetadata -> SchemaRegistry -> EntityRegistry -> Repository",
 
-  initialized: false,
-  strictMode: true,
+version:"3.3.0",
 
-  // ============================================================
-  // SINGLE SOURCE OF TRUTH
-  // ============================================================
+apiVersion:"3.1",
 
-  entities: {},
 
-  // ============================================================
-  // REGISTER
-  // ============================================================
+architecture:
 
-  register(entity, meta) {
-    if (!entity) {
-      throw new Error(
-        "Entity name required"
-      );
-    }
+"EntityMetadata -> SchemaRegistry -> EntityRegistry -> Repository",
 
-    if (!meta) {
-      throw new Error(
-        "Metadata required " + entity
-      );
-    }
 
-    if (
-      this.strictMode &&
-      this.entities[entity]
-    ) {
-      throw new Error(
-        "Duplicate metadata " + entity
-      );
-    }
 
-    meta.entity = entity;
-    this.entities[entity] = meta;
+initialized:false,
 
-    return meta;
-  },
 
-  // ============================================================
-  // GET
-  // ============================================================
+strictMode:true,
 
-  get(entity) {
-    if (!entity) {
-      return null;
-    }
 
-    let key = String(entity)
-      .toUpperCase();
 
-    if (this.entities[key]) {
-      return this.entities[key];
-    }
+// ============================================================
+// SINGLE SOURCE OF TRUTH
+// ============================================================
 
-    if (
-      typeof EntityRegistry !== "undefined" &&
-      EntityRegistry.resolve
-    ) {
-      try {
-        key =
-          EntityRegistry.resolve(entity);
 
-        return this.entities[key] || null;
-      } catch (error) {}
-    }
+entities:{},
 
-    return null;
-  },
 
-  // ============================================================
-  // LIST
-  // ============================================================
 
-  list() {
-    return Object.keys(
-      this.entities
-    );
-  },
+// ============================================================
+// REGISTER
+// ============================================================
 
-  // ============================================================
-  // FIELD API
-  // ============================================================
 
-  getFields(entity) {
-    const meta = this.get(entity);
+register(entity,meta){
 
-    if (!meta) {
-      throw new Error(
-        "Metadata missing " + entity
-      );
-    }
 
-    return meta.fields || {};
-  },
+if(!entity){
 
-  getFieldArray(entity) {
-    const fields =
-      this.getFields(entity);
+throw new Error(
+"Entity name required"
+);
 
-    return Object.keys(fields)
-      .map((name) => {
-        return {
-          name,
-          ...fields[name],
-        };
-      });
-  },
+}
 
-  hasField(entity, field) {
-    return !!this.getFields(entity)[field];
-  },
 
-  // ============================================================
-  // VALIDATION
-  // ============================================================
 
-  validate() {
-    const errors = [];
+if(!meta){
 
-    this.list().forEach((entity) => {
-      const meta =
-        this.entities[entity];
+throw new Error(
+"Metadata required "+entity
+);
 
-      if (!meta.table) {
-        errors.push(
-          entity + " missing table"
-        );
-      }
+}
 
-      if (!meta.idField) {
-        errors.push(
-          entity + " missing idField"
-        );
-      }
 
-      if (!meta.fields) {
-        errors.push(
-          entity + " missing fields"
-        );
-      }
-    });
 
-    return errors;
-  },
+if(
+this.strictMode &&
+this.entities[entity]
+){
 
-  // ============================================================
-  // HEALTH
-  // ============================================================
+throw new Error(
+"Duplicate metadata "+entity
+);
 
-  health() {
-    const errors =
-      this.validate();
+}
 
-    return HealthContract.create(
-      "EntityMetadata",
-      errors.length
-        ? "WARNING"
-        : "OK",
-      {
-        version: this.version,
-        entities: this.list(),
-        count: this.list().length,
-        errors,
-      }
-    );
-  },
 
-  // ============================================================
-  // INIT
-  // ============================================================
 
-  init() {
-    if (this.initialized) {
-      return true;
-    }
+meta.entity =
+entity;
 
-    this.initialized = true;
 
-    Logger.log(
-      "EntityMetadata READY v" +
-        this.version +
-        " definitions=" +
-        this.list().length
-    );
 
-    return true;
-  },
+this.entities[entity]=meta;
+
+
+
+return meta;
+
+
+},
+
+
+
+
+
+
+
+// ============================================================
+// GET
+// ============================================================
+
+
+get(entity){
+
+
+if(!entity){
+
+return null;
+
+}
+
+
+
+let key =
+String(entity)
+.toUpperCase();
+
+
+
+
+// direct
+
+if(
+this.entities[key]
+){
+
+return this.entities[key];
+
+}
+
+
+
+// alias through EntityRegistry
+
+if(
+typeof EntityRegistry!=="undefined"
+&&
+EntityRegistry.resolve
+){
+
+
+try{
+
+
+key =
+EntityRegistry.resolve(entity);
+
+
+return this.entities[key] || null;
+
+
+}
+catch(e){}
+
+
+
+}
+
+
+
+return null;
+
+
+},
+
+
+
+
+
+
+
+// ============================================================
+// LIST
+// ============================================================
+
+
+list(){
+
+
+return Object.keys(
+this.entities
+);
+
+
+},
+
+
+
+
+
+
+
+// ============================================================
+// FIELD API
+// ============================================================
+
+
+getFields(entity){
+
+
+const meta =
+this.get(entity);
+
+
+
+if(!meta){
+
+throw new Error(
+"Metadata missing "+entity
+);
+
+}
+
+
+
+return meta.fields || {};
+
+},
+
+
+
+
+
+getFieldArray(entity){
+
+
+const fields =
+this.getFields(entity);
+
+
+
+return Object.keys(fields)
+
+.map(name=>{
+
+
+return {
+
+name,
+
+...fields[name]
+
 };
 
+
+});
+
+
+},
+
+
+
+
+
+
+
+hasField(entity,field){
+
+
+return !!(
+this.getFields(entity)[field]
+);
+
+
+},
+
+
+
+
+
+
+
+// ============================================================
+// VALIDATION
+// ============================================================
+
+
+validate(){
+
+
+const errors=[];
+
+
+
+this.list()
+
+.forEach(entity=>{
+
+
+const meta =
+this.entities[entity];
+
+
+
+if(!meta.table){
+
+errors.push(
+entity+" missing table"
+);
+
+}
+
+
+
+if(!meta.idField){
+
+errors.push(
+entity+" missing idField"
+);
+
+}
+
+
+
+if(!meta.fields){
+
+errors.push(
+entity+" missing fields"
+);
+
+}
+
+
+
+});
+
+
+
+return errors;
+
+
+},
+
+
+
+
+
+
+
+// ============================================================
+// HEALTH
+// ============================================================
+
+
+health(){
+
+
+const errors =
+this.validate();
+
+
+
+return HealthContract.create(
+
+"EntityMetadata",
+
+errors.length
+?
+"WARNING"
+:
+"OK",
+
+{
+
+
+version:this.version,
+
+
+entities:this.list(),
+
+
+count:this.list().length,
+
+
+errors
+
+
+}
+
+);
+
+
+},
+
+
+
+
+
+
+
+// ============================================================
+// INIT
+// ============================================================
+
+
+init(){
+
+
+if(this.initialized){
+
+return true;
+
+}
+
+
+
+this.initialized=true;
+
+
+
+Logger.log(
+
+"EntityMetadata READY v"+
+this.version+
+" definitions="+
+this.list().length
+
+);
+
+
+
+return true;
+
+
+}
+
+
+
+};
+
+
+
+
+
+
 globalThis.EntityMetadata =
-  EntityMetadata;
+EntityMetadata;
+// ============================================================
+// EntityMetadata v3.3.0
+// PART 2/3
+// CORE BUSINESS ENTITIES
+// ============================================================
+
 
 
 // ============================================================
 // ORGANIZATION
 // ============================================================
 
+
 EntityMetadata.register(
-  "ORGANIZATION",
-  {
-    module: "CORE",
-    table: "Organizations",
-    repository:
-      "OrganizationRepository",
-    idField: "OrganizationID",
-    idPrefix: "ORG",
-    softDelete: true,
-    timestamps: true,
-    audit: true,
 
-    fields: {
-      OrganizationID: {
-        type: "ID",
-        generated: true,
-      },
+"ORGANIZATION",
 
-      Name: {
-        type: "STRING",
-        required: true,
-      },
+{
 
-      INN: {
-        type: "STRING",
-      },
 
-      KPP: {
-        type: "STRING",
-      },
+module:"CORE",
 
-      LegalName: {
-        type: "STRING",
-      },
 
-      Address: {
-        type: "STRING",
-      },
+table:"Organizations",
 
-      Phone: {
-        type: "STRING",
-      },
 
-      Email: {
-        type: "STRING",
-      },
+repository:"OrganizationRepository",
 
-      CreatedAt: {
-        type: "DATE",
-      },
 
-      UpdatedAt: {
-        type: "DATE",
-      },
+idField:"OrganizationID",
 
-      Deleted: {
-        type: "BOOLEAN",
-      },
-    },
-  }
+
+idPrefix:"ORG",
+
+
+softDelete:true,
+
+
+timestamps:true,
+
+
+audit:true,
+
+
+
+fields:{
+
+
+
+OrganizationID:{
+
+
+type:"ID",
+
+
+generated:true
+
+
+},
+
+
+
+Name:{
+
+
+type:"STRING",
+
+
+required:true
+
+
+},
+
+
+
+INN:{
+
+
+type:"STRING"
+
+
+},
+
+
+
+KPP:{
+
+
+type:"STRING"
+
+
+},
+
+
+
+LegalName:{
+
+
+type:"STRING"
+
+
+},
+
+
+
+Address:{
+
+
+type:"STRING"
+
+
+},
+
+
+
+Phone:{
+
+
+type:"STRING"
+
+
+},
+
+
+
+Email:{
+
+
+type:"STRING"
+
+
+},
+
+
+
+CreatedAt:{
+
+
+type:"DATE"
+
+
+},
+
+
+
+UpdatedAt:{
+
+
+type:"DATE"
+
+
+},
+
+
+
+Deleted:{
+
+
+type:"BOOLEAN"
+
+
+}
+
+
+
+}
+
+
+}
+
 );
+
+
+
+
+
+
+
 
 
 // ============================================================
 // USER
 // ============================================================
 
+
 EntityMetadata.register(
-  "USER",
-  {
-    module: "SYSTEM",
-    table: "Users",
-    repository: "UserRepository",
-    idField: "UserID",
-    idPrefix: "USR",
-    softDelete: true,
-    timestamps: true,
-    audit: true,
 
-    fields: {
-      UserID: {
-        type: "ID",
-        generated: true,
-      },
+"USER",
 
-      OrganizationID: {
-        type: "REFERENCE",
-        reference: "ORGANIZATION",
-        required: true,
-      },
+{
 
-      Login: {
-        type: "STRING",
-        required: true,
-      },
 
-      Name: {
-        type: "STRING",
-      },
+module:"SYSTEM",
 
-      Email: {
-        type: "STRING",
-      },
 
-      Role: {
-        type: "STRING",
-        required: true,
-      },
+table:"Users",
 
-      Active: {
-        type: "BOOLEAN",
-        default: true,
-      },
 
-      CreatedAt: {
-        type: "DATE",
-      },
+repository:"UserRepository",
 
-      UpdatedAt: {
-        type: "DATE",
-      },
 
-      Deleted: {
-        type: "BOOLEAN",
-      },
-    },
-  }
+idField:"UserID",
+
+
+idPrefix:"USR",
+
+
+softDelete:true,
+
+
+timestamps:true,
+
+
+audit:true,
+
+
+
+fields:{
+
+
+
+UserID:{
+
+
+type:"ID",
+
+
+generated:true
+
+
+},
+
+
+
+OrganizationID:{
+
+
+type:"REFERENCE",
+
+
+reference:"ORGANIZATION",
+
+
+required:true
+
+
+},
+
+
+
+Login:{
+
+
+type:"STRING",
+
+
+required:true
+
+
+},
+
+
+
+Name:{
+
+
+type:"STRING"
+
+
+},
+
+
+
+Email:{
+
+
+type:"STRING"
+
+
+},
+
+
+
+Role:{
+
+
+type:"STRING",
+
+
+required:true
+
+
+},
+
+
+
+Active:{
+
+
+type:"BOOLEAN",
+
+
+default:true
+
+
+},
+
+
+
+CreatedAt:{
+
+
+type:"DATE"
+
+
+},
+
+
+
+UpdatedAt:{
+
+
+type:"DATE"
+
+
+},
+
+
+
+Deleted:{
+
+
+type:"BOOLEAN"
+
+
+}
+
+
+
+}
+
+
+}
+
 );
+
+
+
+
+
+
+
 
 
 // ============================================================
 // CLIENT
 // ============================================================
 
+
 EntityMetadata.register(
-  "CLIENT",
-  {
-    module: "CORE",
-    table: "Clients",
-    repository: "ClientRepository",
-    idField: "ClientID",
-    idPrefix: "CLI",
-    softDelete: true,
-    timestamps: true,
-    audit: true,
 
-    events: {
-      created: "CLIENT_CREATED",
-      updated: "CLIENT_UPDATED",
-      deleted: "CLIENT_DELETED",
-    },
+"CLIENT",
 
-    fields: {
-      ClientID: {
-        type: "ID",
-        generated: true,
-      },
+{
 
-      OrganizationID: {
-        type: "REFERENCE",
-        reference: "ORGANIZATION",
-      },
 
-      Name: {
-        type: "STRING",
-        required: true,
-      },
+module:"CORE",
 
-      INN: {
-        type: "STRING",
-      },
 
-      Phone: {
-        type: "STRING",
-      },
+table:"Clients",
 
-      Email: {
-        type: "STRING",
-      },
 
-      Address: {
-        type: "STRING",
-      },
+repository:"ClientRepository",
 
-      ManagerID: {
-        type: "REFERENCE",
-        reference: "USER",
-      },
 
-      Rating: {
-        type: "NUMBER",
-        default: 0,
-      },
+idField:"ClientID",
 
-      Status: {
-        type: "STRING",
-        default: "ACTIVE",
-      },
 
-      CreatedAt: {
-        type: "DATE",
-      },
+idPrefix:"CLI",
 
-      UpdatedAt: {
-        type: "DATE",
-      },
 
-      Deleted: {
-        type: "BOOLEAN",
-      },
-    },
-  }
+softDelete:true,
+
+
+timestamps:true,
+
+
+audit:true,
+
+
+
+events:{
+
+
+created:"CLIENT_CREATED",
+
+
+updated:"CLIENT_UPDATED",
+
+
+deleted:"CLIENT_DELETED"
+
+
+},
+
+
+
+
+fields:{
+
+
+
+ClientID:{
+
+
+type:"ID",
+
+
+generated:true
+
+
+},
+
+
+
+OrganizationID:{
+
+
+type:"REFERENCE",
+
+
+reference:"ORGANIZATION"
+
+
+},
+
+
+
+Name:{
+
+
+type:"STRING",
+
+
+required:true
+
+
+},
+
+
+
+INN:{
+
+
+type:"STRING"
+
+
+},
+
+
+
+Phone:{
+
+
+type:"STRING"
+
+
+},
+
+
+
+Email:{
+
+
+type:"STRING"
+
+
+},
+
+
+
+Address:{
+
+
+type:"STRING"
+
+
+},
+
+
+
+ManagerID:{
+
+
+type:"REFERENCE",
+
+
+reference:"USER"
+
+
+},
+
+
+
+Rating:{
+
+
+type:"NUMBER",
+
+
+default:0
+
+
+},
+
+
+
+Status:{
+
+
+type:"STRING",
+
+
+default:"ACTIVE"
+
+
+},
+
+
+
+CreatedAt:{
+
+
+type:"DATE"
+
+
+},
+
+
+
+UpdatedAt:{
+
+
+type:"DATE"
+
+
+},
+
+
+
+Deleted:{
+
+
+type:"BOOLEAN"
+
+
+}
+
+
+
+}
+
+
+}
+
 );
+
+
+
+
+
+
+
 
 
 // ============================================================
 // TRIP
 // ============================================================
 
+
 EntityMetadata.register(
-  "TRIP",
-  {
-    module: "TRANSPORT",
-    table: "Trips",
-    repository: "TripRepository",
-    idField: "TripID",
-    idPrefix: "TRP",
-    softDelete: true,
-    timestamps: true,
-    audit: true,
 
-    events: {
-      created: "TRIP_CREATED",
-      updated: "TRIP_UPDATED",
-      deleted: "TRIP_DELETED",
-    },
+"TRIP",
 
-    fields: {
-      TripID: {
-        type: "ID",
-        generated: true,
-      },
+{
 
-      OrganizationID: {
-        type: "REFERENCE",
-        reference: "ORGANIZATION",
-      },
 
-      ClientID: {
-        type: "REFERENCE",
-        reference: "CLIENT",
-        required: true,
-      },
+module:"TRANSPORT",
 
-      ManagerID: {
-        type: "REFERENCE",
-        reference: "USER",
-      },
 
-      VehicleID: {
-        type: "REFERENCE",
-        reference: "VEHICLE",
-      },
+table:"Trips",
 
-      DriverID: {
-        type: "REFERENCE",
-        reference: "DRIVER",
-      },
 
-      CarrierID: {
-        type: "REFERENCE",
-        reference: "CARRIER",
-      },
+repository:"TripRepository",
 
-      RouteID: {
-        type: "REFERENCE",
-        reference: "ROUTE",
-      },
 
-      CargoID: {
-        type: "REFERENCE",
-        reference: "CARGO",
-      },
+idField:"TripID",
 
-      OrderNumber: {
-        type: "STRING",
-      },
 
-      Status: {
-        type: "STRING",
-        default: "NEW",
-      },
+idPrefix:"TRP",
 
-      Revenue: {
-        type: "MONEY",
-        default: 0,
-      },
 
-      Cost: {
-        type: "MONEY",
-        default: 0,
-      },
+softDelete:true,
 
-      Margin: {
-        type: "MONEY",
-        default: 0,
-      },
 
-      DepartureDate: {
-        type: "DATE",
-      },
+timestamps:true,
 
-      ArrivalDate: {
-        type: "DATE",
-      },
 
-      Expedition: {
-        type: "BOOLEAN",
-        default: false,
-      },
+audit:true,
 
-      CreatedAt: {
-        type: "DATE",
-      },
 
-      UpdatedAt: {
-        type: "DATE",
-      },
 
-      Deleted: {
-        type: "BOOLEAN",
-      },
-    },
-  }
+events:{
+
+
+created:"TRIP_CREATED",
+
+
+updated:"TRIP_UPDATED",
+
+
+deleted:"TRIP_DELETED"
+
+
+},
+
+
+
+
+fields:{
+
+
+
+TripID:{
+
+
+type:"ID",
+
+
+generated:true
+
+
+},
+
+
+
+OrganizationID:{
+
+
+type:"REFERENCE",
+
+
+reference:"ORGANIZATION"
+
+
+},
+
+
+
+ClientID:{
+
+
+type:"REFERENCE",
+
+
+reference:"CLIENT",
+
+
+required:true
+
+
+},
+
+
+
+ManagerID:{
+
+
+type:"REFERENCE",
+
+
+reference:"USER"
+
+
+},
+
+
+
+VehicleID:{
+
+
+type:"REFERENCE",
+
+
+reference:"VEHICLE"
+
+
+},
+
+
+
+DriverID:{
+
+
+type:"REFERENCE",
+
+
+reference:"DRIVER"
+
+
+},
+
+
+
+CarrierID:{
+
+
+type:"REFERENCE",
+
+
+reference:"CARRIER"
+
+
+},
+
+
+
+RouteID:{
+
+
+type:"REFERENCE",
+
+
+reference:"ROUTE"
+
+
+},
+
+
+
+CargoID:{
+
+
+type:"REFERENCE",
+
+
+reference:"CARGO"
+
+
+},
+
+
+
+OrderNumber:{
+
+
+type:"STRING"
+
+
+},
+
+
+
+Status:{
+
+
+type:"STRING",
+
+
+default:"NEW"
+
+
+},
+
+
+
+Revenue:{
+
+
+type:"MONEY",
+
+
+default:0
+
+
+},
+
+
+
+Cost:{
+
+
+type:"MONEY",
+
+
+default:0
+
+
+},
+
+
+
+Margin:{
+
+
+type:"MONEY",
+
+
+default:0
+
+
+},
+
+
+
+DepartureDate:{
+
+
+type:"DATE"
+
+
+},
+
+
+
+ArrivalDate:{
+
+
+type:"DATE"
+
+
+},
+
+
+
+Expedition:{
+
+
+type:"BOOLEAN",
+
+
+default:false
+
+
+},
+
+
+
+CreatedAt:{
+
+
+type:"DATE"
+
+
+},
+
+
+
+UpdatedAt:{
+
+
+type:"DATE"
+
+
+},
+
+
+
+Deleted:{
+
+
+type:"BOOLEAN"
+
+
+}
+
+
+
+}
+
+
+}
+
 );
+
+
+
+
+// ============================================================
+// EntityMetadata v3.3.0
+// PART 3/3
+// LOGISTICS + FINANCE + SYSTEM
+// ============================================================
+
 
 
 // ============================================================
 // VEHICLE
 // ============================================================
 
+
 EntityMetadata.register(
-  "VEHICLE",
-  {
-    module: "TRANSPORT",
-    table: "Vehicles",
-    repository: "VehicleRepository",
-    idField: "VehicleID",
-    idPrefix: "VEH",
-    softDelete: true,
-    timestamps: true,
-    audit: true,
 
-    fields: {
-      VehicleID: {
-        type: "ID",
-        generated: true,
-      },
+"VEHICLE",
 
-      OrganizationID: {
-        type: "REFERENCE",
-        reference: "ORGANIZATION",
-      },
+{
 
-      Number: {
-        type: "STRING",
-        required: true,
-      },
+module:"TRANSPORT",
 
-      Brand: {
-        type: "STRING",
-      },
+table:"Vehicles",
 
-      Model: {
-        type: "STRING",
-      },
+repository:"VehicleRepository",
 
-      Year: {
-        type: "NUMBER",
-      },
+idField:"VehicleID",
 
-      VIN: {
-        type: "STRING",
-      },
+idPrefix:"VEH",
 
-      FuelType: {
-        type: "STRING",
-      },
+softDelete:true,
 
-      Capacity: {
-        type: "NUMBER",
-      },
+timestamps:true,
 
-      Active: {
-        type: "BOOLEAN",
-        default: true,
-      },
+audit:true,
 
-      CreatedAt: {
-        type: "DATE",
-      },
 
-      UpdatedAt: {
-        type: "DATE",
-      },
+fields:{
 
-      Deleted: {
-        type: "BOOLEAN",
-      },
-    },
-  }
+
+VehicleID:{
+type:"ID",
+generated:true
+},
+
+
+OrganizationID:{
+type:"REFERENCE",
+reference:"ORGANIZATION"
+},
+
+
+Number:{
+type:"STRING",
+required:true
+},
+
+
+Brand:{
+type:"STRING"
+},
+
+
+Model:{
+type:"STRING"
+},
+
+
+Year:{
+type:"NUMBER"
+},
+
+
+VIN:{
+type:"STRING"
+},
+
+
+FuelType:{
+type:"STRING"
+},
+
+
+Capacity:{
+type:"NUMBER"
+},
+
+
+Active:{
+type:"BOOLEAN",
+default:true
+},
+
+
+CreatedAt:{
+type:"DATE"
+},
+
+
+UpdatedAt:{
+type:"DATE"
+},
+
+
+Deleted:{
+type:"BOOLEAN"
+}
+
+
+}
+
+}
+
 );
+
+
+
+
+
+
 
 
 // ============================================================
 // DRIVER
 // ============================================================
 
+
 EntityMetadata.register(
-  "DRIVER",
-  {
-    module: "TRANSPORT",
-    table: "Drivers",
-    repository: "DriverRepository",
-    idField: "DriverID",
-    idPrefix: "DRV",
-    softDelete: true,
-    timestamps: true,
-    audit: true,
 
-    fields: {
-      DriverID: {
-        type: "ID",
-        generated: true,
-      },
+"DRIVER",
 
-      OrganizationID: {
-        type: "REFERENCE",
-        reference: "ORGANIZATION",
-      },
+{
 
-      Name: {
-        type: "STRING",
-        required: true,
-      },
+module:"TRANSPORT",
 
-      Phone: {
-        type: "STRING",
-      },
+table:"Drivers",
 
-      LicenseNumber: {
-        type: "STRING",
-      },
+repository:"DriverRepository",
 
-      Category: {
-        type: "STRING",
-      },
+idField:"DriverID",
 
-      CreatedAt: {
-        type: "DATE",
-      },
+idPrefix:"DRV",
 
-      UpdatedAt: {
-        type: "DATE",
-      },
+softDelete:true,
 
-      Deleted: {
-        type: "BOOLEAN",
-      },
-    },
-  }
+timestamps:true,
+
+audit:true,
+
+
+fields:{
+
+
+DriverID:{
+type:"ID",
+generated:true
+},
+
+
+OrganizationID:{
+type:"REFERENCE",
+reference:"ORGANIZATION"
+},
+
+
+Name:{
+type:"STRING",
+required:true
+},
+
+
+Phone:{
+type:"STRING"
+},
+
+
+LicenseNumber:{
+type:"STRING"
+},
+
+
+Category:{
+type:"STRING"
+},
+
+
+CreatedAt:{
+type:"DATE"
+},
+
+
+UpdatedAt:{
+type:"DATE"
+},
+
+
+Deleted:{
+type:"BOOLEAN"
+}
+
+
+}
+
+}
+
 );
+
+
+
+
+
+
+
 
 
 // ============================================================
 // CARRIER
 // ============================================================
 
+
 EntityMetadata.register(
-  "CARRIER",
-  {
-    module: "TRANSPORT",
-    table: "Carriers",
-    repository: "CarrierRepository",
-    idField: "CarrierID",
-    idPrefix: "CAR",
-    softDelete: true,
-    timestamps: true,
-    audit: true,
 
-    fields: {
-      CarrierID: {
-        type: "ID",
-        generated: true,
-      },
+"CARRIER",
 
-      OrganizationID: {
-        type: "REFERENCE",
-        reference: "ORGANIZATION",
-      },
+{
 
-      Name: {
-        type: "STRING",
-        required: true,
-      },
+module:"TRANSPORT",
 
-      INN: {
-        type: "STRING",
-      },
+table:"Carriers",
 
-      Phone: {
-        type: "STRING",
-      },
+repository:"CarrierRepository",
 
-      Email: {
-        type: "STRING",
-      },
+idField:"CarrierID",
 
-      Rating: {
-        type: "NUMBER",
-      },
+idPrefix:"CAR",
 
-      CreatedAt: {
-        type: "DATE",
-      },
+softDelete:true,
 
-      UpdatedAt: {
-        type: "DATE",
-      },
+timestamps:true,
 
-      Deleted: {
-        type: "BOOLEAN",
-      },
-    },
-  }
+audit:true,
+
+
+fields:{
+
+
+CarrierID:{
+type:"ID",
+generated:true
+},
+
+
+OrganizationID:{
+type:"REFERENCE",
+reference:"ORGANIZATION"
+},
+
+
+Name:{
+type:"STRING",
+required:true
+},
+
+
+INN:{
+type:"STRING"
+},
+
+
+Phone:{
+type:"STRING"
+},
+
+
+Email:{
+type:"STRING"
+},
+
+
+Rating:{
+type:"NUMBER"
+},
+
+
+CreatedAt:{
+type:"DATE"
+},
+
+
+UpdatedAt:{
+type:"DATE"
+},
+
+
+Deleted:{
+type:"BOOLEAN"
+}
+
+
+}
+
+}
+
 );
+
+
+
+
+
+
+
 
 
 // ============================================================
 // ROUTE
 // ============================================================
 
+
 EntityMetadata.register(
-  "ROUTE",
-  {
-    module: "TRANSPORT",
-    table: "Routes",
-    repository: "RouteRepository",
-    idField: "RouteID",
-    idPrefix: "RTE",
-    softDelete: true,
-    timestamps: true,
 
-    fields: {
-      RouteID: {
-        type: "ID",
-        generated: true,
-      },
+"ROUTE",
 
-      From: {
-        type: "STRING",
-      },
+{
 
-      To: {
-        type: "STRING",
-      },
+module:"TRANSPORT",
 
-      Distance: {
-        type: "NUMBER",
-      },
+table:"Routes",
 
-      Duration: {
-        type: "NUMBER",
-      },
+repository:"RouteRepository",
 
-      CreatedAt: {
-        type: "DATE",
-      },
+idField:"RouteID",
 
-      UpdatedAt: {
-        type: "DATE",
-      },
+idPrefix:"RTE",
 
-      Deleted: {
-        type: "BOOLEAN",
-      },
-    },
-  }
+softDelete:true,
+
+timestamps:true,
+
+
+fields:{
+
+
+RouteID:{
+type:"ID",
+generated:true
+},
+
+
+From:{
+type:"STRING"
+},
+
+
+To:{
+type:"STRING"
+},
+
+
+Distance:{
+type:"NUMBER"
+},
+
+
+Duration:{
+type:"NUMBER"
+},
+
+
+CreatedAt:{
+type:"DATE"
+},
+
+
+UpdatedAt:{
+type:"DATE"
+},
+
+
+Deleted:{
+type:"BOOLEAN"
+}
+
+
+}
+
+}
+
 );
+
+
+
+
+
+
+
 
 
 // ============================================================
 // CARGO
 // ============================================================
 
+
 EntityMetadata.register(
-  "CARGO",
-  {
-    module: "TRANSPORT",
-    table: "Cargoes",
-    repository: "CargoRepository",
-    idField: "CargoID",
-    idPrefix: "CRG",
-    softDelete: true,
-    timestamps: true,
 
-    fields: {
-      CargoID: {
-        type: "ID",
-        generated: true,
-      },
+"CARGO",
 
-      Name: {
-        type: "STRING",
-      },
+{
 
-      Weight: {
-        type: "NUMBER",
-      },
+module:"TRANSPORT",
 
-      Volume: {
-        type: "NUMBER",
-      },
+table:"Cargoes",
 
-      Description: {
-        type: "STRING",
-      },
+repository:"CargoRepository",
 
-      CreatedAt: {
-        type: "DATE",
-      },
+idField:"CargoID",
 
-      UpdatedAt: {
-        type: "DATE",
-      },
+idPrefix:"CRG",
 
-      Deleted: {
-        type: "BOOLEAN",
-      },
-    },
-  }
+softDelete:true,
+
+timestamps:true,
+
+
+fields:{
+
+
+CargoID:{
+type:"ID",
+generated:true
+},
+
+
+Name:{
+type:"STRING"
+},
+
+
+Weight:{
+type:"NUMBER"
+},
+
+
+Volume:{
+type:"NUMBER"
+},
+
+
+Description:{
+type:"STRING"
+},
+
+
+CreatedAt:{
+type:"DATE"
+},
+
+
+UpdatedAt:{
+type:"DATE"
+},
+
+
+Deleted:{
+type:"BOOLEAN"
+}
+
+
+}
+
+}
+
 );
+
+
+
+
+
+
+
 
 
 // ============================================================
 // TRANSPORT ORDER
 // ============================================================
+//
+// Updated in EntityMetadata v3.1.1:
+// - synchronized with TransportOrder entity and repository
+// - added organization, route data and transport assignments
+// - preserved a single validation contract for GAS and mobile API
+// ============================================================
+
 
 EntityMetadata.register(
-  "TRANSPORT_ORDER",
-  {
-    module: "TRANSPORT",
-    table: "TransportOrders",
-    repository:
-      "TransportOrderRepository",
-    idField: "TransportOrderID",
-    idPrefix: "TO",
-    softDelete: true,
-    timestamps: true,
-    audit: true,
 
-    fields: {
-      TransportOrderID: {
-        type: "ID",
-        generated: true,
-      },
+"TRANSPORT_ORDER",
 
-      OrganizationID: {
-        type: "REFERENCE",
-        reference: "ORGANIZATION",
-        required: true,
-      },
+{
 
-      ClientID: {
-        type: "REFERENCE",
-        reference: "CLIENT",
-        required: true,
-      },
+module:"TRANSPORT",
 
-      TripID: {
-        type: "REFERENCE",
-        reference: "TRIP",
-      },
+table:"TransportOrders",
 
-      CarrierID: {
-        type: "REFERENCE",
-        reference: "CARRIER",
-      },
+repository:"TransportOrderRepository",
 
-      VehicleID: {
-        type: "REFERENCE",
-        reference: "VEHICLE",
-      },
+idField:"TransportOrderID",
 
-      DriverID: {
-        type: "REFERENCE",
-        reference: "DRIVER",
-      },
+idPrefix:"TO",
 
-      OrderNumber: {
-        type: "STRING",
-      },
+softDelete:true,
 
-      LoadingAddress: {
-        type: "STRING",
-      },
+timestamps:true,
 
-      DeliveryAddress: {
-        type: "STRING",
-      },
+audit:true,
 
-      CargoWeight: {
-        type: "NUMBER",
-        default: 0,
-      },
 
-      Status: {
-        type: "STRING",
-        default: "NEW",
-      },
+fields:{
 
-      Price: {
-        type: "MONEY",
-        default: 0,
-      },
 
-      CreatedAt: {
-        type: "DATE",
-      },
+TransportOrderID:{
+type:"ID",
+generated:true
+},
 
-      UpdatedAt: {
-        type: "DATE",
-      },
 
-      DeletedAt: {
-        type: "DATE",
-      },
+OrganizationID:{
+type:"REFERENCE",
+reference:"ORGANIZATION",
+required:true
+},
 
-      Deleted: {
-        type: "BOOLEAN",
-        default: false,
-      },
-    },
-  }
+
+ClientID:{
+type:"REFERENCE",
+reference:"CLIENT",
+required:true
+},
+
+
+TripID:{
+type:"REFERENCE",
+reference:"TRIP"
+},
+
+
+CarrierID:{
+type:"REFERENCE",
+reference:"CARRIER"
+},
+
+
+VehicleID:{
+type:"REFERENCE",
+reference:"VEHICLE"
+},
+
+
+DriverID:{
+type:"REFERENCE",
+reference:"DRIVER"
+},
+
+
+OrderNumber:{
+type:"STRING"
+},
+
+
+LoadingAddress:{
+type:"STRING"
+},
+
+
+DeliveryAddress:{
+type:"STRING"
+},
+
+
+CargoWeight:{
+type:"NUMBER",
+default:0
+},
+
+
+Status:{
+type:"STRING",
+default:"NEW"
+},
+
+
+Price:{
+type:"MONEY",
+default:0
+},
+
+
+CreatedAt:{
+type:"DATE"
+},
+
+
+UpdatedAt:{
+type:"DATE"
+},
+
+
+DeletedAt:{
+type:"DATE"
+},
+
+
+Deleted:{
+type:"BOOLEAN",
+default:false
+}
+
+
+}
+
+}
+
 );
+
+
 
 
 // ============================================================
 // CLIENT FINANCE PROFILE
 // ============================================================
 
+
 EntityMetadata.register(
-  "CLIENT_FINANCE_PROFILE",
-  {
-    module: "FINANCE",
-    table:
-      "ClientFinanceProfiles",
-    repository:
-      "ClientFinanceProfileRepository",
-    idField: "FinanceProfileID",
-    idPrefix: "CFP",
-    softDelete: true,
-    timestamps: true,
-    audit: true,
 
-    fields: {
-      FinanceProfileID: {
-        type: "ID",
-        generated: true,
-      },
+"CLIENT_FINANCE_PROFILE",
 
-      ClientID: {
-        type: "REFERENCE",
-        reference: "CLIENT",
-        required: true,
-      },
+{
 
-      CreditLimit: {
-        type: "MONEY",
-        default: 0,
-      },
+module:"FINANCE",
 
-      Debt: {
-        type: "MONEY",
-        default: 0,
-      },
+table:"ClientFinanceProfiles",
 
-      PaymentTermDays: {
-        type: "NUMBER",
-      },
+repository:"ClientFinanceProfileRepository",
 
-      Rating: {
-        type: "NUMBER",
-      },
+idField:"FinanceProfileID",
 
-      CreatedAt: {
-        type: "DATE",
-      },
+idPrefix:"CFP",
 
-      UpdatedAt: {
-        type: "DATE",
-      },
+softDelete:true,
 
-      Deleted: {
-        type: "BOOLEAN",
-      },
-    },
-  }
+timestamps:true,
+
+audit:true,
+
+
+fields:{
+
+
+FinanceProfileID:{
+type:"ID",
+generated:true
+},
+
+
+ClientID:{
+type:"REFERENCE",
+reference:"CLIENT",
+required:true
+},
+
+
+CreditLimit:{
+type:"MONEY",
+default:0
+},
+
+
+Debt:{
+type:"MONEY",
+default:0
+},
+
+
+PaymentTermDays:{
+type:"NUMBER"
+},
+
+
+Rating:{
+type:"NUMBER"
+},
+
+
+CreatedAt:{
+type:"DATE"
+},
+
+
+UpdatedAt:{
+type:"DATE"
+},
+
+
+Deleted:{
+type:"BOOLEAN"
+}
+
+
+}
+
+}
+
 );
+
+
+
+
+
+
+
 
 
 // ============================================================
 // FINANCIAL TRANSACTION
 // ============================================================
 
+
 EntityMetadata.register(
-  "FINANCIAL_TRANSACTION",
-  {
-    module: "FINANCE",
-    table:
-      "FinancialTransactions",
-    repository:
-      "FinancialTransactionRepository",
-    idField: "TransactionID",
-    idPrefix: "FIN",
-    softDelete: false,
-    timestamps: true,
 
-    fields: {
-      TransactionID: {
-        type: "ID",
-        generated: true,
-      },
+"FINANCIAL_TRANSACTION",
 
-      OrganizationID: {
-        type: "REFERENCE",
-        reference: "ORGANIZATION",
-      },
+{
 
-      ClientID: {
-        type: "REFERENCE",
-        reference: "CLIENT",
-      },
+module:"FINANCE",
 
-      TripID: {
-        type: "REFERENCE",
-        reference: "TRIP",
-      },
+table:"FinancialTransactions",
 
-      Type: {
-        type: "STRING",
-        required: true,
-      },
+repository:"FinancialTransactionRepository",
 
-      Amount: {
-        type: "MONEY",
-        required: true,
-      },
+idField:"TransactionID",
 
-      Currency: {
-        type: "STRING",
-        default: "RUB",
-      },
+idPrefix:"FIN",
 
-      PaymentDate: {
-        type: "DATE",
-      },
+softDelete:false,
 
-      Comment: {
-        type: "STRING",
-      },
+timestamps:true,
 
-      CreatedAt: {
-        type: "DATE",
-      },
 
-      UpdatedAt: {
-        type: "DATE",
-      },
-    },
-  }
+fields:{
+
+
+TransactionID:{
+type:"ID",
+generated:true
+},
+
+
+OrganizationID:{
+type:"REFERENCE",
+reference:"ORGANIZATION"
+},
+
+
+ClientID:{
+type:"REFERENCE",
+reference:"CLIENT"
+},
+
+
+TripID:{
+type:"REFERENCE",
+reference:"TRIP"
+},
+
+
+Type:{
+type:"STRING",
+required:true
+},
+
+
+Amount:{
+type:"MONEY",
+required:true
+},
+
+
+Currency:{
+type:"STRING",
+default:"RUB"
+},
+
+
+PaymentDate:{
+type:"DATE"
+},
+
+
+Comment:{
+type:"STRING"
+},
+
+
+CreatedAt:{
+type:"DATE"
+},
+
+
+UpdatedAt:{
+type:"DATE"
+}
+
+
+}
+
+}
+
 );
+
+
+
+
+
+
+
 
 
 // ============================================================
 // KPI
 // ============================================================
 
+
 EntityMetadata.register(
-  "KPI",
-  {
-    module: "ANALYTICS",
-    table: "KPIMetrics",
-    repository: "KPIRepository",
-    idField: "KPIID",
-    idPrefix: "KPI",
-    softDelete: true,
-    timestamps: true,
 
-    fields: {
-      KPIID: {
-        type: "ID",
-        generated: true,
-      },
+"KPI",
 
-      OrganizationID: {
-        type: "REFERENCE",
-        reference: "ORGANIZATION",
-      },
+{
 
-      Name: {
-        type: "STRING",
-        required: true,
-      },
+module:"ANALYTICS",
 
-      Value: {
-        type: "NUMBER",
-      },
+table:"KPIMetrics",
 
-      Period: {
-        type: "STRING",
-      },
+repository:"KPIRepository",
 
-      CreatedAt: {
-        type: "DATE",
-      },
+idField:"KPIID",
 
-      UpdatedAt: {
-        type: "DATE",
-      },
+idPrefix:"KPI",
 
-      Deleted: {
-        type: "BOOLEAN",
-      },
-    },
-  }
+softDelete:true,
+
+timestamps:true,
+
+
+fields:{
+
+
+KPIID:{
+type:"ID",
+generated:true
+},
+
+
+OrganizationID:{
+type:"REFERENCE",
+reference:"ORGANIZATION"
+},
+
+
+Name:{
+type:"STRING",
+required:true
+},
+
+
+Value:{
+type:"NUMBER"
+},
+
+
+Period:{
+type:"STRING"
+},
+
+
+CreatedAt:{
+type:"DATE"
+},
+
+
+UpdatedAt:{
+type:"DATE"
+},
+
+
+Deleted:{
+type:"BOOLEAN"
+}
+
+
+}
+
+}
+
 );
+
+
+
+
+
+
+
 
 
 // ============================================================
 // AUDIT
 // ============================================================
 
+
 EntityMetadata.register(
-  "AUDIT",
-  {
-    module: "SYSTEM",
-    table: "AuditLog",
-    repository: "AuditRepository",
-    idField: "AuditID",
-    idPrefix: "AUD",
-    softDelete: false,
-    timestamps: true,
 
-    fields: {
-      AuditID: {
-        type: "ID",
-        generated: true,
-      },
+"AUDIT",
 
-      OrganizationID: {
-        type: "REFERENCE",
-        reference: "ORGANIZATION",
-      },
+{
 
-      Action: {
-        type: "STRING",
-        required: true,
-      },
+module:"SYSTEM",
 
-      Entity: {
-        type: "STRING",
-      },
+table:"AuditLog",
 
-      EntityID: {
-        type: "STRING",
-      },
+repository:"AuditRepository",
 
-      UserID: {
-        type: "STRING",
-      },
+idField:"AuditID",
 
-      EventID: {
-        type: "STRING",
-      },
+idPrefix:"AUD",
 
-      Before: {
-        type: "JSON",
-      },
+softDelete:false,
 
-      After: {
-        type: "JSON",
-      },
+timestamps:true,
 
-      Source: {
-        type: "STRING",
-      },
 
-      Version: {
-        type: "NUMBER",
-      },
+fields:{
 
-      EntityVersion: {
-        type: "NUMBER",
-      },
 
-      CreatedAt: {
-        type: "DATE",
-      },
+AuditID:{
+type:"ID",
+generated:true
+},
 
-      UpdatedAt: {
-        type: "DATE",
-      },
-    },
-  }
+
+OrganizationID:{
+type:"REFERENCE",
+reference:"ORGANIZATION"
+},
+
+
+Action:{
+type:"STRING",
+required:true
+},
+
+
+Entity:{
+type:"STRING"
+},
+
+
+EntityID:{
+type:"STRING"
+},
+
+
+UserID:{
+type:"STRING"
+},
+
+
+EventID:{
+type:"STRING"
+},
+
+
+Before:{
+type:"JSON"
+},
+
+
+After:{
+type:"JSON"
+},
+
+
+Source:{
+type:"STRING"
+},
+
+
+Version:{
+type:"NUMBER"
+},
+
+
+EntityVersion:{
+type:"NUMBER"
+},
+
+
+CreatedAt:{
+type:"DATE"
+},
+
+
+UpdatedAt:{
+type:"DATE"
+}
+
+
+}
+
+}
+
 );
+
+
+
+
+
+
+
 
 
 // ============================================================
 // VERSION
 // ============================================================
 
+
 EntityMetadata.register(
-  "VERSION",
-  {
-    module: "SYSTEM",
-    table: "Versions",
-    repository: "VersionRepository",
-    idField: "VersionID",
-    idPrefix: "VER",
-    softDelete: false,
-    timestamps: true,
 
-    fields: {
-      VersionID: {
-        type: "ID",
-        generated: true,
-      },
+"VERSION",
 
-      OrganizationID: {
-        type: "REFERENCE",
-        reference: "ORGANIZATION",
-      },
+{
 
-      Entity: {
-        type: "STRING",
-        required: true,
-      },
+module:"SYSTEM",
 
-      EntityID: {
-        type: "STRING",
-        required: true,
-      },
+table:"Versions",
 
-      VersionNumber: {
-        type: "NUMBER",
-        required: true,
-      },
+repository:"VersionRepository",
 
-      Hash: {
-        type: "STRING",
-      },
+idField:"VersionID",
 
-      Snapshot: {
-        type: "JSON",
-        required: true,
-      },
+idPrefix:"VER",
 
-      Source: {
-        type: "STRING",
-      },
+softDelete:false,
 
-      CreatedAt: {
-        type: "DATE",
-      },
+timestamps:true,
 
-      UpdatedAt: {
-        type: "DATE",
-      },
-    },
-  }
+
+fields:{
+
+
+VersionID:{
+type:"ID",
+generated:true
+},
+
+
+OrganizationID:{
+type:"REFERENCE",
+reference:"ORGANIZATION"
+},
+
+
+Entity:{
+type:"STRING",
+required:true
+},
+
+
+EntityID:{
+type:"STRING",
+required:true
+},
+
+
+VersionNumber:{
+type:"NUMBER",
+required:true
+},
+
+
+Hash:{
+type:"STRING"
+},
+
+
+Snapshot:{
+type:"JSON",
+required:true
+},
+
+
+Source:{
+type:"STRING"
+},
+
+
+CreatedAt:{
+type:"DATE"
+},
+
+
+UpdatedAt:{
+type:"DATE"
+}
+
+
+}
+
+}
+
 );
+
+
+
+
+
+
+
+
+
+// ============================================================
+// FAILED EVENT
+// ============================================================
+
+
+EntityMetadata.register(
+
+"FAILED_EVENT",
+
+{
+
+module:"SYSTEM",
+
+system:true,
+
+table:"FailedEvents",
+
+repository:"FailedEventRepository",
+
+idField:"ID",
+
+idPrefix:"FEV",
+
+softDelete:false,
+
+timestamps:true,
+
+audit:false,
+
+
+fields:{
+
+
+ID:{
+type:"ID",
+generated:true
+},
+
+
+OrganizationID:{
+type:"REFERENCE",
+reference:"ORGANIZATION"
+},
+
+
+EventID:{
+type:"STRING"
+},
+
+
+Entity:{
+type:"STRING"
+},
+
+
+Type:{
+type:"STRING"
+},
+
+
+Payload:{
+type:"JSON"
+},
+
+
+Error:{
+type:"STRING"
+},
+
+
+Attempts:{
+type:"NUMBER",
+default:0
+},
+
+
+Status:{
+type:"STRING",
+default:"FAILED"
+},
+
+
+LastAttemptAt:{
+type:"DATE"
+},
+
+
+NextRetryAt:{
+type:"DATE"
+},
+
+
+Processor:{
+type:"STRING"
+},
+
+
+CreatedAt:{
+type:"DATE"
+},
+
+
+UpdatedAt:{
+type:"DATE"
+}
+
+
+}
+
+}
+
+);
+
+
+
+
+
 
 
 // ============================================================
 // TEST ENTITIES
 // ============================================================
 
-EntityMetadata.register(
-  "__TEST_DATABASE",
-  {
-    module: "SYSTEM",
-    system: true,
-    table: "__TEST_DATABASE",
-    repository: "BaseRepository",
-    idField: "id",
-
-    fields: {
-      id: {
-        type: "ID",
-        generated: true,
-      },
-    },
-  }
-);
 
 EntityMetadata.register(
-  "__TEST_EVENTS",
-  {
-    module: "SYSTEM",
-    system: true,
-    table: "__TEST_EVENTS",
-    repository: "BaseRepository",
-    idField: "id",
 
-    fields: {
-      id: {
-        type: "ID",
-        generated: true,
-      },
-    },
-  }
+"__TEST_DATABASE",
+
+{
+
+module:"SYSTEM",
+
+system:true,
+
+table:"__TEST_DATABASE",
+
+repository:"BaseRepository",
+
+idField:"id",
+
+fields:{
+
+
+id:{
+type:"ID",
+generated:true
+}
+
+
+}
+
+}
+
 );
+
+
+
+
 
 EntityMetadata.register(
-  "__TEST_REPOSITORY",
-  {
-    module: "SYSTEM",
-    system: true,
-    table: "__TEST_REPOSITORY",
-    repository: "BaseRepository",
-    idField: "id",
 
-    fields: {
-      id: {
-        type: "ID",
-        generated: true,
-      },
-    },
-  }
+"__TEST_EVENTS",
+
+{
+
+module:"SYSTEM",
+
+system:true,
+
+table:"__TEST_EVENTS",
+
+repository:"BaseRepository",
+
+idField:"id",
+
+fields:{
+
+
+id:{
+type:"ID",
+generated:true
+}
+
+
+}
+
+}
+
 );
+
+
+
+
+
+EntityMetadata.register(
+
+"__TEST_REPOSITORY",
+
+{
+
+module:"SYSTEM",
+
+system:true,
+
+table:"__TEST_REPOSITORY",
+
+repository:"BaseRepository",
+
+idField:"id",
+
+fields:{
+
+
+id:{
+type:"ID",
+generated:true
+}
+
+
+}
+
+}
+
+);
+
+
+
+
+
+
+
 
 
 // ============================================================
 // COMPATIBILITY LAYER
-// Старые обращения:
+// старые обращения:
 // EntityMetadata.CLIENT
 // EntityMetadata.TRIP
 // ============================================================
 
-EntityMetadata.list()
-  .forEach((entity) => {
-    if (!EntityMetadata[entity]) {
-      Object.defineProperty(
-        EntityMetadata,
-        entity,
-        {
-          get() {
-            return EntityMetadata
-              .entities[entity];
-          },
 
-          configurable: true,
-        }
-      );
-    }
-  });
+EntityMetadata.list()
+.forEach(entity=>{
+
+
+if(!EntityMetadata[entity]){
+
+
+Object.defineProperty(
+
+EntityMetadata,
+
+entity,
+
+{
+
+
+get(){
+
+return EntityMetadata.entities[entity];
+
+},
+
+
+configurable:true
+
+}
+
+
+);
+
+
+}
+
+
+});
+
+
+
+
+
 
 
 EntityMetadata.init();
 
-Logger.log(
-  "EntityMetadata v" +
-    EntityMetadata.version +
-    " REGISTERED ENTITIES=" +
-    EntityMetadata.list().length
-);
+
 
 Logger.log(
-  JSON.stringify(
-    EntityMetadata.list(),
-    null,
-    2
-  )
+"EntityMetadata v"+
+EntityMetadata.version+
+" REGISTERED ENTITIES="+
+EntityMetadata.list().length
+);
+Logger.log(
+JSON.stringify(
+EntityMetadata.list(),
+null,
+2
+)
 );

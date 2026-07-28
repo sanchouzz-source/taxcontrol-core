@@ -1,36 +1,32 @@
 // ============================================================
-// TestSystemRepositoriesContract v1.1.0
-// Regression test for:
-// - EntityMetadata v3.3.0
-// - RepositoryFactory v3.1.1
-// - AuditRepository v2.0.0
-// - VersionRepository v2.0.0
-// - BaseRepository v6.3.1
+// TestFailedEventRepositoryContract v1.0.0
+// Regression test for FailedEventRepository v3.0.0
+// TaxControl ERP Core
 //
 // Checks:
-// 1. System metadata and bound-repository architecture
-// 2. AUDIT append-only create/read/search/paginate contract
-// 3. VERSION append-only history/latest/hash contract
-// 4. Immutability of AUDIT and VERSION records
+// 1. FAILED_EVENT metadata and bound-repository architecture
+// 2. lowercase/canonical create and save normalization
+// 3. retry attempts and status lifecycle
+// 4. protected mutation contract
 // 5. RepositoryFactory/RepositoryRegistry synchronization
 //
-// The test uses isolated in-memory adapters.
+// The test uses an isolated in-memory adapter.
 // It does not create or modify rows in Google Sheets.
+// It does not invoke real EventBus or AuditLog handlers.
 // ============================================================
 
 console.log(
-  "TestSystemRepositoriesContract v1.1.0"
+  "TestFailedEventRepositoryContract v1.0.0"
 );
 
-const TestSystemRepositoriesContract = {
-  version: "1.1.0",
+const TestFailedEventRepositoryContract = {
+  version: "1.0.0",
 
   required: {
     EntityMetadata: "3.3.0",
     BaseRepository: "6.3.1",
     RepositoryFactory: "3.1.1",
-    AuditRepository: "2.0.0",
-    VersionRepository: "2.0.0",
+    FailedEventRepository: "3.0.0",
   },
 
   // ============================================================
@@ -39,7 +35,7 @@ const TestSystemRepositoriesContract = {
 
   run() {
     Logger.log(
-      "========== SYSTEM REPOSITORIES CONTRACT TEST START =========="
+      "========== FAILED EVENT REPOSITORY CONTRACT TEST START =========="
     );
 
     this.checkDependencies();
@@ -52,15 +48,13 @@ const TestSystemRepositoriesContract = {
         BaseRepository.version +
         ", RepositoryFactory v" +
         RepositoryFactory.version +
-        ", AuditRepository v" +
-        AuditRepository.version +
-        ", VersionRepository v" +
-        VersionRepository.version
+        ", FailedEventRepository v" +
+        FailedEventRepository.version
     );
 
     const result = {
       module:
-        "TestSystemRepositoriesContract",
+        "TestFailedEventRepositoryContract",
       version: this.version,
       timestamp:
         new Date().toISOString(),
@@ -85,29 +79,31 @@ const TestSystemRepositoriesContract = {
 
       this.runCase(
         result,
-        "AUDIT_APPEND_ONLY",
-        () => this.testAuditAppendOnly()
+        "CREATE_SAVE_NORMALIZATION",
+        () => this.testCreateSaveNormalization()
       );
 
       this.runCase(
         result,
-        "VERSION_APPEND_ONLY",
-        () => this.testVersionAppendOnly()
+        "RETRY_LIFECYCLE",
+        () => this.testRetryLifecycle()
       );
 
       this.runCase(
         result,
-        "IMMUTABILITY",
-        () => this.testImmutability()
+        "MUTATION_GUARDS",
+        () => this.testMutationGuards()
       );
 
       this.runCase(
         result,
-        "REGISTRY_FACTORY_SYNC",
-        () => this.testRegistryFactorySync()
+        "REGISTRY_FACTORY_HEALTH",
+        () => this.testRegistryFactoryHealth()
       );
     } finally {
-      this.restoreRepositoryState(state);
+      this.restoreRepositoryState(
+        state
+      );
     }
 
     result.summary.total =
@@ -115,12 +111,14 @@ const TestSystemRepositoriesContract = {
 
     result.summary.passed =
       result.tests.filter(
-        (test) => test.status === "PASS"
+        (test) =>
+          test.status === "PASS"
       ).length;
 
     result.summary.failed =
       result.tests.filter(
-        (test) => test.status === "FAIL"
+        (test) =>
+          test.status === "FAIL"
       ).length;
 
     result.status =
@@ -133,22 +131,25 @@ const TestSystemRepositoriesContract = {
     );
 
     if (result.status !== "PASS") {
-      const failed = result.tests
-        .filter(
-          (test) =>
-            test.status === "FAIL"
-        )
-        .map((test) => test.name)
-        .join(", ");
+      const failed =
+        result.tests
+          .filter(
+            (test) =>
+              test.status === "FAIL"
+          )
+          .map(
+            (test) => test.name
+          )
+          .join(", ");
 
       throw new Error(
-        "System repositories contract failed: " +
+        "Failed-event repository contract failed: " +
           failed
       );
     }
 
     Logger.log(
-      "========== SYSTEM REPOSITORIES CONTRACT TEST PASS =========="
+      "========== FAILED EVENT REPOSITORY CONTRACT TEST PASS =========="
     );
 
     return result;
@@ -180,12 +181,8 @@ const TestSystemRepositoriesContract = {
       RepositoryRegistry
     );
     this.requireGlobal(
-      "AuditRepository",
-      AuditRepository
-    );
-    this.requireGlobal(
-      "VersionRepository",
-      VersionRepository
+      "FailedEventRepository",
+      FailedEventRepository
     );
 
     this.assertEqual(
@@ -207,21 +204,17 @@ const TestSystemRepositoriesContract = {
     );
 
     this.assertEqual(
-      AuditRepository.version,
-      this.required.AuditRepository,
-      "Wrong AuditRepository version"
-    );
-
-    this.assertEqual(
-      VersionRepository.version,
-      this.required.VersionRepository,
-      "Wrong VersionRepository version"
+      FailedEventRepository.version,
+      this.required.FailedEventRepository,
+      "Wrong FailedEventRepository version"
     );
 
     if (
       EntityRegistry.initialized !== true
     ) {
       EntityRegistry.init();
+    } else {
+      EntityRegistry.sync();
     }
 
     if (
@@ -234,7 +227,7 @@ const TestSystemRepositoriesContract = {
 
     if (
       typeof RepositoryRegistry.refresh ===
-      "function"
+        "function"
     ) {
       RepositoryRegistry.refresh();
     }
@@ -247,10 +240,14 @@ const TestSystemRepositoriesContract = {
       RepositoryFactory.init();
     }
 
-    RepositoryFactory.syncRegistry();
+    if (
+      typeof RepositoryFactory.syncRegistry ===
+        "function"
+    ) {
+      RepositoryFactory.syncRegistry();
+    }
 
-    AuditRepository.init();
-    VersionRepository.init();
+    FailedEventRepository.init();
   },
 
   requireGlobal(name, value) {
@@ -304,493 +301,512 @@ const TestSystemRepositoriesContract = {
   // ============================================================
 
   testArchitectureMetadata() {
-    const auditMeta =
-      EntityRegistry.get("AUDIT");
-
-    const versionMeta =
-      EntityRegistry.get("VERSION");
-
-    this.assert(
-      !!auditMeta,
-      "AUDIT metadata missing"
-    );
+    const meta =
+      EntityRegistry.get(
+        "FAILED_EVENT"
+      );
 
     this.assert(
-      !!versionMeta,
-      "VERSION metadata missing"
+      !!meta,
+      "FAILED_EVENT metadata missing"
     );
 
-    const auditFields =
-      this.fieldNames(auditMeta);
+    this.assertEqual(
+      meta.table,
+      "FailedEvents",
+      "FAILED_EVENT table mismatch"
+    );
 
-    const versionFields =
-      this.fieldNames(versionMeta);
+    this.assertEqual(
+      meta.idField,
+      "ID",
+      "FAILED_EVENT idField mismatch"
+    );
+
+    this.assertEqual(
+      meta.idPrefix,
+      "FEV",
+      "FAILED_EVENT idPrefix mismatch"
+    );
+
+    const fields =
+      this.fieldNames(meta);
 
     [
-      "AuditID",
+      "ID",
       "OrganizationID",
-      "Entity",
-      "EntityID",
-      "Action",
-      "UserID",
       "EventID",
-      "Before",
-      "After",
-      "Source",
-      "Version",
-      "EntityVersion",
-      "CreatedAt",
-      "UpdatedAt",
-    ].forEach((field) => {
-      this.assert(
-        auditFields.includes(field),
-        "AUDIT metadata field missing " +
-          field
-      );
-    });
-
-    [
-      "VersionID",
-      "OrganizationID",
       "Entity",
-      "EntityID",
-      "VersionNumber",
-      "Hash",
-      "Snapshot",
-      "Source",
+      "Type",
+      "Payload",
+      "Error",
+      "Attempts",
+      "Status",
+      "LastAttemptAt",
+      "NextRetryAt",
+      "Processor",
       "CreatedAt",
       "UpdatedAt",
     ].forEach((field) => {
       this.assert(
-        versionFields.includes(field),
-        "VERSION metadata field missing " +
+        fields.includes(field),
+        "FAILED_EVENT metadata field missing " +
           field
       );
     });
 
     this.assertEqual(
-      AuditRepository.entity,
-      "AUDIT",
-      "AuditRepository entity mismatch"
+      EntityRegistry.resolve(
+        "FailedEvents"
+      ),
+      "FAILED_EVENT",
+      "Table alias does not resolve"
     );
 
     this.assertEqual(
-      VersionRepository.entity,
-      "VERSION",
-      "VersionRepository entity mismatch"
+      FailedEventRepository.entity,
+      "FAILED_EVENT",
+      "Repository entity mismatch"
     );
 
     this.assert(
-      typeof AuditRepository.createBaseRepository ===
+      typeof FailedEventRepository.createBaseRepository ===
         "function",
-      "AuditRepository bound-base factory missing"
-    );
-
-    this.assert(
-      typeof VersionRepository.createBaseRepository ===
-        "function",
-      "VersionRepository bound-base factory missing"
+      "Bound-base factory missing"
     );
 
     return {
       metadataVersion:
         EntityMetadata.version,
-      auditFields:
-        auditFields.length,
-      versionFields:
-        versionFields.length,
-      baseVersion:
-        BaseRepository.version,
+      fields: fields.length,
+      table: meta.table,
+      idField: meta.idField,
+      idPrefix: meta.idPrefix,
     };
   },
 
   // ============================================================
-  // AUDIT APPEND-ONLY
+  // CREATE / SAVE
   // ============================================================
 
-  testAuditAppendOnly() {
+  testCreateSaveNormalization() {
     const adapter =
       this.createMemoryAdapter();
 
-    AuditRepository.useAdapterForTest(
+    FailedEventRepository.useAdapterForTest(
       adapter
     );
 
     const firstId =
-      this.uniqueId("AUD1");
+      this.uniqueId("FEV1");
 
     const secondId =
-      this.uniqueId("AUD2");
+      this.uniqueId("FEV2");
 
     const first =
-      AuditRepository.create({
-        AuditID: firstId,
+      FailedEventRepository.create({
+        id: firstId,
         organizationId:
           "ORG_TEST",
-        entity: "CLIENT",
-        entityId: "CLI_TEST_1",
-        action: "CREATE",
-        userId: "USR_TEST",
-        eventId: "EVT_TEST_1",
-        before: null,
-        after: {
-          Name: "Test Client",
+        eventId:
+          "EVT_CREATE_1",
+        entity:
+          "TRANSPORT_ORDER",
+        type:
+          "CREATED",
+        payload: {
+          TransportOrderID:
+            "TO_TEST_1",
         },
-        source: "CONTRACT_TEST",
+        error:
+          "Handler failed",
+        attempts: 0,
+        status:
+          "pending",
+        processor:
+          "BusinessEventProcessor",
+        timestamp:
+          "2026-07-28T20:00:00.000Z",
       });
 
     const second =
-      AuditRepository.create({
-        AuditID: secondId,
-        OrganizationID:
-          "ORG_TEST",
-        Entity: "CLIENT",
-        EntityID: "CLI_TEST_2",
-        Action: "UPDATE",
-        UserID: "USR_TEST",
-        EventID: "EVT_TEST_2",
-        Before: {
-          Status: "NEW",
+      FailedEventRepository.save(
+        {
+          id: "EVT_SAVE_2",
+          entity: "TRIP",
+          type: "UPDATED",
+          payload: {
+            TripID: "TRP_TEST_2",
+          },
         },
-        After: {
-          Status: "ACTIVE",
-        },
-        Source: "CONTRACT_TEST",
-      });
-
-    this.assertEqual(
-      first.AuditID,
-      firstId,
-      "First audit ID mismatch"
-    );
-
-    this.assertEqual(
-      second.AuditID,
-      secondId,
-      "Second audit ID mismatch"
-    );
-
-    this.assertEqual(
-      adapter.calls.insert[0].entity,
-      "AUDIT",
-      "Audit insert used table instead of entity"
-    );
-
-    this.assertEqual(
-      AuditRepository.findByEntity(
-        "CLIENT",
-        "CLI_TEST_1"
-      ).length,
-      1,
-      "findByEntity returned wrong count"
-    );
-
-    this.assertEqual(
-      AuditRepository.findByUser(
-        "USR_TEST"
-      ).length,
-      2,
-      "findByUser returned wrong count"
-    );
-
-    this.assertEqual(
-      AuditRepository.findByAction(
-        "UPDATE"
-      ).length,
-      1,
-      "findByAction returned wrong count"
-    );
-
-    this.assertEqual(
-      AuditRepository.findByEvent(
-        "EVT_TEST_2"
-      ).length,
-      1,
-      "findByEvent returned wrong count"
-    );
-
-    this.assertEqual(
-      AuditRepository.count({
-        Entity: "CLIENT",
-      }),
-      2,
-      "Audit count returned wrong result"
-    );
-
-    const page =
-      AuditRepository.paginate(
-        1,
-        1,
-        { Entity: "CLIENT" }
+        new Error("Retry failed"),
+        {
+          id: secondId,
+          organizationId:
+            "ORG_TEST",
+          processor:
+            "EventRetryQueue",
+        }
       );
 
     this.assertEqual(
-      page.total,
-      2,
-      "Audit pagination total mismatch"
+      first.ID,
+      firstId,
+      "First failed-event ID mismatch"
     );
 
     this.assertEqual(
-      page.data.length,
+      first.Status,
+      "PENDING",
+      "Lowercase status was not normalized"
+    );
+
+    this.assertEqual(
+      first.Attempts,
+      0,
+      "Attempts normalization mismatch"
+    );
+
+    this.assertEqual(
+      typeof first.Payload,
+      "string",
+      "Payload was not serialized"
+    );
+
+    this.assertEqual(
+      JSON.parse(first.Payload)
+        .TransportOrderID,
+      "TO_TEST_1",
+      "Serialized payload mismatch"
+    );
+
+    this.assertEqual(
+      second.ID,
+      secondId,
+      "Saved failed-event ID mismatch"
+    );
+
+    this.assertEqual(
+      second.EventID,
+      "EVT_SAVE_2",
+      "save() event ID mismatch"
+    );
+
+    this.assertEqual(
+      second.Error,
+      "Retry failed",
+      "save() error mismatch"
+    );
+
+    this.assertEqual(
+      adapter.calls.insert.length,
+      2,
+      "Wrong insert count"
+    );
+
+    adapter.calls.insert
+      .forEach((call) => {
+        this.assertEqual(
+          call.entity,
+          "FAILED_EVENT",
+          "Insert used table instead of entity"
+        );
+      });
+
+    this.assertEqual(
+      FailedEventRepository.findByEventId(
+        "EVT_SAVE_2"
+      ).length,
       1,
-      "Audit pagination limit mismatch"
+      "findByEventId returned wrong count"
     );
 
     return {
       created: 2,
       insertedEntity:
         adapter.calls.insert[0].entity,
-      searches: 4,
-      count:
-        AuditRepository.count(),
-      pagination: {
-        page: page.page,
-        limit: page.limit,
-        total: page.total,
-      },
+      firstStatus:
+        first.Status,
+      secondStatus:
+        second.Status,
+      payloadSerialized: true,
     };
   },
 
   // ============================================================
-  // VERSION APPEND-ONLY
+  // RETRY LIFECYCLE
   // ============================================================
 
-  testVersionAppendOnly() {
+  testRetryLifecycle() {
     const adapter =
       this.createMemoryAdapter();
 
-    VersionRepository.useAdapterForTest(
+    FailedEventRepository.useAdapterForTest(
       adapter
     );
 
-    const firstId =
-      this.uniqueId("VER1");
+    const id =
+      this.uniqueId("RETRY");
 
-    const secondId =
-      this.uniqueId("VER2");
+    const exhaustedId =
+      this.uniqueId("LIMIT");
 
-    const otherId =
-      this.uniqueId("VER3");
-
-    VersionRepository.create({
-      VersionID: firstId,
-      organizationId:
-        "ORG_TEST",
-      entity: "CLIENT",
-      entityId: "CLI_VERSIONED",
-      versionNumber: 1,
-      snapshot: {
-        Status: "NEW",
-      },
-      hash: "HASH_1",
-      timestamp:
-        "2026-07-28T20:00:00.000Z",
-    });
-
-    VersionRepository.create({
-      VersionID: secondId,
+    FailedEventRepository.create({
+      ID: id,
       OrganizationID:
         "ORG_TEST",
-      Entity: "CLIENT",
-      EntityID: "CLI_VERSIONED",
-      VersionNumber: 2,
-      Snapshot: {
-        Status: "ACTIVE",
+      EventID:
+        "EVT_RETRY",
+      Entity:
+        "TRIP",
+      Type:
+        "UPDATED",
+      Payload: {
+        TripID:
+          "TRP_RETRY",
       },
-      Hash: "HASH_2",
-      CreatedAt:
-        "2026-07-28T20:01:00.000Z",
+      Error:
+        "Initial error",
+      Attempts: 0,
+      Status:
+        "FAILED",
     });
 
-    VersionRepository.create({
-      VersionID: otherId,
+    FailedEventRepository.create({
+      ID: exhaustedId,
       OrganizationID:
         "ORG_TEST",
-      Entity: "TRIP",
-      EntityID: "TRP_OTHER",
-      VersionNumber: 1,
-      Snapshot: {
-        Status: "PLANNED",
-      },
-      Hash: "HASH_3",
+      EventID:
+        "EVT_LIMIT",
+      Entity:
+        "TRIP",
+      Type:
+        "UPDATED",
+      Payload: {},
+      Error:
+        "Retry limit",
+      Attempts: 5,
+      Status:
+        "FAILED",
     });
 
-    this.assertEqual(
-      adapter.calls.insert[0].entity,
-      "VERSION",
-      "Version insert used table instead of entity"
-    );
+    const firstRetry =
+      FailedEventRepository
+        .increaseAttempts(id);
 
-    const history =
-      VersionRepository.findByEntity(
-        "CLIENT",
-        "CLI_VERSIONED"
-      );
+    const secondRetry =
+      FailedEventRepository
+        .increaseAttempts(id);
 
     this.assertEqual(
-      history.length,
-      2,
-      "Version history count mismatch"
-    );
-
-    const latest =
-      VersionRepository.findLatest(
-        "CLIENT",
-        "CLI_VERSIONED"
-      );
-
-    this.assertEqual(
-      latest.VersionID,
-      secondId,
-      "findLatest returned wrong row"
-    );
-
-    this.assertEqual(
-      latest.VersionNumber,
-      2,
-      "findLatest used wrong version field"
-    );
-
-    this.assertEqual(
-      VersionRepository.findByHash(
-        "HASH_2"
-      ).length,
+      firstRetry.Attempts,
       1,
-      "findByHash returned wrong count"
+      "First retry attempt mismatch"
     );
 
     this.assertEqual(
-      VersionRepository.nextVersionNumber(
-        "CLIENT",
-        "CLI_VERSIONED"
-      ),
-      3,
-      "nextVersionNumber returned wrong value"
+      secondRetry.Attempts,
+      2,
+      "Second retry attempt mismatch"
     );
 
-    const page =
-      VersionRepository.paginate(
-        1,
-        2,
-        {}
+    this.assertEqual(
+      secondRetry.Status,
+      "RETRY",
+      "Retry status mismatch"
+    );
+
+    this.assertEqual(
+      typeof secondRetry.Attempts,
+      "number",
+      "Attempts stored as non-number"
+    );
+
+    const retryable =
+      FailedEventRepository
+        .findRetryable(5);
+
+    this.assertEqual(
+      retryable.length,
+      1,
+      "Retry limit filtering mismatch"
+    );
+
+    this.assertEqual(
+      retryable[0].ID,
+      id,
+      "Wrong retryable row"
+    );
+
+    const failed =
+      FailedEventRepository.markFailed(
+        id,
+        new Error(
+          "Second handler failure"
+        )
       );
 
     this.assertEqual(
-      page.total,
-      3,
-      "Version pagination total mismatch"
+      failed.Status,
+      "FAILED",
+      "markFailed status mismatch"
     );
 
     this.assertEqual(
-      page.data.length,
-      2,
-      "Version pagination limit mismatch"
+      failed.Error,
+      "Second handler failure",
+      "markFailed error mismatch"
     );
+
+    const completed =
+      FailedEventRepository
+        .markCompleted(id);
+
+    this.assertEqual(
+      completed.Status,
+      "DONE",
+      "markCompleted status mismatch"
+    );
+
+    this.assert(
+      !FailedEventRepository
+        .getPending()
+        .some(
+          (row) => row.ID === id
+        ),
+      "Completed row remains pending"
+    );
+
+    adapter.calls.update
+      .forEach((call) => {
+        this.assertEqual(
+          call.entity,
+          "FAILED_EVENT",
+          "Update used table instead of entity"
+        );
+
+        if (
+          call.data.Attempts !==
+          undefined
+        ) {
+          this.assertEqual(
+            typeof call.data.Attempts,
+            "number",
+            "Attempts update is not numeric"
+          );
+        }
+      });
 
     return {
-      created: 3,
-      history: history.length,
-      latest:
-        latest.VersionNumber,
-      nextVersion: 3,
-      hashes: 1,
-      insertedEntity:
-        adapter.calls.insert[0].entity,
+      attempts:
+        secondRetry.Attempts,
+      retryable:
+        retryable.length,
+      finalStatus:
+        completed.Status,
+      updateCalls:
+        adapter.calls.update.length,
     };
   },
 
   // ============================================================
-  // IMMUTABILITY
+  // MUTATION GUARDS
   // ============================================================
 
-  testImmutability() {
+  testMutationGuards() {
     const checks = [
       [
-        "AuditRepository.update",
-        () => AuditRepository.update(),
+        "update",
+        () =>
+          FailedEventRepository.update(),
       ],
       [
-        "AuditRepository.delete",
-        () => AuditRepository.delete(),
+        "delete",
+        () =>
+          FailedEventRepository.delete(),
       ],
       [
-        "AuditRepository.restore",
-        () => AuditRepository.restore(),
+        "restore",
+        () =>
+          FailedEventRepository.restore(),
       ],
       [
-        "AuditRepository.bulkUpdate",
-        () => AuditRepository.bulkUpdate(),
+        "bulkUpdate",
+        () =>
+          FailedEventRepository.bulkUpdate(),
       ],
       [
-        "VersionRepository.update",
-        () => VersionRepository.update(),
-      ],
-      [
-        "VersionRepository.delete",
-        () => VersionRepository.delete(),
-      ],
-      [
-        "VersionRepository.restore",
-        () => VersionRepository.restore(),
-      ],
-      [
-        "VersionRepository.bulkUpdate",
-        () => VersionRepository.bulkUpdate(),
+        "forbidden status field",
+        () =>
+          FailedEventRepository.updateStatus(
+            "FEV_TEST",
+            {
+              Entity: "CLIENT",
+            }
+          ),
       ],
     ];
 
-    checks.forEach(([name, callback]) => {
-      this.assertThrows(
-        callback,
-        name + " did not reject mutation"
-      );
-    });
+    checks.forEach(
+      ([name, callback]) => {
+        this.assertThrows(
+          callback,
+          name +
+            " did not reject mutation"
+        );
+      }
+    );
 
     return {
       rejectedMutations:
         checks.length,
-      auditImmutable: true,
-      versionImmutable: true,
+      deleteAllowed: false,
+      statusOnlyUpdates: true,
     };
   },
 
   // ============================================================
-  // REGISTRY / FACTORY
+  // REGISTRY / FACTORY / HEALTH
   // ============================================================
 
-  testRegistryFactorySync() {
-    RepositoryFactory.syncRegistry();
+  testRegistryFactoryHealth() {
+    FailedEventRepository.register();
+
+    if (
+      typeof RepositoryFactory.syncRegistry ===
+        "function"
+    ) {
+      RepositoryFactory.syncRegistry();
+    }
 
     this.assert(
-      RepositoryFactory.has("AUDIT"),
-      "AUDIT missing in RepositoryFactory"
+      RepositoryFactory.has(
+        "FAILED_EVENT"
+      ),
+      "FAILED_EVENT missing in RepositoryFactory"
     );
 
     this.assert(
-      RepositoryFactory.has("VERSION"),
-      "VERSION missing in RepositoryFactory"
-    );
-
-    this.assert(
-      RepositoryRegistry.has("AUDIT"),
-      "AUDIT missing in RepositoryRegistry"
-    );
-
-    this.assert(
-      RepositoryRegistry.has("VERSION"),
-      "VERSION missing in RepositoryRegistry"
+      RepositoryRegistry.has(
+        "FAILED_EVENT"
+      ),
+      "FAILED_EVENT missing in RepositoryRegistry"
     );
 
     this.assertEqual(
-      RepositoryFactory.get("AUDIT"),
-      AuditRepository,
-      "Factory returned generic AUDIT repository"
+      RepositoryFactory.get(
+        "FAILED_EVENT"
+      ),
+      FailedEventRepository,
+      "Factory returned wrong repository"
     );
 
     this.assertEqual(
-      RepositoryFactory.get("VERSION"),
-      VersionRepository,
-      "Factory returned generic VERSION repository"
+      RepositoryRegistry.get(
+        "FAILED_EVENT"
+      ),
+      FailedEventRepository,
+      "Registry returned wrong repository"
     );
 
     this.assert(
@@ -803,33 +819,24 @@ const TestSystemRepositoriesContract = {
       "BASE registered in RepositoryRegistry"
     );
 
-    const consistency =
-      RepositoryFactory.consistency();
+    const health =
+      FailedEventRepository.health();
 
-    this.assert(
-      !consistency.missingInFactory.includes(
-        "AUDIT"
-      ),
-      "AUDIT missing from Factory consistency"
-    );
-
-    this.assert(
-      !consistency.missingInFactory.includes(
-        "VERSION"
-      ),
-      "VERSION missing from Factory consistency"
+    this.assertEqual(
+      health.status,
+      "OK",
+      "FailedEventRepository health is not OK"
     );
 
     return {
-      auditFactory: "REGISTERED",
-      auditRegistry: "REGISTERED",
-      versionFactory: "REGISTERED",
-      versionRegistry: "REGISTERED",
+      factory: "REGISTERED",
+      registry: "REGISTERED",
+      health: health.status,
+      metadata:
+        FailedEventRepository
+          .diagnostics()
+          .metadata,
       baseRegistered: false,
-      factoryCount:
-        RepositoryFactory.list().length,
-      registryCount:
-        RepositoryRegistry.list().length,
     };
   },
 
@@ -839,39 +846,24 @@ const TestSystemRepositoriesContract = {
 
   captureRepositoryState() {
     return {
-      auditBase:
-        AuditRepository._base,
-      auditInitialized:
-        AuditRepository.initialized,
-      auditRegistered:
-        AuditRepository.registered,
-      versionBase:
-        VersionRepository._base,
-      versionInitialized:
-        VersionRepository.initialized,
-      versionRegistered:
-        VersionRepository.registered,
+      base:
+        FailedEventRepository._base,
+      initialized:
+        FailedEventRepository.initialized,
+      registered:
+        FailedEventRepository.registered,
     };
   },
 
   restoreRepositoryState(state) {
-    AuditRepository._base =
-      state.auditBase;
+    FailedEventRepository._base =
+      state.base;
 
-    AuditRepository.initialized =
-      state.auditInitialized;
+    FailedEventRepository.initialized =
+      state.initialized;
 
-    AuditRepository.registered =
-      state.auditRegistered;
-
-    VersionRepository._base =
-      state.versionBase;
-
-    VersionRepository.initialized =
-      state.versionInitialized;
-
-    VersionRepository.registered =
-      state.versionRegistered;
+    FailedEventRepository.registered =
+      state.registered;
   },
 
   // ============================================================
@@ -1116,21 +1108,21 @@ const TestSystemRepositoriesContract = {
   },
 };
 
-globalThis.TestSystemRepositoriesContract =
-  TestSystemRepositoriesContract;
+globalThis.TestFailedEventRepositoryContract =
+  TestFailedEventRepositoryContract;
 
 // ============================================================
 // MANUAL TEST RUNNER
 // This function is visible in the Google Apps Script function list.
 // ============================================================
 
-function runSystemRepositoriesContractTest() {
+function runFailedEventRepositoryContractTest() {
   Logger.log(
-    "========== MANUAL SYSTEM REPOSITORIES TEST RUN =========="
+    "========== MANUAL FAILED EVENT REPOSITORY TEST RUN =========="
   );
 
   const result =
-    TestSystemRepositoriesContract.run();
+    TestFailedEventRepositoryContract.run();
 
   Logger.log(
     "MANUAL TEST RESULT: " +
@@ -1145,6 +1137,6 @@ function runSystemRepositoriesContractTest() {
 }
 
 Logger.log(
-  "TestSystemRepositoriesContract READY v" +
-    TestSystemRepositoriesContract.version
+  "TestFailedEventRepositoryContract READY v" +
+    TestFailedEventRepositoryContract.version
 );
