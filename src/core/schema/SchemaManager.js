@@ -352,7 +352,29 @@ Object.keys(schema||{})
 
 let meta =
 schema[key];
+// защита от поврежденного metadata объекта
 
+if(
+meta.table &&
+typeof meta.table==="object"
+&&
+meta.table.table
+){
+
+Logger.warn(
+"SchemaManager detected nested table for "+key
+);
+
+
+meta =
+{
+...meta,
+table:
+meta.table.table
+};
+
+}
+///////
 
 
 if(!meta)

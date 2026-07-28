@@ -1,21 +1,42 @@
 // ============================================================
-// SchemaBuilder v4.1.1
+// SchemaBuilder v4.1.2
 // ERP TexControl Core
 //
+// Enterprise Metadata → Runtime Schema Builder
+//
+// Compatible:
+// EntityMetadata v3.1+
+// EntityRegistry v2.5+
+// SchemaRegistry v4.0.6+
+// SchemaManager v4.2+
+// EntityValidator v1.1+
+//
 // Fix:
-// EntityMetadata v3 object list support
-// Prevent nested metadata corruption
+// - Preserve repository metadata
+// - Preserve module metadata
+// - Duplicate entity protection
+// - Object fields normalization
+// - Runtime schema compatibility
 // ============================================================
 
 
-console.log("SchemaBuilder v4.1.1");
+console.log("SchemaBuilder v4.1.2");
 
 
-const SchemaBuilder={
+
+const SchemaBuilder = {
 
 
-version:"4.1.1",
+version:"4.1.2",
 
+
+
+
+
+
+// ============================================================
+// BUILD
+// ============================================================
 
 
 build(){
@@ -24,12 +45,16 @@ build(){
 const schema={};
 
 
+
 let entities=[];
 
 
-// ====================================================
-// LOAD METADATA
-// ====================================================
+
+
+
+// ============================================================
+// LOAD ENTITY METADATA
+// ============================================================
 
 
 if(
@@ -46,15 +71,21 @@ EntityMetadata.list();
 }
 
 
+
+
 Logger.log(
-"SchemaBuilder entities="+entities.length
+"SchemaBuilder metadata count="+
+entities.length
 );
 
 
 
-// ====================================================
-// BUILD
-// ====================================================
+
+
+
+// ============================================================
+// PROCESS
+// ============================================================
 
 
 entities.forEach(item=>{
@@ -67,7 +98,8 @@ let meta=null;
 try{
 
 
-// Уже объект metadata
+
+// object metadata
 
 if(
 typeof item==="object"
@@ -81,7 +113,9 @@ JSON.stringify(item)
 }
 
 
-// строка
+
+
+// entity name
 
 else
 if(
@@ -98,16 +132,22 @@ EntityMetadata.get(item);
 }
 catch(e){
 
+
 Logger.warn(
-"Metadata error "+
-item+
-" "+
+
+"SchemaBuilder metadata error "+
 e.message
+
 );
+
 
 return;
 
+
 }
+
+
+
 
 
 
@@ -120,26 +160,127 @@ return;
 
 
 
-// защита от битого объекта
 
-if(
-typeof meta.table!=="string"
-){
+
+
+
+// ============================================================
+// ENTITY NAME
+// ============================================================
+
+
+const entityName =
+
+String(
+meta.entity || ""
+)
+
+.trim()
+
+.toUpperCase();
+
+
+
+
+
+
+if(!entityName){
+
 
 Logger.warn(
-"Schema skip invalid metadata "+
-JSON.stringify(meta.entity)
+"SchemaBuilder skip entity without name"
 );
 
+
 return;
+
 
 }
 
 
 
 
+
+
+// ============================================================
+// DUPLICATE PROTECTION
+// ============================================================
+
+
+if(
+schema[entityName]
+){
+
+
+Logger.warn(
+
+"SchemaBuilder duplicate entity skipped "+
+entityName
+
+);
+
+
+return;
+
+
+}
+
+
+
+
+
+
+
+
+// ============================================================
+// TABLE CHECK
+// ============================================================
+
+
+if(
+typeof meta.table!=="string"
+||
+!meta.table
+){
+
+
+Logger.warn(
+
+"SchemaBuilder invalid table for "+
+entityName
+
+);
+
+
+return;
+
+
+}
+
+
+
+
+
+
+
+
+
+// ============================================================
+// FIELDS
+// ============================================================
+
+
 const fields =
-this.normalizeFields(meta.fields || meta.columns);
+
+this.normalizeFields(
+
+meta.fields ||
+meta.columns ||
+[]
+
+);
+
+
 
 
 
@@ -148,8 +289,10 @@ if(!fields.length){
 
 
 Logger.warn(
-"Schema entity without fields "+
-meta.entity
+
+"SchemaBuilder entity without fields "+
+entityName
+
 );
 
 
@@ -162,15 +305,44 @@ return;
 
 
 
-schema[meta.entity]={
+
+
+
+
+// ============================================================
+// CREATE SCHEMA
+// ============================================================
+
+
+schema[entityName]={
+
 
 
 entity:
-meta.entity,
+entityName,
+
+
+
+module:
+meta.module ||
+"CORE",
+
+
 
 
 table:
 meta.table,
+
+
+
+
+
+repository:
+meta.repository ||
+null,
+
+
+
 
 
 idField:
@@ -183,32 +355,120 @@ meta.primaryKey
 
 
 
+
+idPrefix:
+
+meta.idPrefix ||
+null,
+
+
+
+
+
+
 fields,
 
 
 
+
+
+
+
 softDelete:
-meta.softDelete!==false,
+
+meta.softDelete !== false,
+
+
+
 
 
 
 timestamps:
-meta.timestamps!==false,
+
+meta.timestamps !== false,
+
+
+
+
 
 
 audit:
-meta.audit===true,
+
+meta.audit === true,
+
+
+
+
+
+
+organization:
+
+meta.organization !== false,
+
+
+
+
+
+
+tenant:
+
+meta.tenant !== false,
+
+
+
+
+
 
 
 relations:
-meta.relations||{},
+
+meta.relations ||
+{},
+
+
+
 
 
 indexes:
-meta.indexes||[]
+
+meta.indexes ||
+[],
+
+
+
+
+
+events:
+
+meta.events ||
+{},
+
+
+
+
+
+permissions:
+
+meta.permissions ||
+{},
+
+
+
+
+
+system:
+
+meta.system === true
+
+
+
 
 
 };
+
+
+
+
 
 
 
@@ -217,7 +477,20 @@ meta.indexes||[]
 
 
 
+
+
+
+Logger.log(
+
+"SchemaBuilder created tables="+
+Object.keys(schema).length
+
+);
+
+
+
 return schema;
+
 
 
 },
@@ -228,7 +501,13 @@ return schema;
 
 
 
+// ============================================================
+// FIELD NORMALIZER
+// ============================================================
+
+
 normalizeFields(fields){
+
 
 
 if(!fields){
@@ -239,11 +518,20 @@ return [];
 
 
 
+
+
 let result=[];
 
 
 
-// object format
+
+
+
+
+// ============================================================
+// OBJECT FORMAT
+// ============================================================
+
 
 if(
 !Array.isArray(fields)
@@ -252,92 +540,81 @@ typeof fields==="object"
 ){
 
 
+
 Object.keys(fields)
+
 .forEach(name=>{
 
 
 const f =
-fields[name]||{};
+fields[name] || {};
 
 
 
-result.push({
+result.push(
 
+this.normalizeField({
 
 name,
 
+...f
 
-type:
-f.type||
-"STRING",
+})
 
+);
 
-required:
-f.required===true
 
 
 });
 
-
-});
 
 
 }
 
 
-// array format
+
+
+
+
+
+// ============================================================
+// ARRAY FORMAT
+// ============================================================
+
 
 else
-if(Array.isArray(fields)){
+if(
+Array.isArray(fields)
+){
 
 
-result =
-fields.map(f=>{
+
+fields.forEach(f=>{
 
 
 if(typeof f==="string"){
 
-return {
 
-name:f,
+result.push(
 
-type:"STRING",
+this.normalizeField({
 
-required:false
+name:f
 
-};
+})
 
-}
-
-
-
-return {
-
-
-name:
-f.name,
-
-
-type:
-f.type||"STRING",
-
-
-required:
-f.required===true
-
-
-};
-
-
-});
+);
 
 
 }
 
+else{
 
 
-return result.filter(
-x=>x.name
+result.push(
+
+this.normalizeField(f)
+
 );
 
 
@@ -345,18 +622,175 @@ x=>x.name
 
 
 
+});
+
+
+}
+
+
+
+
+
+
+return result.filter(
+f=>f.name
+);
+
+
+
+},
+
+
+
+
+
+
+
+// ============================================================
+// SINGLE FIELD
+// ============================================================
+
+
+normalizeField(f){
+
+
+return {
+
+
+
+name:
+
+f.name ||
+f.key ||
+f.field ||
+null,
+
+
+
+
+type:
+
+f.type ||
+"STRING",
+
+
+
+
+
+
+required:
+
+f.required === true,
+
+
+
+
+
+
+nullable:
+
+f.nullable !== false,
+
+
+
+
+
+
+default:
+
+f.default,
+
+
+
+
+
+
+unique:
+
+f.unique === true,
+
+
+
+
+
+
+index:
+
+f.index === true,
+
+
+
+
+
+
+maxLength:
+
+f.maxLength ||
+null,
+
+
+
+
+
+
+relation:
+
+f.relation ||
+null,
+
+
+
+
+
+
+generated:
+
+f.generated === true,
+
+
+
+
+
+
+format:
+
+f.format ||
+null
+
+
+
 
 
 };
 
 
 
-globalThis.SchemaBuilder=
+}
+
+
+
+
+
+
+
+};
+
+
+
+
+
+
+
+globalThis.SchemaBuilder =
 SchemaBuilder;
 
 
 
+
+
 Logger.log(
+
 "SchemaBuilder READY v"+
 SchemaBuilder.version
+
 );
