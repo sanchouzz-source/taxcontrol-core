@@ -1,214 +1,441 @@
-// RouteRepository.js
+// ============================================================
+// RepositoryFactory v3.0.0
+// Enterprise Repository Factory
+// TaxControl ERP Core
+//
+// Architecture:
+//
+// EntityService
+//      |
+//      v
+// RepositoryFactory
+//      |
+//      v
+// BaseRepository
+//      |
+//      v
+// Database
+//
+// Compatible:
+// EntityRegistry v2.5+
+// BaseRepository v5.7+
+// RepositoryRegistry v1.1+
+// ============================================================
 
-console.log("RouteRepository");
 
+console.log("RepositoryFactory v3.0.0");
 
-const RouteRepository = {
 
-  version: "1.1.0",
 
-  entity: "ROUTE",
+const RepositoryFactory = {
 
 
-  // =================================
-  // CREATE
-  // =================================
+version:"3.0.0",
 
-  create(data = {}) {
 
-    return BaseRepository.create(
-      this.entity,
-      data
-    );
+initialized:false,
 
-  },
 
+repositories:{},
 
-  // =================================
-  // READ
-  // =================================
 
-  findById(id, options = {}) {
 
-    return BaseRepository.findById(
-      this.entity,
-      id,
-      options
-    );
 
-  },
+// ============================================================
+// INIT
+// ============================================================
 
 
-  findAll(filters = {}, options = {}) {
+init(){
 
-    return BaseRepository.findAll(
-      this.entity,
-      filters,
-      options
-    );
 
-  },
+if(this.initialized){
 
+return true;
 
-  count(filters = {}, options = {}) {
+}
 
-    return BaseRepository.count(
-      this.entity,
-      filters,
-      options
-    );
 
-  },
+Logger.log(
+"RepositoryFactory INIT v"+
+this.version
+);
 
 
-  exists(id, options = {}) {
 
-    return BaseRepository.exists(
-      this.entity,
-      id,
-      options
-    );
+this.initialized=true;
 
-  },
 
 
-  existsBy(field, value, options = {}) {
+return true;
 
-    return BaseRepository.existsBy(
-      this.entity,
-      field,
-      value,
-      options
-    );
 
-  },
+},
 
 
-  // =================================
-  // UPDATE
-  // =================================
 
-  update(id, data = {}) {
 
-    return BaseRepository.update(
-      this.entity,
-      id,
-      data
-    );
 
-  },
 
+// ============================================================
+// REGISTER
+// ============================================================
 
-  // =================================
-  // DELETE
-  // =================================
 
-  delete(id) {
+register(entity,repository,options={}){
 
-    return BaseRepository.delete(
-      this.entity,
-      id
-    );
 
-  },
+if(!entity){
 
-
-  // =================================
-  // RESTORE
-  // =================================
-
-  restore(id) {
-
-    return BaseRepository.restore(
-      this.entity,
-      id
-    );
-
-  },
-
-
-  // =================================
-  // HEALTH
-  // =================================
-
-  health() {
-
-    return HealthContract.create(
-
-      "RouteRepository",
-
-      "OK",
-
-      {
-
-        version: this.version,
-
-        entity: this.entity,
-
-        architecture:
-          "BaseRepository 4.x",
-
-        features: [
-
-          "CRUD",
-
-          "SoftDelete",
-
-          "Restore",
-
-          "Validation",
-
-          "Permissions",
-
-          "Audit",
-
-          "Versioning",
-
-          "EventBus"
-
-        ]
-
-      }
-
-    );
-
-  }
-
-};
-
-
-
-// =================================
-// GLOBAL
-// =================================
-
-globalThis.RouteRepository =
-  RouteRepository;
-
-
-
-// =================================
-// RepositoryFactory registration
-// =================================
-
-if (
-  typeof RepositoryFactory !== "undefined"
-) {
-
-  RepositoryFactory.registerLoaded(
-    "ROUTE",
-    RouteRepository
-  );
+throw new Error(
+"RepositoryFactory register entity missing"
+);
 
 }
 
 
 
-// =================================
-// READY
-// =================================
+const key =
+this.resolveEntity(entity);
+
+
+
+if(
+this.repositories[key]
+&&
+!options.force
+){
+
+return this.repositories[key];
+
+}
+
+
+
+this.repositories[key]=repository;
+
+
 
 Logger.log(
-  "RouteRepository READY v" +
-  RouteRepository.version
+
+"RepositoryFactory REGISTER "+
+key
+
+);
+
+
+
+if(
+typeof RepositoryRegistry!=="undefined"
+&&
+RepositoryRegistry.register
+){
+
+RepositoryRegistry.register(
+key,
+repository
+);
+
+}
+
+
+
+return repository;
+
+
+},
+
+
+
+
+
+
+// ============================================================
+// GET
+// ============================================================
+
+
+get(entity){
+
+
+const key =
+this.resolveEntity(entity);
+
+
+
+if(
+this.repositories[key]
+){
+
+return this.repositories[key];
+
+}
+
+
+
+
+// автоматическое создание
+
+if(
+typeof BaseRepository==="undefined"
+){
+
+throw new Error(
+"BaseRepository unavailable"
+);
+
+}
+
+
+
+const repository =
+BaseRepository.createRepository(
+key
+);
+
+
+
+this.register(
+key,
+repository
+);
+
+
+
+return repository;
+
+
+},
+
+
+
+
+
+
+
+// ============================================================
+// RESOLVE
+// ============================================================
+
+
+resolveEntity(entity){
+
+
+if(
+typeof EntityRegistry!=="undefined"
+&&
+EntityRegistry.resolve
+){
+
+return EntityRegistry.resolve(entity);
+
+}
+
+
+
+return String(entity)
+.toUpperCase();
+
+
+},
+
+
+
+
+
+
+// ============================================================
+// REGISTER ALL LOADED
+// LEGACY REMOVED
+// ============================================================
+
+
+registerLoaded(entity,repository){
+
+
+Logger.warn(
+
+"registerLoaded deprecated. Use register()"
+
+);
+
+
+return this.register(
+entity,
+repository
+);
+
+
+},
+
+
+
+
+
+
+// ============================================================
+// LIST
+// ============================================================
+
+
+list(){
+
+
+return Object.keys(
+this.repositories
+);
+
+
+},
+
+
+
+
+
+
+// ============================================================
+// HAS
+// ============================================================
+
+
+has(entity){
+
+
+return !!this.repositories[
+this.resolveEntity(entity)
+];
+
+
+},
+
+
+
+
+
+
+// ============================================================
+// RESET
+// ============================================================
+
+
+reset(){
+
+
+this.repositories={};
+
+
+this.initialized=false;
+
+
+Logger.log(
+"RepositoryFactory RESET"
+);
+
+
+},
+
+
+
+
+
+
+// ============================================================
+// HEALTH
+// ============================================================
+
+
+health(){
+
+
+return HealthContract.create(
+
+"RepositoryFactory",
+
+this.initialized
+?
+"OK"
+:
+"WARNING",
+
+{
+
+
+version:this.version,
+
+
+count:this.list().length,
+
+
+repositories:this.list()
+
+
+}
+
+
+);
+
+
+},
+
+
+
+
+
+
+// ============================================================
+// DIAGNOSTICS
+// ============================================================
+
+
+diagnostics(){
+
+
+return {
+
+
+module:
+"RepositoryFactory",
+
+
+version:
+this.version,
+
+
+initialized:
+this.initialized,
+
+
+repositories:
+this.list(),
+
+
+count:
+this.list().length
+
+
+};
+
+
+}
+
+
+
+};
+
+
+
+
+
+globalThis.RepositoryFactory =
+RepositoryFactory;
+
+
+
+RepositoryFactory.init();
+
+
+
+Logger.log(
+"RepositoryFactory GLOBAL READY v"+
+RepositoryFactory.version
 );
