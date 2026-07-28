@@ -1,5 +1,5 @@
 // ============================================================
-// EntityMetadata v3.1.0
+// EntityMetadata v3.1.1
 // Enterprise Entity Contract Registry
 // TaxControl ERP Core
 //
@@ -17,14 +17,14 @@
 // ============================================================
 
 
-console.log("EntityMetadata v3.1.0");
+console.log("EntityMetadata v3.1.1");
 
 
 
 const EntityMetadata = {
 
 
-version:"3.1.0",
+version:"3.1.1",
 
 apiVersion:"3.1",
 
@@ -453,7 +453,7 @@ return true;
 globalThis.EntityMetadata =
 EntityMetadata;
 // ============================================================
-// EntityMetadata v3.1.0
+// EntityMetadata v3.1.1
 // PART 2/3
 // CORE BUSINESS ENTITIES
 // ============================================================
@@ -1341,7 +1341,7 @@ type:"BOOLEAN"
 
 
 // ============================================================
-// EntityMetadata v3.1.0
+// EntityMetadata v3.1.1
 // PART 3/3
 // LOGISTICS + FINANCE + SYSTEM
 // ============================================================
@@ -1823,6 +1823,12 @@ type:"BOOLEAN"
 // ============================================================
 // TRANSPORT ORDER
 // ============================================================
+//
+// Updated in EntityMetadata v3.1.1:
+// - synchronized with TransportOrder entity and repository
+// - added organization, route data and transport assignments
+// - preserved a single validation contract for GAS and mobile API
+// ============================================================
 
 
 EntityMetadata.register(
@@ -1845,6 +1851,8 @@ softDelete:true,
 
 timestamps:true,
 
+audit:true,
+
 
 fields:{
 
@@ -1852,6 +1860,13 @@ fields:{
 TransportOrderID:{
 type:"ID",
 generated:true
+},
+
+
+OrganizationID:{
+type:"REFERENCE",
+reference:"ORGANIZATION",
+required:true
 },
 
 
@@ -1868,13 +1883,54 @@ reference:"TRIP"
 },
 
 
-Status:{
+CarrierID:{
+type:"REFERENCE",
+reference:"CARRIER"
+},
+
+
+VehicleID:{
+type:"REFERENCE",
+reference:"VEHICLE"
+},
+
+
+DriverID:{
+type:"REFERENCE",
+reference:"DRIVER"
+},
+
+
+OrderNumber:{
 type:"STRING"
 },
 
 
+LoadingAddress:{
+type:"STRING"
+},
+
+
+DeliveryAddress:{
+type:"STRING"
+},
+
+
+CargoWeight:{
+type:"NUMBER",
+default:0
+},
+
+
+Status:{
+type:"STRING",
+default:"NEW"
+},
+
+
 Price:{
-type:"MONEY"
+type:"MONEY",
+default:0
 },
 
 
@@ -1888,8 +1944,14 @@ type:"DATE"
 },
 
 
+DeletedAt:{
+type:"DATE"
+},
+
+
 Deleted:{
-type:"BOOLEAN"
+type:"BOOLEAN",
+default:false
 }
 
 
@@ -1898,11 +1960,6 @@ type:"BOOLEAN"
 }
 
 );
-
-
-
-
-
 
 
 
@@ -2463,7 +2520,7 @@ generated:true
 
 // ============================================================
 // COMPATIBILITY LAYER
-// старые обращения:
+// ÑÑ‚Ð°Ñ€Ñ‹Ðµ Ð¾Ð±Ñ€Ð°Ñ‰ÐµÐ½Ð¸Ñ:
 // EntityMetadata.CLIENT
 // EntityMetadata.TRIP
 // ============================================================
@@ -2516,7 +2573,7 @@ EntityMetadata.init();
 
 
 Logger.log(
-"EntityMetadata v3.1.0 REGISTERED ENTITIES="+
+"EntityMetadata v3.1.1 REGISTERED ENTITIES="+
 EntityMetadata.list().length
 );
 Logger.log(
@@ -2526,3 +2583,4 @@ null,
 2
 )
 );
+
