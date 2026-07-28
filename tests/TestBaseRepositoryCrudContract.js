@@ -1,7 +1,11 @@
 // ============================================================
-// TestBaseRepositoryCrudContract v1.0.0
+// TestBaseRepositoryCrudContract v1.0.1
 // Regression test for BaseRepository v6.3.1
 // TaxControl ERP Core
+//
+// Fixed in v1.0.1:
+// - initializes EntityRegistry before requesting CLIENT metadata
+// - logs an explicit dependency-check result
 //
 // Checks:
 // 1. Repository created through createRepository(entity)
@@ -15,11 +19,11 @@
 // ============================================================
 
 console.log(
-  "TestBaseRepositoryCrudContract v1.0.0"
+  "TestBaseRepositoryCrudContract v1.0.1"
 );
 
 const TestBaseRepositoryCrudContract = {
-  version: "1.0.0",
+  version: "1.0.1",
   requiredBaseVersion: "6.3.1",
   entity: "CLIENT",
 
@@ -32,7 +36,25 @@ const TestBaseRepositoryCrudContract = {
       "========== BASE REPOSITORY CRUD CONTRACT TEST START =========="
     );
 
-    this._checkDependencies();
+    try {
+      this._checkDependencies();
+
+      Logger.log(
+        "DEPENDENCIES PASS: BaseRepository v" +
+          BaseRepository.version +
+          ", EntityRegistry v" +
+          EntityRegistry.version +
+          ", entity=" +
+          this.entity
+      );
+    } catch (error) {
+      Logger.error(
+        "DEPENDENCIES FAIL: " +
+          error.message
+      );
+
+      throw error;
+    }
 
     const result = {
       module: "TestBaseRepositoryCrudContract",
@@ -151,6 +173,47 @@ const TestBaseRepositoryCrudContract = {
       throw new Error(
         "EntityRegistry.get unavailable"
       );
+    }
+
+    /*
+     * A function selected directly in the Apps Script editor
+     * starts in a fresh execution context. Loading EntityRegistry.js
+     * creates the global object, but does not call EntityRegistry.init().
+     *
+     * Without initialization EntityRegistry.entities is empty and
+     * EntityRegistry.get("CLIENT") returns undefined. The v1.0.0 test
+     * therefore stopped immediately after the TEST START log line.
+     *
+     * Registry initialization only builds in-memory metadata. It does
+     * not create, update or delete rows in Google Sheets.
+     */
+    if (
+      EntityRegistry.initialized !== true
+    ) {
+      if (
+        typeof EntityRegistry.init !==
+        "function"
+      ) {
+        throw new Error(
+          "EntityRegistry.init unavailable"
+        );
+      }
+
+      EntityRegistry.init();
+    }
+
+    /*
+     * If another test reset the entity map while leaving the initialized
+     * flag set, rebuild it from EntityMetadata before checking CLIENT.
+     */
+    if (
+      typeof EntityRegistry.has ===
+        "function" &&
+      !EntityRegistry.has(this.entity) &&
+      typeof EntityRegistry.sync ===
+        "function"
+    ) {
+      EntityRegistry.sync();
     }
 
     const meta =
@@ -785,11 +848,38 @@ const TestBaseRepositoryCrudContract = {
 globalThis.TestBaseRepositoryCrudContract =
   TestBaseRepositoryCrudContract;
 
-globalThis.testBaseRepositoryCrudContract =
-  function () {
-    return TestBaseRepositoryCrudContract.run();
-  };
+// ============================================================
+// MANUAL TEST RUNNER
+// Эта функция отображается в списке запуска Google Apps Script
+// ============================================================
 
+function runBaseRepositoryCrudContractTest() {
+  Logger.log(
+    "========== MANUAL BASE REPOSITORY TEST RUN =========="
+  );
+
+  if (
+    typeof TestBaseRepositoryCrudContract === "undefined"
+  ) {
+    throw new Error(
+      "TestBaseRepositoryCrudContract is not loaded"
+    );
+  }
+
+  const result =
+    TestBaseRepositoryCrudContract.run();
+
+  Logger.log(
+    "MANUAL TEST RESULT: " +
+      result.status +
+      ", passed=" +
+      result.summary.passed +
+      ", failed=" +
+      result.summary.failed
+  );
+
+  return result;
+}
 Logger.log(
   "TestBaseRepositoryCrudContract READY v" +
     TestBaseRepositoryCrudContract.version
