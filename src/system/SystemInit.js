@@ -1,24 +1,25 @@
 // ============================================================
-// SystemInit v3.0.0
+// SystemInit v3.1.0
 // Enterprise ERP Bootstrap Orchestrator
 // TaxControl ERP Core
 //
-// Architecture:
+// Lifecycle:
 //
-// Foundation
+// Bootstrap
 //      |
-// Metadata
+//      ↓
+// SystemInit
 //      |
-// Schema
+//      ↓
+// Repository Layer
 //      |
-// Database
+//      ↓
+// Event Layer
 //      |
-// Repository
+//      ↓
+// Service Layer
 //      |
-// Events
-//      |
-// Services
-//      |
+//      ↓
 // Modules
 //
 // Compatible:
@@ -28,13 +29,13 @@
 // BaseRepository v6.3+
 // RepositoryFactory v3+
 // RepositoryRegistry v2+
-// ServiceRegistry v1.1+
+// ServiceRegistry v1.2+
 //
 // ============================================================
 
 
 console.log(
-"SystemInit v3.0.0"
+"SystemInit v3.1.0"
 );
 
 
@@ -42,7 +43,7 @@ console.log(
 const SystemInit = {
 
 
-version:"3.0.0",
+version:"3.1.0",
 
 
 initialized:false,
@@ -64,7 +65,6 @@ componentStatus:{},
 
 
 
-
 // ============================================================
 // DEPENDENCY GRAPH
 // ============================================================
@@ -74,7 +74,9 @@ dependencyGraph:{
 
 
 
+// ========================================================
 // FOUNDATION
+// ========================================================
 
 
 Config:[],
@@ -87,7 +89,12 @@ HealthContract:[],
 
 
 
+
+
+
+// ========================================================
 // METADATA
+// ========================================================
 
 
 EntityMetadata:[
@@ -114,7 +121,12 @@ SchemaManager:[
 
 
 
+
+
+
+// ========================================================
 // DATABASE
+// ========================================================
 
 
 SpreadsheetAdapter:[],
@@ -128,7 +140,11 @@ Database:[
 
 
 
+
+
+// ========================================================
 // REPOSITORIES
+// ========================================================
 
 
 BaseRepository:[
@@ -152,7 +168,10 @@ RepositoryRegistry:[
 
 
 
+
+// ========================================================
 // ENTITY SERVICE
+// ========================================================
 
 
 EntityService:[
@@ -163,7 +182,10 @@ EntityService:[
 
 
 
+
+// ========================================================
 // EVENTS
+// ========================================================
 
 
 ERPEventContract:[],
@@ -185,7 +207,9 @@ BusinessEventProcessor:[
 
 
 
+// ========================================================
 // SERVICES
+// ========================================================
 
 
 ServiceRegistry:[
@@ -223,7 +247,9 @@ KPIService:[
 
 
 
+// ========================================================
 // MODULES
+// ========================================================
 
 
 ModuleRegistry:[
@@ -234,9 +260,8 @@ ModuleRegistry:[
 ]
 
 
+
 },
-
-
 
 
 
@@ -268,15 +293,7 @@ criticalComponents:[
 
 "ServiceRegistry"
 
-
 ],
-
-
-
-
-
-
-
 // ============================================================
 // MARK READY
 // ============================================================
@@ -304,7 +321,6 @@ new Date()
 
 
 },
-
 
 
 
@@ -347,6 +363,7 @@ if(
 !this.started[dep]
 ){
 
+
 throw new Error(
 
 name+
@@ -355,6 +372,7 @@ name+
 dep
 
 );
+
 
 }
 
@@ -368,7 +386,7 @@ dep
 try{
 
 
-const started =
+const startTime =
 Date.now();
 
 
@@ -387,7 +405,7 @@ status:"OK",
 
 
 duration:
-Date.now()-started
+Date.now()-startTime
 
 
 });
@@ -399,7 +417,11 @@ this._markReady(name);
 
 
 Logger.log(
-"READY "+name
+
+"READY "
++
+name
+
 );
 
 
@@ -479,7 +501,9 @@ globalThis[name];
 
 
 
-if(!obj){
+if(
+!obj
+){
 
 return true;
 
@@ -527,8 +551,6 @@ return this.health();
 
 
 
-
-
 if(
 this.initializing
 ){
@@ -555,8 +577,11 @@ try{
 
 
 Logger.log(
+
 "========== ERP BOOT START =========="
+
 );
+
 
 
 
@@ -567,25 +592,46 @@ Logger.log(
 // ========================================================
 
 
-
 this._start(
+
 "Config",
-()=>this.safeInit("Config")
+
+()=>this.safeInit(
+"Config"
+)
+
 );
 
 
 
+
+
 this._start(
+
 "Logger",
-()=>this.safeInit("Logger")
+
+()=>this.safeInit(
+"Logger"
+)
+
 );
+
+
 
 
 
 this._start(
+
 "HealthContract",
-()=>this.safeInit("HealthContract")
+
+()=>this.safeInit(
+"HealthContract"
+)
+
 );
+
+
+
 
 
 
@@ -597,30 +643,58 @@ this._start(
 
 
 this._start(
+
 "EntityMetadata",
-()=>this.safeInit("EntityMetadata")
+
+()=>this.safeInit(
+"EntityMetadata"
+)
+
 );
 
 
 
+
+
 this._start(
+
 "EntityRegistry",
-()=>this.safeInit("EntityRegistry")
+
+()=>this.safeInit(
+"EntityRegistry"
+)
+
 );
 
 
 
+
+
 this._start(
+
 "SchemaRegistry",
-()=>this.safeInit("SchemaRegistry")
+
+()=>this.safeInit(
+"SchemaRegistry"
+)
+
 );
+
+
 
 
 
 this._start(
+
 "SchemaManager",
-()=>this.safeInit("SchemaManager")
+
+()=>this.safeInit(
+"SchemaManager"
+)
+
 );
+
+
 
 
 
@@ -633,18 +707,30 @@ this._start(
 // ========================================================
 
 
-
 this._start(
+
 "SpreadsheetAdapter",
-()=>this.safeInit("SpreadsheetAdapter")
+
+()=>this.safeInit(
+"SpreadsheetAdapter"
+)
+
 );
+
+
 
 
 
 this._start(
+
 "Database",
-()=>this.safeInit("Database")
+
+()=>this.safeInit(
+"Database"
+)
+
 );
+
 
 
 
@@ -657,12 +743,14 @@ this._start(
 // ========================================================
 
 
-
 this._start(
+
 "BaseRepository",
+
 ()=>BaseRepository.init(
 Database
 )
+
 );
 
 
@@ -670,9 +758,13 @@ Database
 
 
 this._start(
+
 "RepositoryFactory",
+
 ()=>RepositoryFactory.init()
+
 );
+
 
 
 
@@ -684,11 +776,14 @@ RepositoryFactory.refresh?.();
 
 
 this._start(
+
 "RepositoryRegistry",
+
 ()=>{
 
 
 RepositoryRegistry.init?.();
+
 
 
 RepositoryRegistry.refresh?.();
@@ -705,16 +800,24 @@ RepositoryRegistry.refresh?.();
 
 
 
+
+
 // ========================================================
 // ENTITY SERVICE
 // ========================================================
 
 
-
 this._start(
+
 "EntityService",
-()=>this.safeInit("EntityService")
+
+()=>this.safeInit(
+"EntityService"
+)
+
 );
+
+
 
 
 
@@ -727,12 +830,14 @@ this._start(
 // ========================================================
 
 
-
 this._start(
+
 "ERPEventContract",
+
 ()=>this.safeInit(
 "ERPEventContract"
 )
+
 );
 
 
@@ -740,10 +845,13 @@ this._start(
 
 
 this._start(
+
 "EventBus",
+
 ()=>this.safeInit(
 "EventBus"
 )
+
 );
 
 
@@ -751,11 +859,15 @@ this._start(
 
 
 this._start(
+
 "BusinessEventProcessor",
+
 ()=>this.safeInit(
 "BusinessEventProcessor"
 )
+
 );
+
 
 
 
@@ -769,13 +881,15 @@ this._start(
 // ========================================================
 
 
-
 this._start(
+
 "ServiceRegistry",
+
 ()=>{
 
 
 ServiceRegistry.init?.();
+
 
 
 ServiceRegistry.refresh?.();
@@ -791,26 +905,35 @@ ServiceRegistry.refresh?.();
 
 
 
+
+
 // ========================================================
 // BUSINESS SERVICES
 // ========================================================
 
 
-
 this._start(
+
 "ClientService",
+
 ()=>this.safeInit(
 "ClientService"
 )
+
 );
 
 
 
+
+
 this._start(
+
 "TransportOrderService",
+
 ()=>this.safeInit(
 "TransportOrderService"
 )
+
 );
 
 
@@ -818,10 +941,13 @@ this._start(
 
 
 this._start(
+
 "FinanceService",
+
 ()=>this.safeInit(
 "FinanceService"
 )
+
 );
 
 
@@ -829,11 +955,15 @@ this._start(
 
 
 this._start(
+
 "KPIService",
+
 ()=>this.safeInit(
 "KPIService"
 )
+
 );
+
 
 
 
@@ -847,7 +977,6 @@ this._start(
 // ========================================================
 
 
-
 if(
 typeof ModuleRegistry!=="undefined"
 ){
@@ -855,7 +984,9 @@ typeof ModuleRegistry!=="undefined"
 
 
 this._start(
+
 "ModuleRegistry",
+
 ()=>{
 
 
@@ -863,9 +994,12 @@ ModuleRegistry.init?.();
 
 
 
+
 ModuleRegistry.setEventBus?.(
 EventBus
 );
+
+
 
 
 
@@ -877,15 +1011,19 @@ EntityService
 
 
 
+
 if(
 typeof ERP_MODULE_MANIFEST!=="undefined"
 ){
+
 
 ModuleRegistry.loadManifest?.(
 ERP_MODULE_MANIFEST
 );
 
+
 }
+
 
 
 
@@ -901,8 +1039,9 @@ ERP_MODULE_MANIFEST
 
 
 
-
-// VALIDATE
+// ========================================================
+// VALIDATION
+// ========================================================
 
 
 this.validate();
@@ -918,8 +1057,8 @@ this.initialized=true;
 
 
 
-
 this.emitStart();
+
 
 
 
@@ -974,13 +1113,6 @@ this.initializing=false;
 
 
 },
-
-
-
-
-
-
-
 // ============================================================
 // VALIDATE
 // ============================================================
@@ -995,6 +1127,7 @@ EntityMetadata?.validate
 ){
 
 
+
 const errors =
 EntityMetadata.validate();
 
@@ -1004,6 +1137,7 @@ if(
 errors.length
 ){
 
+
 throw new Error(
 
 "Metadata errors "
@@ -1012,10 +1146,12 @@ errors.join(",")
 
 );
 
+
 }
 
 
 }
+
 
 
 
@@ -1036,6 +1172,7 @@ if(
 errors.length
 ){
 
+
 throw new Error(
 
 "Schema errors "
@@ -1044,11 +1181,13 @@ errors.join(",")
 
 );
 
+
+}
+
+
 }
 
 
-
-}
 
 
 
@@ -1076,15 +1215,62 @@ if(
 typeof ServiceRegistry==="undefined"
 ){
 
-return true;
+throw new Error(
+
+"ServiceRegistry unavailable"
+
+);
 
 }
 
 
 
+
+const required=[
+
+
+"ClientService",
+
+
+"TransportOrderService"
+
+
+];
+
+
+
+
+
+required.forEach(name=>{
+
+
+if(
+!ServiceRegistry.has(name)
+){
+
+
+throw new Error(
+
+"Required service missing "
++
+name
+
+);
+
+
+}
+
+
+});
+
+
+
+
+
 Logger.log(
 
-"SERVICES REGISTERED: "
+"SERVICE VALIDATION OK "
+
 +
 ServiceRegistry
 .list()
@@ -1115,7 +1301,17 @@ emitStart(){
 
 
 if(
-EventBus?.emit
+typeof EventBus==="undefined"
+){
+
+return;
+
+}
+
+
+
+if(
+typeof EventBus.emit==="function"
 ){
 
 
@@ -1145,6 +1341,7 @@ new Date()
 
 
 
+
 },
 
 
@@ -1162,11 +1359,18 @@ health(){
 
 
 
-return HealthContract.create(
+return {
 
 
+module:
 "SystemInit",
 
+
+version:
+this.version,
+
+
+status:
 
 this.initialized
 ?
@@ -1175,30 +1379,23 @@ this.initialized
 "WARNING",
 
 
-{
-
-
-version:
-this.version,
-
 
 initialized:
 this.initialized,
+
 
 
 startedAt:
 this.startedAt,
 
 
+
 components:
 this.componentStatus
 
 
-}
 
-
-);
-
+};
 
 
 },
@@ -1221,16 +1418,23 @@ diagnostics(){
 return {
 
 
+module:
+"SystemInit",
+
+
 version:
 this.version,
+
 
 
 initialized:
 this.initialized,
 
 
+
 startedAt:
 this.startedAt,
+
 
 
 boot:
@@ -1243,27 +1447,37 @@ this.componentStatus,
 
 
 
+
 schema:
+
 SchemaRegistry?.diagnostics?.(),
 
 
 
+
 database:
+
 Database?.diagnostics?.(),
 
 
 
+
 factory:
+
 RepositoryFactory?.diagnostics?.(),
 
 
 
+
 registry:
+
 RepositoryRegistry?.diagnostics?.(),
 
 
 
+
 services:
+
 ServiceRegistry?.health?.()
 
 
@@ -1294,18 +1508,39 @@ try{
 SchemaRegistry?.reset?.();
 
 
+
 Database?.reset?.();
+
 
 
 RepositoryFactory?.reset?.();
 
 
-ServiceRegistry?.clear?.();
+
+RepositoryRegistry?.reset?.();
+
+
+
+ServiceRegistry?.reset?.();
 
 
 
 }
-catch(e){}
+catch(e){
+
+
+
+Logger.warn(
+
+"System reset warning "
++
+e.message
+
+);
+
+
+}
+
 
 
 
@@ -1314,13 +1549,17 @@ catch(e){}
 this.initialized=false;
 
 
+
 this.initializing=false;
+
 
 
 this.started={};
 
 
+
 this.componentStatus={};
+
 
 
 this.bootLog=[];
@@ -1328,20 +1567,27 @@ this.bootLog=[];
 
 
 Logger.log(
+
 "SystemInit RESET"
+
 );
 
 
 
-}
+},
 
+
+
+
+
+
+
+// ============================================================
+// EXPORT
+// ============================================================
 
 
 };
-
-
-
-
 
 
 

@@ -1,34 +1,27 @@
 // ============================================================
-// ServiceRegistry v1.1.0
+// ServiceRegistry v1.2.0
 // TaxControl ERP Core
 //
-// Architecture:
-//
-// ServiceRegistry
-//        |
-//        +-- ClientService
-//        +-- TransportOrderService
-//        +-- FinanceService
-//        +-- KPIService
+// Service Dependency Container
 //
 // Lifecycle:
 //
-// INIT
-//   |
-// REFRESH
-//   |
-// REGISTER SERVICES
-//
-// Compatible:
-// Bootstrap v3.1+
-// SystemInit v2.9+
-// StartupSequence v1+
+// SystemInit
+//      |
+//      ↓
+// ServiceRegistry.init()
+//      |
+//      ↓
+// ServiceRegistry.refresh()
+//      |
+//      ↓
+// register services
 //
 // ============================================================
 
 
 console.log(
-"ServiceRegistry v1.1.0"
+"ServiceRegistry v1.2.0"
 );
 
 
@@ -36,13 +29,17 @@ console.log(
 const ServiceRegistry = {
 
 
-version:"1.1.0",
+version:"1.2.0",
 
 
 initialized:false,
 
 
 services:{},
+
+
+lastRefresh:null,
+
 
 
 
@@ -61,18 +58,14 @@ return true;
 }
 
 
-
 Logger.log(
-
 "ServiceRegistry INIT v"+
 this.version
-
 );
 
 
 
 this.initialized=true;
-
 
 
 return true;
@@ -82,9 +75,9 @@ return true;
 
 
 
+
 // ============================================================
 // REFRESH
-// Повторная регистрация после загрузки всех файлов
 // ============================================================
 
 
@@ -92,7 +85,7 @@ refresh(){
 
 
 Logger.log(
-"ServiceRegistry REFRESH"
+"ServiceRegistry REFRESH START"
 );
 
 
@@ -101,11 +94,17 @@ this.registerDefaults();
 
 
 
+this.lastRefresh =
+new Date()
+.toISOString();
+
+
+
 Logger.log(
 
 "ServiceRegistry REFRESH COMPLETE count="
 +
-this.list().length
+this.count()
 
 );
 
@@ -114,6 +113,8 @@ this.list().length
 return true;
 
 },
+
+
 
 
 
@@ -130,7 +131,6 @@ options={}
 ){
 
 
-
 if(!name){
 
 throw new Error(
@@ -143,11 +143,7 @@ throw new Error(
 
 if(!service){
 
-throw new Error(
-"Service object required "
-+
-name
-);
+return null;
 
 }
 
@@ -196,6 +192,8 @@ return service;
 
 
 
+
+
 // ============================================================
 // REGISTER IF EXISTS
 // ============================================================
@@ -207,10 +205,8 @@ service
 ){
 
 
-
 if(
-typeof service==="undefined" ||
-service===null
+!service
 ){
 
 Logger.warn(
@@ -220,7 +216,6 @@ Logger.warn(
 name
 
 );
-
 
 
 return null;
@@ -235,8 +230,68 @@ service
 );
 
 
+},
+
+
+
+
+
+
+// ============================================================
+// DEFAULT SERVICES
+// ============================================================
+
+
+registerDefaults(){
+
+
+
+this.registerIfExists(
+
+"ClientService",
+
+globalThis.ClientService
+
+);
+
+
+
+
+this.registerIfExists(
+
+"TransportOrderService",
+
+globalThis.TransportOrderService
+
+);
+
+
+
+
+this.registerIfExists(
+
+"FinanceService",
+
+globalThis.FinanceService
+
+);
+
+
+
+
+this.registerIfExists(
+
+"KPIService",
+
+globalThis.KPIService
+
+);
+
+
 
 },
+
+
 
 
 
@@ -249,16 +304,12 @@ service
 get(name){
 
 
-return (
-
-this.services[name]
-||
-null
-
-);
+return this.services[name] || null;
 
 
 },
+
+
 
 
 
@@ -277,106 +328,6 @@ return !!this.services[name];
 },
 
 
-
-
-// ============================================================
-// REMOVE
-// ============================================================
-
-
-remove(name){
-
-
-if(
-this.services[name]
-){
-
-delete this.services[name];
-
-
-return true;
-
-}
-
-
-return false;
-
-
-},
-
-
-
-
-// ============================================================
-// DEFAULT SERVICES
-// ============================================================
-
-
-registerDefaults(){
-
-
-
-this.registerIfExists(
-
-"ClientService",
-
-typeof ClientService!=="undefined"
-?
-ClientService
-:
-null
-
-);
-
-
-
-
-this.registerIfExists(
-
-"TransportOrderService",
-
-typeof TransportOrderService!=="undefined"
-?
-TransportOrderService
-:
-null
-
-);
-
-
-
-
-this.registerIfExists(
-
-"FinanceService",
-
-typeof FinanceService!=="undefined"
-?
-FinanceService
-:
-null
-
-);
-
-
-
-
-this.registerIfExists(
-
-"KPIService",
-
-typeof KPIService!=="undefined"
-?
-KPIService
-:
-null
-
-);
-
-
-
-
-},
 
 
 
@@ -399,6 +350,8 @@ this.services
 
 
 
+
+
 // ============================================================
 // COUNT
 // ============================================================
@@ -413,24 +366,6 @@ return this.list().length;
 },
 
 
-
-
-// ============================================================
-// CLEAR
-// Для тестов
-// ============================================================
-
-
-clear(){
-
-
-this.services={};
-
-
-return true;
-
-
-},
 
 
 
@@ -454,12 +389,20 @@ version:
 this.version,
 
 
+initialized:
+this.initialized,
+
+
 count:
 this.count(),
 
 
 services:
 this.list(),
+
+
+lastRefresh:
+this.lastRefresh,
 
 
 status:
@@ -474,8 +417,34 @@ this.initialized
 };
 
 
-}
+},
 
+
+
+
+
+
+// ============================================================
+// RESET
+// ============================================================
+
+
+reset(){
+
+
+this.services={};
+
+
+this.initialized=false;
+
+
+this.lastRefresh=null;
+
+
+
+return true;
+
+}
 
 
 
@@ -487,7 +456,3 @@ this.initialized
 
 globalThis.ServiceRegistry =
 ServiceRegistry;
-
-
-
-ServiceRegistry.init();
