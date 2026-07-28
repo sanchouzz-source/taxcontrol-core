@@ -3,35 +3,41 @@
 // ERP TexControl Core
 //
 // Version:
-// SchemaManager v4.2.0
+// SchemaManager v4.2.1
 //
 // Compatible:
-// EntityMetadata v3.x
+// EntityMetadata v3.1+
+// SchemaBuilder v4.1+
 // EntityValidator v1.1+
-// SchemaRegistry v4.x
-// EntityRegistry v2.4+
+// SchemaRegistry v4.0.6+
+// EntityRegistry v2.6+
 //
 // Fix:
 // - Metadata v3 object support
-// - Registry compatibility
+// - Nested metadata protection
 // - Object fields normalization
-// - Primary key normalization
-// - System entities support
+// - Primary key object support
+// - SchemaBuilder compatibility
+// - Safe cloning
 // ============================================================
 
 
-console.log("SchemaManager v4.2.0");
+console.log("SchemaManager v4.2.1");
 
 
 
 const SchemaManager = {
 
 
-version:"4.2.0",
+version:"4.2.1",
+
 
 initialized:false,
 
+
 schema:{},
+
+
 
 
 
@@ -46,13 +52,17 @@ init(options={}){
 
 if(this.initialized){
 
+
 Logger.debug(
 "SchemaManager ALREADY READY"
 );
 
+
 return this.schema;
 
+
 }
+
 
 
 
@@ -69,20 +79,24 @@ this.version
 
 
 
+
 // ====================================================
 // BUILD
 // ====================================================
 
 
-let built =
+const built =
 SchemaBuilder.build();
 
 
 
 Logger.log(
+
 "SCHEMA BUILT TABLES="+
 Object.keys(built||{}).length
+
 );
+
 
 
 
@@ -99,11 +113,14 @@ built
 
 
 
-
 Logger.log(
+
 "SCHEMA NORMALIZED TABLES="+
 Object.keys(normalized).length
+
 );
+
+
 
 
 
@@ -115,51 +132,77 @@ Object.keys(normalized).length
 
 try{
 
-if(typeof SchemaValidator!=="undefined"){
+
+if(
+typeof SchemaValidator!=="undefined"
+&&
+SchemaValidator.check
+){
+
 
 SchemaValidator.check(
 normalized
 );
 
+
 }
+
+
 
 }
 catch(e){
 
+
 Logger.warn(
+
 "SchemaValidator WARNING "+
 e.message
+
 );
 
+
 }
+
+
+
 
 
 
 
 // ====================================================
-// LOAD
+// LOAD STORAGE
 // ====================================================
 
 
 let stored={};
 
 
+
 try{
+
 
 stored =
 SchemaStorage.load()
 ||
 {};
 
+
 }
 catch(e){
 
+
 Logger.warn(
+
 "SchemaStorage LOAD skipped "+
 e.message
+
 );
 
+
 }
+
+
+
 
 
 
@@ -178,14 +221,18 @@ normalized
 
 
 
+
+
 // ====================================================
-// STRICT VALIDATION
+// FINAL VALIDATION
 // ====================================================
 
 
 this.validateEntities(
 merged
 );
+
+
 
 
 
@@ -202,8 +249,11 @@ merged
 
 
 
+
+
+
 // ====================================================
-// VERSION HASH
+// VERSION CONTROL
 // ====================================================
 
 
@@ -216,6 +266,8 @@ merged
 
 const oldHash =
 SchemaStorage.getCurrentHash?.();
+
+
 
 
 
@@ -239,6 +291,13 @@ hash,
 
 
 
+if(
+typeof SchemaSnapshot!=="undefined"
+&&
+SchemaSnapshot.save
+){
+
+
 SchemaSnapshot.save(
 version,
 hash,
@@ -246,14 +305,24 @@ merged
 );
 
 
+}
+
+
 
 Logger.log(
+
 "SCHEMA VERSION "+
 version
+
 );
 
 
+
 }
+
+
+
+
 
 
 
@@ -272,38 +341,61 @@ merged
 
 
 
+
 this.initialized=true;
 
 
 
+
+
 Logger.log(
+
 "SchemaManager READY v"+
 this.version+
 " TABLES="+
 this.getTables().length
+
 );
 
 
 
 
-if(typeof SchemaEvents!=="undefined"
+
+
+
+if(
+typeof SchemaEvents!=="undefined"
 &&
 SchemaEvents.emit
 ){
 
+
 SchemaEvents.emit(
+
 "SCHEMA_READY",
+
 {
-tables:this.getTables().length,
-version:this.version
-}
-);
+
+tables:
+this.getTables().length,
+
+
+version:
+this.version
+
 
 }
+
+);
+
+
+}
+
 
 
 
 return this.schema;
+
 
 
 }
@@ -311,9 +403,12 @@ catch(e){
 
 
 Logger.error(
+
 "SchemaManager FAILED: "+
 e.message
+
 );
+
 
 
 throw e;
@@ -342,107 +437,109 @@ throw e;
 normalizeSchema(schema){
 
 
+
 const result={};
 
 
 
 Object.keys(schema||{})
+
 .forEach(key=>{
+
 
 
 let meta =
 schema[key];
-// защита от поврежденного metadata объекта
 
-if(
-meta.table &&
-typeof meta.table==="object"
-&&
-meta.table.table
-){
 
-Logger.warn(
-"SchemaManager detected nested table for "+key
-);
+
+
+if(!meta){
+
+return;
+
+}
+
+
+
+
+// ====================================================
+// SAFE CLONE
+// ====================================================
 
 
 meta =
-{
-...meta,
-table:
-meta.table.table
-};
-
-}
-///////
-
-
-if(!meta)
-return;
+JSON.parse(
+JSON.stringify(meta)
+);
 
 
 
-// ----------------------------------------------------
-// Если пришёл объект metadata вместо имени
-// ----------------------------------------------------
+
+
+
+
+// ====================================================
+// ENTITY
+// ====================================================
 
 
 if(
-meta.entity &&
 typeof meta.entity==="object"
 ){
+
 
 meta.entity =
 key;
 
-}
-
-
-
-// ----------------------------------------------------
-// TABLE
-// ----------------------------------------------------
-
-
-if(
-typeof meta.table==="object"
-){
-
-if(meta.table.table){
-
-meta.table =
-meta.table.table;
 
 }
 
-else{
 
-meta.table =
+
+meta.entity =
+meta.entity ||
 key;
 
-}
-
-}
 
 
 
-// ----------------------------------------------------
+
+
+
+
+// ====================================================
+// TABLE NORMALIZATION
+// ====================================================
+
+
+meta.table =
+this.normalizeTable(
+meta.table,
+key
+);
+
+
+
+
+
+
+
+// ====================================================
 // FIELDS
-// ----------------------------------------------------
+// ====================================================
 
 
 let fields =
-meta.fields
-||
-meta.columns
-||
+meta.fields ||
+meta.columns ||
 [];
 
 
 
 
 
-// object fields -> array
+// object fields
 
 if(
 !Array.isArray(fields)
@@ -453,14 +550,18 @@ typeof fields==="object"
 
 fields =
 Object.keys(fields)
+
 .map(name=>{
 
 
 return {
 
+
 name:name,
 
+
 ...(fields[name]||{})
+
 
 };
 
@@ -473,7 +574,9 @@ name:name,
 
 
 
-// если нет полей - пробуем metadata
+
+
+// fallback metadata
 
 if(
 fields.length===0
@@ -496,11 +599,10 @@ if(source){
 
 
 fields =
-source.fields
-||
-source.columns
-||
+source.fields ||
+source.columns ||
 [];
+
 
 }
 
@@ -518,89 +620,53 @@ catch(e){}
 
 
 
-// normalize fields
-
-fields =
-fields.map(f=>{
-
-
-if(typeof f==="string"){
-
-return {
-
-name:f,
-
-type:"STRING",
-
-required:false
-
-};
-
-}
-
-
-
-return {
-
-name:
-f.name ||
-f.key ||
-f.field,
-
-type:
-f.type ||
-"STRING",
-
-required:
-f.required===true,
-
-
-nullable:
-f.nullable!==false
-
-};
-
-
-})
-.filter(f=>f.name);
-
-
-
-
-
-
 meta.fields =
-fields;
+this.normalizeFields(
+fields
+);
 
 
 
 
 
-// ----------------------------------------------------
+// ====================================================
 // PRIMARY KEY
-// ----------------------------------------------------
+// ====================================================
 
 
 meta.idField =
-meta.idField
-||
-meta.primaryKey
-||
-"ID";
+this.normalizePrimaryKey(
+meta
+);
 
 
 
 
 
-// ----------------------------------------------------
-// ENTITY NAME
-// ----------------------------------------------------
 
 
-meta.entity =
-meta.entity
-||
-key;
+// ====================================================
+// FLAGS
+// ====================================================
+
+
+meta.softDelete =
+meta.softDelete!==false;
+
+
+
+meta.timestamps =
+meta.timestamps!==false;
+
+
+
+meta.audit =
+meta.audit===true;
+
+
+
+
+
 
 
 
@@ -612,7 +678,257 @@ result[key]=meta;
 
 
 
+
+
 return result;
+
+
+},
+// ============================================================
+// NORMALIZE TABLE
+// ============================================================
+
+
+normalizeTable(table,key){
+
+
+if(
+typeof table==="string"
+&&
+table.length>0
+){
+
+return table;
+
+}
+
+
+
+
+// защита от вложенного объекта
+
+if(
+table
+&&
+typeof table==="object"
+){
+
+
+
+if(
+typeof table.table==="string"
+){
+
+return table.table;
+
+}
+
+
+
+if(
+typeof table.name==="string"
+){
+
+return table.name;
+
+}
+
+
+}
+
+
+
+
+
+return key;
+
+
+},
+
+
+
+
+
+
+
+// ============================================================
+// NORMALIZE FIELDS
+// ============================================================
+
+
+normalizeFields(fields){
+
+
+
+if(!fields){
+
+return [];
+
+}
+
+
+
+if(
+!Array.isArray(fields)
+){
+
+return [];
+
+}
+
+
+
+
+return fields
+
+.map(field=>{
+
+
+
+if(
+typeof field==="string"
+){
+
+
+return {
+
+name:field,
+
+type:"STRING",
+
+required:false,
+
+nullable:true
+
+};
+
+
+}
+
+
+
+
+
+return {
+
+
+name:
+field.name ||
+field.key ||
+field.field ||
+null,
+
+
+type:
+field.type ||
+"STRING",
+
+
+required:
+field.required===true,
+
+
+nullable:
+field.nullable!==false,
+
+
+default:
+field.default,
+
+
+unique:
+field.unique===true,
+
+
+index:
+field.index===true
+
+
+};
+
+
+})
+
+.filter(
+f=>f.name
+);
+
+
+
+},
+
+
+
+
+
+
+
+// ============================================================
+// NORMALIZE PRIMARY KEY
+// ============================================================
+
+
+normalizePrimaryKey(meta){
+
+
+
+// новый формат
+
+if(
+meta.idField
+){
+
+return meta.idField;
+
+}
+
+
+
+
+
+// primaryKey object
+
+if(
+meta.primaryKey
+&&
+typeof meta.primaryKey==="object"
+){
+
+
+return (
+
+meta.primaryKey.name
+||
+meta.primaryKey.field
+||
+"ID"
+
+);
+
+
+}
+
+
+
+
+
+
+
+// primaryKey string
+
+if(
+typeof meta.primaryKey==="string"
+){
+
+return meta.primaryKey;
+
+}
+
+
+
+
+
+return "ID";
 
 
 },
@@ -632,12 +948,15 @@ validateEntities(schema){
 
 
 
-Object.keys(schema)
+Object.keys(schema||{})
+
 .forEach(name=>{
 
 
 const entity =
 schema[name];
+
+
 
 
 
@@ -654,6 +973,8 @@ name+
 );
 
 }
+
+
 
 
 
@@ -677,6 +998,8 @@ name+
 
 
 
+
+
 if(
 !entity.idField
 ){
@@ -684,6 +1007,8 @@ if(
 entity.idField="ID";
 
 }
+
+
 
 
 
@@ -710,8 +1035,11 @@ return true;
 _computeHash(schema){
 
 
+
 const json =
-this._canonicalStringify(schema);
+this._canonicalStringify(
+schema
+);
 
 
 
@@ -727,18 +1055,33 @@ Utilities.newBlob(json)
 
 
 
-return bytes.map(b=>
 
-('0'+
-((b+256)%256)
-.toString(16)
+return bytes
+
+.map(b=>
+
+
+(
+"0"+
+(
+(b+256)%256
 )
+
+.toString(16)
+
+)
+
 .slice(-2)
 
+
 )
+
 .join("");
 
+
+
 },
+
 
 
 
@@ -751,13 +1094,25 @@ _canonicalStringify(obj){
 const sort=value=>{
 
 
-if(Array.isArray(value))
+if(
+Array.isArray(value)
+){
+
 
 return value.map(sort);
 
 
+}
 
-if(value && typeof value==="object"){
+
+
+
+
+if(
+value &&
+typeof value==="object"
+){
+
 
 
 return Object.keys(value)
@@ -781,6 +1136,9 @@ return r;
 }
 
 
+
+
+
 return value;
 
 
@@ -788,9 +1146,11 @@ return value;
 
 
 
+
 return JSON.stringify(
 sort(obj)
 );
+
 
 
 },
@@ -808,27 +1168,40 @@ sort(obj)
 
 getSchema(){
 
+
 return JSON.parse(
 JSON.stringify(
 this.schema
 )
 );
 
+
 },
+
+
+
+
 
 
 
 getTables(){
 
+
 return Object.keys(
 this.schema
 );
+
 
 },
 
 
 
+
+
+
+
 getTableSchema(table){
+
 
 return this.schema[table]
 ?
@@ -840,18 +1213,26 @@ this.schema[table]
 :
 null;
 
+
 },
+
+
+
 
 
 
 
 getSchemaVersion(){
 
+
 return (
+
 SchemaStorage.getVersion?.()
 ||
 0
+
 );
+
 
 },
 
@@ -869,6 +1250,7 @@ SchemaStorage.getVersion?.()
 health(){
 
 
+
 return HealthContract.create(
 
 "SchemaManager",
@@ -881,15 +1263,23 @@ this.initialized
 
 {
 
+
 version:this.version,
+
 
 tables:this.getTables().length,
 
-schemaVersion:this.getSchemaVersion(),
 
-initialized:this.initialized
+schemaVersion:
+this.getSchemaVersion(),
+
+
+initialized:
+this.initialized
+
 
 }
+
 
 );
 
@@ -900,20 +1290,33 @@ initialized:this.initialized
 
 
 
+
+
+// ============================================================
+// DIAGNOSTICS
+// ============================================================
+
+
 diagnostics(){
 
 
 return {
 
+
 module:"SchemaManager",
+
 
 version:this.version,
 
+
 initialized:this.initialized,
+
 
 tables:this.getTables(),
 
+
 count:this.getTables().length
+
 
 };
 
@@ -922,7 +1325,13 @@ count:this.getTables().length
 
 
 
+
+
+
+
 };
+
+
 
 
 
@@ -932,7 +1341,11 @@ SchemaManager;
 
 
 
+
+
 Logger.log(
+
 "SchemaManager GLOBAL READY v"+
 SchemaManager.version
+
 );
