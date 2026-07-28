@@ -1,194 +1,246 @@
 // ============================================================
-// Menu v1.2.0
+// Menu v1.5.1
 // TaxControl ERP UI Menu
 //
-// Added:
-// - Test Dashboard integration
+// Enterprise Runtime Menu
+//
+// Compatible:
+//
+// ERPBootstrap v4+
+// Bootstrap v3+
+// SystemInit v2.8+
+// ERPDiagnostics v6+
+// RepositoryRegistry v2+
+// RepositoryHealthReport v2+
+// ERPControlDashboard v1+
+//
 // ============================================================
 
-console.log("Menu v1.2.0");
+console.log("Menu v1.5.1");
 
 function onOpen() {
   const ui = SpreadsheetApp.getUi();
 
-  ui.createMenu("🚀 TaxControl ERP")
+  const menu = ui.createMenu("🚀 TaxControl ERP");
 
-    // ====================================================
-    // SYSTEM
-    // ====================================================
+  // ====================================================
+  // SYSTEM
+  // ====================================================
 
+  menu
     .addItem("▶ Запустить ERP", "erpStart")
     .addItem("❤️ Проверка системы", "erpHealth")
     .addItem("🔍 Диагностика ERP", "erpDiag")
-    .addSeparator()
-
-    // ====================================================
-    // TESTS
-    // ====================================================
-
-    .addSubMenu(
-      ui.createMenu("🧪 Тестирование")
-
-        .addItem("▶ Запустить тесты SAFE", "runTests")
-        .addItem("🔥 Запустить FULL тесты", "runTestsFull")
-        .addItem("📋 Отчет тестов", "testReport")
-        .addItem("🏗 Проверка инфраструктуры", "testCoreInfrastructure")
-        .addItem("🔄 Entity Lifecycle тест", "testEntityLifecycleMatrix")
-
-        // ----- НОВЫЕ ПУНКТЫ -----
-        .addItem("📊 Открыть Test Dashboard", "openTestDashboard")
-        .addItem("🚀 Запустить тесты + Dashboard", "runTestsDashboard")
-    )
-
-    .addSeparator()
-
-    // ====================================================
-    // CLIENTS
-    // ====================================================
-
-    .addSubMenu(
-      ui.createMenu("👥 Клиенты")
-        .addItem("Добавить клиента", "createClientUI")
-        .addItem("Обновить клиентов", "refreshClients")
-    )
-
-    // ====================================================
-    // DASHBOARD
-    // ====================================================
-
-    .addSubMenu(
-      ui.createMenu("📊 Dashboard")
-        .addItem("Обновить Dashboard", "refreshDashboard")
-        .addItem("KPI отчет", "showKPIReport")
-    )
-
-    // ====================================================
-    // DATA
-    // ====================================================
-
-    .addSeparator()
-    .addSubMenu(
-      ui.createMenu("🛠 Обслуживание")
-        .addItem("Repair Database", "repairDatabase")
-        .addItem("Очистить Cache", "clearERPCache")
-        .addItem("Проверить дубли", "runDuplicateCheck")
-    )
-
-    .addSeparator()
     .addItem("📦 Версия ERP", "showERPVersion")
+    .addSeparator();
 
-    .addToUi();
+  // ====================================================
+  // ERP CONTROL CENTER
+  // ====================================================
 
-  Logger.log("ERP MENU CREATED v1.2.0");
+  menu.addSubMenu(
+    ui.createMenu("🧠 ERP Control Center")
+      .addItem("🚀 Полная диагностика ERP", "erpControlCenter")
+      .addItem("📋 Статус ERP", "erpControlStatus")
+      .addItem("🖥 Runtime Report", "erpRuntimeReport")
+      // ---------- НОВЫЕ ПУНКТЫ ----------
+      .addItem("📊 Открыть ERP Dashboard", "openERPControlDashboard")
+      .addItem("🔄 Обновить ERP Dashboard", "refreshERPControlDashboard")
+  );
+
+  // ====================================================
+  // REPOSITORY
+  // ====================================================
+
+  menu.addSubMenu(
+    ui.createMenu("🗄 Repository")
+      .addItem("🏥 Repository Health", "repositoryHealth")
+      .addItem("📋 Repository Details", "repositoryHealthDetails")
+      .addItem("🖨 Print Repository Report", "repositoryPrint")
+  );
+
+  // ====================================================
+  // TESTS
+  // ====================================================
+
+  menu.addSubMenu(
+    ui.createMenu("🧪 Тестирование")
+      .addItem("▶ SAFE тесты", "runTests")
+      .addItem("🔥 FULL тесты", "runTestsFull")
+      .addItem("📋 Отчет тестов", "testReport")
+      .addItem("🏗 Infrastructure Test", "testCoreInfrastructure")
+      .addItem("🔄 Entity Lifecycle", "testEntityLifecycleMatrix")
+      .addItem("📊 Test Dashboard", "openTestDashboard")
+      .addItem("🚀 Tests + Dashboard", "runTestsDashboard")
+  );
+
+  // ====================================================
+  // CLIENTS
+  // ====================================================
+
+  menu.addSubMenu(
+    ui.createMenu("👥 Клиенты")
+      .addItem("Добавить клиента", "createClientUI")
+      .addItem("Обновить клиентов", "refreshClients")
+  );
+
+  // ====================================================
+  // DASHBOARD
+  // ====================================================
+
+  menu.addSubMenu(
+    ui.createMenu("📊 Dashboard")
+      .addItem("Обновить Dashboard", "refreshDashboard")
+      .addItem("KPI отчет", "showKPIReport")
+  );
+
+  // ====================================================
+  // SERVICE
+  // ====================================================
+
+  menu.addSubMenu(
+    ui.createMenu("🛠 Обслуживание")
+      .addItem("Repair Database", "repairDatabase")
+      .addItem("Очистить Cache", "clearERPCache")
+      .addItem("Проверить дубли", "runDuplicateCheck")
+      .addItem("ERP Reset", "resetERP")
+  );
+
+  menu.addToUi();
+
+  Logger.log("ERP MENU CREATED v1.5.1");
 }
 
 // ============================================================
-// MENU COMMANDS
+// ERP CONTROL CENTER
 // ============================================================
 
-function erpStart() {
-  return startERP();
+function erpControlCenter() {
+  if (typeof ERPControlCenter === "undefined") {
+    throw new Error("ERPControlCenter unavailable");
+  }
+  return ERPControlCenter.print();
 }
 
-function testCoreInfrastructure() {
-  if (typeof CoreInfrastructureTest === "undefined") {
-    throw new Error("CoreInfrastructureTest unavailable");
+function erpControlStatus() {
+  let result;
+  if (typeof ERPControlCenter !== "undefined" && ERPControlCenter.status) {
+    result = ERPControlCenter.status();
+  } else {
+    result = ERPBootstrap.health();
   }
-  const result = CoreInfrastructureTest.run();
-  Logger.log(JSON.stringify(result, null, 2));
+  SpreadsheetApp.getUi().alert(
+    "TaxControl ERP\n\n" + JSON.stringify(result, null, 2)
+  );
   return result;
 }
 
-function testEntityLifecycleMatrix() {
-  if (typeof TestEntityLifecycleMatrix === "undefined") {
-    throw new Error("TestEntityLifecycleMatrix unavailable");
+function erpRuntimeReport() {
+  let report;
+  if (typeof ERPDiagnostics !== "undefined") {
+    report = ERPDiagnostics.run({ skipCoreTest: true });
+  } else {
+    report = { error: "ERPDiagnostics unavailable" };
   }
-  const result = TestEntityLifecycleMatrix.run();
-  Logger.log(JSON.stringify(result, null, 2));
-  return result;
+  Logger.log(JSON.stringify(report, null, 2));
+  SpreadsheetApp.getUi().alert(
+    "ERP Runtime Report\n\n" + JSON.stringify(report, null, 2)
+  );
+  return report;
 }
+
+// ============================================================
+// ERP CONTROL DASHBOARD (новые функции)
+// ============================================================
+
+function openERPControlDashboard() {
+  if (typeof ERPControlDashboard === "undefined") {
+    throw new Error("ERPControlDashboard unavailable");
+  }
+  ERPControlDashboard.build();
+}
+
+function refreshERPControlDashboard() {
+  if (typeof ERPControlDashboard === "undefined") {
+    throw new Error("ERPControlDashboard unavailable");
+  }
+  ERPControlDashboard.refresh();
+  SpreadsheetApp.getUi().alert("ERP Dashboard обновлен");
+}
+
+// ============================================================
+// REPOSITORY
+// ============================================================
+
+function repositoryHealth() {
+  if (typeof RepositoryHealthReport === "undefined") {
+    throw new Error("RepositoryHealthReport unavailable");
+  }
+  return RepositoryHealthReport.print();
+}
+
+function repositoryPrint() {
+  return repositoryHealth();
+}
+
+function repositoryHealthDetails() {
+  const details = RepositoryHealthReport.details();
+  SpreadsheetApp.getUi().alert(
+    "Repository Health\n\n" +
+      "Всего: " +
+      details.summary.total +
+      "\nOK: " +
+      details.summary.ok +
+      "\nWARNING: " +
+      details.summary.warning +
+      "\nREADY: " +
+      details.summary.readyPercent +
+      "%"
+  );
+  return details;
+}
+
+// ============================================================
+// VERSION
+// ============================================================
 
 function showERPVersion() {
-  const info = {
+  let info = {
     ERP: "TaxControl",
-    SystemInit: SystemInit?.version,
-    EntityService: EntityService?.version,
-    Database: Database?.version,
-    RepositoryFactory: RepositoryFactory?.version,
-    TestRunner: TestRunner?.version,
+    ERPBootstrap: ERPBootstrap?.version || "-",
+    Bootstrap: Bootstrap?.version || "-",
+    App: App?.version || "-",
+    SystemInit: SystemInit?.version || "-",
+    ERPDiagnostics: ERPDiagnostics?.version || "-",
+    SchemaManager: SchemaManager?.version || "-",
+    SchemaRegistry: SchemaRegistry?.version || "-",
+    EntityRegistry: EntityRegistry?.version || "-",
+    Database: Database?.version || "-",
+    BaseRepository: BaseRepository?.version || "-",
+    RepositoryFactory: RepositoryFactory?.version || "-",
+    RepositoryRegistry: RepositoryRegistry?.version || "-",
+    RepositoryHealthReport: RepositoryHealthReport?.version || "-",
+    EntityService: EntityService?.version || "-",
+    EventBus: EventBus?.version || "-"
   };
   Logger.log(JSON.stringify(info, null, 2));
-  SpreadsheetApp.getUi().alert(
-    "TaxControl ERP\n\n" + JSON.stringify(info, null, 2)
-  );
+  SpreadsheetApp.getUi().alert(JSON.stringify(info, null, 2));
+  return info;
 }
+
+// ============================================================
+// CACHE
+// ============================================================
 
 function clearERPCache() {
-  if (typeof Database !== "undefined" && Database.clearCache) {
-    Database.clearCache();
-  }
-  SpreadsheetApp.getUi().alert("ERP Cache очищен");
-}
-
-// ============================================================
-// TEST DASHBOARD COMMANDS
-// ============================================================
-
-function runTestsDashboard() {
   try {
-    if (typeof ERPTestDashboard === "undefined") {
-      throw new Error("ERPTestDashboard не найден. Проверьте загрузку модуля тестирования.");
+    if (typeof Database !== "undefined" && Database.clearCache) {
+      Database.clearCache();
     }
-
-    const result = ERPTestDashboard.run({ safe: true });
-
-    // Логируем результат
-    Logger.log(JSON.stringify(result, null, 2));
-
-    // Показываем уведомление
-    const message =
-      "Тесты завершены\n\n" +
-      "✅ PASS: " + (result.summary?.passed || 0) + "\n" +
-      "❌ FAIL: " + (result.summary?.failed || 0) + "\n" +
-      "📊 Всего: " + (result.summary?.total || 0);
-
-    SpreadsheetApp.getUi().alert(message);
-
-    // Если есть отчёт, открываем его
-    if (result.reportSheet) {
-      openTestDashboard();
-    }
-
-    return result;
+    SpreadsheetApp.getUi().alert("ERP Cache очищен");
   } catch (e) {
-    Logger.error("runTestsDashboard failed: " + e.message);
-    SpreadsheetApp.getUi().alert("Ошибка: " + e.message);
-    throw e;
+    SpreadsheetApp.getUi().alert("Cache error: " + e.message);
   }
 }
 
-function openTestDashboard() {
-  try {
-    const ss = SpreadsheetApp.getActiveSpreadsheet();
-    let sheet = ss.getSheetByName("ERP_TEST_DASHBOARD");
-
-    if (!sheet) {
-      // Если листа нет, создаём его с базовой структурой
-      sheet = ss.insertSheet("ERP_TEST_DASHBOARD");
-      sheet.getRange(1, 1, 1, 4).setValues([["Тест", "Статус", "Время", "Сообщение"]]);
-      sheet.setFrozenRows(1);
-      SpreadsheetApp.getUi().alert("Создан новый лист ERP_TEST_DASHBOARD");
-    }
-
-    ss.setActiveSheet(sheet);
-  } catch (e) {
-    Logger.error("openTestDashboard failed: " + e.message);
-    SpreadsheetApp.getUi().alert("Не удалось открыть Dashboard: " + e.message);
-  }
-}
-
-// ============================================================
-// ЛОГИРОВАНИЕ ЗАГРУЗКИ МЕНЮ
-// ============================================================
-
-Logger.log("ERP MENU v1.2.0 READY");
+Logger.log("ERP MENU READY v1.5.1");

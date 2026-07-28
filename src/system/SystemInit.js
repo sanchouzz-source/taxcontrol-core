@@ -1,5 +1,5 @@
 // ============================================================
-// SystemInit v2.8.0
+// SystemInit v2.9.0
 // Enterprise ERP Bootstrap Orchestrator
 // TaxControl ERP Core
 //
@@ -13,25 +13,32 @@
 //        |
 // Database
 //        |
+// BaseRepository
+//        |
 // RepositoryFactory
 //        |
+// RepositoryRegistry
+//        |
 // EntityService
+//        |
+// ModuleRegistry
 //
 // ============================================================
 
 
-console.log("SystemInit v2.8.0");
+console.log(
+"SystemInit v2.9.0"
+);
 
 
 
 const SystemInit = {
 
 
-version:"2.8.0",
+version:"2.9.0",
 
 
 initialized:false,
-
 
 initializing:false,
 
@@ -52,13 +59,13 @@ componentStatus:{},
 
 
 
+
 // ============================================================
 // DEPENDENCY GRAPH
 // ============================================================
 
 
 dependencyGraph:{
-
 
 
 Config:[],
@@ -98,6 +105,7 @@ SchemaManager:[
 
 
 
+
 // STORAGE
 
 SpreadsheetAdapter:[],
@@ -110,6 +118,9 @@ Database:[
 
 
 
+
+
+
 // REPOSITORY
 
 BaseRepository:[
@@ -119,17 +130,28 @@ BaseRepository:[
 
 
 RepositoryFactory:[
-"EntityRegistry",
-"BaseRepository"
+"BaseRepository",
+"EntityRegistry"
 ],
 
 
 
-// APPLICATION
-
-EntityService:[
+RepositoryRegistry:[
 "RepositoryFactory"
 ],
+
+
+
+
+
+// SERVICE
+
+EntityService:[
+"RepositoryRegistry"
+],
+
+
+
 
 
 
@@ -150,9 +172,15 @@ BusinessEventProcessor:[
 
 
 
+
+
+
+// MODULES
+
 ModuleRegistry:[
 "EventBus",
-"EntityService"
+"EntityService",
+"RepositoryRegistry"
 ]
 
 
@@ -178,9 +206,7 @@ criticalComponents:[
 
 "BaseRepository",
 
-"RepositoryFactory",
-
-"EntityService"
+"RepositoryFactory"
 
 ],
 
@@ -191,7 +217,7 @@ criticalComponents:[
 
 
 // ============================================================
-// START TRACKING
+// MARK READY
 // ============================================================
 
 
@@ -205,7 +231,9 @@ this.componentStatus[name]={
 
 status:"OK",
 
-time:new Date().toISOString()
+time:
+new Date()
+.toISOString()
 
 };
 
@@ -218,9 +246,12 @@ time:new Date().toISOString()
 
 
 
+// ============================================================
+// START COMPONENT
+// ============================================================
+
 
 _start(name,fn){
-
 
 
 if(this.started[name]){
@@ -228,7 +259,6 @@ if(this.started[name]){
 return true;
 
 }
-
 
 
 
@@ -302,9 +332,7 @@ name
 return true;
 
 
-
 }
-
 catch(e){
 
 
@@ -345,9 +373,8 @@ return false;
 }
 
 
+
 },
-
-
 
 
 
@@ -405,7 +432,6 @@ return true;
 init(){
 
 
-
 if(this.initialized){
 
 return this.health();
@@ -426,7 +452,8 @@ this.initializing=true;
 
 
 this.startedAt =
-new Date().toISOString();
+new Date()
+.toISOString();
 
 
 
@@ -436,14 +463,13 @@ try{
 
 
 Logger.log(
-"========== ERP START =========="
+"========== ERP BOOT START =========="
 );
 
 
 
 
-
-// BOOT
+// CORE
 
 
 this._start(
@@ -460,6 +486,13 @@ this._start(
 
 
 
+this._start(
+"HealthContract",
+()=>this.safeInit("HealthContract")
+);
+
+
+
 
 // METADATA
 
@@ -471,8 +504,6 @@ this._start(
 
 
 
-
-
 this._start(
 "SchemaRegistry",
 ()=>this.safeInit("SchemaRegistry")
@@ -480,15 +511,10 @@ this._start(
 
 
 
-
-
 this._start(
 "EntityRegistry",
 ()=>this.safeInit("EntityRegistry")
 );
-
-
-
 
 
 
@@ -501,15 +527,13 @@ this._start(
 
 
 
-// STORAGE
+// DATABASE
 
 
 this._start(
 "SpreadsheetAdapter",
 ()=>this.safeInit("SpreadsheetAdapter")
 );
-
-
 
 
 
@@ -522,15 +546,13 @@ this._start(
 
 
 
-// REPOSITORY
+// REPOSITORY CORE
 
 
 this._start(
 "BaseRepository",
 ()=>BaseRepository.init(Database)
 );
-
-
 
 
 
@@ -541,13 +563,40 @@ this._start(
 
 
 
+
+
 RepositoryFactory.refresh?.();
 
 
 
 
 
-// SERVICE
+// IMPORTANT
+// поздняя регистрация Repository
+
+
+this._start(
+"RepositoryRegistry",
+()=>{
+
+
+RepositoryRegistry.init?.();
+
+
+RepositoryRegistry.refresh?.();
+
+
+}
+
+);
+
+
+
+
+
+
+
+// SERVICE LAYER
 
 
 this._start(
@@ -570,11 +619,23 @@ this._start(
 
 
 
-
 this._start(
 "EventBus",
 ()=>this.safeInit("EventBus")
 );
+
+
+
+
+
+this._start(
+"BusinessEventProcessor",
+()=>this.safeInit(
+"BusinessEventProcessor"
+)
+
+);
+
 
 
 
@@ -603,6 +664,12 @@ EventBus
 
 
 
+ModuleRegistry.setService?.(
+EntityService
+);
+
+
+
 if(
 typeof ERP_MODULE_MANIFEST!=="undefined"
 ){
@@ -614,12 +681,15 @@ ERP_MODULE_MANIFEST
 }
 
 
+
 }
 
 );
 
 
 }
+
+
 
 
 
@@ -653,18 +723,15 @@ return this.health();
 
 
 }
-
 catch(e){
-
 
 
 this.initialized=false;
 
 
-
 Logger.error(
 
-"ERP FAILED "+
+"ERP START FAILED "+
 e.message
 
 );
@@ -675,7 +742,6 @@ throw e;
 
 
 }
-
 finally{
 
 
@@ -683,6 +749,7 @@ this.initializing=false;
 
 
 }
+
 
 
 },
@@ -699,6 +766,7 @@ this.initializing=false;
 
 
 validate(){
+
 
 
 if(
@@ -724,6 +792,9 @@ errors.join(",")
 
 
 }
+
+
+
 
 
 
@@ -764,6 +835,11 @@ return true;
 
 
 
+// ============================================================
+// EVENT
+// ============================================================
+
+
 emitStart(){
 
 
@@ -780,7 +856,9 @@ EventBus.emit(
 
 version:this.version,
 
-time:new Date().toISOString()
+time:
+new Date()
+.toISOString()
 
 }
 
@@ -796,6 +874,11 @@ time:new Date().toISOString()
 
 
 
+
+
+// ============================================================
+// HEALTH
+// ============================================================
 
 
 health(){
@@ -820,10 +903,10 @@ version:this.version,
 initialized:this.initialized,
 
 
-components:this.componentStatus,
+startedAt:this.startedAt,
 
 
-startedAt:this.startedAt
+components:this.componentStatus
 
 
 }
@@ -839,6 +922,11 @@ startedAt:this.startedAt
 
 
 
+// ============================================================
+// DIAGNOSTICS
+// ============================================================
+
+
 diagnostics(){
 
 
@@ -846,6 +934,9 @@ return {
 
 
 version:this.version,
+
+
+initialized:this.initialized,
 
 
 startedAt:this.startedAt,
@@ -857,16 +948,24 @@ boot:this.bootLog,
 components:this.componentStatus,
 
 
+
 schema:
 SchemaRegistry?.diagnostics?.(),
+
 
 
 database:
 Database?.diagnostics?.(),
 
 
-repository:
-RepositoryFactory?.diagnostics?.()
+
+factory:
+RepositoryFactory?.diagnostics?.(),
+
+
+
+registry:
+RepositoryRegistry?.diagnostics?.()
 
 
 
@@ -879,6 +978,11 @@ RepositoryFactory?.diagnostics?.()
 
 
 
+
+
+// ============================================================
+// RESET
+// ============================================================
 
 
 reset(){
@@ -903,11 +1007,15 @@ catch(e){}
 
 this.initialized=false;
 
+
 this.initializing=false;
+
 
 this.started={};
 
+
 this.componentStatus={};
+
 
 this.bootLog=[];
 
@@ -923,6 +1031,9 @@ Logger.log(
 
 
 };
+
+
+
 
 
 

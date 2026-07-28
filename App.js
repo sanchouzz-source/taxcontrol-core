@@ -1,8 +1,8 @@
 // ============================================================
-// App v3.2.0
+// App v4.0.0
 // TaxControl ERP Application Facade
 //
-// Application lifecycle controller
+// Enterprise Application Lifecycle Controller
 //
 // Architecture:
 //
@@ -13,29 +13,53 @@
 //  |
 //  v
 // ERP Core
+//  |
+//  +-- Schema
+//  +-- Database
+//  +-- Repository
+//  +-- Events
+//  +-- Modules
+//
+// Compatible:
+//
+// SystemInit v2.8+
+// ERPDiagnostics v6+
+// RepositoryFactory v3+
+// RepositoryRegistry v2+
+// SchemaRegistry v4+
 //
 // ============================================================
 
 
-console.log("App v3.2.0");
+console.log(
+"App v4.0.0"
+);
+
+
 
 
 
 const App = {
 
 
-version:"3.2.0",
+// ============================================================
+// META
+// ============================================================
 
-apiVersion:"3.2",
+
+version:"4.0.0",
+
+apiVersion:"4.0",
 
 name:"TaxControl ERP",
 
 platform:"Google Apps Script",
 
 
-
 state:{
 
+
+status:"CREATED",
 
 started:false,
 
@@ -44,7 +68,6 @@ starting:false,
 startedAt:null,
 
 lastError:null
-
 
 },
 
@@ -62,9 +85,9 @@ lastError:null
 init(){
 
 
-
 Logger.log(
-"APP INIT"
+"APP INIT v"+
+this.version
 );
 
 
@@ -74,10 +97,14 @@ typeof SystemInit==="undefined"
 ){
 
 throw new Error(
-"SystemInit not loaded"
+"SystemInit unavailable"
 );
 
 }
+
+
+
+this.state.status="INITIALIZED";
 
 
 
@@ -93,7 +120,7 @@ return true;
 
 
 // ============================================================
-// START ERP
+// START
 // ============================================================
 
 
@@ -107,17 +134,14 @@ this.init();
 if(this.state.started){
 
 
-Logger.warn(
-"ERP already started"
-);
-
-
-
 return {
+
 
 status:"ALREADY_STARTED",
 
-startedAt:this.state.startedAt
+startedAt:
+this.state.startedAt
+
 
 };
 
@@ -129,14 +153,11 @@ startedAt:this.state.startedAt
 
 if(this.state.starting){
 
-
 throw new Error(
 "ERP startup already running"
 );
 
-
 }
-
 
 
 
@@ -144,6 +165,9 @@ try{
 
 
 this.state.starting=true;
+
+
+this.state.status="STARTING";
 
 
 
@@ -165,8 +189,9 @@ SystemInit.init();
 
 this.state.started=true;
 
-
 this.state.starting=false;
+
+this.state.status="READY";
 
 
 this.state.startedAt =
@@ -175,9 +200,11 @@ new Date();
 
 
 
+
 Logger.log(
-"========== ERP BOOT COMPLETE =========="
+"========== ERP READY =========="
 );
+
 
 
 
@@ -187,6 +214,7 @@ return {
 
 status:"READY",
 
+version:this.version,
 
 result,
 
@@ -199,16 +227,17 @@ this.state.startedAt
 
 
 
-
 }
 catch(e){
 
 
+
 this.state.starting=false;
 
+this.state.status="FAILED";
 
-this.state.lastError =
-e.message;
+
+this.state.lastError=e.message;
 
 
 
@@ -249,95 +278,79 @@ const modules={};
 
 
 
+const add=(name,obj)=>{
+
+
+if(obj){
+
+modules[name]=obj;
+
+}
+
+
+};
+
+
+
+
+
 try{
 
 
 
-if(
-typeof SystemInit!=="undefined"
-){
-
-modules.system =
-SystemInit.health();
-
-}
+add(
+"SystemInit",
+SystemInit?.health?.()
+);
 
 
 
-if(
-typeof EntityMetadata!=="undefined"
-){
-
-modules.metadata =
-EntityMetadata.health?.();
-
-}
+add(
+"ERPDiagnostics",
+ERPDiagnostics?.health?.()
+);
 
 
 
-if(
-typeof EntityRegistry!=="undefined"
-){
-
-modules.entityRegistry =
-EntityRegistry.health?.();
-
-}
+add(
+"RepositoryRegistry",
+RepositoryRegistry?.health?.()
+);
 
 
 
-if(
-typeof SchemaRegistry!=="undefined"
-){
-
-modules.schemaRegistry =
-SchemaRegistry.health?.();
-
-}
+add(
+"RepositoryFactory",
+RepositoryFactory?.health?.()
+);
 
 
 
-if(
-typeof SchemaManager!=="undefined"
-){
-
-modules.schemaManager =
-SchemaManager.health?.();
-
-}
+add(
+"SchemaRegistry",
+SchemaRegistry?.health?.()
+);
 
 
 
-if(
-typeof Database!=="undefined"
-){
-
-modules.database =
-Database.health?.();
-
-}
+add(
+"Database",
+Database?.health?.()
+);
 
 
 
-if(
-typeof RepositoryFactory!=="undefined"
-){
-
-modules.repositories =
-RepositoryFactory.health?.();
-
-}
+add(
+"EventBus",
+EventBus?.health?.()
+);
 
 
 
-if(
-typeof EntityService!=="undefined"
-){
-
-modules.entityService =
-EntityService.health?.();
-
-}
+add(
+"ModuleRegistry",
+ModuleRegistry?.health?.()
+);
 
 
 
@@ -349,17 +362,11 @@ return {
 
 module:"App",
 
-
 version:this.version,
 
 
 status:
-this.state.started
-?
-"OK"
-:
-"WARNING",
-
+this.state.status,
 
 
 state:this.state,
@@ -380,15 +387,12 @@ new Date().toISOString()
 catch(e){
 
 
-
 return {
 
 
 module:"App",
 
-
 status:"ERROR",
-
 
 error:e.message,
 
@@ -413,6 +417,66 @@ new Date().toISOString()
 
 
 // ============================================================
+// READINESS
+// ============================================================
+
+
+readiness(){
+
+
+
+if(
+typeof ERPDiagnostics==="undefined"
+){
+
+return {
+
+
+score:0,
+
+status:"NO_DIAGNOSTICS"
+
+
+};
+
+
+}
+
+
+
+const report =
+ERPDiagnostics.run({
+
+skipCoreTest:true
+
+});
+
+
+
+return {
+
+
+score:
+report.readiness,
+
+
+status:
+report.status
+
+
+};
+
+
+
+},
+
+
+
+
+
+
+
+// ============================================================
 // DIAGNOSTICS
 // ============================================================
 
@@ -422,7 +486,6 @@ diagnostics(){
 
 
 return {
-
 
 
 application:this.name,
@@ -437,102 +500,120 @@ state:this.state,
 
 system:
 
-typeof SystemInit!=="undefined"
-
-?
-
-SystemInit.diagnostics?.()
-
-:
-
+SystemInit?.diagnostics?.()
+||
 null,
 
 
 
+erpDiagnostics:
 
-metadata:
+ERPDiagnostics?.run?.({
 
-typeof EntityMetadata!=="undefined"
+skipCoreTest:true
 
-?
-
-EntityMetadata.list?.()
-
-:
-
+})
+||
 null,
 
 
 
+repository:
 
-
-registry:
-
-typeof EntityRegistry!=="undefined"
-
-?
-
-EntityRegistry.diagnostics?.()
-
-:
-
+RepositoryHealthReport?.details?.()
+||
 null,
-
-
 
 
 
 schema:
 
-typeof SchemaRegistry!=="undefined"
-
-?
-
-SchemaRegistry.diagnostics?.()
-
-:
-
+SchemaRegistry?.diagnostics?.()
+||
 null,
-
-
 
 
 
 database:
 
-typeof Database!=="undefined"
-
-?
-
-Database.diagnostics?.()
-
-:
-
+Database?.diagnostics?.()
+||
 null,
 
 
 
+factory:
 
-
-repositories:
-
-typeof RepositoryFactory!=="undefined"
-
-?
-
-RepositoryFactory.diagnostics?.()
-
-:
-
+RepositoryFactory?.diagnostics?.()
+||
 null,
-
-
 
 
 
 timestamp:
 new Date().toISOString()
 
+
+};
+
+
+
+},
+
+
+
+
+
+
+
+// ============================================================
+// VERSION REPORT
+// ============================================================
+
+
+versionReport(){
+
+
+return {
+
+
+ERP:this.version,
+
+
+SystemInit:
+SystemInit?.version || "-",
+
+
+ERPDiagnostics:
+ERPDiagnostics?.version || "-",
+
+
+SchemaRegistry:
+SchemaRegistry?.version || "-",
+
+
+SchemaManager:
+SchemaManager?.version || "-",
+
+
+Database:
+Database?.version || "-",
+
+
+BaseRepository:
+BaseRepository?.version || "-",
+
+
+RepositoryFactory:
+RepositoryFactory?.version || "-",
+
+
+RepositoryRegistry:
+RepositoryRegistry?.version || "-",
+
+
+EventBus:
+EventBus?.version || "-"
 
 
 };
@@ -556,7 +637,7 @@ reset(){
 
 
 Logger.warn(
-"ERP RESET START"
+"ERP RESET"
 );
 
 
@@ -565,10 +646,10 @@ try{
 
 
 
-
-
 this.state={
 
+
+status:"CREATED",
 
 started:false,
 
@@ -585,126 +666,21 @@ lastError:null
 
 
 
-globalThis.__ERP_STATE__={
 
 
-started:false,
+SystemInit?.reset?.();
 
-starting:false,
 
-startedAt:null
 
+SchemaRegistry?.reset?.();
 
-};
 
 
+EntityRegistry?.reset?.();
 
 
 
-
-// System
-
-if(
-typeof SystemInit!=="undefined"
-){
-
-SystemInit.reset?.();
-
-}
-
-
-
-
-
-// Metadata
-
-if(
-typeof EntityMetadata!=="undefined"
-){
-
-EntityMetadata.reset?.();
-
-}
-
-
-
-
-
-// Registry
-
-if(
-typeof EntityRegistry!=="undefined"
-){
-
-EntityRegistry.reset?.();
-
-}
-
-
-
-
-
-// Schema Registry
-
-if(
-typeof SchemaRegistry!=="undefined"
-){
-
-SchemaRegistry.reset?.();
-
-}
-
-
-
-
-
-// Schema Manager
-
-if(
-typeof SchemaManager!=="undefined"
-){
-
-SchemaManager.initialized=false;
-
-SchemaManager.schema={};
-
-}
-
-
-
-
-
-// Database
-
-if(
-typeof Database!=="undefined"
-){
-
-
-Database.initialized=false;
-
-Database.status="CREATED";
-
-Database.lastError=null;
-
-Database._metaCache={};
-
-
-}
-
-
-
-
-
-// Repository
-
-if(
-typeof RepositoryFactory!=="undefined"
-){
-
-RepositoryFactory.reset?.();
-
-}
+RepositoryFactory?.reset?.();
 
 
 
@@ -714,38 +690,25 @@ if(
 typeof RepositoryRegistry!=="undefined"
 ){
 
-RepositoryRegistry.reset?.();
+RepositoryRegistry.repositories={};
+
+RepositoryRegistry.ready=false;
 
 }
 
 
 
 
-
-
-// Events
-
-if(
-typeof EventBus!=="undefined"
-){
-
-EventBus.handlers={};
-
-}
+Database?.reset?.();
 
 
 
+EventBus?.reset?.();
 
 
-// Modules
 
-if(
-typeof ModuleRegistry!=="undefined"
-){
+ModuleRegistry?.reset?.();
 
-ModuleRegistry.reset?.();
-
-}
 
 
 
@@ -758,18 +721,13 @@ Logger.log(
 
 
 
+
 return {
 
 
-status:"OK",
-
-message:
-"ERP reset completed"
-
+status:"OK"
 
 };
-
-
 
 
 }
@@ -778,10 +736,8 @@ catch(e){
 
 
 Logger.error(
-
 "ERP RESET FAILED "+
 e.message
-
 );
 
 
@@ -797,9 +753,48 @@ error:e.message
 };
 
 
-
 }
 
+
+
+},
+
+
+
+
+
+
+
+// ============================================================
+// STATUS
+// ============================================================
+
+
+status(){
+
+
+
+return {
+
+
+application:this.name,
+
+
+version:this.version,
+
+
+state:this.state,
+
+
+readiness:
+this.readiness(),
+
+
+timestamp:
+new Date().toISOString()
+
+
+};
 
 
 },
@@ -816,7 +811,6 @@ error:e.message
 
 
 info(){
-
 
 
 return {
@@ -842,6 +836,8 @@ architecture:[
 
 "SystemInit",
 
+"ERPDiagnostics",
+
 "EntityMetadata",
 
 "EntityRegistry",
@@ -850,14 +846,21 @@ architecture:[
 
 "SchemaManager",
 
+"SchemaStorage",
+
 "Database",
+
+"BaseRepository",
 
 "RepositoryFactory",
 
+"RepositoryRegistry",
+
 "EntityService",
 
-"ModuleRegistry"
+"EventBus",
 
+"ModuleRegistry"
 
 ],
 
@@ -865,7 +868,6 @@ architecture:[
 
 timestamp:
 new Date().toISOString()
-
 
 
 };
@@ -888,7 +890,6 @@ new Date().toISOString()
 // ============================================================
 // GLOBAL COMMAND API
 // ============================================================
-
 
 
 function erpStart(){
@@ -931,11 +932,25 @@ return App.info();
 
 
 
+function erpStatus(){
+
+return App.status();
+
+}
 
 
 
 
-globalThis.App=App;
+
+
+
+
+globalThis.App =
+App;
+
+
+
+
 
 
 

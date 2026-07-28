@@ -1,39 +1,45 @@
-/**
- * ============================================================
- * ERP Bootstrap v3.0
- *
- * Unified ERP Entry Point
- *
- * TaxControl ERP Core
- *
- *
- * startERP()
- *      |
- *      v
- * ERPBootstrap.start()
- *      |
- *      v
- * Bootstrap.start()
- *      |
- *      v
- * SystemInit.init()
- *
- *
- * Commands:
- *
- * startERP()
- *
- * erpHealth()
- *
- * erpDiag()
- *
- * resetERP()
- *
- * ============================================================
- */
+// ============================================================
+// ERPBootstrap v4.0.0
+//
+// Unified ERP Entry Point
+//
+// TaxControl ERP Core
+//
+// Architecture:
+//
+// startERP()
+//      |
+//      v
+// ERPBootstrap.start()
+//      |
+//      v
+// Bootstrap.start()
+//      |
+//      v
+// App.start()
+//      |
+//      v
+// SystemInit.init()
+//
+//
+// Commands:
+//
+// startERP()
+//
+// erpHealth()
+//
+// erpDiag()
+//
+// resetERP()
+//
+// ============================================================
 
 
-console.log("ERP Bootstrap v3.0");
+console.log(
+"ERPBootstrap v4.0.0"
+);
+
+
 
 
 
@@ -49,19 +55,31 @@ globalThis.__ERP_STATE__
 {
 
 
+status:"CREATED",
+
+
 started:false,
 
 
 starting:false,
 
 
+failed:false,
+
+
 startedAt:null,
+
+
+finishedAt:null,
+
+
+duration:null,
 
 
 error:null,
 
 
-version:"3.0.0"
+version:"4.0.0"
 
 
 
@@ -74,11 +92,31 @@ version:"3.0.0"
 
 
 
-
 const ERPBootstrap = {
 
 
-version:"3.0.0",
+
+// ============================================================
+// META
+// ============================================================
+
+
+version:"4.0.0",
+
+
+
+
+
+
+
+get state(){
+
+
+return globalThis.__ERP_STATE__;
+
+
+},
+
 
 
 
@@ -95,7 +133,7 @@ async start(){
 
 
 const state =
-globalThis.__ERP_STATE__;
+this.state;
 
 
 
@@ -113,8 +151,8 @@ Logger.warn(
 return this.health();
 
 
-
 }
+
 
 
 
@@ -128,8 +166,11 @@ Logger.warn(
 
 
 
-return;
+return {
 
+status:"STARTING"
+
+};
 
 
 }
@@ -140,7 +181,16 @@ return;
 
 state.starting=true;
 
+state.status="STARTING";
+
 state.error=null;
+
+
+
+const startTime =
+Date.now();
+
+
 
 
 
@@ -156,9 +206,11 @@ try{
 
 
 
-// -------------------------
-// CHECK BOOTSTRAP
-// -------------------------
+
+
+// ------------------------------------------------
+// BOOTSTRAP CONTROLLER
+// ------------------------------------------------
 
 
 if(
@@ -167,7 +219,7 @@ typeof Bootstrap==="undefined"
 
 
 throw new Error(
-"Bootstrap controller missing"
+"Bootstrap controller unavailable"
 );
 
 
@@ -177,9 +229,10 @@ throw new Error(
 
 
 
-// -------------------------
-// MAIN START
-// -------------------------
+
+// ------------------------------------------------
+// START CORE
+// ------------------------------------------------
 
 
 const result =
@@ -190,22 +243,61 @@ await Bootstrap.start();
 
 
 
+
 state.started=true;
+
+state.failed=false;
+
+state.status="READY";
 
 
 state.startedAt =
 new Date().toISOString();
 
 
+state.finishedAt =
+new Date().toISOString();
+
+
+state.duration =
+Date.now()-startTime;
+
+
+
+
+
+
 
 Logger.log(
-"========== ERP READY =========="
+
+"========== ERP READY "
++
+state.duration
++
+" ms =========="
+
 );
 
 
 
 
-return result;
+
+return {
+
+
+status:"READY",
+
+
+duration:
+state.duration,
+
+
+result
+
+
+};
+
+
 
 
 
@@ -216,14 +308,20 @@ catch(e){
 
 state.started=false;
 
+state.failed=true;
+
+state.status="FAILED";
+
 
 state.error=e.message;
 
 
 
 Logger.error(
+
 "ERP START FAILED "+
 e.message
+
 );
 
 
@@ -231,8 +329,8 @@ e.message
 throw e;
 
 
-
 }
+
 finally{
 
 
@@ -261,28 +359,55 @@ health(){
 
 
 const state =
-globalThis.__ERP_STATE__;
+this.state;
+
+
+
+
+let diagnostics=null;
 
 
 
 
 
-let system=null;
+try{
 
 
 
 if(
-typeof Bootstrap!=="undefined"
+typeof ERPDiagnostics!=="undefined"
 &&
-Bootstrap.health
+ERPDiagnostics.run
 ){
 
 
-system =
-Bootstrap.health();
+diagnostics =
+ERPDiagnostics.run({
+
+skipCoreTest:true
+
+});
 
 
 }
+
+
+
+}
+catch(e){
+
+
+diagnostics={
+
+status:"FAILED",
+
+error:e.message
+
+};
+
+
+}
+
 
 
 
@@ -298,22 +423,63 @@ version:this.version,
 
 
 status:
-state.started
-?
-"READY"
-:
-"WARNING",
+state.status,
 
 
 state,
 
 
-system
+readiness:
+
+diagnostics?.readiness
+||
+0,
+
+
+
+diagnostics
 
 
 
 };
 
+
+
+},
+
+
+
+
+
+
+
+// ============================================================
+// STATUS
+// ============================================================
+
+
+status(){
+
+
+
+return {
+
+
+version:this.version,
+
+
+state:this.state,
+
+
+ready:
+this.state.started,
+
+
+timestamp:
+new Date().toISOString()
+
+
+};
 
 
 },
@@ -336,11 +502,17 @@ diagnostics(){
 return {
 
 
+module:"ERPBootstrap",
+
+
 version:this.version,
 
 
-state:
-globalThis.__ERP_STATE__,
+
+state:this.state,
+
+
+
 
 
 bootstrap:
@@ -354,6 +526,26 @@ Bootstrap.diagnostics?.()
 :
 
 null,
+
+
+
+
+
+
+app:
+
+typeof App!=="undefined"
+
+?
+
+App.diagnostics?.()
+
+:
+
+null,
+
+
+
 
 
 
@@ -371,13 +563,20 @@ null,
 
 
 
-modules:
 
-typeof ModuleLoader!=="undefined"
+
+
+erp:
+
+typeof ERPDiagnostics!=="undefined"
 
 ?
 
-ModuleLoader.getStatus?.()
+ERPDiagnostics.run({
+
+skipCoreTest:true
+
+})
 
 :
 
@@ -385,22 +584,94 @@ null,
 
 
 
+
+
+
+
 repositories:
 
-typeof RepositoryFactory!=="undefined"
+typeof RepositoryHealthReport!=="undefined"
 
 ?
 
-RepositoryFactory.diagnostics?.()
+RepositoryHealthReport.details?.()
 
 :
 
-null
+null,
+
+
+
+
+
+
+
+timestamp:
+new Date().toISOString()
 
 
 
 };
 
+
+
+},
+
+
+
+
+
+
+
+// ============================================================
+// VERSION REPORT
+// ============================================================
+
+
+versionReport(){
+
+
+
+return {
+
+
+ERPBootstrap:
+this.version,
+
+
+Bootstrap:
+Bootstrap?.version || "-",
+
+
+App:
+App?.version || "-",
+
+
+SystemInit:
+SystemInit?.version || "-",
+
+
+ERPDiagnostics:
+ERPDiagnostics?.version || "-",
+
+
+RepositoryRegistry:
+RepositoryRegistry?.version || "-",
+
+
+RepositoryFactory:
+RepositoryFactory?.version || "-",
+
+
+SchemaRegistry:
+SchemaRegistry?.version || "-",
+
+
+Database:
+Database?.version || "-"
+
+
+};
 
 
 },
@@ -421,7 +692,7 @@ reset(){
 
 
 Logger.warn(
-"ERP RESET"
+"ERP RESET START"
 );
 
 
@@ -443,13 +714,14 @@ Bootstrap.reset();
 
 
 
+
 if(
-typeof SystemInit!=="undefined"
+typeof App!=="undefined"
 &&
-SystemInit.reset
+App.reset
 ){
 
-SystemInit.reset();
+App.reset();
 
 }
 
@@ -460,13 +732,25 @@ SystemInit.reset();
 globalThis.__ERP_STATE__={
 
 
+status:"CREATED",
+
+
 started:false,
 
 
 starting:false,
 
 
+failed:false,
+
+
 startedAt:null,
+
+
+finishedAt:null,
+
+
+duration:null,
 
 
 error:null,
@@ -481,14 +765,20 @@ version:this.version
 
 
 
+
 Logger.log(
 "ERP RESET COMPLETE"
 );
 
 
 
-return true;
 
+return {
+
+
+status:"OK"
+
+};
 
 
 }
@@ -497,14 +787,23 @@ catch(e){
 
 
 Logger.error(
+
 "ERP RESET FAILED "+
 e.message
+
 );
 
 
 
-return false;
+return {
 
+
+status:"FAILED",
+
+error:e.message
+
+
+};
 
 
 }
@@ -540,11 +839,16 @@ return ERPBootstrap.start();
 
 
 
+
+
+
+
 function erpHealth(){
 
 
 const result =
 ERPBootstrap.health();
+
 
 
 Logger.log(
@@ -561,6 +865,10 @@ return result;
 
 
 }
+
+
+
+
 
 
 
@@ -587,8 +895,11 @@ null,
 return result;
 
 
-
 }
+
+
+
+
 
 
 
@@ -600,6 +911,38 @@ return ERPBootstrap.reset();
 
 
 }
+
+
+
+
+
+
+
+
+function erpVersion(){
+
+
+const result =
+ERPBootstrap.versionReport();
+
+
+
+Logger.log(
+JSON.stringify(
+result,
+null,
+2
+)
+);
+
+
+
+return result;
+
+
+}
+
+
 
 
 
@@ -633,13 +976,18 @@ globalThis.resetERP =
 resetERP;
 
 
+globalThis.erpVersion =
+erpVersion;
+
+
+
 
 
 
 
 
 Logger.log(
-"ERP COMMANDS READY"
+"ERP COMMANDS READY v4.0.0"
 );
 
 
@@ -660,4 +1008,9 @@ Logger.log(
 
 Logger.log(
 " resetERP()"
+);
+
+
+Logger.log(
+" erpVersion()"
 );

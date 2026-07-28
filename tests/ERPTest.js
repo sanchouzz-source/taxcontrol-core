@@ -1,181 +1,493 @@
 // ============================================================
-// ERP Health Test v2.0
-// SystemInit based diagnostic launcher
+// ERP Health Test v2.1.0
+// Enterprise ERP diagnostic launcher
+// TaxControl ERP Core
+//
+// Compatible:
+//
+// SystemInit v2.9+
+// RepositoryRegistry v2.1+
+// RepositoryHealthReport v2.1+
+// RepositoryFactory v3+
+//
 // ============================================================
 
-async function erpHealthTest(){
 
+console.log(
+"ERPHealthTest v2.1.0"
+);
 
-  Logger.log(
-    "========== ERP HEALTH REQUEST =========="
-  );
 
 
-  let report;
 
 
-  try {
+function erpHealthTest(){
 
 
-    // ------------------------------------------------
-    // BOOT ERP SYSTEM
-    // ------------------------------------------------
 
-    if(
-      typeof SystemInit !== "undefined" &&
-      typeof SystemInit.init === "function"
-    ){
+Logger.log(
+"========== ERP HEALTH REQUEST =========="
+);
 
-      Logger.log(
-        "Starting ERP SystemInit..."
-      );
 
 
-      await SystemInit.init();
+let report={};
 
 
-    }
-    else{
 
 
-      throw new Error(
-        "SystemInit not available"
-      );
 
+try{
 
-    }
 
 
+// ============================================================
+// BOOT SYSTEM
+// ============================================================
 
-    // ------------------------------------------------
-    // COLLECT HEALTH
-    // ------------------------------------------------
 
+if(
+typeof SystemInit==="undefined"
+||
+typeof SystemInit.init!=="function"
+){
 
-    if(
-      typeof SystemInit.health === "function"
-    ){
+throw new Error(
+"SystemInit unavailable"
+);
 
-      report =
-        SystemInit.health();
+}
 
-    }
-    else{
 
-      report={
 
-        status:"ERROR",
+Logger.log(
+"Starting ERP SystemInit..."
+);
 
-        message:
-          "SystemInit.health missing"
 
-      };
 
-    }
+SystemInit.init();
 
 
 
-    // ------------------------------------------------
-    // EXTENDED HEALTH
-    // ------------------------------------------------
 
 
-    const modules = {};
 
 
-    if(
-      typeof ModuleRegistry !== "undefined" &&
-      typeof ModuleRegistry.health === "function"
-    ){
+// ============================================================
+// CORE HEALTH
+// ============================================================
 
-      modules.ModuleRegistry =
-        ModuleRegistry.health();
 
-    }
+report.system =
+SystemInit.health();
 
 
 
-    if(
-      typeof Database !== "undefined" &&
-      typeof Database.health === "function"
-    ){
 
-      modules.Database =
-        Database.health();
 
-    }
 
 
+// ============================================================
+// EXTENDED MODULE HEALTH
+// ============================================================
 
-    if(
-      typeof EventBus !== "undefined" &&
-      typeof EventBus.health === "function"
-    ){
 
-      modules.EventBus =
-        EventBus.health();
+const modules={};
 
-    }
 
 
 
-    if(
-      Object.keys(modules).length
-    ){
 
-      report.details =
-        report.details || {};
 
 
-      report.details.modules =
-        modules;
+// DATABASE
 
-    }
+if(
+typeof Database!=="undefined"
+&&
+Database.health
+){
 
 
-
-  }
-  catch(e){
-
-
-    Logger.error(
-      "ERP HEALTH FAILED: "
-      + e.message
-    );
-
-
-    report={
-
-      status:"FAILED",
-
-      module:"ERP",
-
-      error:e.message,
-
-      stack:e.stack
-
-    };
-
-
-  }
-
-
-
-  Logger.log(
-    "========== ERP HEALTH REPORT =========="
-  );
-
-
-  Logger.log(
-    JSON.stringify(
-      report,
-      null,
-      2
-    )
-  );
-
-
-  return report;
+modules.Database =
+Database.health();
 
 
 }
+
+
+
+
+
+
+
+// SCHEMA
+
+
+if(
+typeof SchemaManager!=="undefined"
+&&
+SchemaManager.health
+){
+
+
+modules.SchemaManager =
+SchemaManager.health();
+
+
+}
+
+
+
+
+
+
+
+// REPOSITORY REGISTRY
+
+
+if(
+typeof RepositoryRegistry!=="undefined"
+&&
+RepositoryRegistry.health
+){
+
+
+modules.RepositoryRegistry =
+RepositoryRegistry.health();
+
+
+}
+
+
+
+
+
+
+
+// REPOSITORY HEALTH REPORT
+
+
+if(
+typeof RepositoryHealthReport!=="undefined"
+){
+
+
+modules.RepositoryHealthReport =
+RepositoryHealthReport.health();
+
+
+
+modules.RepositoryDetails =
+RepositoryHealthReport.details();
+
+
+
+}
+
+
+
+
+
+
+
+// FACTORY
+
+
+if(
+typeof RepositoryFactory!=="undefined"
+&&
+RepositoryFactory.health
+){
+
+
+modules.RepositoryFactory =
+RepositoryFactory.health();
+
+
+}
+
+
+
+
+
+
+
+// SERVICE
+
+
+if(
+typeof EntityService!=="undefined"
+&&
+EntityService.health
+){
+
+
+modules.EntityService =
+EntityService.health();
+
+
+}
+
+
+
+
+
+
+
+// EVENTS
+
+
+if(
+typeof EventBus!=="undefined"
+&&
+EventBus.health
+){
+
+
+modules.EventBus =
+EventBus.health();
+
+
+}
+
+
+
+
+
+
+
+// MODULES
+
+
+if(
+typeof ModuleRegistry!=="undefined"
+&&
+ModuleRegistry.health
+){
+
+
+modules.ModuleRegistry =
+ModuleRegistry.health();
+
+
+}
+
+
+
+
+
+
+
+report.modules =
+modules;
+
+
+
+
+
+
+
+// ============================================================
+// READINESS
+// ============================================================
+
+
+report.readiness={
+
+
+
+core:
+
+!!SystemInit.initialized,
+
+
+
+schema:
+
+typeof SchemaManager!=="undefined"
+&&
+SchemaManager.initialized,
+
+
+
+database:
+
+typeof Database!=="undefined",
+
+
+
+repository:
+
+typeof RepositoryRegistry!=="undefined"
+&&
+RepositoryRegistry.count()>0,
+
+
+
+service:
+
+typeof EntityService!=="undefined",
+
+
+
+events:
+
+typeof EventBus!=="undefined",
+
+
+
+modules:
+
+typeof ModuleRegistry!=="undefined"
+
+
+
+};
+
+
+
+
+
+
+
+const ready =
+Object.values(
+report.readiness
+)
+.filter(Boolean)
+.length;
+
+
+
+
+
+const total =
+Object.keys(
+report.readiness
+)
+.length;
+
+
+
+
+
+
+
+report.readinessPercent =
+Math.round(
+ready/total*100
+);
+
+
+
+
+
+
+report.status =
+
+report.readinessPercent>=90
+
+?
+
+"READY"
+
+:
+
+"WARNING";
+
+
+
+
+
+
+
+}
+catch(e){
+
+
+
+Logger.error(
+
+"ERP HEALTH FAILED: "
++
+e.message
+
+);
+
+
+
+report={
+
+
+status:"FAILED",
+
+
+module:"ERP",
+
+
+error:e.message,
+
+
+stack:e.stack
+
+
+
+};
+
+
+
+}
+
+
+
+
+
+
+
+Logger.log(
+"========== ERP HEALTH REPORT =========="
+);
+
+
+
+
+
+Logger.log(
+
+JSON.stringify(
+report,
+null,
+2
+)
+
+);
+
+
+
+
+
+
+
+return report;
+
+
+
+}
+
+
+
+
+
+
+globalThis.erpHealthTest =
+erpHealthTest;
+
+
+
+
+
+Logger.log(
+"ERPHealthTest READY v2.1.0"
+);

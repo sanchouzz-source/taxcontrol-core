@@ -1,22 +1,12 @@
 // ============================================================
-// RepositoryHealthReport v2.0.0
+// RepositoryHealthReport v2.1.0
 // TaxControl ERP Core
 //
 // Enterprise Repository Diagnostic
 //
-// Checks:
-//
-// Repository
-// EntityRegistry
-// EntityMetadata
-// SchemaRegistry
-// BaseRepository
-// RepositoryFactory
-// RepositoryRegistry
-//
 // Compatible:
 //
-// RepositoryRegistry v2+
+// RepositoryRegistry v2.1+
 // RepositoryFactory v3.1+
 // EntityRegistry v2.6+
 // SchemaRegistry v4+
@@ -26,22 +16,16 @@
 
 
 console.log(
-"RepositoryHealthReport v2.0.0"
+"RepositoryHealthReport v2.1.0"
 );
-
-
 
 
 
 const RepositoryHealthReport = {
 
 
-// ============================================================
-// META
-// ============================================================
+version:"2.1.0",
 
-
-version:"2.0.0",
 
 
 
@@ -49,7 +33,7 @@ version:"2.0.0",
 
 
 // ============================================================
-// SAFE FACTORY CHECK
+// CHECK HELPERS
 // ============================================================
 
 
@@ -59,50 +43,25 @@ checkFactory(entity){
 try{
 
 
-if(
-typeof RepositoryFactory==="undefined"
-){
+return (
 
-return false;
+typeof RepositoryFactory!=="undefined"
 
-}
+&&
 
+typeof RepositoryFactory.has==="function"
 
+&&
 
-if(
-typeof RepositoryFactory.has!=="function"
-){
+RepositoryFactory.has(entity)
 
-return false;
-
-}
-
-
-
-return RepositoryFactory.has(
-entity
 );
-
 
 
 }
 catch(e){
 
-
-Logger.warn(
-
-"Factory check skipped "
-+
-entity+
-": "+
-e.message
-
-);
-
-
-
 return false;
-
 
 }
 
@@ -113,11 +72,6 @@ return false;
 
 
 
-
-
-// ============================================================
-// ENTITY CHECK
-// ============================================================
 
 
 checkEntity(entity){
@@ -137,39 +91,23 @@ return false;
 
 
 if(
-typeof EntityRegistry.has==="function"
+EntityRegistry.has
 ){
 
-return EntityRegistry.has(
-entity
-);
+return EntityRegistry.has(entity);
 
 }
 
 
 
-if(
-typeof EntityRegistry.get==="function"
-){
-
-return !!EntityRegistry.get(
-entity
-);
-
-}
-
-
-
-return false;
+return !!EntityRegistry.get?.(entity);
 
 
 
 }
 catch(e){
 
-
 return false;
-
 
 }
 
@@ -180,11 +118,6 @@ return false;
 
 
 
-
-
-// ============================================================
-// SCHEMA CHECK
-// ============================================================
 
 
 checkSchema(entity){
@@ -203,28 +136,16 @@ return false;
 
 
 
-if(
-typeof SchemaRegistry.get==="function"
-){
-
-return !!SchemaRegistry.get(
+return !!SchemaRegistry.get?.(
 entity
 );
-
-}
-
-
-
-return false;
 
 
 
 }
 catch(e){
 
-
 return false;
-
 
 }
 
@@ -237,16 +158,64 @@ return false;
 
 
 
+checkRepositoryRegistry(entity){
+
+
+try{
+
+
+return (
+
+typeof RepositoryRegistry!=="undefined"
+
+&&
+
+RepositoryRegistry.has(entity)
+
+);
+
+
+
+}
+catch(e){
+
+return false;
+
+}
+
+
+},
+
+
+
+
+
+
+
+checkBaseRepository(){
+
+
+return (
+
+typeof BaseRepository!=="undefined"
+
+);
+
+
+},
+
+
+
+
+
+
+
 // ============================================================
-// MAIN RUN
+// RUN
 // ============================================================
 
 
 run(){
-
-
-const result=[];
-
 
 
 if(
@@ -261,14 +230,12 @@ throw new Error(
 
 
 
-const repositories =
-RepositoryRegistry.list();
+const result=[];
 
 
 
-
-
-repositories.forEach(entity=>{
+RepositoryRegistry.list()
+.forEach(entity=>{
 
 
 let repo=null;
@@ -288,7 +255,6 @@ entity
 );
 
 
-
 }
 catch(e){
 
@@ -303,17 +269,12 @@ error=e.message;
 
 
 
-// ----------------------------
-// Metadata
-// ----------------------------
-
 
 try{
 
 
 if(
-repo &&
-typeof repo.getMeta==="function"
+repo?.getMeta
 ){
 
 meta =
@@ -338,10 +299,11 @@ e.message;
 
 
 
+
 const item={
 
 
-repository:
+repositoryName:
 
 repo?.constructor?.name
 ||
@@ -352,13 +314,11 @@ entity,
 entity,
 
 
-
 version:
 
 repo?.version
 ||
 "-",
-
 
 
 
@@ -384,10 +344,17 @@ meta?.idField
 
 
 
-
-repository:
+repositoryLoaded:
 
 !!repo,
+
+
+
+repositoryRegistry:
+
+this.checkRepositoryRegistry(
+entity
+),
 
 
 
@@ -399,9 +366,11 @@ entity
 
 
 
+
 metadata:
 
 !!meta,
+
 
 
 
@@ -413,9 +382,11 @@ entity
 
 
 
+
 baseRepository:
 
-typeof BaseRepository!=="undefined",
+this.checkBaseRepository(),
+
 
 
 
@@ -427,11 +398,9 @@ entity
 
 
 
-registry:true,
 
+error:error||"",
 
-
-error:error || "",
 
 
 
@@ -448,7 +417,7 @@ repo
 
 &&
 
-typeof BaseRepository!=="undefined"
+this.checkBaseRepository()
 
 )
 
@@ -463,6 +432,7 @@ typeof BaseRepository!=="undefined"
 
 
 };
+
 
 
 
@@ -496,18 +466,14 @@ return result;
 summary(report=[]){
 
 
-
 const total =
 report.length;
 
 
-
 const ok =
 report.filter(
-
 x=>
 x.status==="OK"
-
 )
 .length;
 
@@ -523,7 +489,6 @@ ok,
 
 
 warning:
-
 total-ok,
 
 
@@ -541,6 +506,68 @@ ok/total*100
 :
 
 0
+
+
+
+};
+
+
+},
+
+
+
+
+
+
+
+// ============================================================
+// ARCHITECTURE READINESS
+// ============================================================
+
+
+readiness(){
+
+
+
+return {
+
+
+repositoryLayer:
+
+typeof RepositoryRegistry!=="undefined"
+&&
+RepositoryRegistry.count()>0,
+
+
+
+factoryLayer:
+
+typeof RepositoryFactory!=="undefined",
+
+
+
+schemaLayer:
+
+typeof SchemaRegistry!=="undefined",
+
+
+
+serviceLayer:
+
+typeof EntityService!=="undefined",
+
+
+
+eventLayer:
+
+typeof EventBus!=="undefined",
+
+
+
+mobileReady:
+
+typeof ApiGateway!=="undefined"
+
 
 
 };
@@ -574,8 +601,6 @@ report
 
 
 
-
-
 Logger.log(
 "================================"
 );
@@ -597,25 +622,17 @@ Logger.log(
 
 Logger.log(
 
-"TOTAL: "
-+
-summary.total
+"TOTAL="+
+summary.total+
 
-+
-" | OK: "
-+
-summary.ok
+" OK="+
+summary.ok+
 
-+
-" | WARNING: "
-+
-summary.warning
+" WARNING="+
+summary.warning+
 
-+
-" | READY: "
-+
-summary.readyPercent
-+
+" READY="+
+summary.readyPercent+
 "%"
 
 );
@@ -638,7 +655,9 @@ r.status,
 
 "Factory="+r.factory,
 
-"Schema="+r.schema
+"Schema="+r.schema,
+
+"Registry="+r.repositoryRegistry
 
 ]
 .join(
@@ -677,7 +696,7 @@ return report;
 
 
 // ============================================================
-// FULL DETAILS
+// DETAILS
 // ============================================================
 
 
@@ -696,15 +715,18 @@ version:this.version,
 
 
 summary:
-
 this.summary(
 report
 ),
 
 
 
-repositories:
+readiness:
+this.readiness(),
 
+
+
+repositories:
 report
 
 
@@ -728,7 +750,6 @@ report
 health(){
 
 
-
 const data =
 this.details();
 
@@ -736,7 +757,7 @@ this.details();
 
 const status =
 
-data.summary.readyPercent>=80
+data.summary.readyPercent>=90
 
 ?
 
@@ -749,10 +770,14 @@ data.summary.readyPercent>=80
 
 
 
+
 if(
 typeof HealthContract!=="undefined"
+
 &&
+
 HealthContract.create
+
 ){
 
 
@@ -771,16 +796,12 @@ data
 
 
 
-
 return {
 
 
-module:
-"RepositoryHealthReport",
-
+module:"RepositoryHealthReport",
 
 status,
-
 
 ...data
 
@@ -800,12 +821,6 @@ status,
 
 
 
-
-
-
-// ============================================================
-// GLOBAL
-// ============================================================
 
 
 globalThis.RepositoryHealthReport =

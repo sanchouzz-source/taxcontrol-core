@@ -1,5 +1,5 @@
 // ============================================================
-// RepositoryRegistry v2.1.0
+// RepositoryRegistry v2.1.1
 // Enterprise Repository Registry
 // TaxControl ERP Core
 //
@@ -16,7 +16,7 @@
 
 
 console.log(
-"RepositoryRegistry v2.1.0"
+"RepositoryRegistry v2.1.1"
 );
 
 
@@ -29,11 +29,17 @@ const RepositoryRegistry = {
 // ============================================================
 
 
-version:"2.1.0",
+version:"2.1.1",
 
 ready:false,
 
+
 repositories:{},
+
+
+factorySyncCount:0,
+
+
 
 
 
@@ -41,47 +47,47 @@ aliases:{
 
 
 CLIENT:"CLIENT",
-
 Clients:"CLIENT",
-
 Client:"CLIENT",
 
 
-
 TRIP:"TRIP",
-
 Trip:"TRIP",
 
 
-
 VEHICLE:"VEHICLE",
-
 Vehicle:"VEHICLE",
 
 
-
 DRIVER:"DRIVER",
-
 Driver:"DRIVER",
 
 
-
 CARRIER:"CARRIER",
-
 Carrier:"CARRIER",
 
 
-
 ROUTE:"ROUTE",
-
 Route:"ROUTE",
 
 
-
 CARGO:"CARGO",
+Cargo:"CARGO",
 
-Cargo:"CARGO"
 
+KPI:"KPI",
+
+AUDIT:"AUDIT",
+
+VERSION:"VERSION",
+
+FAILED_EVENT:"FAILED_EVENT",
+
+TRANSPORT_ORDER:"TRANSPORT_ORDER",
+
+CLIENT_FINANCE_PROFILE:"CLIENT_FINANCE_PROFILE",
+
+FINANCIAL_TRANSACTION:"FINANCIAL_TRANSACTION"
 
 },
 
@@ -114,9 +120,51 @@ this.version
 
 
 
-
-
 this.ready=true;
+
+
+
+this.refresh();
+
+
+
+Logger.log(
+
+"RepositoryRegistry READY count="
++
+this.count()
+
+);
+
+
+
+return true;
+
+
+},
+
+
+
+
+
+
+
+// ============================================================
+// REFRESH
+// Повторная синхронизация после загрузки модулей
+// ============================================================
+
+
+refresh(){
+
+
+Logger.log(
+"RepositoryRegistry REFRESH"
+);
+
+
+
+this.collectGlobals();
 
 
 
@@ -130,14 +178,141 @@ this.publish();
 
 Logger.log(
 
-"RepositoryRegistry READY count="+
+"RepositoryRegistry REFRESH COMPLETE count="
++
 this.count()
 
 );
 
 
 
-return true;
+return this.count();
+
+
+},
+
+
+
+
+
+
+
+// ============================================================
+// COLLECT GLOBAL REPOSITORIES
+// ============================================================
+
+
+collectGlobals(){
+
+
+const map={
+
+
+CLIENT:"ClientRepository",
+
+TRIP:"TripRepository",
+
+VEHICLE:"VehicleRepository",
+
+DRIVER:"DriverRepository",
+
+CARRIER:"CarrierRepository",
+
+ROUTE:"RouteRepository",
+
+CARGO:"CargoRepository",
+
+
+TRANSPORT_ORDER:
+"TransportOrderRepository",
+
+
+CLIENT_FINANCE_PROFILE:
+"ClientFinanceProfileRepository",
+
+
+FINANCIAL_TRANSACTION:
+"FinancialTransactionRepository",
+
+
+KPI:
+"KPIRepository",
+
+
+AUDIT:
+"AuditRepository",
+
+
+VERSION:
+"VersionRepository",
+
+
+FAILED_EVENT:
+"FailedEventRepository"
+
+
+};
+
+
+
+
+
+Object.keys(map)
+.forEach(entity=>{
+
+
+const name =
+map[entity];
+
+
+
+try{
+
+
+if(
+typeof globalThis[name]!=="undefined"
+){
+
+
+this.register(
+
+entity,
+
+globalThis[name],
+
+{
+force:true
+}
+
+);
+
+
+}
+
+
+
+}
+catch(e){
+
+
+Logger.warn(
+
+"Repository collect failed "
++
+entity+
+" "
++
+e.message
+
+);
+
+
+}
+
+
+
+});
+
 
 
 },
@@ -208,18 +383,17 @@ this.normalize(entity);
 
 
 
-
 if(!repository){
 
 throw new Error(
 
-"RepositoryRegistry repository missing "+
+"Repository missing "
++
 key
 
 );
 
 }
-
 
 
 
@@ -230,9 +404,7 @@ this.repositories[key]
 !options.force
 ){
 
-
 return this.repositories[key];
-
 
 }
 
@@ -245,18 +417,20 @@ this.repositories[key]=repository;
 
 Logger.debug(
 
-"RepositoryRegistry REGISTER "+
+"RepositoryRegistry REGISTER "
++
 key
 
 );
 
 
 
-
-
 this.syncFactoryEntity(
+
 key,
+
 repository
+
 );
 
 
@@ -273,7 +447,7 @@ return repository;
 
 
 // ============================================================
-// LATE LOAD SUPPORT
+// LATE LOAD
 // ============================================================
 
 
@@ -308,8 +482,11 @@ repository
 
 
 return this.notifyLoaded(
+
 entity,
+
 repository
+
 );
 
 
@@ -344,11 +521,11 @@ if(!repo){
 
 throw new Error(
 
-"RepositoryRegistry repository not found "+
+"Repository not found "
++
 key
 
 );
-
 
 }
 
@@ -358,6 +535,7 @@ return repo;
 
 
 },
+
 
 
 
@@ -389,11 +567,9 @@ has(entity){
 try{
 
 
-const key =
-this.normalize(entity);
-
-
-return !!this.repositories[key];
+return !!this.repositories[
+this.normalize(entity)
+];
 
 
 }
@@ -443,7 +619,7 @@ return this.list().length;
 
 
 // ============================================================
-// FACTORY SYNC
+// FACTORY
 // ============================================================
 
 
@@ -485,6 +661,11 @@ force:true
 );
 
 
+
+this.factorySyncCount++;
+
+
+
 return true;
 
 
@@ -498,9 +679,11 @@ catch(e){
 
 Logger.warn(
 
-"Factory sync failed "+
+"Factory sync failed "
++
 entity+
-" "+
+": "
++
 e.message
 
 );
@@ -585,8 +768,11 @@ catch(e){
 
 
 Logger.warn(
-"RepositoryRegistry publish skipped "+
+
+"RepositoryRegistry publish skipped "
++
 e.message
+
 );
 
 
@@ -603,7 +789,7 @@ e.message
 
 
 // ============================================================
-// HEALTH
+// HEALTH REPORT
 // ============================================================
 
 
@@ -629,10 +815,22 @@ version:
 repo.version || "-",
 
 
-
 table:
 repo.table || "-",
 
+
+factory:
+
+typeof RepositoryFactory!=="undefined"
+&&
+RepositoryFactory.has
+?
+
+RepositoryFactory.has(entity)
+
+:
+
+false,
 
 
 health:
@@ -662,12 +860,18 @@ null
 
 
 
-health(){
+// ============================================================
+// DIAGNOSTICS
+// ============================================================
 
 
+diagnostics(){
 
-const data={
 
+return {
+
+
+module:"RepositoryRegistry",
 
 version:this.version,
 
@@ -678,19 +882,57 @@ ready:this.ready,
 count:this.count(),
 
 
-repositories:this.list()
+factorySyncCount:
+this.factorySyncCount,
+
+
+repositories:this.list(),
+
+
+timestamp:
+new Date()
+.toISOString()
 
 
 };
 
 
+},
+
+
+
+
+
+
+
+// ============================================================
+// HEALTH
+// ============================================================
+
+
+health(){
+
+
+
+const data =
+this.diagnostics();
+
+
 
 const status =
+
 this.ready
+&&
+data.count>0
+
 ?
+
 "OK"
+
 :
+
 "WARNING";
+
 
 
 
@@ -717,7 +959,6 @@ data
 
 
 
-
 return {
 
 
@@ -735,7 +976,6 @@ status,
 
 
 };
-
 
 
 
@@ -769,14 +1009,14 @@ try{
 RepositoryRegistry.init();
 
 
-
 }
 catch(e){
 
 
 Logger.warn(
 
-"RepositoryRegistry deferred "+
+"RepositoryRegistry deferred "
++
 e.message
 
 );
