@@ -1,25 +1,25 @@
 // ============================================================
-// ERPControlDashboard v1.0.0
+// ERPControlDashboard v2.0.0
 // TaxControl ERP Core
 //
 // Enterprise Runtime Dashboard
 //
-// Creates:
-//
 // Sheet:
+//
 // ERP_CONTROL_CENTER
 //
-// Uses:
+// Compatible:
 //
 // ERPControlCenter v2+
-// ERPDiagnostics
-// RepositoryHealthReport
+// ERPDiagnostics v5+
+// RepositoryHealthReport v2+
+// RepositoryRegistry v2+
 //
 // ============================================================
 
 
 console.log(
-"ERPControlDashboard v1.0.0"
+"ERPControlDashboard v2.0.0"
 );
 
 
@@ -27,9 +27,12 @@ console.log(
 const ERPControlDashboard = {
 
 
+// ============================================================
+// META
+// ============================================================
 
-version:"1.0.0",
 
+version:"2.0.0",
 
 sheetName:
 "ERP_CONTROL_CENTER",
@@ -39,8 +42,9 @@ sheetName:
 
 
 
+
 // ============================================================
-// OPEN SHEET
+// OPEN
 // ============================================================
 
 
@@ -73,12 +77,6 @@ this.sheetName
 
 
 
-ss.setActiveSheet(
-sheet
-);
-
-
-
 return sheet;
 
 
@@ -91,7 +89,7 @@ return sheet;
 
 
 // ============================================================
-// BUILD DASHBOARD
+// BUILD
 // ============================================================
 
 
@@ -108,10 +106,8 @@ sheet.clear();
 
 
 
-
 const report =
 this.collect();
-
 
 
 
@@ -120,43 +116,55 @@ let rows=[];
 
 
 
+// ВСЕ СТРОКИ 3 КОЛОНКИ !!!
+
 rows.push([
-"TaxControl ERP Control Center"
+"TaxControl ERP Control Center",
+"",
+""
 ]);
 
 
 
 rows.push([
-"Version",
-report.version
+"Версия ERP",
+report.version,
+""
 ]);
 
 
 
 rows.push([
 "Дата проверки",
-report.timestamp
+report.timestamp,
+""
 ]);
 
 
 
 rows.push([
-"Статус ERP",
-report.status
+"Статус",
+report.status,
+""
 ]);
 
 
 
 rows.push([
 "Готовность",
-report.readiness+"%"
+report.readiness+"%",
+""
 ]);
 
 
 
 rows.push([
+"",
+"",
 ""
 ]);
+
+
 
 
 
@@ -200,6 +208,30 @@ item.version || "-"
 
 
 
+// нормализация массива
+
+rows =
+rows.map(row=>{
+
+
+while(row.length<3){
+
+row.push("");
+
+}
+
+
+return row.slice(0,3);
+
+
+});
+
+
+
+
+
+
+
 sheet
 .getRange(
 1,
@@ -214,10 +246,13 @@ rows
 
 
 
+
+
 this.format(
 sheet,
 rows.length
 );
+
 
 
 
@@ -234,41 +269,27 @@ return sheet;
 
 
 // ============================================================
-// COLLECT DATA
+// COLLECT
 // ============================================================
 
 
 collect(){
 
 
-
-let center;
-
-
-
 if(
-typeof ERPControlCenter!=="undefined"
+typeof ERPControlCenter==="undefined"
 ){
-
-
-center =
-ERPControlCenter.run(
-{
-skipCoreTest:true
-}
-);
-
-
-}
-else{
-
 
 throw new Error(
 "ERPControlCenter unavailable"
 );
 
-
 }
+
+
+
+const center =
+ERPControlCenter.run();
 
 
 
@@ -294,10 +315,33 @@ center.system
 
 
 
+
 this.extract(
 components,
-center.bootstrap
+center.repositories
 );
+
+
+
+if(
+typeof ERPDiagnostics!=="undefined"
+){
+
+components.ERPDiagnostics={
+
+
+status:"AVAILABLE",
+
+
+version:
+ERPDiagnostics.version
+
+
+};
+
+
+}
+
 
 
 
@@ -315,7 +359,7 @@ center.timestamp,
 
 
 status:
-center.status,
+center.status || "UNKNOWN",
 
 
 readiness:
@@ -342,7 +386,7 @@ components
 
 
 // ============================================================
-// EXTRACT COMPONENTS
+// EXTRACT
 // ============================================================
 
 
@@ -414,6 +458,8 @@ format(sheet,lastRow){
 
 
 
+// Заголовок
+
 sheet
 .getRange(
 1,
@@ -430,11 +476,14 @@ sheet
 1,
 1
 )
-.setFontSize(
-16
-);
+.setFontSize(16)
+.setFontWeight("bold");
 
 
+
+
+
+// Заголовок таблицы
 
 sheet
 .getRange(
@@ -449,6 +498,9 @@ sheet
 
 
 
+
+// Автоширина
+
 sheet
 .autoResizeColumns(
 1,
@@ -457,10 +509,33 @@ sheet
 
 
 
+
+// Закрепление
+
 sheet
 .setFrozenRows(
 7
 );
+
+
+
+
+// Фильтр
+
+if(lastRow>7){
+
+
+sheet
+.getRange(
+7,
+1,
+lastRow-6,
+3
+)
+.createFilter();
+
+
+}
 
 
 
@@ -492,12 +567,30 @@ return this.build();
 
 
 // ============================================================
+// MENU COMMAND
+// ============================================================
+
+
+openDashboard(){
+
+
+return this.build();
+
+
+},
+
+
+
+
+
+
+
+// ============================================================
 // HEALTH
 // ============================================================
 
 
 health(){
-
 
 
 return HealthContract.create(
@@ -511,7 +604,6 @@ return HealthContract.create(
 
 version:this.version,
 
-
 sheet:this.sheetName
 
 
@@ -520,12 +612,14 @@ sheet:this.sheetName
 );
 
 
-
 }
 
 
 
 };
+
+
+
 
 
 
@@ -544,7 +638,30 @@ ERPControlDashboard;
 
 
 
+
+
+// ============================================================
+// COMMAND
+// ============================================================
+
+
+function openERPControlDashboard(){
+
+
+return ERPControlDashboard.build();
+
+
+}
+
+
+
+
+
+
+
 Logger.log(
+
 "ERPControlDashboard READY v"+
 ERPControlDashboard.version
+
 );
