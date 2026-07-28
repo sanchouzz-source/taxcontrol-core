@@ -1,94 +1,354 @@
 // ============================================================
-// SchemaDiff.gs – сравнение и слияние схем
+// SchemaDiff.gs v2.1.0
+// ERP TexControl Core
+//
+// CLEAN SCHEMA MERGE
+//
+// EntityMetadata v3.x
+// SchemaManager v4.2+
 // ============================================================
-const SchemaDiff = {
-  merge(oldSchema, newSchema, strategy = 'KEEP_HISTORY') {
-    const result = JSON.parse(JSON.stringify(oldSchema));
 
-    for (const [table, incomingMeta] of Object.entries(newSchema)) {
-      if (!result[table]) {
-        result[table] = JSON.parse(JSON.stringify(incomingMeta));
-        continue;
-      }
-      const existingMap = new Map();
-      result[table].fields.forEach(f => existingMap.set(f.name, f));
 
-      for (const field of incomingMeta.fields) {
-        if (existingMap.has(field.name)) {
-          if (strategy === 'STRICT') {
-            const idx = result[table].fields.findIndex(f => f.name === field.name);
-            if (idx !== -1) result[table].fields[idx] = JSON.parse(JSON.stringify(field));
-          }
-          if (strategy === 'KEEP_HISTORY') {
-            const existing = existingMap.get(field.name);
-            if (existing.active === false) existing.active = true;
-          }
-        } else {
-          result[table].fields.push(JSON.parse(JSON.stringify(field)));
-        }
-      }
+console.log("SchemaDiff v2.1.0");
 
-      if (strategy === 'STRICT') {
-        const incomingNames = new Set(incomingMeta.fields.map(f => f.name));
-        result[table].fields = result[table].fields.filter(f => incomingNames.has(f.name));
-      }
 
-      // Обновляем свойства
-      const defaults = {
-        primaryKey: null,
-        softDelete: true,
-        timestamps: true,
-        requireId: true,
-        relations: {},
-        indexes: [],
-        uid: table
-      };
-      for (const key of ['primaryKey', 'softDelete', 'timestamps', 'requireId', 'relations', 'indexes', 'uid']) {
-        if (result[table][key] === undefined && incomingMeta[key] !== undefined) {
-          result[table][key] = JSON.parse(JSON.stringify(incomingMeta[key]));
-        }
-      }
-    }
-    return result;
-  },
 
-  compare(oldSchema, newSchema) {
-    // Анализ изменений (для отчёта)
-    const added = [];
-    const removed = [];
-    const changed = [];
-    const tables = new Set([...Object.keys(oldSchema), ...Object.keys(newSchema)]);
-    for (const table of tables) {
-      const a = oldSchema[table];
-      const b = newSchema[table];
-      if (!a) {
-        added.push(table);
-        continue;
-      }
-      if (!b) {
-        removed.push(table);
-        continue;
-      }
-      // Сравниваем поля
-      const fieldsA = a.fields.filter(f => f.active !== false).map(f => f.name);
-      const fieldsB = b.fields.filter(f => f.active !== false).map(f => f.name);
-      const all = new Set([...fieldsA, ...fieldsB]);
-      const addedFields = [];
-      const removedFields = [];
-      const changedFields = [];
-      for (const field of all) {
-        const fA = a.fields.find(f => f.name === field);
-        const fB = b.fields.find(f => f.name === field);
-        if (!fA) removedFields.push(field);
-        else if (!fB) addedFields.push(field);
-        else if (fA.type !== fB.type || fA.required !== fB.required) {
-          changedFields.push({ field, from: { type: fB.type, required: fB.required }, to: { type: fA.type, required: fA.required } });
-        }
-      }
-      if (addedFields.length || removedFields.length || changedFields.length) {
-        changed.push({ table, addedFields, removedFields, changedFields });
-      }
-    }
-    return { added, removed, changed };
-  }
+const SchemaDiff={
+
+
+
+version:"2.1.0",
+
+
+
+
+// ============================================================
+// MERGE
+// ============================================================
+
+
+merge(
+oldSchema={},
+newSchema={},
+strategy="SAFE"
+){
+
+
+const result={};
+
+
+
+Object.keys(newSchema)
+
+.forEach(entity=>{
+
+
+const incoming =
+newSchema[entity];
+
+
+
+if(!incoming){
+
+return;
+
+}
+
+
+
+
+// глубокая копия новой схемы
+
+const clean =
+JSON.parse(
+JSON.stringify(incoming)
+);
+
+
+
+
+
+// нормализация fields
+
+clean.fields =
+Array.isArray(clean.fields)
+?
+clean.fields
+:
+[];
+
+
+
+
+
+// добавляем uid
+
+clean.uid =
+clean.uid ||
+entity;
+
+
+
+
+result[entity]=clean;
+
+
+
+});
+
+
+
+
+return result;
+
+
+},
+
+
+
+
+
+
+
+// ============================================================
+// COMPARE
+// ============================================================
+
+
+compare(
+oldSchema={},
+newSchema={}
+){
+
+
+const added=[];
+
+const removed=[];
+
+const changed=[];
+
+
+
+const entities =
+new Set([
+...Object.keys(oldSchema),
+...Object.keys(newSchema)
+]);
+
+
+
+
+
+entities.forEach(entity=>{
+
+
+const oldMeta =
+oldSchema[entity];
+
+
+const newMeta =
+newSchema[entity];
+
+
+
+if(!oldMeta){
+
+added.push(entity);
+
+return;
+
+}
+
+
+
+if(!newMeta){
+
+removed.push(entity);
+
+return;
+
+}
+
+
+
+
+
+const oldFields =
+(oldMeta.fields||[])
+.map(x=>x.name);
+
+
+
+const newFields =
+(newMeta.fields||[])
+.map(x=>x.name);
+
+
+
+
+const addedFields =
+newFields.filter(
+x=>!oldFields.includes(x)
+);
+
+
+
+const removedFields =
+oldFields.filter(
+x=>!newFields.includes(x)
+);
+
+
+
+
+if(
+addedFields.length ||
+removedFields.length
+){
+
+changed.push({
+
+entity,
+
+addedFields,
+
+removedFields
+
+});
+
+}
+
+
+
+});
+
+
+
+
+return {
+
+
+added,
+
+removed,
+
+changed
+
+
 };
+
+
+},
+
+
+
+
+
+
+
+// ============================================================
+// CLEAN
+// ============================================================
+
+
+clean(schema={}){
+
+
+const result={};
+
+
+
+Object.keys(schema)
+
+.forEach(entity=>{
+
+
+const meta =
+schema[entity];
+
+
+
+if(
+!meta ||
+typeof meta!=="object"
+){
+
+return;
+
+}
+
+
+
+result[entity]={
+
+entity,
+
+table:
+typeof meta.table==="string"
+?
+meta.table
+:
+entity,
+
+
+idField:
+meta.idField ||
+meta.primaryKey ||
+"ID",
+
+
+fields:
+Array.isArray(meta.fields)
+?
+meta.fields
+:
+[],
+
+
+softDelete:
+meta.softDelete!==false,
+
+
+timestamps:
+meta.timestamps!==false,
+
+
+relations:
+meta.relations || {},
+
+
+indexes:
+meta.indexes || []
+
+
+};
+
+
+
+});
+
+
+
+return result;
+
+
+}
+
+
+
+
+
+};
+
+
+
+
+globalThis.SchemaDiff =
+SchemaDiff;
+
+
+
+Logger.log(
+"SchemaDiff READY v"+
+SchemaDiff.version
+);
