@@ -1,53 +1,30 @@
 // ============================================================
-// EntityRegistry v2.5.1
+// EntityRegistry v2.6.0
 // Enterprise Runtime Entity Registry
 // TaxControl ERP Core
-//
-// Fix:
-// - Metadata normalization
-// - Object fields support
-// - Array fields support
-// - SchemaBuilder compatibility
-//
-// Architecture:
-//
-// EntityMetadata
-//        |
-//        v
-// EntityRegistry
-//        |
-//        v
-// SchemaRegistry
-//        |
-//        v
-// SchemaManager
 //
 // Compatible:
 // EntityMetadata v3.1+
 // SchemaRegistry v4.0.6+
 // SchemaManager v4.2+
+// RepositoryFactory v3+
 // BaseRepository v5.7+
-// EntityService v5+
 // ============================================================
 
 
-console.log("EntityRegistry v2.5.1");
-
+console.log("EntityRegistry v2.6.0");
 
 
 const EntityRegistry = {
 
 
-version:"2.5.1",
-
+version:"2.6.0",
 
 initialized:false,
 
 ready:false,
 
-
 entities:{},
-
 
 
 aliases:{
@@ -57,50 +34,46 @@ CLIENT:"CLIENT",
 Client:"CLIENT",
 Clients:"CLIENT",
 
-
 TRIP:"TRIP",
 Trip:"TRIP",
 Trips:"TRIP",
+
+TRANSPORT_ORDER:"TRANSPORT_ORDER",
+TransportOrder:"TRANSPORT_ORDER",
+TransportOrders:"TRANSPORT_ORDER",
+TOR:"TRANSPORT_ORDER",
 
 
 VEHICLE:"VEHICLE",
 Vehicle:"VEHICLE",
 Vehicles:"VEHICLE",
 
-
 DRIVER:"DRIVER",
 Driver:"DRIVER",
 Drivers:"DRIVER",
-
 
 CARRIER:"CARRIER",
 Carrier:"CARRIER",
 Carriers:"CARRIER",
 
-
 ROUTE:"ROUTE",
 Route:"ROUTE",
 Routes:"ROUTE",
-
 
 CARGO:"CARGO",
 Cargo:"CARGO",
 Cargoes:"CARGO",
 
 
-
 CLI:"CLIENT",
-
 TRP:"TRIP",
+TO:"TRANSPORT_ORDER",
+TOR:"TRANSPORT_ORDER",
 
 VEH:"VEHICLE",
-
 DRV:"DRIVER",
-
 CAR:"CARRIER",
-
 RTE:"ROUTE",
-
 CRG:"CARGO",
 
 CFP:"CLIENT_FINANCE_PROFILE",
@@ -113,11 +86,8 @@ AUD:"AUDIT",
 
 VER:"VERSION"
 
+
 },
-
-
-
-
 
 
 
@@ -125,28 +95,19 @@ VER:"VERSION"
 // INIT
 // ============================================================
 
-
 init(){
 
 
-if(this.initialized){
-
+if(this.initialized)
 return true;
 
-}
 
-
-
-if(
-typeof EntityMetadata==="undefined"
-){
-
+if(typeof EntityMetadata==="undefined")
+{
 throw new Error(
 "EntityRegistry requires EntityMetadata"
 );
-
 }
-
 
 
 Logger.log(
@@ -155,53 +116,35 @@ this.version
 );
 
 
-
-this.loadFromMetadata();
-
-
-
-this.createCompatibilityObjects();
-
+this.sync();
 
 
 this.initialized=true;
-
 this.ready=true;
 
 
-
 Logger.log(
-
 "EntityRegistry READY v"+
 this.version+
 " entities="+
 this.list().length
-
 );
 
 
-
 return true;
-
 
 },
 
 
 
-
-
-
-
 // ============================================================
-// LOAD FROM METADATA
+// SYNC FROM METADATA
 // ============================================================
 
-
-loadFromMetadata(){
+sync(){
 
 
 this.entities={};
-
 
 
 const list =
@@ -216,12 +159,8 @@ const meta =
 EntityMetadata.get(name);
 
 
-
-if(!meta){
-
+if(!meta)
 return;
-
-}
 
 
 
@@ -233,10 +172,38 @@ meta.entity || name
 
 
 
-this.entities[key] = {
+this.entities[key]=this.normalizeMeta(
+key,
+meta
+);
 
 
-entity:key,
+
+});
+
+
+
+this.createCompatibilityObjects();
+
+
+
+return this.entities;
+
+},
+
+
+
+// ============================================================
+// NORMALIZE META
+// ============================================================
+
+normalizeMeta(entity,meta){
+
+
+return {
+
+
+entity,
 
 
 module:
@@ -245,6 +212,10 @@ meta.module || "CORE",
 
 table:
 meta.table || null,
+
+
+repository:
+meta.repository || null,
 
 
 idField:
@@ -257,15 +228,8 @@ idPrefix:
 meta.idPrefix || null,
 
 
-repository:
-meta.repository || null,
-
-
 fields:
-this.normalizeFields(
-meta.fields
-),
-
+this.normalizeFields(meta.fields),
 
 
 softDelete:
@@ -294,37 +258,17 @@ meta.events || {}
 };
 
 
-
-});
-
-
 },
 
-
-
-
-
-
-
-// ============================================================
-// NORMALIZE FIELDS
-// ============================================================
 
 
 normalizeFields(fields){
 
 
-if(!fields){
-
+if(!fields)
 return [];
 
-}
 
-
-
-
-
-// array format
 
 if(Array.isArray(fields)){
 
@@ -332,27 +276,19 @@ if(Array.isArray(fields)){
 return fields.map(f=>{
 
 
-if(typeof f==="string"){
-
+if(typeof f==="string")
+{
 
 return {
-
-
 name:f,
-
 type:"STRING",
-
 required:false
-
 };
-
 
 }
 
 
-
 return {
-
 
 name:f.name,
 
@@ -360,9 +296,7 @@ type:f.type || "STRING",
 
 required:f.required===true,
 
-
 default:f.default
-
 
 };
 
@@ -374,43 +308,19 @@ default:f.default
 
 
 
-
-
-
-// object format
-
-if(
-typeof fields==="object"
-){
-
-
 return Object.keys(fields)
-
 .map(name=>{
-
-
-const f =
-fields[name] || {};
-
 
 
 return {
 
-
-name:name,
-
+name,
 
 type:
-f.type || "STRING",
-
+fields[name].type || "STRING",
 
 required:
-f.required===true,
-
-
-default:
-f.default
-
+fields[name].required===true
 
 };
 
@@ -418,20 +328,7 @@ f.default
 });
 
 
-}
-
-
-
-
-
-
-return [];
-
 },
-
-
-
-
 
 
 
@@ -439,21 +336,15 @@ return [];
 // COMPATIBILITY
 // ============================================================
 
-
 createCompatibilityObjects(){
 
 
-Object.keys(this.entities)
-
+this.list()
 .forEach(key=>{
 
 
-if(this[key]){
-
+if(this[key])
 return;
-
-}
-
 
 
 Object.defineProperty(
@@ -464,17 +355,13 @@ key,
 
 {
 
-
 get:()=>this.entities[key],
 
-
 configurable:true
-
 
 }
 
 );
-
 
 
 });
@@ -484,185 +371,99 @@ configurable:true
 
 
 
-
-
-
-
-// ============================================================
-// NORMALIZE ENTITY NAME
-// ============================================================
-
-
-normalize(value){
-
-
-return String(value)
-
-.trim()
-
-.replace(/-/g,"")
-
-.toUpperCase();
-
-
-},
-
-
-
-
-
-
-
 // ============================================================
 // RESOLVE
 // ============================================================
 
-
 resolve(value){
 
 
-if(!value){
-
+if(!value)
 throw new Error(
 "Entity empty"
 );
 
-}
 
 
-
-const original =
+let original =
 String(value).trim();
 
 
 
-const normalized =
-this.normalize(original);
+let normalized =
+original
+.replace(/-/g,"")
+.toUpperCase();
 
 
 
-
-
-if(this.aliases[original]){
-
+if(this.aliases[original])
 return this.aliases[original];
 
-}
 
 
-
-if(this.aliases[normalized]){
-
+if(this.aliases[normalized])
 return this.aliases[normalized];
 
-}
 
 
-
-
-if(this.entities[normalized]){
-
+if(this.entities[normalized])
 return normalized;
 
-}
 
 
+for(const key of this.list())
+{
 
-
-
-for(const key of this.list()){
-
-
-const meta =
-this.entities[key];
-
+const meta=this.entities[key];
 
 
 if(
 meta.idPrefix &&
-normalized.startsWith(meta.idPrefix)
-){
-
+normalized.startsWith(
+meta.idPrefix
+)
+)
 return key;
 
-}
-
 
 }
 
 
 
+for(const key of this.list())
+{
 
 
-
-
-for(const key of this.list()){
-
-
-const meta =
-this.entities[key];
-
+const meta=this.entities[key];
 
 
 if(
 meta.table &&
 meta.table.toUpperCase()===normalized
-){
-
+)
 return key;
 
-}
-
 
 }
 
 
 
+for(const key of this.list())
+{
 
 
-
-for(const key of this.list()){
-
-
-const meta =
-this.entities[key];
-
+const meta=this.entities[key];
 
 
 if(
 meta.repository &&
 meta.repository.toUpperCase()===normalized
-){
-
+)
 return key;
 
-}
-
 
 }
-
-
-
-
-
-
-const camel =
-original
-.replace(
-/([a-z])([A-Z])/g,
-"$1_$2"
-)
-.toUpperCase();
-
-
-
-if(this.entities[camel]){
-
-return camel;
-
-}
-
-
 
 
 
@@ -676,17 +477,7 @@ value
 
 
 
-
-
-
-
-// ============================================================
-// GET
-// ============================================================
-
-
 get(entity){
-
 
 return this.entities[
 this.resolve(entity)
@@ -696,25 +487,24 @@ this.resolve(entity)
 
 
 
-
-
-
-
 has(entity){
 
+try{
 
-return !!this.entities[entity];
+return !!this.get(entity);
+
+}
+catch(e){
+
+return false;
+
+}
 
 },
 
 
 
-
-
-
-
 list(){
-
 
 return Object.keys(
 this.entities
@@ -724,20 +514,12 @@ this.entities
 
 
 
-
-
-
-
-// ============================================================
-// HELPERS
-// ============================================================
-
-
 getRepository(entity){
 
 return this.get(entity)?.repository;
 
 },
+
 
 
 getTable(entity){
@@ -746,19 +528,6 @@ return this.get(entity)?.table;
 
 },
 
-
-getIdField(entity){
-
-return this.get(entity)?.idField;
-
-},
-
-
-getPrefix(entity){
-
-return this.get(entity)?.idPrefix;
-
-},
 
 
 getFields(entity){
@@ -769,15 +538,6 @@ return this.get(entity)?.fields || [];
 
 
 
-
-
-
-
-// ============================================================
-// VALIDATE
-// ============================================================
-
-
 validate(){
 
 
@@ -785,118 +545,52 @@ const errors=[];
 
 const tables={};
 
-const repositories={};
-
-
 
 this.list()
-
 .forEach(key=>{
 
 
-const meta =
-this.entities[key];
+const m=this.entities[key];
 
 
-
-if(!meta.table){
-
+if(!m.table)
 errors.push(
 key+" table missing"
 );
 
-}
 
-
-
-if(!meta.idField){
-
-errors.push(
-key+" idField missing"
-);
-
-}
-
-
-
-if(
-!meta.fields ||
-!meta.fields.length
-){
-
+if(!m.fields.length)
 errors.push(
 key+" fields empty"
 );
 
-}
 
 
-
-
-if(
-tables[meta.table]
-){
-
+if(tables[m.table])
 errors.push(
-"Duplicate table "+meta.table
+"Duplicate table "+m.table
 );
 
-}
 
-
-
-tables[meta.table]=key;
-
-
-
-if(
-meta.repository &&
-repositories[meta.repository]
-){
-
-errors.push(
-"Duplicate repository "+meta.repository
-);
-
-}
-
-
-
-repositories[meta.repository]=key;
+tables[m.table]=key;
 
 
 });
 
 
-
 return errors;
-
 
 },
 
 
 
-
-
-
-
-// ============================================================
-// HEALTH
-// ============================================================
-
-
 health(){
-
-
-const errors=this.validate();
-
-
 
 return HealthContract.create(
 
 "EntityRegistry",
 
-errors.length
+this.validate().length
 ?
 "WARNING"
 :
@@ -904,87 +598,33 @@ errors.length
 
 {
 
-
 version:this.version,
-
-
-initialized:this.initialized,
-
 
 count:this.list().length,
 
-
 entities:this.list(),
 
-
-errors
-
+errors:this.validate()
 
 }
 
 );
 
-
 },
-
-
-
-
-
-
-
-diagnostics(){
-
-
-return {
-
-
-module:"EntityRegistry",
-
-
-version:this.version,
-
-
-initialized:this.initialized,
-
-
-entities:this.list(),
-
-
-count:this.list().length
-
-
-};
-
-
-},
-
-
-
-
 
 
 
 reset(){
 
-
 this.entities={};
-
 
 this.initialized=false;
 
-
 this.ready=false;
-
 
 }
 
-
-
 };
-
-
-
 
 
 
@@ -992,10 +632,7 @@ globalThis.EntityRegistry =
 EntityRegistry;
 
 
-
 Logger.log(
-
 "EntityRegistry REGISTERED v"+
 EntityRegistry.version
-
 );

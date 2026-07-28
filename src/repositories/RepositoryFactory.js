@@ -1,20 +1,19 @@
 // ============================================================
-// RepositoryFactory v3.0.0
-// Enterprise Repository Factory
+// RepositoryFactory v3.1.0
+// Enterprise Repository Factory + Audit
 // TaxControl ERP Core
 //
 // Architecture:
 //
 // EntityService
-//      |
-//      v
+//       |
 // RepositoryFactory
-//      |
-//      v
+//       |
+// RepositoryRegistry
+//       |
+// Repository
+//       |
 // BaseRepository
-//      |
-//      v
-// Database
 //
 // Compatible:
 // EntityRegistry v2.5+
@@ -23,14 +22,13 @@
 // ============================================================
 
 
-console.log("RepositoryFactory v3.0.0");
-
+console.log("RepositoryFactory v3.1.0");
 
 
 const RepositoryFactory = {
 
 
-version:"3.0.0",
+version:"3.1.0",
 
 
 initialized:false,
@@ -39,12 +37,13 @@ initialized:false,
 repositories:{},
 
 
+auditLog:[],
+
 
 
 // ============================================================
 // INIT
 // ============================================================
-
 
 init(){
 
@@ -62,18 +61,12 @@ this.version
 );
 
 
-
 this.initialized=true;
-
 
 
 return true;
 
-
 },
-
-
-
 
 
 
@@ -81,22 +74,21 @@ return true;
 // REGISTER
 // ============================================================
 
-
 register(entity,repository,options={}){
-
-
-if(!entity){
-
-throw new Error(
-"RepositoryFactory register entity missing"
-);
-
-}
-
 
 
 const key =
 this.resolveEntity(entity);
+
+
+
+if(!repository){
+
+throw new Error(
+"Repository missing for "+key
+);
+
+}
 
 
 
@@ -105,6 +97,10 @@ this.repositories[key]
 &&
 !options.force
 ){
+
+Logger.warn(
+"Repository already registered "+key
+);
 
 return this.repositories[key];
 
@@ -116,12 +112,19 @@ this.repositories[key]=repository;
 
 
 
-Logger.log(
+this.auditLog.push({
 
-"RepositoryFactory REGISTER "+
-key
+entity:key,
 
-);
+repository:
+repository.constructor?.name ||
+"object",
+
+time:new Date().toISOString()
+
+});
+
+
 
 
 
@@ -140,7 +143,34 @@ repository
 
 
 
+
+Logger.log(
+"RepositoryFactory REGISTER "+key
+);
+
+
+
 return repository;
+
+},
+
+
+
+
+// ============================================================
+// AUTO REGISTER LOADED
+// ============================================================
+
+registerLoaded(entity,repository){
+
+
+return this.register(
+entity,
+repository,
+{
+force:true
+}
+);
 
 
 },
@@ -148,12 +178,9 @@ return repository;
 
 
 
-
-
 // ============================================================
 // GET
 // ============================================================
-
 
 get(entity){
 
@@ -174,8 +201,6 @@ return this.repositories[key];
 
 
 
-// автоматическое создание
-
 if(
 typeof BaseRepository==="undefined"
 ){
@@ -188,7 +213,8 @@ throw new Error(
 
 
 
-const repository =
+
+const repo =
 BaseRepository.createRepository(
 key
 );
@@ -197,12 +223,12 @@ key
 
 this.register(
 key,
-repository
+repo
 );
 
 
 
-return repository;
+return repo;
 
 
 },
@@ -210,13 +236,9 @@ return repository;
 
 
 
-
-
-
 // ============================================================
 // RESOLVE
 // ============================================================
-
 
 resolveEntity(entity){
 
@@ -236,39 +258,110 @@ return EntityRegistry.resolve(entity);
 return String(entity)
 .toUpperCase();
 
-
 },
 
 
 
 
-
-
 // ============================================================
-// REGISTER ALL LOADED
-// LEGACY REMOVED
+// AUDIT
 // ============================================================
 
-
-registerLoaded(entity,repository){
-
-
-Logger.warn(
-
-"registerLoaded deprecated. Use register()"
-
-);
+audit(){
 
 
-return this.register(
+const result=[];
+
+
+const entities =
+typeof EntityRegistry!=="undefined"
+?
+EntityRegistry.list()
+:
+[];
+
+
+
+entities.forEach(entity=>{
+
+
+const repo =
+this.repositories[entity];
+
+
+
+const meta =
+EntityRegistry.get(entity);
+
+
+
+result.push({
+
+
 entity,
-repository
-);
 
+
+repository:
+repo
+?
+"FOUND"
+:
+"MISSING",
+
+
+table:
+meta?.table || null,
+
+
+methods:
+repo
+?
+this.checkMethods(repo)
+:
+[]
+
+
+
+});
+
+
+
+});
+
+
+
+return result;
 
 },
 
 
+
+
+checkMethods(repo){
+
+
+const required=[
+
+"create",
+
+"findById",
+
+"findAll",
+
+"update",
+
+"delete"
+
+];
+
+
+return required.filter(
+m=>
+typeof repo[m]!=="function"
+);
+
+
+},
 
 
 
@@ -277,38 +370,24 @@ repository
 // LIST
 // ============================================================
 
-
 list(){
-
 
 return Object.keys(
 this.repositories
 );
 
-
 },
 
 
 
 
-
-
-// ============================================================
-// HAS
-// ============================================================
-
-
 has(entity){
-
 
 return !!this.repositories[
 this.resolveEntity(entity)
 ];
 
-
 },
-
-
 
 
 
@@ -317,24 +396,16 @@ this.resolveEntity(entity)
 // RESET
 // ============================================================
 
-
 reset(){
-
 
 this.repositories={};
 
+this.auditLog=[];
 
 this.initialized=false;
 
 
-Logger.log(
-"RepositoryFactory RESET"
-);
-
-
 },
-
-
 
 
 
@@ -343,19 +414,33 @@ Logger.log(
 // HEALTH
 // ============================================================
 
-
 health(){
+
+
+const audit =
+this.audit();
+
+
+
+const errors =
+audit.filter(
+x=>
+x.repository==="MISSING"
+||
+x.methods.length
+);
+
 
 
 return HealthContract.create(
 
 "RepositoryFactory",
 
-this.initialized
+errors.length
 ?
-"OK"
+"WARNING"
 :
-"WARNING",
+"OK",
 
 {
 
@@ -363,14 +448,16 @@ this.initialized
 version:this.version,
 
 
+repositories:this.list(),
+
+
 count:this.list().length,
 
 
-repositories:this.list()
+audit:errors
 
 
 }
-
 
 );
 
@@ -380,37 +467,21 @@ repositories:this.list()
 
 
 
-
-
-// ============================================================
-// DIAGNOSTICS
-// ============================================================
-
-
 diagnostics(){
 
 
 return {
 
 
-module:
-"RepositoryFactory",
+module:"RepositoryFactory",
 
+version:this.version,
 
-version:
-this.version,
+initialized:this.initialized,
 
+repositories:this.list(),
 
-initialized:
-this.initialized,
-
-
-repositories:
-this.list(),
-
-
-count:
-this.list().length
+audit:this.audit()
 
 
 };
@@ -421,7 +492,6 @@ this.list().length
 
 
 };
-
 
 
 
