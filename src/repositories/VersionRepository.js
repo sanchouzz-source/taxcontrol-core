@@ -1,813 +1,961 @@
 // ============================================================
-// VersionRepository v1.0.0
-// TaxControl ERP
+// VersionRepository v1.1.0
+// TaxControl ERP Core
 //
-// Системный репозиторий истории версий.
+// System Repository for Version History
 //
-// Важно:
-// - версия является историческим снимком;
-// - записи версий неизменяемые;
-// - update/delete/restore запрещены;
-// - create не запускает Versioning.save повторно.
+// Architecture:
+//
+// Versioning
+//      |
+//      v
+// VersionRepository
+//      |
+//      v
+// BaseRepository
+//      |
+//      v
+// Database
+//
+//
+// Rules:
+// - Append Only
+// - Immutable records
+// - No update
+// - No delete
+//
+// Compatible:
+// BaseRepository v5.7+
+// RepositoryFactory v3+
+// RepositoryRegistry v1.1+
+// EntityRegistry v2.5+
+// SchemaRegistry v4+
 // ============================================================
 
-console.log("VersionRepository v1.0.0");
+
+console.log(
+"VersionRepository v1.1.0"
+);
+
 
 
 const VersionRepository = {
 
-  version: "1.0.0",
 
-  entity: "VERSION",
 
-  table: "Versions",
+version:"1.1.0",
 
-  architecture: "Append-Only Version Repository",
 
+entity:"VERSION",
 
-  // ============================================================
-  // CREATE
-  // ============================================================
 
-  create(data = {}, options = {}) {
+table:"Versions",
 
-    this.requireObject(
-      data,
-      "create"
-    );
 
-    return BaseRepository.create(
-      this.entity,
-      data,
-      {
-        ...options,
-        skipVersioning: true
-      }
-    );
+architecture:
+"Append-Only Version Repository",
 
-  },
 
+initialized:false,
 
-  // ============================================================
-  // FIND BY ID
-  // ============================================================
 
-  findById(id, options = {}) {
 
-    this.requireId(
-      id,
-      "findById"
-    );
 
-    return BaseRepository.findById(
-      this.entity,
-      id,
-      {
-        ...options,
-        includeDeleted: true
-      }
-    );
 
-  },
+// ============================================================
+// INIT
+// ============================================================
 
 
-  // ============================================================
-  // GET
-  // ============================================================
+init(){
 
-  get(id, options = {}) {
 
-    return this.findById(
-      id,
-      options
-    );
+if(this.initialized){
 
-  },
+return true;
 
+}
 
-  // ============================================================
-  // FIND ALL
-  // ============================================================
 
-  findAll(filters = {}, options = {}) {
 
-    this.requireObject(
-      filters,
-      "findAll"
-    );
+Logger.log(
+"VersionRepository INIT"
+);
 
-    return BaseRepository.findAll(
-      this.entity,
-      filters,
-      {
-        ...options,
-        includeDeleted: true
-      }
-    );
 
-  },
 
+this.register();
 
-  // ============================================================
-  // FIND WHERE
-  // ============================================================
 
-  findWhere(field, value, options = {}) {
 
-    this.requireField(
-      field,
-      "findWhere"
-    );
-
-    return BaseRepository.findWhere(
-      this.entity,
-      field,
-      value,
-      {
-        ...options,
-        includeDeleted: true
-      }
-    );
-
-  },
-
-
-  // ============================================================
-  // НАЙТИ ВЕРСИИ СУЩНОСТИ
-  // ============================================================
-
-  findByEntity(
-    entity,
-    entityId,
-    options = {}
-  ) {
-
-    if (!entity) {
-      throw new Error(
-        "VersionRepository.findByEntity: entity required"
-      );
-    }
-
-    this.requireId(
-      entityId,
-      "findByEntity"
-    );
-
-    const entityField =
-      options.entityField ||
-      "Entity";
-
-    const entityIdField =
-      options.entityIdField ||
-      "EntityID";
-
-    return this.findAll(
-      {
-        [entityField]: entity,
-        [entityIdField]: entityId
-      },
-      options
-    );
+this.initialized=true;
 
-  },
-
-
-  // ============================================================
-  // ПОСЛЕДНЯЯ ВЕРСИЯ
-  // ============================================================
-
-  findLatest(
-    entity,
-    entityId,
-    options = {}
-  ) {
-
-    const rows =
-      this.findByEntity(
-        entity,
-        entityId,
-        options
-      );
 
-    if (!rows.length) {
-      return null;
-    }
 
-    const versionField =
-      options.versionField ||
-      "Version";
-
-    const timestampField =
-      options.timestampField ||
-      "CreatedAt";
-
-    return rows
-      .slice()
-      .sort(
-        (a, b) => {
-
-          const versionA =
-            Number(a[versionField]) || 0;
+Logger.log(
+"VersionRepository READY v"+
+this.version
+);
 
-          const versionB =
-            Number(b[versionField]) || 0;
-
-          if (versionA !== versionB) {
-            return versionB - versionA;
-          }
-
-          const dateA =
-            new Date(
-              a[timestampField] || 0
-            ).getTime();
-
-          const dateB =
-            new Date(
-              b[timestampField] || 0
-            ).getTime();
-
-          return dateB - dateA;
-
-        }
-      )[0];
-
-  },
-
-
-  // ============================================================
-  // COUNT
-  // ============================================================
-
-  count(filters = {}, options = {}) {
-
-    this.requireObject(
-      filters,
-      "count"
-    );
-
-    return BaseRepository.count(
-      this.entity,
-      filters,
-      {
-        ...options,
-        includeDeleted: true
-      }
-    );
-
-  },
-
 
-  // ============================================================
-  // EXISTS
-  // ============================================================
 
-  exists(id, options = {}) {
-
-    this.requireId(
-      id,
-      "exists"
-    );
+return true;
 
-    return BaseRepository.exists(
-      this.entity,
-      id,
-      {
-        ...options,
-        includeDeleted: true
-      }
-    );
 
-  },
+},
 
 
-  // ============================================================
-  // EXISTS BY
-  // ============================================================
 
-  existsBy(field, value, options = {}) {
 
-    this.requireField(
-      field,
-      "existsBy"
-    );
 
-    return BaseRepository.existsBy(
-      this.entity,
-      field,
-      value,
-      {
-        ...options,
-        includeDeleted: true
-      }
-    );
 
-  },
 
+// ============================================================
+// SAFE REGISTER
+// ============================================================
 
-  // ============================================================
-  // PAGINATION
-  // ============================================================
 
-  paginate(
-    page = 1,
-    limit = 50,
-    filters = {},
-    options = {}
-  ) {
+register(){
 
-    this.requireObject(
-      filters,
-      "paginate"
-    );
 
-    return BaseRepository.paginate(
-      this.entity,
-      page,
-      limit,
-      filters,
-      {
-        ...options,
-        includeDeleted: true
-      }
-    );
+try{
 
-  },
 
+if(
+typeof RepositoryFactory==="undefined"
+){
 
-  // ============================================================
-  // UPDATE
-  // ============================================================
+Logger.warn(
+"RepositoryFactory unavailable"
+);
 
-  update(id, data = {}, options = {}) {
+return false;
 
-    this.requireId(
-      id,
-      "update"
-    );
+}
 
-    throw new Error(
-      "VersionRepository.update: version records are immutable"
-    );
 
-  },
 
 
-  // ============================================================
-  // DELETE
-  // ============================================================
+// ждём EntityRegistry
 
-  delete(id, options = {}) {
+if(
+typeof EntityRegistry!=="undefined"
+&&
+EntityRegistry.has
+&&
+!EntityRegistry.has(
+this.entity
+)
+){
 
-    this.requireId(
-      id,
-      "delete"
-    );
 
-    throw new Error(
-      "VersionRepository.delete: version records cannot be deleted"
-    );
+Logger.warn(
+"VersionRepository waiting ENTITY metadata"
+);
 
-  },
 
+return false;
 
-  // ============================================================
-  // RESTORE
-  // ============================================================
 
-  restore(id, options = {}) {
+}
 
-    this.requireId(
-      id,
-      "restore"
-    );
 
-    throw new Error(
-      "VersionRepository.restore: restore is not supported"
-    );
 
-  },
 
+RepositoryFactory.register(
 
-  // ============================================================
-  // BULK CREATE
-  // ============================================================
+this.entity,
 
-  bulkCreate(items = [], options = {}) {
+this,
 
-    if (!Array.isArray(items)) {
-      throw new Error(
-        "VersionRepository.bulkCreate: items must be an array"
-      );
-    }
+{
+force:true
+}
 
-    if (items.length === 0) {
-      return [];
-    }
+);
 
-    return items.map(
-      item => this.create(
-        item,
-        options
-      )
-    );
 
-  },
 
+if(
+typeof RepositoryRegistry!=="undefined"
+&&
+RepositoryRegistry.register
+){
 
-  // ============================================================
-  // BULK UPDATE
-  // ============================================================
 
-  bulkUpdate(ids = [], data = {}, options = {}) {
+RepositoryRegistry.register(
 
-    throw new Error(
-      "VersionRepository.bulkUpdate: version records are immutable"
-    );
+this.entity,
 
-  },
+this
 
+);
 
-  // ============================================================
-  // METADATA
-  // ============================================================
 
-  getMeta() {
+}
 
-    if (
-      typeof BaseRepository !== "undefined" &&
-      typeof BaseRepository.getMeta === "function"
-    ) {
-      return BaseRepository.getMeta(
-        this.entity
-      );
-    }
 
-    if (
-      typeof SchemaRegistry !== "undefined" &&
-      typeof SchemaRegistry.get === "function"
-    ) {
 
-      const meta =
-        SchemaRegistry.get(
-          this.entity
-        );
+Logger.log(
+"VersionRepository REGISTERED"
+);
 
-      if (meta) {
-        return meta;
-      }
 
-    }
 
-    if (
-      typeof EntityRegistry !== "undefined" &&
-      typeof EntityRegistry.get === "function"
-    ) {
+return true;
 
-      const meta =
-        EntityRegistry.get(
-          this.entity
-        );
 
-      if (meta) {
-        return meta;
-      }
+}
+catch(e){
 
-    }
 
-    return {
-      entity: this.entity,
-      table: this.table,
-      idField: "VersionID",
-      softDelete: false
-    };
+Logger.warn(
+"VersionRepository register deferred "+
+e.message
+);
 
-  },
 
 
-  // ============================================================
-  // VALIDATION HELPERS
-  // ============================================================
+return false;
 
-  requireId(id, method) {
 
-    if (
-      id === undefined ||
-      id === null ||
-      id === ""
-    ) {
-      throw new Error(
-        "VersionRepository." +
-        method +
-        ": id required"
-      );
-    }
+}
 
-    return true;
 
-  },
+},
 
 
-  requireField(field, method) {
 
-    if (
-      field === undefined ||
-      field === null ||
-      field === ""
-    ) {
-      throw new Error(
-        "VersionRepository." +
-        method +
-        ": field required"
-      );
-    }
 
-    return true;
 
-  },
 
 
-  requireObject(data, method) {
+// ============================================================
+// CREATE
+// ============================================================
 
-    if (
-      !data ||
-      typeof data !== "object" ||
-      Array.isArray(data)
-    ) {
-      throw new Error(
-        "VersionRepository." +
-        method +
-        ": object required"
-      );
-    }
 
-    return true;
+create(data={},options={}){
 
-  },
 
+this.requireObject(
+data,
+"create"
+);
 
-  // ============================================================
-  // DIAGNOSTICS
-  // ============================================================
 
-  diagnostics() {
 
-    let metadata = null;
-    let metadataError = null;
+return BaseRepository.create(
 
-    try {
+this.entity,
 
-      metadata =
-        this.getMeta();
+data,
 
-    } catch (error) {
+{
 
-      metadataError =
-        error.message;
+...options,
 
-    }
+skipVersioning:true
 
-    const factoryAvailable =
-      typeof RepositoryFactory !== "undefined";
+}
 
-    const registered =
-      factoryAvailable &&
-      typeof RepositoryFactory.has === "function"
-        ? RepositoryFactory.has(this.entity)
-        : false;
+);
 
-    return {
 
-      version: this.version,
+},
 
-      entity: this.entity,
 
-      table:
-        metadata?.table ||
-        this.table,
 
-      idField:
-        metadata?.idField ||
-        metadata?.primaryKey ||
-        "VersionID",
 
-      architecture:
-        this.architecture,
 
-      immutable: true,
 
-      appendOnly: true,
 
-      baseRepository: {
+// ============================================================
+// READ
+// ============================================================
 
-        available:
-          typeof BaseRepository !== "undefined",
 
-        initialized:
-          typeof BaseRepository !== "undefined"
-            ? !!BaseRepository._adapter
-            : false,
+findById(id,options={}){
 
-        version:
-          typeof BaseRepository !== "undefined"
-            ? BaseRepository.version || null
-            : null
 
-      },
+this.requireId(
+id,
+"findById"
+);
 
-      repositoryFactory: {
-        available: factoryAvailable,
-        registered
-      },
 
-      metadata: {
-        available: !!metadata,
-        error: metadataError
-      },
 
-      timestamp:
-        new Date().toISOString()
+return BaseRepository.findById(
 
-    };
+this.entity,
 
-  },
+id,
 
+{
 
-  // ============================================================
-  // HEALTH
-  // ============================================================
+...options,
 
-  health() {
+includeDeleted:true
 
-    const diagnostics =
-      this.diagnostics();
+}
 
-    const healthy =
-      diagnostics.baseRepository.available &&
-      diagnostics.baseRepository.initialized &&
-      diagnostics.metadata.available;
+);
 
-    const status =
-      healthy
-        ? "OK"
-        : "WARNING";
 
-    const details = {
+},
 
-      version: this.version,
 
-      entity: this.entity,
 
-      table: diagnostics.table,
 
-      idField: diagnostics.idField,
 
-      architecture:
-        this.architecture,
+get(id,options={}){
 
-      appendOnly: true,
 
-      immutable: true,
+return this.findById(
+id,
+options
+);
 
-      baseRepository:
-        diagnostics.baseRepository,
 
-      repositoryFactory:
-        diagnostics.repositoryFactory,
+},
 
-      metadata:
-        diagnostics.metadata,
 
-      features: [
-        "Create",
-        "Read",
-        "FindAll",
-        "FindWhere",
-        "FindByEntity",
-        "FindLatest",
-        "Count",
-        "Exists",
-        "Pagination",
-        "BulkCreate",
-        "ImmutableRecords",
-        "Diagnostics"
-      ]
 
-    };
 
-    if (
-      typeof HealthContract !== "undefined" &&
-      typeof HealthContract.create === "function"
-    ) {
-      return HealthContract.create(
-        "VersionRepository",
-        status,
-        details
-      );
-    }
 
-    return {
-      module: "VersionRepository",
-      status,
-      ...details
-    };
 
-  }
+
+findAll(filters={},options={}){
+
+
+this.requireObject(
+filters,
+"findAll"
+);
+
+
+
+return BaseRepository.findAll(
+
+this.entity,
+
+filters,
+
+{
+
+...options,
+
+includeDeleted:true
+
+}
+
+);
+
+
+},
+
+
+
+
+
+
+
+findWhere(field,value,options={}){
+
+
+this.requireField(
+field,
+"findWhere"
+);
+
+
+
+return BaseRepository.findWhere(
+
+this.entity,
+
+field,
+
+value,
+
+{
+
+...options,
+
+includeDeleted:true
+
+}
+
+);
+
+
+},
+
+
+
+
+
+
+
+// ============================================================
+// VERSION SEARCH
+// ============================================================
+
+
+findByEntity(
+entity,
+entityId,
+options={}
+){
+
+
+if(!entity){
+
+throw new Error(
+"VersionRepository entity required"
+);
+
+}
+
+
+
+this.requireId(
+entityId,
+"findByEntity"
+);
+
+
+
+return this.findAll(
+
+{
+
+Entity:entity,
+
+EntityID:entityId
+
+},
+
+options
+
+);
+
+
+},
+
+
+
+
+
+
+
+findLatest(
+entity,
+entityId,
+options={}
+){
+
+
+const rows =
+this.findByEntity(
+entity,
+entityId,
+options
+);
+
+
+
+if(!rows.length){
+
+return null;
+
+}
+
+
+
+return rows.sort(
+
+(a,b)=>{
+
+return Number(
+b.Version||0
+)
+-
+Number(
+a.Version||0
+);
+
+}
+
+)[0];
+
+
+},
+
+
+
+
+
+
+
+// ============================================================
+// COMMON
+// ============================================================
+
+
+count(filters={},options={}){
+
+
+return BaseRepository.count(
+
+this.entity,
+
+filters,
+
+{
+
+...options,
+
+includeDeleted:true
+
+}
+
+);
+
+
+},
+
+
+
+
+exists(id,options={}){
+
+
+return BaseRepository.exists(
+
+this.entity,
+
+id,
+
+{
+
+...options,
+
+includeDeleted:true
+
+}
+
+);
+
+
+},
+
+
+
+
+
+
+
+paginate(
+page,
+limit,
+filters={},
+options={}
+){
+
+
+return BaseRepository.paginate(
+
+this.entity,
+
+page,
+
+limit,
+
+filters,
+
+{
+
+...options,
+
+includeDeleted:true
+
+}
+
+);
+
+
+},
+
+
+
+
+
+
+
+// ============================================================
+// IMMUTABLE BLOCK
+// ============================================================
+
+
+update(){
+
+
+throw new Error(
+
+"VersionRepository.update forbidden. Records immutable"
+
+);
+
+
+},
+
+
+
+delete(){
+
+
+throw new Error(
+
+"VersionRepository.delete forbidden. Records immutable"
+
+);
+
+
+},
+
+
+
+restore(){
+
+
+throw new Error(
+
+"VersionRepository.restore forbidden"
+
+);
+
+
+},
+
+
+
+
+
+
+
+// ============================================================
+// META
+// ============================================================
+
+
+getMeta(){
+
+
+
+if(
+typeof EntityRegistry!=="undefined"
+&&
+EntityRegistry.get
+){
+
+
+return EntityRegistry.get(
+this.entity
+);
+
+
+}
+
+
+
+return {
+
+
+entity:this.entity,
+
+table:this.table,
+
+idField:"VersionID",
+
+softDelete:false
+
 
 };
 
 
+},
+
+
+
+
+
+
+
 // ============================================================
-// GLOBAL EXPORT
+// VALIDATION
 // ============================================================
+
+
+requireId(id,name){
+
+
+if(
+id===undefined ||
+id===null ||
+id===""
+){
+
+
+throw new Error(
+
+"VersionRepository."+name+
+": id required"
+
+);
+
+
+}
+
+
+},
+
+
+
+requireObject(obj,name){
+
+
+if(
+!obj ||
+typeof obj!=="object"
+){
+
+
+throw new Error(
+
+"VersionRepository."+name+
+": object required"
+
+);
+
+
+}
+
+
+},
+
+
+
+requireField(field,name){
+
+
+if(!field){
+
+
+throw new Error(
+
+"VersionRepository."+name+
+": field required"
+
+);
+
+
+}
+
+
+},
+
+
+
+
+
+
+
+// ============================================================
+// DIAGNOSTICS
+// ============================================================
+
+
+diagnostics(){
+
+
+return {
+
+
+module:
+"VersionRepository",
+
+
+version:
+this.version,
+
+
+entity:
+this.entity,
+
+
+table:
+this.table,
+
+
+immutable:true,
+
+
+appendOnly:true,
+
+
+registered:
+typeof RepositoryFactory!=="undefined"
+&&
+RepositoryFactory.has
+?
+RepositoryFactory.has(
+this.entity
+)
+:false,
+
+
+baseRepository:
+typeof BaseRepository!=="undefined",
+
+
+metadata:
+this.getMeta(),
+
+
+timestamp:
+new Date().toISOString()
+
+
+};
+
+
+},
+
+
+
+
+
+
+
+// ============================================================
+// HEALTH
+// ============================================================
+
+
+health(){
+
+
+const d =
+this.diagnostics();
+
+
+
+const status =
+d.baseRepository &&
+d.metadata
+?
+"OK"
+:
+"WARNING";
+
+
+
+if(
+typeof HealthContract!=="undefined"
+&&
+HealthContract.create
+){
+
+
+return HealthContract.create(
+
+"VersionRepository",
+
+status,
+
+d
+
+);
+
+
+}
+
+
+
+return {
+
+module:"VersionRepository",
+
+status,
+
+...d
+
+};
+
+
+}
+
+
+
+};
+
+
+
+
+
+
+
+
+
+// ============================================================
+// GLOBAL
+// ============================================================
+
 
 globalThis.VersionRepository =
-  VersionRepository;
+VersionRepository;
+
+
+
+
+
 
 
 // ============================================================
-// REPOSITORY FACTORY REGISTRATION
+// AUTO INIT SAFE
 // ============================================================
 
-try {
 
-  if (
-    typeof RepositoryFactory !== "undefined"
-  ) {
+try{
 
-    if (
-      typeof RepositoryFactory.notifyLoaded === "function"
-    ) {
 
-      RepositoryFactory.notifyLoaded(
-        VersionRepository.entity,
-        VersionRepository
-      );
+VersionRepository.init();
 
-    } else if (
-      typeof RepositoryFactory.registerLoaded === "function"
-    ) {
 
-      RepositoryFactory.registerLoaded(
-        VersionRepository.entity,
-        VersionRepository
-      );
+}
+catch(e){
 
-    } else if (
-      typeof RepositoryFactory.register === "function"
-    ) {
 
-      RepositoryFactory.register(
-        VersionRepository.entity,
-        VersionRepository
-      );
+Logger.warn(
 
-    }
+"VersionRepository init deferred "+
+e.message
 
-  }
+);
 
-} catch (error) {
-
-  Logger.warn(
-    "VersionRepository registration deferred: " +
-    error.message
-  );
 
 }
 
 
-// ============================================================
-// REPOSITORY REGISTRY SYNC
-// ============================================================
-
-try {
-
-  if (
-    typeof RepositoryRegistry !== "undefined" &&
-    typeof RepositoryRegistry.register === "function"
-  ) {
-
-    RepositoryRegistry.register(
-      VersionRepository.entity,
-      VersionRepository
-    );
-
-  }
-
-} catch (error) {
-
-  Logger.warn(
-    "VersionRepository registry sync deferred: " +
-    error.message
-  );
-
-}
 
 
-// ============================================================
-// READY
-// ============================================================
+
+
 
 Logger.log(
-  "VersionRepository READY v" +
-  VersionRepository.version
+
+"VersionRepository GLOBAL READY v"+
+VersionRepository.version
+
 );

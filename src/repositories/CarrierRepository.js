@@ -1,195 +1,844 @@
-console.log("CarrierRepository");
+// ============================================================
+// CarrierRepository v3.0.2
+// Enterprise Repository
+// TaxControl ERP Core
+//
+// Entity:
+// CARRIER
+//
+// Compatible:
+// EntityMetadata v3+
+// EntityRegistry v2.5+
+// SchemaManager v4.2+
+// BaseRepository v5.7+
+// RepositoryFactory v3+
+// RepositoryRegistry v1.1+
+// ============================================================
+
+
+console.log(
+"CarrierRepository v3.0.2"
+);
+
 
 
 const CarrierRepository = {
 
-  version: "2.0.0",
 
-  entity: "CARRIER",
+version:"3.0.2",
 
+entity:"CARRIER",
 
-  /**
-   * CREATE
-   */
-  create(data = {}) {
-
-    return BaseRepository.create(
-      this.entity,
-      data
-    );
-
-  },
+table:"Carriers",
 
 
-  /**
-   * FIND BY ID
-   */
-  findById(id, options = {}) {
+initialized:false,
 
-    return BaseRepository.findById(
-      this.entity,
-      id,
-      options
-    );
+base:null,
 
-  },
+auditReady:true,
 
 
-  /**
-   * FIND ALL
-   */
-  findAll(filters = {}, options = {}) {
-
-    return BaseRepository.findAll(
-      this.entity,
-      filters,
-      options
-    );
-
-  },
 
 
-  /**
-   * UPDATE
-   */
-  update(id, data = {}) {
-
-    return BaseRepository.update(
-      this.entity,
-      id,
-      data
-    );
-
-  },
 
 
-  /**
-   * DELETE
-   */
-  delete(id) {
-
-    return BaseRepository.delete(
-      this.entity,
-      id
-    );
-
-  },
+// ============================================================
+// INIT
+// ============================================================
 
 
-  /**
-   * RESTORE
-   */
-  restore(id) {
-
-    return BaseRepository.restore(
-      this.entity,
-      id
-    );
-
-  },
+init(){
 
 
-  /**
-   * EXISTS
-   */
-  exists(id) {
+if(this.initialized){
 
-    return BaseRepository.exists(
-      this.entity,
-      id
-    );
+return true;
 
-  },
+}
 
 
-  /**
-   * EXISTS BY FIELD
-   */
-  existsBy(field, value) {
 
-    return BaseRepository.existsBy(
-      this.entity,
-      field,
-      value
-    );
+if(
+typeof BaseRepository==="undefined"
+){
 
-  },
+throw new Error(
+"CarrierRepository: BaseRepository unavailable"
+);
+
+}
 
 
-  /**
-   * SEARCH
-   */
-  search(filters = {}) {
 
-    return BaseRepository.findAll(
-      this.entity,
-      filters
-    );
-
-  },
+this.base =
+BaseRepository.createRepository(
+this.entity
+);
 
 
-  /**
-   * COUNT
-   */
-  count(filters = {}) {
 
-    return BaseRepository.count(
-      this.entity,
-      filters
-    );
-
-  },
+this.initialized=true;
 
 
-  /**
-   * HEALTH
-   */
-  health() {
 
-    return HealthContract.create(
+Logger.log(
+"CarrierRepository READY v"+
+this.version
+);
 
-      "CarrierRepository",
 
-      "OK",
 
-      {
-        version:this.version,
-        entity:this.entity,
-        architecture:"BaseRepository v3"
-      }
+return true;
 
-    );
 
-  }
+},
+
+
+
+
+
+
+
+// ============================================================
+// BASE
+// ============================================================
+
+
+getBase(){
+
+
+if(!this.initialized){
+
+this.init();
+
+}
+
+
+return this.base;
+
+
+},
+
+
+
+
+
+
+
+// ============================================================
+// CRUD
+// ============================================================
+
+
+create(data={},options={}){
+
+
+return this.getBase()
+.create(
+data,
+options
+);
+
+
+},
+
+
+
+
+
+findById(id,options={}){
+
+
+this.requireId(
+id,
+"findById"
+);
+
+
+return this.getBase()
+.findById(
+id,
+options
+);
+
+
+},
+
+
+
+
+
+get(id,options={}){
+
+
+return this.findById(
+id,
+options
+);
+
+
+},
+
+
+
+
+
+getById(id,options={}){
+
+
+return this.findById(
+id,
+options
+);
+
+
+},
+
+
+
+
+
+
+findAll(filters={},options={}){
+
+
+return this.getBase()
+.findAll(
+filters,
+options
+);
+
+
+},
+
+
+
+
+
+
+
+findWhere(criteria={},options={}){
+
+
+const base =
+this.getBase();
+
+
+
+if(
+base.findWhere
+){
+
+return base.findWhere(
+criteria,
+options
+);
+
+}
+
+
+
+return this.findAll(
+criteria,
+options
+);
+
+
+},
+
+
+
+
+
+
+
+// ============================================================
+// BUSINESS
+// ============================================================
+
+
+findActive(){
+
+
+return this.findWhere({
+
+Active:true
+
+});
+
+
+},
+
+
+
+
+findByINN(inn){
+
+
+return this.findWhere({
+
+INN:inn
+
+});
+
+
+},
+
+
+
+
+findByName(name){
+
+
+return this.findWhere({
+
+Name:name
+
+});
+
+
+},
+
+
+
+
+
+
+
+// ============================================================
+// UPDATE DELETE
+// ============================================================
+
+
+update(id,data={},options={}){
+
+
+this.requireId(
+id,
+"update"
+);
+
+
+return this.getBase()
+.update(
+id,
+data,
+options
+);
+
+
+},
+
+
+
+
+
+delete(id,options={}){
+
+
+this.requireId(
+id,
+"delete"
+);
+
+
+return this.getBase()
+.delete(
+id,
+options
+);
+
+
+},
+
+
+
+
+
+restore(id,options={}){
+
+
+this.requireId(
+id,
+"restore"
+);
+
+
+return this.getBase()
+.restore(
+id,
+options
+);
+
+
+},
+
+
+
+
+
+
+
+// ============================================================
+// EXISTS
+// ============================================================
+
+
+exists(id,options={}){
+
+
+this.requireId(
+id,
+"exists"
+);
+
+
+
+if(
+this.getBase().exists
+){
+
+return this.getBase()
+.exists(
+id,
+options
+);
+
+}
+
+
+
+return !!this.findById(
+id,
+options
+);
+
+
+},
+
+
+
+
+
+existsBy(field,value,options={}){
+
+
+if(
+this.getBase().existsBy
+){
+
+return this.getBase()
+.existsBy(
+field,
+value,
+options
+);
+
+}
+
+
+
+return this.findWhere(
+{
+[field]:value
+},
+options
+)
+.length>0;
+
+
+},
+
+
+
+
+
+
+
+// ============================================================
+// META
+// ============================================================
+
+
+getMeta(){
+
+
+if(
+typeof SchemaRegistry!=="undefined"
+&&
+SchemaRegistry.get
+){
+
+
+const schema =
+SchemaRegistry.get(
+this.entity
+);
+
+
+if(schema){
+
+return schema;
+
+}
+
+}
+
+
+
+
+
+if(
+typeof EntityRegistry!=="undefined"
+&&
+EntityRegistry.get
+){
+
+return EntityRegistry.get(
+this.entity
+);
+
+}
+
+
+
+
+
+return {
+
+
+entity:this.entity,
+
+table:this.table,
+
+idField:"CarrierID"
+
+};
+
+
+},
+
+
+
+
+
+
+
+// ============================================================
+// VALIDATION
+// ============================================================
+
+
+requireId(id,method){
+
+
+if(
+id===undefined ||
+id===null ||
+id===""
+){
+
+throw new Error(
+
+"CarrierRepository."
++
+method+
+": id required"
+
+);
+
+}
+
+
+},
+
+
+
+
+
+
+
+// ============================================================
+// REGISTER
+// ============================================================
+
+
+register(){
+
+
+if(
+typeof RepositoryFactory==="undefined"
+){
+
+Logger.warn(
+"CarrierRepository factory unavailable"
+);
+
+
+return false;
+
+}
+
+
+
+RepositoryFactory.register(
+
+this.entity,
+
+this,
+
+{
+force:true
+}
+
+);
+
+
+
+
+
+
+if(
+typeof RepositoryRegistry!=="undefined"
+&&
+RepositoryRegistry.register
+){
+
+RepositoryRegistry.register(
+
+this.entity,
+
+this
+
+);
+
+}
+
+
+
+return true;
+
+
+},
+
+
+
+
+
+
+
+// ============================================================
+// DIAGNOSTICS
+// ============================================================
+
+
+diagnostics(){
+
+
+let meta=null;
+
+
+try{
+
+meta=this.getMeta();
+
+}
+catch(e){}
+
+
+
+return {
+
+
+module:"CarrierRepository",
+
+version:this.version,
+
+
+entity:this.entity,
+
+
+table:
+meta?.table ||
+this.table,
+
+
+initialized:
+this.initialized,
+
+
+auditReady:this.auditReady,
+
+
+
+layers:{
+
+
+schema:
+typeof SchemaRegistry!=="undefined",
+
+
+metadata:
+typeof EntityRegistry!=="undefined",
+
+
+baseRepository:
+typeof BaseRepository!=="undefined",
+
+
+factory:
+typeof RepositoryFactory!=="undefined",
+
+
+registry:
+typeof RepositoryRegistry!=="undefined"
+
+
+},
+
+
+
+
+registered:
+
+typeof RepositoryFactory!=="undefined"
+&&
+RepositoryFactory.has
+?
+RepositoryFactory.has(this.entity)
+:
+false,
+
+
+
+timestamp:
+new Date()
+.toISOString()
+
+
+};
+
+
+},
+
+
+
+
+
+
+
+// ============================================================
+// HEALTH
+// ============================================================
+
+
+health(){
+
+
+const data =
+this.diagnostics();
+
+
+
+const status =
+data.layers.baseRepository &&
+data.layers.schema
+?
+"OK"
+:
+"WARNING";
+
+
+
+if(
+typeof HealthContract!=="undefined"
+&&
+HealthContract.create
+){
+
+return HealthContract.create(
+
+"CarrierRepository",
+
+status,
+
+data
+
+);
+
+}
+
+
+
+return {
+
+module:"CarrierRepository",
+
+status,
+
+...data
+
+};
+
+
+}
+
+
 
 };
 
 
 
+
+
+
+
 globalThis.CarrierRepository =
-    CarrierRepository;
+CarrierRepository;
+
+
+
+
+
+
+
+// ============================================================
+// SAFE BOOT
+// ============================================================
+
+
+try{
+
+
+CarrierRepository.init();
+
+
+CarrierRepository.register();
+
+
+}
+catch(e){
+
+
+Logger.warn(
+
+"CarrierRepository deferred: "+
+e.message
+
+);
+
+
+}
+
+
+
 
 
 
 Logger.log(
-  "CarrierRepository READY v" +
-  CarrierRepository.version
+
+"CarrierRepository GLOBAL READY v"+
+CarrierRepository.version
+
 );
-
-
-
-/**
- * Registration
- */
-
-if (
- typeof RepositoryFactory !== "undefined"
-) {
-
-  RepositoryFactory.registerLoaded(
-    "CARRIER",
-    CarrierRepository
-  );
-
-}

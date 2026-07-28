@@ -1,748 +1,985 @@
 // ============================================================
-// CargoRepository v1.2.0
-// TaxControl ERP
+// CargoRepository v3.0.1
+// Enterprise Repository
+// TaxControl ERP Core
 //
-// Repository for CARGO entity
+// Entity:
+// CARGO
+//
+// Architecture:
+//
+// EntityService
+//      |
+// RepositoryFactory
+//      |
+// CargoRepository
+//      |
+// BaseRepository
+//      |
+// Database
 //
 // Compatible:
-// - BaseRepository v5.5.0+
-// - RepositoryFactory v2.5.8+
-// - RepositoryRegistry v1.1.0+
-// - HealthContract
+//
+// EntityMetadata v3+
+// EntityRegistry v2.5+
+// SchemaManager v4.2+
+// BaseRepository v5.7+
+// RepositoryFactory v3+
+// RepositoryRegistry v1.1+
 // ============================================================
 
-console.log("CargoRepository v1.2.0");
+
+console.log(
+"CargoRepository v3.0.1"
+);
+
+
+
 
 
 const CargoRepository = {
 
-  version: "1.2.0",
 
-  entity: "CARGO",
 
-  table: "Cargoes",
+// ============================================================
+// META
+// ============================================================
 
-  architecture: "BaseRepository v5.5+",
 
+version:"3.0.1",
 
-  // ============================================================
-  // CREATE
-  // ============================================================
+entity:"CARGO",
 
-  create(data = {}, options = {}) {
+table:"Cargoes",
 
-    this.requireObject(
-      data,
-      "create"
-    );
 
-    return BaseRepository.create(
-      this.entity,
-      data,
-      options
-    );
+initialized:false,
 
-  },
+base:null,
 
 
-  // ============================================================
-  // FIND BY ID
-  // ============================================================
 
-  findById(id, options = {}) {
 
-    this.requireId(
-      id,
-      "findById"
-    );
 
-    return BaseRepository.findById(
-      this.entity,
-      id,
-      options
-    );
 
-  },
+// ============================================================
+// INIT
+// ============================================================
 
 
-  // ============================================================
-  // GET ALIAS
-  // ============================================================
+init(){
 
-  get(id, options = {}) {
 
-    return this.findById(
-      id,
-      options
-    );
+if(this.initialized){
 
-  },
+return true;
 
+}
 
-  // ============================================================
-  // FIND ALL
-  // ============================================================
 
-  findAll(filters = {}, options = {}) {
 
-    return BaseRepository.findAll(
-      this.entity,
-      filters || {},
-      options || {}
-    );
+if(
+typeof BaseRepository==="undefined"
+){
 
-  },
+throw new Error(
+"CargoRepository: BaseRepository unavailable"
+);
 
+}
 
-  // ============================================================
-  // FIND WHERE
-  // ============================================================
 
-  findWhere(
-    field,
-    value,
-    options = {}
-  ) {
 
-    if (!field) {
-      throw new Error(
-        "CargoRepository.findWhere: field required"
-      );
-    }
+this.base =
+BaseRepository.createRepository(
+this.entity
+);
 
-    return BaseRepository.findWhere(
-      this.entity,
-      field,
-      value,
-      options
-    );
 
-  },
 
+this.initialized=true;
 
-  // ============================================================
-  // COUNT
-  // ============================================================
 
-  count(filters = {}, options = {}) {
 
-    return BaseRepository.count(
-      this.entity,
-      filters || {},
-      options || {}
-    );
+Logger.log(
+"CargoRepository INIT READY v"+
+this.version
+);
 
-  },
 
 
-  // ============================================================
-  // EXISTS
-  // ============================================================
+return true;
 
-  exists(id, options = {}) {
 
-    this.requireId(
-      id,
-      "exists"
-    );
+},
 
-    return BaseRepository.exists(
-      this.entity,
-      id,
-      options
-    );
 
-  },
 
 
-  // ============================================================
-  // EXISTS BY FIELD
-  // ============================================================
 
-  existsBy(
-    field,
-    value,
-    options = {}
-  ) {
 
-    if (!field) {
-      throw new Error(
-        "CargoRepository.existsBy: field required"
-      );
-    }
 
-    return BaseRepository.existsBy(
-      this.entity,
-      field,
-      value,
-      options
-    );
+// ============================================================
+// BASE
+// ============================================================
 
-  },
 
+getBase(){
 
-  // ============================================================
-  // PAGINATION
-  // ============================================================
 
-  paginate(
-    page = 1,
-    limit = 50,
-    filters = {},
-    options = {}
-  ) {
+if(!this.initialized){
 
-    return BaseRepository.paginate(
-      this.entity,
-      page,
-      limit,
-      filters || {},
-      options || {}
-    );
+this.init();
 
-  },
+}
 
 
-  // ============================================================
-  // UPDATE
-  // ============================================================
+return this.base;
 
-  update(
-    id,
-    data = {},
-    options = {}
-  ) {
 
-    this.requireId(
-      id,
-      "update"
-    );
+},
 
-    this.requireObject(
-      data,
-      "update"
-    );
 
-    return BaseRepository.update(
-      this.entity,
-      id,
-      data,
-      options
-    );
 
-  },
 
 
-  // ============================================================
-  // DELETE
-  // ============================================================
 
-  delete(id, options = {}) {
 
-    this.requireId(
-      id,
-      "delete"
-    );
+// ============================================================
+// CREATE
+// ============================================================
 
-    return BaseRepository.delete(
-      this.entity,
-      id,
-      options
-    );
 
-  },
+create(data={},options={}){
 
 
-  // ============================================================
-  // RESTORE
-  // ============================================================
+return this.getBase()
+.create(
+data,
+options
+);
 
-  restore(id, options = {}) {
 
-    this.requireId(
-      id,
-      "restore"
-    );
+},
 
-    return BaseRepository.restore(
-      this.entity,
-      id,
-      options
-    );
 
-  },
 
 
-  // ============================================================
-  // BULK CREATE
-  // ============================================================
 
-  bulkCreate(
-    items = [],
-    options = {}
-  ) {
 
-    if (!Array.isArray(items)) {
-      throw new Error(
-        "CargoRepository.bulkCreate: items must be an array"
-      );
-    }
 
-    return BaseRepository.bulkCreate(
-      this.entity,
-      items,
-      options
-    );
+// ============================================================
+// READ
+// ============================================================
 
-  },
 
+findById(id,options={}){
 
-  // ============================================================
-  // BULK UPDATE
-  // ============================================================
 
-  bulkUpdate(
-    ids = [],
-    data = {},
-    options = {}
-  ) {
+this.requireId(
+id,
+"findById"
+);
 
-    if (!Array.isArray(ids)) {
-      throw new Error(
-        "CargoRepository.bulkUpdate: ids must be an array"
-      );
-    }
 
-    this.requireObject(
-      data,
-      "bulkUpdate"
-    );
 
-    return BaseRepository.bulkUpdate(
-      this.entity,
-      ids,
-      data,
-      options
-    );
+return this.getBase()
+.findById(
+id,
+options
+);
 
-  },
 
+},
 
-  // ============================================================
-  // TRANSACTION
-  // ============================================================
 
-  transaction(callback) {
 
-    if (typeof callback !== "function") {
-      throw new Error(
-        "CargoRepository.transaction: callback required"
-      );
-    }
 
-    return BaseRepository.transaction(
-      callback
-    );
+get(id,options={}){
 
-  },
 
+return this.findById(
+id,
+options
+);
 
-  // ============================================================
-  // METADATA
-  // ============================================================
 
-  getMeta() {
+},
 
-    if (
-      typeof BaseRepository !== "undefined" &&
-      typeof BaseRepository.getMeta === "function"
-    ) {
-      return BaseRepository.getMeta(
-        this.entity
-      );
-    }
 
-    if (
-      typeof SchemaRegistry !== "undefined" &&
-      typeof SchemaRegistry.get === "function"
-    ) {
-      const schema =
-        SchemaRegistry.get(this.entity);
 
-      if (schema) {
-        return schema;
-      }
-    }
 
-    if (
-      typeof EntityRegistry !== "undefined" &&
-      typeof EntityRegistry.get === "function"
-    ) {
-      const metadata =
-        EntityRegistry.get(this.entity);
+getById(id,options={}){
 
-      if (metadata) {
-        return metadata;
-      }
-    }
 
-    return {
+return this.findById(
+id,
+options
+);
 
-      entity: this.entity,
 
-      table: this.table,
+},
 
-      idField: "CargoID"
 
-    };
 
-  },
 
 
-  // ============================================================
-  // VALIDATION HELPERS
-  // ============================================================
 
-  requireId(id, method) {
 
-    if (
-      id === undefined ||
-      id === null ||
-      id === ""
-    ) {
-      throw new Error(
-        "CargoRepository." +
-        method +
-        ": id required"
-      );
-    }
+findAll(filters={},options={}){
 
-    return true;
 
-  },
+return this.getBase()
+.findAll(
+filters,
+options
+);
 
 
-  requireObject(data, method) {
+},
 
-    if (
-      !data ||
-      typeof data !== "object" ||
-      Array.isArray(data)
-    ) {
-      throw new Error(
-        "CargoRepository." +
-        method +
-        ": data must be an object"
-      );
-    }
 
-    return true;
 
-  },
 
 
-  // ============================================================
-  // DIAGNOSTICS
-  // ============================================================
 
-  diagnostics() {
 
-    let metadata = null;
-    let metadataError = null;
+findWhere(criteria={},options={}){
 
-    try {
 
-      metadata =
-        this.getMeta();
+const base =
+this.getBase();
 
-    } catch (e) {
 
-      metadataError =
-        e.message;
 
-    }
+if(base.findWhere){
 
-    const factoryAvailable =
-      typeof RepositoryFactory !== "undefined";
+return base.findWhere(
+criteria,
+options
+);
 
-    const registered =
-      factoryAvailable &&
-      typeof RepositoryFactory.has === "function"
-        ? RepositoryFactory.has(this.entity)
-        : false;
+}
 
-    return {
 
-      version:
-        this.version,
 
-      entity:
-        this.entity,
+return this.findAll(
+criteria,
+options
+);
 
-      table:
-        metadata?.table ||
-        this.table,
 
-      idField:
-        metadata?.idField ||
-        metadata?.primaryKey ||
-        "CargoID",
+},
 
-      architecture:
-        this.architecture,
 
-      baseRepository: {
 
-        available:
-          typeof BaseRepository !== "undefined",
 
-        initialized:
-          typeof BaseRepository !== "undefined"
-            ? !!BaseRepository._adapter
-            : false,
 
-        version:
-          typeof BaseRepository !== "undefined"
-            ? BaseRepository.version || null
-            : null
 
-      },
 
-      repositoryFactory: {
+search(criteria={}){
 
-        available:
-          factoryAvailable,
 
-        registered
+return this.findAll(
+criteria
+);
 
-      },
 
-      metadata: {
+},
 
-        available:
-          !!metadata,
 
-        error:
-          metadataError
 
-      },
 
-      timestamp:
-        new Date().toISOString()
 
-    };
 
-  },
 
+// ============================================================
+// UPDATE
+// ============================================================
 
-  // ============================================================
-  // HEALTH
-  // ============================================================
 
-  health() {
+update(id,data={},options={}){
 
-    const diagnostics =
-      this.diagnostics();
 
-    const healthy =
-      diagnostics.baseRepository.available &&
-      diagnostics.baseRepository.initialized &&
-      diagnostics.metadata.available;
+this.requireId(
+id,
+"update"
+);
 
-    const status =
-      healthy
-        ? "OK"
-        : "WARNING";
 
-    const details = {
 
-      version:
-        this.version,
+return this.getBase()
+.update(
+id,
+data,
+options
+);
 
-      entity:
-        this.entity,
 
-      table:
-        diagnostics.table,
+},
 
-      idField:
-        diagnostics.idField,
 
-      architecture:
-        this.architecture,
 
-      baseRepository:
-        diagnostics.baseRepository,
 
-      repositoryFactory:
-        diagnostics.repositoryFactory,
 
-      metadata:
-        diagnostics.metadata,
 
-      features: [
 
-        "CRUD",
+// ============================================================
+// DELETE
+// ============================================================
 
-        "SoftDelete",
 
-        "Restore",
+delete(id,options={}){
 
-        "Validation",
 
-        "Permissions",
+this.requireId(
+id,
+"delete"
+);
 
-        "AuditLog",
 
-        "Versioning",
 
-        "EventBus",
+return this.getBase()
+.delete(
+id,
+options
+);
 
-        "Pagination",
 
-        "BulkOperations",
+},
 
-        "Transactions",
 
-        "Diagnostics"
 
-      ]
 
-    };
 
-    if (
-      typeof HealthContract !== "undefined" &&
-      typeof HealthContract.create === "function"
-    ) {
-      return HealthContract.create(
-        "CargoRepository",
-        status,
-        details
-      );
-    }
 
-    return {
 
-      module:
-        "CargoRepository",
+restore(id,options={}){
 
-      status,
 
-      ...details
+this.requireId(
+id,
+"restore"
+);
 
-    };
 
-  }
+
+return this.getBase()
+.restore(
+id,
+options
+);
+
+
+},
+
+
+
+
+
+
+
+// ============================================================
+// EXISTS
+// ============================================================
+
+
+exists(id,options={}){
+
+
+this.requireId(
+id,
+"exists"
+);
+
+
+
+if(this.getBase().exists){
+
+return this.getBase()
+.exists(
+id,
+options
+);
+
+}
+
+
+
+return !!this.findById(
+id,
+options
+);
+
+
+},
+
+
+
+
+
+
+
+existsBy(field,value,options={}){
+
+
+if(
+!field
+){
+
+throw new Error(
+"CargoRepository.existsBy field required"
+);
+
+}
+
+
+
+if(this.getBase().existsBy){
+
+return this.getBase()
+.existsBy(
+field,
+value,
+options
+);
+
+}
+
+
+
+return this.findWhere(
+{
+[field]:value
+},
+options
+)
+.length>0;
+
+
+},
+
+
+
+
+
+
+
+count(filters={},options={}){
+
+
+if(this.getBase().count){
+
+return this.getBase()
+.count(
+filters,
+options
+);
+
+}
+
+
+
+return this.findAll(
+filters,
+options
+)
+.length;
+
+
+},
+
+
+
+
+
+
+
+// ============================================================
+// BULK
+// ============================================================
+
+
+bulkCreate(items=[],options={}){
+
+
+if(!Array.isArray(items)){
+
+throw new Error(
+"CargoRepository.bulkCreate items must array"
+);
+
+}
+
+
+
+return this.getBase()
+.bulkCreate(
+items,
+options
+);
+
+
+},
+
+
+
+
+
+
+
+bulkUpdate(ids=[],data={},options={}){
+
+
+if(!Array.isArray(ids)){
+
+throw new Error(
+"CargoRepository.bulkUpdate ids must array"
+);
+
+}
+
+
+
+return this.getBase()
+.bulkUpdate(
+ids,
+data,
+options
+);
+
+
+},
+
+
+
+
+
+
+
+// ============================================================
+// TRANSACTION
+// ============================================================
+
+
+transaction(callback){
+
+
+if(
+typeof callback!=="function"
+){
+
+throw new Error(
+"CargoRepository.transaction callback required"
+);
+
+}
+
+
+
+const base =
+this.getBase();
+
+
+
+if(base.transaction){
+
+return base.transaction(
+callback
+);
+
+}
+
+
+
+return callback();
+
+
+},
+
+
+
+
+
+
+
+// ============================================================
+// META
+// ============================================================
+
+
+getMeta(){
+
+
+
+if(
+typeof SchemaRegistry!=="undefined"
+&&
+SchemaRegistry.get
+){
+
+
+const schema =
+SchemaRegistry.get(
+this.entity
+);
+
+
+if(schema){
+
+return schema;
+
+}
+
+}
+
+
+
+
+
+if(
+typeof EntityRegistry!=="undefined"
+&&
+EntityRegistry.get
+){
+
+return EntityRegistry.get(
+this.entity
+);
+
+}
+
+
+
+
+return {
+
+
+entity:this.entity,
+
+table:this.table,
+
+idField:"CargoID"
+
 
 };
 
 
+},
+
+
+
+
+
+
+
 // ============================================================
-// GLOBAL EXPORT
-// Сначала публикуем репозиторий в globalThis.
-// Это позволяет RepositoryFactory обнаружить его при init/refresh.
+// VALIDATION
 // ============================================================
+
+
+requireId(id,method){
+
+
+if(
+id===undefined ||
+id===null ||
+id===""
+){
+
+throw new Error(
+
+"CargoRepository."
++
+method+
+": id required"
+
+);
+
+}
+
+
+},
+
+
+
+
+
+
+
+// ============================================================
+// REGISTER
+// ============================================================
+
+
+register(){
+
+
+if(
+typeof RepositoryFactory==="undefined"
+){
+
+Logger.warn(
+"CargoRepository: Factory unavailable"
+);
+
+
+return false;
+
+}
+
+
+
+RepositoryFactory.register(
+
+this.entity,
+
+this,
+
+{
+force:true
+}
+
+);
+
+
+
+
+
+
+if(
+typeof RepositoryRegistry!=="undefined"
+&&
+RepositoryRegistry.register
+){
+
+RepositoryRegistry.register(
+
+this.entity,
+
+this
+
+);
+
+}
+
+
+
+
+return true;
+
+
+},
+
+
+
+
+
+
+
+// ============================================================
+// DIAGNOSTICS
+// ============================================================
+
+
+diagnostics(){
+
+
+let meta=null;
+
+
+try{
+
+meta=this.getMeta();
+
+}
+catch(e){}
+
+
+
+return {
+
+
+module:"CargoRepository",
+
+version:this.version,
+
+
+entity:this.entity,
+
+
+table:
+meta?.table ||
+this.table,
+
+
+
+initialized:
+this.initialized,
+
+
+
+baseRepository:
+
+typeof BaseRepository!=="undefined"
+?
+BaseRepository.version
+:
+null,
+
+
+
+factoryRegistered:
+
+typeof RepositoryFactory!=="undefined"
+&&
+RepositoryFactory.has
+?
+RepositoryFactory.has(this.entity)
+:
+false,
+
+
+
+registry:
+
+typeof RepositoryRegistry!=="undefined",
+
+
+
+timestamp:
+new Date()
+.toISOString()
+
+
+};
+
+
+},
+
+
+
+
+
+
+
+// ============================================================
+// HEALTH
+// ============================================================
+
+
+health(){
+
+
+const data =
+this.diagnostics();
+
+
+
+const status =
+data.baseRepository
+?
+"OK"
+:
+"WARNING";
+
+
+
+if(
+typeof HealthContract!=="undefined"
+&&
+HealthContract.create
+){
+
+return HealthContract.create(
+
+"CargoRepository",
+
+status,
+
+data
+
+);
+
+}
+
+
+
+return {
+
+module:"CargoRepository",
+
+status,
+
+...data
+
+};
+
+
+}
+
+
+
+};
+
+
+
+
+
+
+
+// ============================================================
+// GLOBAL
+// ============================================================
+
 
 globalThis.CargoRepository =
-  CargoRepository;
+CargoRepository;
+
+
+
+
+
+
 
 
 // ============================================================
-// REPOSITORY FACTORY REGISTRATION
-// Регистрация выполняется, если RepositoryFactory уже загружена.
-// Если фабрика появится позже, она найдёт CargoRepository
-// через registerAllRepositories() или autoRegister().
+// SAFE START
 // ============================================================
 
-try {
 
-  if (
-    typeof RepositoryFactory !== "undefined"
-  ) {
+try{
 
-    if (
-      typeof RepositoryFactory.notifyLoaded === "function"
-    ) {
 
-      RepositoryFactory.notifyLoaded(
-        CargoRepository.entity,
-        CargoRepository
-      );
+CargoRepository.init();
 
-    } else if (
-      typeof RepositoryFactory.registerLoaded === "function"
-    ) {
 
-      RepositoryFactory.registerLoaded(
-        CargoRepository.entity,
-        CargoRepository
-      );
+CargoRepository.register();
 
-    } else if (
-      typeof RepositoryFactory.register === "function"
-    ) {
 
-      RepositoryFactory.register(
-        CargoRepository.entity,
-        CargoRepository
-      );
 
-    }
+}
+catch(e){
 
-  }
 
-} catch (e) {
+Logger.warn(
 
-  Logger.warn(
-    "CargoRepository registration deferred: " +
-    e.message
-  );
+"CargoRepository deferred: "+
+e.message
+
+);
+
 
 }
 
 
-// ============================================================
-// REPOSITORY REGISTRY SYNC
-// Дополнительная синхронизация, если Registry уже доступен.
-// ============================================================
-
-try {
-
-  if (
-    typeof RepositoryRegistry !== "undefined" &&
-    typeof RepositoryRegistry.register === "function"
-  ) {
-
-    RepositoryRegistry.register(
-      CargoRepository.entity,
-      CargoRepository
-    );
-
-  }
-
-} catch (e) {
-
-  Logger.warn(
-    "CargoRepository registry sync deferred: " +
-    e.message
-  );
-
-}
 
 
-// ============================================================
-// READY
-// ============================================================
+
 
 Logger.log(
-  "CargoRepository READY v" +
-  CargoRepository.version
-);
-if(typeof RepositoryFactory!=="undefined"){
 
-RepositoryFactory.registerLoaded(
-"CARGO",
-CargoRepository
-);
+"CargoRepository GLOBAL READY v"+
+CargoRepository.version
 
-}
+);
