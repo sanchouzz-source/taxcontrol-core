@@ -2519,3 +2519,10 @@ Logger.log(
 "EntityMetadata v3.1.0 REGISTERED ENTITIES="+
 EntityMetadata.list().length
 );
+Logger.log(
+JSON.stringify(
+EntityMetadata.list(),
+null,
+2
+)
+);
