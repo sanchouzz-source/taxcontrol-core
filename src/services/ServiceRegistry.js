@@ -1,5 +1,5 @@
 // ============================================================
-// ServiceRegistry v1.0.0
+// ServiceRegistry v1.1.0
 // TaxControl ERP Core
 //
 // Architecture:
@@ -11,11 +11,24 @@
 //        +-- FinanceService
 //        +-- KPIService
 //
+// Lifecycle:
+//
+// INIT
+//   |
+// REFRESH
+//   |
+// REGISTER SERVICES
+//
+// Compatible:
+// Bootstrap v3.1+
+// SystemInit v2.9+
+// StartupSequence v1+
+//
 // ============================================================
 
 
 console.log(
-"ServiceRegistry v1.0.0"
+"ServiceRegistry v1.1.0"
 );
 
 
@@ -23,7 +36,7 @@ console.log(
 const ServiceRegistry = {
 
 
-version:"1.0.0",
+version:"1.1.0",
 
 
 initialized:false,
@@ -48,9 +61,38 @@ return true;
 }
 
 
+
 Logger.log(
+
 "ServiceRegistry INIT v"+
 this.version
+
+);
+
+
+
+this.initialized=true;
+
+
+
+return true;
+
+},
+
+
+
+
+// ============================================================
+// REFRESH
+// Повторная регистрация после загрузки всех файлов
+// ============================================================
+
+
+refresh(){
+
+
+Logger.log(
+"ServiceRegistry REFRESH"
 );
 
 
@@ -59,14 +101,12 @@ this.registerDefaults();
 
 
 
-this.initialized=true;
-
-
-
 Logger.log(
-"ServiceRegistry READY services="
+
+"ServiceRegistry REFRESH COMPLETE count="
 +
-Object.keys(this.services).length
+this.list().length
+
 );
 
 
@@ -85,8 +125,10 @@ return true;
 
 register(
 name,
-service
+service,
+options={}
 ){
+
 
 
 if(!name){
@@ -111,19 +153,88 @@ name
 
 
 
+if(
+this.services[name]
+&&
+!options.force
+){
+
+Logger.warn(
+
+"Service already registered "
++
+name
+
+);
+
+
+
+return this.services[name];
+
+}
+
+
+
 this.services[name]=service;
 
 
 
 Logger.log(
+
 "Service registered "
 +
 name
+
 );
 
 
 
 return service;
+
+},
+
+
+
+
+// ============================================================
+// REGISTER IF EXISTS
+// ============================================================
+
+
+registerIfExists(
+name,
+service
+){
+
+
+
+if(
+typeof service==="undefined" ||
+service===null
+){
+
+Logger.warn(
+
+"Service unavailable "
++
+name
+
+);
+
+
+
+return null;
+
+}
+
+
+
+return this.register(
+name,
+service
+);
+
+
 
 },
 
@@ -138,7 +249,57 @@ return service;
 get(name){
 
 
-return this.services[name] || null;
+return (
+
+this.services[name]
+||
+null
+
+);
+
+
+},
+
+
+
+
+// ============================================================
+// HAS
+// ============================================================
+
+
+has(name){
+
+
+return !!this.services[name];
+
+
+},
+
+
+
+
+// ============================================================
+// REMOVE
+// ============================================================
+
+
+remove(name){
+
+
+if(
+this.services[name]
+){
+
+delete this.services[name];
+
+
+return true;
+
+}
+
+
+return false;
 
 
 },
@@ -155,55 +316,63 @@ registerDefaults(){
 
 
 
-if(
-typeof ClientService!=="undefined"
-){
+this.registerIfExists(
 
-this.register(
 "ClientService",
+
+typeof ClientService!=="undefined"
+?
 ClientService
+:
+null
+
 );
 
-}
 
 
 
-if(
-typeof TransportOrderService!=="undefined"
-){
+this.registerIfExists(
 
-this.register(
 "TransportOrderService",
+
+typeof TransportOrderService!=="undefined"
+?
 TransportOrderService
+:
+null
+
 );
 
-}
 
 
 
-if(
-typeof FinanceService!=="undefined"
-){
+this.registerIfExists(
 
-this.register(
 "FinanceService",
+
+typeof FinanceService!=="undefined"
+?
 FinanceService
+:
+null
+
 );
 
-}
 
 
 
-if(
-typeof KPIService!=="undefined"
-){
+this.registerIfExists(
 
-this.register(
 "KPIService",
+
+typeof KPIService!=="undefined"
+?
 KPIService
+:
+null
+
 );
 
-}
 
 
 
@@ -231,6 +400,42 @@ this.services
 
 
 // ============================================================
+// COUNT
+// ============================================================
+
+
+count(){
+
+
+return this.list().length;
+
+
+},
+
+
+
+
+// ============================================================
+// CLEAR
+// Для тестов
+// ============================================================
+
+
+clear(){
+
+
+this.services={};
+
+
+return true;
+
+
+},
+
+
+
+
+// ============================================================
 // HEALTH
 // ============================================================
 
@@ -250,7 +455,7 @@ this.version,
 
 
 count:
-this.list().length,
+this.count(),
 
 
 services:
@@ -258,6 +463,7 @@ this.list(),
 
 
 status:
+
 this.initialized
 ?
 "OK"
@@ -272,12 +478,16 @@ this.initialized
 
 
 
+
 };
+
+
 
 
 
 globalThis.ServiceRegistry =
 ServiceRegistry;
+
 
 
 ServiceRegistry.init();
