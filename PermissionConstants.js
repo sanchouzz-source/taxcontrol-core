@@ -1,5 +1,5 @@
 // ============================================================
-// PermissionConstants v2.0.0
+// PermissionConstants v2.1.0
 // Canonical TaxControl ERP permission catalog
 //
 // Package G contract:
@@ -9,10 +9,10 @@
 // - lifecycle is owned by SystemInit
 // ============================================================
 
-console.log("PermissionConstants v2.0.0");
+console.log("PermissionConstants v2.1.0");
 
 const PermissionConstants = {
-  version: "2.0.0",
+  version: "2.1.0",
   initialized: false,
 
   actions: [
@@ -52,6 +52,8 @@ const PermissionConstants = {
     "REPORT_EXPORT",
     "EVENT_LOG_WRITE",
     "EVENT_REPLAY",
+    "SYSTEM_ADMIN",
+    "DATA_MIGRATE",
   ],
 
   aliases: {
@@ -238,4 +240,3 @@ PermissionConstants.buildCatalog();
 
 globalThis.PermissionConstants =
   PermissionConstants;
-

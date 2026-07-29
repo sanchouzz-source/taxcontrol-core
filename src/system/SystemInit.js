@@ -1,5 +1,5 @@
 // ============================================================
-// SystemInit v3.6.0
+// SystemInit v3.7.0
 // Enterprise ERP Lifecycle Orchestrator
 // TaxControl ERP Core
 //
@@ -19,12 +19,13 @@
 // - security catalog, roles and request context are lifecycle components
 // - OrganizationScope is ready before Database and Repository layers
 // - startup never creates an implicit authenticated user
+// - trusted request entry points resolve identity only after Database is ready
 // ============================================================
 
-console.log("SystemInit v3.6.0");
+console.log("SystemInit v3.7.0");
 
 const SystemInit = {
-  version: "3.6.0",
+  version: "3.7.0",
 
   initialized: false,
   initializing: false,
@@ -264,6 +265,38 @@ const SystemInit = {
       ],
       critical: true,
       methods: ["init", "reset", "list"],
+    },
+
+    TrustedUserResolver: {
+      dependencies: [
+        "Database",
+        "SecurityContext",
+        "RoleConstants",
+      ],
+      critical: true,
+      methods: [
+        "init",
+        "reset",
+        "resolve",
+        "inspect",
+        "setPreferredOrganization",
+      ],
+    },
+
+    TrustedEntryPoints: {
+      dependencies: [
+        "TrustedUserResolver",
+        "SecurityContext",
+        "SecurityGuard",
+      ],
+      critical: true,
+      methods: [
+        "init",
+        "reset",
+        "run",
+        "runMenu",
+        "identityStatus",
+      ],
     },
 
     BaseRepository: {
@@ -1643,6 +1676,14 @@ const SystemInit = {
           organizationScope:
             safeDiagnostics(
               "OrganizationScope"
+            ),
+          userResolver:
+            safeDiagnostics(
+              "TrustedUserResolver"
+            ),
+          entryPoints:
+            safeDiagnostics(
+              "TrustedEntryPoints"
             ),
         },
         schema: safeDiagnostics("SchemaManager"),

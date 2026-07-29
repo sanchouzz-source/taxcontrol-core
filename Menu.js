@@ -1,12 +1,12 @@
 // ============================================================
-// Menu v1.7.0
+// Menu v1.8.0
 // TaxControl ERP UI Menu
 //
-// Every callback that reads initialized runtime components
-// starts the ERP inside the current Apps Script invocation.
+// Every business callback goes through TrustedEntryPoints. onOpen() only
+// creates the menu and never manufactures an authenticated user.
 // ============================================================
 
-console.log("Menu v1.7.0");
+console.log("Menu v1.8.0");
 
 function ensureERPStarted_() {
   const bootstrap = globalThis.Bootstrap;
@@ -41,10 +41,10 @@ function onOpen() {
   const menu = ui.createMenu("🚀 TaxControl ERP");
 
   menu
-    .addItem("▶ Запустить ERP", "startERP")
-    .addItem("❤️ Проверка системы", "erpHealth")
-    .addItem("🔍 Диагностика ERP", "erpDiag")
-    .addItem("📦 Версия ERP", "showERPVersion")
+    .addItem("▶ Запустить ERP", "menuStartERP")
+    .addItem("❤️ Проверка системы", "menuERPHealth")
+    .addItem("🔍 Диагностика ERP", "menuERPDiagnostics")
+    .addItem("📦 Версия ERP", "menuERPVersion")
     .addSeparator();
 
   menu.addSubMenu(
@@ -52,20 +52,20 @@ function onOpen() {
       .createMenu("🧠 ERP Control Center")
       .addItem(
         "🚀 Полная диагностика",
-        "erpControlCenter"
+        "menuERPControlCenter"
       )
-      .addItem("📋 Статус ERP", "erpControlStatus")
+      .addItem("📋 Статус ERP", "menuERPControlStatus")
       .addItem(
         "🖥 Runtime Report",
-        "erpRuntimeReport"
+        "menuERPRuntimeReport"
       )
       .addItem(
         "📊 ERP Dashboard",
-        "openERPControlDashboard"
+        "menuOpenERPControlDashboard"
       )
       .addItem(
         "🔄 Refresh Dashboard",
-        "refreshERPControlDashboard"
+        "menuRefreshERPControlDashboard"
       )
   );
 
@@ -74,61 +74,61 @@ function onOpen() {
       .createMenu("🗄 Repository")
       .addItem(
         "🏥 Repository Health",
-        "repositoryHealth"
+        "menuRepositoryHealth"
       )
       .addItem(
         "📋 Repository Details",
-        "repositoryHealthDetails"
+        "menuRepositoryHealthDetails"
       )
       .addItem(
         "🖨 Repository Report",
-        "repositoryPrint"
+        "menuRepositoryPrint"
       )
   );
 
   menu.addSubMenu(
     ui
       .createMenu("🧩 Services")
-      .addItem("🏥 Service Health", "serviceHealth")
+      .addItem("🏥 Service Health", "menuServiceHealth")
       .addItem(
         "📋 Service Registry",
-        "serviceRegistryReport"
+        "menuServiceRegistryReport"
       )
       .addItem(
         "🔄 Refresh Services",
-        "refreshServices"
+        "menuRefreshServices"
       )
   );
 
   menu.addSubMenu(
     ui
       .createMenu("🧪 Тестирование")
-      .addItem("▶ SAFE тесты", "runTests")
-      .addItem("🔥 FULL тесты", "runTestsFull")
+      .addItem("▶ SAFE тесты", "menuRunTests")
+      .addItem("🔥 FULL тесты", "menuRunTestsFull")
       .addItem(
         "🏗 Core Infrastructure",
-        "testCoreInfrastructure"
+        "menuTestCoreInfrastructure"
       )
       .addItem(
         "🔄 Entity Lifecycle",
-        "testEntityLifecycleMatrix"
+        "menuTestEntityLifecycleMatrix"
       )
       .addItem(
         "🚀 System Init Contract",
-        "runSystemInitContractTest"
+        "menuRunSystemInitContractTest"
       )
       .addItem(
         "🧩 Service Registry Contract",
-        "runServiceRegistryContractTest"
+        "menuRunServiceRegistryContractTest"
       )
-      .addItem("📋 Test Report", "testReport")
+      .addItem("📋 Test Report", "menuTestReport")
   );
 
   menu.addSubMenu(
     ui
       .createMenu("👥 Клиенты")
-      .addItem("Добавить клиента", "createClientUI")
-      .addItem("Обновить клиентов", "refreshClients")
+      .addItem("Добавить клиента", "menuCreateClient")
+      .addItem("Обновить клиентов", "menuRefreshClients")
   );
 
   menu.addSubMenu(
@@ -136,25 +136,246 @@ function onOpen() {
       .createMenu("📊 Dashboard")
       .addItem(
         "Обновить Dashboard",
-        "refreshDashboard"
+        "menuRefreshDashboard"
       )
-      .addItem("KPI отчет", "showKPIReport")
+      .addItem("KPI отчет", "menuShowKPIReport")
+  );
+
+  menu.addSubMenu(
+    ui
+      .createMenu("🔐 Доступ и организации")
+      .addItem(
+        "Проверить пользователя",
+        "menuTrustedIdentityStatus"
+      )
+      .addItem(
+        "Выбрать организацию",
+        "menuSelectERPOrganization"
+      )
+      .addSeparator()
+      .addItem(
+        "Аудит OrganizationID",
+        "menuOrganizationScopeAudit"
+      )
+      .addItem(
+        "Подготовить план миграции",
+        "menuPrepareOrganizationScopeMigration"
+      )
+      .addItem(
+        "Проверить план миграции",
+        "menuValidateOrganizationScopeMigration"
+      )
   );
 
   menu.addSubMenu(
     ui
       .createMenu("🛠 Обслуживание")
-      .addItem("Repair Database", "repairDatabase")
-      .addItem("Очистить Cache", "clearERPCache")
+      .addItem("Repair Database", "menuRepairDatabase")
+      .addItem("Очистить Cache", "menuClearERPCache")
       .addItem(
         "Проверить дубли",
-        "runDuplicateCheck"
+        "menuRunDuplicateCheck"
       )
-      .addItem("ERP Reset", "resetERP")
+      .addItem("ERP Reset", "menuResetERP")
   );
 
   menu.addToUi();
-  Logger.log("ERP MENU CREATED v1.7.0");
+  Logger.log("ERP MENU CREATED v1.8.0");
+}
+
+// ============================================================
+// TRUSTED MENU CALLBACKS
+// ============================================================
+
+function menuStartERP() {
+  return TrustedEntryPoints.runMenu("START_ERP");
+}
+
+function menuERPHealth() {
+  return TrustedEntryPoints.runMenu("ERP_HEALTH");
+}
+
+function menuERPDiagnostics() {
+  return TrustedEntryPoints.runMenu("ERP_DIAGNOSTICS");
+}
+
+function menuERPVersion() {
+  return TrustedEntryPoints.runMenu("ERP_VERSION");
+}
+
+function menuERPControlCenter() {
+  return TrustedEntryPoints.runMenu("CONTROL_CENTER");
+}
+
+function menuERPControlStatus() {
+  return TrustedEntryPoints.runMenu("CONTROL_STATUS");
+}
+
+function menuERPRuntimeReport() {
+  return TrustedEntryPoints.runMenu("RUNTIME_REPORT");
+}
+
+function menuOpenERPControlDashboard() {
+  return TrustedEntryPoints.runMenu("CONTROL_DASHBOARD");
+}
+
+function menuRefreshERPControlDashboard() {
+  return TrustedEntryPoints.runMenu(
+    "CONTROL_DASHBOARD_REFRESH"
+  );
+}
+
+function menuRepositoryHealth() {
+  return TrustedEntryPoints.runMenu("REPOSITORY_HEALTH");
+}
+
+function menuRepositoryHealthDetails() {
+  return TrustedEntryPoints.runMenu("REPOSITORY_DETAILS");
+}
+
+function menuRepositoryPrint() {
+  return TrustedEntryPoints.runMenu("REPOSITORY_REPORT");
+}
+
+function menuServiceHealth() {
+  return TrustedEntryPoints.runMenu("SERVICE_HEALTH");
+}
+
+function menuServiceRegistryReport() {
+  return TrustedEntryPoints.runMenu("SERVICE_REGISTRY");
+}
+
+function menuRefreshServices() {
+  return TrustedEntryPoints.runMenu("SERVICE_REFRESH");
+}
+
+function menuRunTests() {
+  return TrustedEntryPoints.runMenu("TEST_SAFE");
+}
+
+function menuRunTestsFull() {
+  return TrustedEntryPoints.runMenu("TEST_FULL");
+}
+
+function menuTestCoreInfrastructure() {
+  return TrustedEntryPoints.runMenu("TEST_CORE");
+}
+
+function menuTestEntityLifecycleMatrix() {
+  return TrustedEntryPoints.runMenu(
+    "TEST_ENTITY_LIFECYCLE"
+  );
+}
+
+function menuRunSystemInitContractTest() {
+  return TrustedEntryPoints.runMenu("TEST_SYSTEM_INIT");
+}
+
+function menuRunServiceRegistryContractTest() {
+  return TrustedEntryPoints.runMenu(
+    "TEST_SERVICE_REGISTRY"
+  );
+}
+
+function menuTestReport() {
+  return TrustedEntryPoints.runMenu("TEST_REPORT");
+}
+
+function menuCreateClient() {
+  return TrustedEntryPoints.runMenu("CLIENT_CREATE");
+}
+
+function menuRefreshClients() {
+  return TrustedEntryPoints.runMenu("CLIENT_REFRESH");
+}
+
+function menuRefreshDashboard() {
+  return TrustedEntryPoints.runMenu("DASHBOARD_REFRESH");
+}
+
+function menuShowKPIReport() {
+  return TrustedEntryPoints.runMenu("KPI_REPORT");
+}
+
+function menuRepairDatabase() {
+  return TrustedEntryPoints.runMenu("DATABASE_REPAIR");
+}
+
+function menuClearERPCache() {
+  return TrustedEntryPoints.runMenu("CACHE_CLEAR");
+}
+
+function menuRunDuplicateCheck() {
+  return TrustedEntryPoints.runMenu("DUPLICATE_CHECK");
+}
+
+function menuResetERP() {
+  return TrustedEntryPoints.runMenu("ERP_RESET");
+}
+
+function menuTrustedIdentityStatus() {
+  return TrustedEntryPoints.showIdentityStatus();
+}
+
+function menuSelectERPOrganization() {
+  return TrustedEntryPoints.selectOrganization();
+}
+
+function menuOrganizationScopeAudit() {
+  const result =
+    runOrganizationScopeAudit();
+
+  TrustedEntryPoints.showMessage(
+    "Аудит OrganizationID",
+    JSON.stringify(
+      result,
+      null,
+      2
+    )
+  );
+
+  return result;
+}
+
+function menuPrepareOrganizationScopeMigration() {
+  const result =
+    prepareOrganizationScopeMigration();
+
+  TrustedEntryPoints.showMessage(
+    "План миграции подготовлен",
+    JSON.stringify(
+      result,
+      null,
+      2
+    )
+  );
+
+  return result;
+}
+
+function menuValidateOrganizationScopeMigration() {
+  const result =
+    validateOrganizationScopeMigration();
+
+  TrustedEntryPoints.showMessage(
+    "Проверка плана миграции",
+    JSON.stringify(
+      {
+        status: result.status,
+        planId: result.planId,
+        approved: result.approved,
+        assignments:
+          result.assignments,
+        skipped: result.skipped,
+        errors: result.errors,
+        warnings: result.warnings,
+      },
+      null,
+      2
+    )
+  );
+
+  return result;
 }
 
 function serviceHealth() {
@@ -276,4 +497,4 @@ function clearERPCache() {
   }
 }
 
-Logger.log("ERP MENU READY v1.7.0");
+Logger.log("ERP MENU READY v1.8.0");

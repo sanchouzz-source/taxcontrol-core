@@ -1,5 +1,5 @@
 // ============================================================
-// SecurityContext v1.0.0
+// SecurityContext v1.1.0
 // Execution-local authenticated request context
 //
 // Package G contract:
@@ -9,12 +9,13 @@
 // - one user may explicitly switch only between allowed organizations
 // - system bypass exists only inside runAsSystem()
 // - callbacks must remain synchronous in Google Apps Script
+// - organization switches apply the role and grants of that membership
 // ============================================================
 
-console.log("SecurityContext v1.0.0");
+console.log("SecurityContext v1.1.0");
 
 const SecurityContext = {
-  version: "1.0.0",
+  version: "1.1.0",
   initialized: false,
   _current: null,
   _stack: [],
@@ -69,6 +70,159 @@ const SecurityContext = {
     return [value];
   },
 
+  _permissions(value) {
+    return this._array(value)
+      .map((permission) =>
+        String(permission || "")
+          .trim()
+          .toUpperCase()
+      )
+      .filter(Boolean);
+  },
+
+  _normalizeMemberships(
+    user,
+    fallbackUserId,
+    fallbackRole
+  ) {
+    const raw =
+      user.OrganizationMemberships ||
+      user.organizationMemberships ||
+      user.Memberships ||
+      user.memberships;
+
+    if (
+      !raw ||
+      typeof raw !== "object" ||
+      Array.isArray(raw)
+    ) {
+      return {};
+    }
+
+    const memberships = {};
+
+    Object.keys(raw).forEach((key) => {
+      const source = raw[key];
+
+      if (
+        !source ||
+        typeof source !== "object" ||
+        Array.isArray(source)
+      ) {
+        throw new Error(
+          "AUTHENTICATION REQUIRED: invalid organization membership"
+        );
+      }
+
+      const organizationId =
+        String(
+          source.OrganizationID ||
+          source.organizationId ||
+          key ||
+          ""
+        ).trim();
+      const userId =
+        String(
+          source.UserID ||
+          source.userId ||
+          fallbackUserId ||
+          ""
+        ).trim();
+      const role =
+        RoleConstants.normalize(
+          source.Role ||
+          source.role ||
+          fallbackRole
+        );
+
+      if (
+        !organizationId ||
+        !userId ||
+        !role ||
+        role === "SYSTEM" ||
+        !RoleConstants.has(role)
+      ) {
+        throw new Error(
+          "AUTHENTICATION REQUIRED: invalid organization membership"
+        );
+      }
+
+      if (memberships[organizationId]) {
+        throw new Error(
+          "AUTHENTICATION REQUIRED: duplicate organization membership"
+        );
+      }
+
+      memberships[organizationId] = {
+        UserID: userId,
+        OrganizationID:
+          organizationId,
+        Role: role,
+        Permissions:
+          this._permissions(
+            source.Permissions ||
+            source.permissions
+          ),
+        DeniedPermissions:
+          this._permissions(
+            source.DeniedPermissions ||
+            source.deniedPermissions
+          ),
+      };
+    });
+
+    return memberships;
+  },
+
+  _cloneMemberships(memberships) {
+    const result = {};
+
+    Object.keys(memberships || {})
+      .forEach((organizationId) => {
+        const membership =
+          memberships[organizationId];
+
+        result[organizationId] = {
+          ...membership,
+          Permissions: [
+            ...(membership.Permissions || []),
+          ],
+          DeniedPermissions: [
+            ...(
+              membership
+                .DeniedPermissions || []
+            ),
+          ],
+        };
+      });
+
+    return result;
+  },
+
+  _clone(context) {
+    if (!context) {
+      return null;
+    }
+
+    return {
+      ...context,
+      AllowedOrganizationIDs: [
+        ...context.AllowedOrganizationIDs,
+      ],
+      Permissions: [
+        ...context.Permissions,
+      ],
+      DeniedPermissions: [
+        ...context.DeniedPermissions,
+      ],
+      OrganizationMemberships:
+        this._cloneMemberships(
+          context
+            .OrganizationMemberships
+        ),
+    };
+  },
+
   normalize(user, options = {}) {
     if (
       !user ||
@@ -80,12 +234,12 @@ const SecurityContext = {
       );
     }
 
-    const userId =
+    let userId =
       user.UserID ||
       user.userId ||
       user.id ||
       "";
-    const role =
+    let role =
       RoleConstants.normalize(
         user.Role ||
         user.role
@@ -137,18 +291,50 @@ const SecurityContext = {
       );
     }
 
+    const memberships =
+      system
+        ? {}
+        : this._normalizeMemberships(
+          user,
+          userId,
+          role
+        );
+    const membershipIds =
+      Object.keys(memberships);
+    const activeMembership =
+      memberships[
+        String(organizationId)
+      ] || null;
+
+    if (
+      membershipIds.length &&
+      !activeMembership
+    ) {
+      throw new Error(
+        "Active organization has no trusted membership"
+      );
+    }
+
+    if (activeMembership) {
+      userId =
+        activeMembership.UserID;
+      role = activeMembership.Role;
+    }
+
     const allowedOrganizations =
-      this._array(
-        user.AllowedOrganizationIDs ||
-        user.allowedOrganizationIds ||
-        user.OrganizationIDs ||
-        user.organizationIds
-      )
-        .concat(organizationId)
-        .map((value) =>
-          String(value || "").trim()
+      membershipIds.length
+        ? membershipIds
+        : this._array(
+          user.AllowedOrganizationIDs ||
+          user.allowedOrganizationIds ||
+          user.OrganizationIDs ||
+          user.organizationIds
         )
-        .filter(Boolean);
+          .concat(organizationId)
+          .map((value) =>
+            String(value || "").trim()
+          )
+          .filter(Boolean);
     const uniqueOrganizations =
       [...new Set(allowedOrganizations)];
 
@@ -178,27 +364,29 @@ const SecurityContext = {
       AllowedOrganizationIDs:
         uniqueOrganizations,
       Permissions:
-        this._array(
-          user.Permissions ||
-          user.permissions
-        )
-          .map((permission) =>
-            String(permission)
-              .trim()
-              .toUpperCase()
-          )
-          .filter(Boolean),
+        activeMembership
+          ? [
+            ...activeMembership
+              .Permissions,
+          ]
+          : this._permissions(
+            user.Permissions ||
+            user.permissions
+          ),
       DeniedPermissions:
-        this._array(
-          user.DeniedPermissions ||
-          user.deniedPermissions
-        )
-          .map((permission) =>
-            String(permission)
-              .trim()
-              .toUpperCase()
-          )
-          .filter(Boolean),
+        activeMembership
+          ? [
+            ...activeMembership
+              .DeniedPermissions,
+          ]
+          : this._permissions(
+            user.DeniedPermissions ||
+            user.deniedPermissions
+          ),
+      OrganizationMemberships:
+        this._cloneMemberships(
+          memberships
+        ),
       System: system,
       BypassOrganizationScope:
         system &&
@@ -227,20 +415,7 @@ const SecurityContext = {
 
     this._current = normalized;
 
-    return {
-      ...normalized,
-      AllowedOrganizationIDs: [
-        ...normalized
-          .AllowedOrganizationIDs,
-      ],
-      Permissions: [
-        ...normalized.Permissions,
-      ],
-      DeniedPermissions: [
-        ...normalized
-          .DeniedPermissions,
-      ],
-    };
+    return this._clone(normalized);
   },
 
   set(user) {
@@ -259,20 +434,9 @@ const SecurityContext = {
       return null;
     }
 
-    return {
-      ...this._current,
-      AllowedOrganizationIDs: [
-        ...this._current
-          .AllowedOrganizationIDs,
-      ],
-      Permissions: [
-        ...this._current.Permissions,
-      ],
-      DeniedPermissions: [
-        ...this._current
-          .DeniedPermissions,
-      ],
-    };
+    return this._clone(
+      this._current
+    );
   },
 
   require() {
@@ -355,10 +519,30 @@ const SecurityContext = {
       );
     }
 
-    this._current = {
-      ...current,
-      OrganizationID: target,
-    };
+    const membership =
+      current
+        .OrganizationMemberships[
+        target
+      ] || null;
+
+    this._current = membership
+      ? {
+        ...current,
+        UserID: membership.UserID,
+        Role: membership.Role,
+        OrganizationID: target,
+        Permissions: [
+          ...membership.Permissions,
+        ],
+        DeniedPermissions: [
+          ...membership
+            .DeniedPermissions,
+        ],
+      }
+      : {
+        ...current,
+        OrganizationID: target,
+      };
 
     return this.get();
   },
@@ -520,6 +704,14 @@ const SecurityContext = {
           ? this._current.OrganizationID
           : null,
       system: this.isSystem(),
+      memberships:
+        this._current
+          ? Object.keys(
+            this._current
+              .OrganizationMemberships ||
+              {}
+          ).length
+          : 0,
     };
 
     if (

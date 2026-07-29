@@ -113,7 +113,9 @@ protectedSheets:[
 
 "_SchemaIndexes",
 
-"_MigrationLock"
+"_MigrationLock",
+
+"_OrganizationScopeMigration"
 
 
 ],
@@ -1058,7 +1060,7 @@ id
 
 
 
-findAll(sheetName,options={}){
+findAll(sheetName){
 
 
 const sheet =
@@ -1094,8 +1096,7 @@ values[0];
 
 
 
-const rows =
-values
+return values
 .slice(1)
 .map(
 row=>
@@ -1103,22 +1104,10 @@ this.rowToObject(
 headers,
 row
 )
-);
-
-
-
-if(
-options.includeDeleted===true
-){
-
-return rows;
-
-}
-
-
-
-return rows.filter(
-row=>!this.isDeleted(row)
+)
+.filter(
+x=>
+x.Deleted!==true
 );
 
 
@@ -1131,14 +1120,11 @@ row=>!this.isDeleted(row)
 
 
 
-query(sheetName,filters={},options={}){
+query(sheetName,filters={}){
 
 
 const rows =
-this.findAll(
-sheetName,
-options
-);
+this.findAll(sheetName);
 
 
 
@@ -1171,50 +1157,12 @@ String(filters[key])
 
 
 
-findWhere(sheetName,criteria={},options={}){
+findWhere(sheetName,criteria){
 
 
 return this.query(
 sheetName,
-criteria,
-options
-);
-
-
-},
-
-
-
-
-
-
-
-isDeleted(row){
-
-
-if(!row){
-
-return false;
-
-}
-
-
-
-const value =
-row.Deleted;
-
-
-
-return (
-
-value===true
-||
-value===1
-||
-String(value)
-.trim()
-.toLowerCase()==="true"
-
+criteria
 );
 
 
