@@ -120,7 +120,7 @@ const TestRepositoryServiceContract = {
         "Unexpected AuditLog version"
       );
       this.assert(
-        SystemInit.version === "3.9.0",
+        SystemInit.version === "4.0.0",
         "Unexpected SystemInit version"
       );
     });

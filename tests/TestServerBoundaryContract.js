@@ -127,7 +127,7 @@ function runServerBoundaryContractTest() {
     () => {
       assert(
         SystemInit.version ===
-          "3.9.0",
+          "4.0.0",
         "Unexpected SystemInit version"
       );
       assert(

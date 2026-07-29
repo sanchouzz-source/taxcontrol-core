@@ -1,5 +1,5 @@
 // ============================================================
-// TrustedEntryPoints v1.1.0
+// TrustedEntryPoints v1.2.0
 // Managed request boundary for Google Sheets menu callbacks
 //
 // The startup runtime is created first. The current Google account is then
@@ -8,10 +8,10 @@
 // from an event object, query string, request body, or client-side call.
 // ============================================================
 
-console.log("TrustedEntryPoints v1.1.0");
+console.log("TrustedEntryPoints v1.2.0");
 
 const TrustedEntryPoints = {
-  version: "1.1.0",
+  version: "1.2.0",
   initialized: false,
 
   menuActions: {
@@ -104,6 +104,11 @@ const TrustedEntryPoints = {
         "runServiceRegistryContractTest",
       permission: "SYSTEM_ADMIN",
     },
+    TEST_EXTERNAL_HTTP: {
+      handler:
+        "runExternalHttpContractTest",
+      permission: "SYSTEM_ADMIN",
+    },
     TEST_REPORT: {
       handler: "testReport",
       permission: "SYSTEM_ADMIN",
@@ -128,6 +133,15 @@ const TrustedEntryPoints = {
       handler:
         "showUserMemberships",
       permission: "USER_READ",
+    },
+    EXTERNAL_GOOGLE_BIND: {
+      handler:
+        "bindCurrentGoogleIdentityUI",
+    },
+    EXTERNAL_GOOGLE_AUDIT: {
+      handler:
+        "showExternalIdentityBindingAudit",
+      permission: "SYSTEM_ADMIN",
     },
     USER_MEMBERSHIP_CREATE: {
       handler:

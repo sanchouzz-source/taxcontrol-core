@@ -1,5 +1,5 @@
 // ============================================================
-// SystemInit v3.9.0
+// SystemInit v4.0.0
 // Enterprise ERP Lifecycle Orchestrator
 // TaxControl ERP Core
 //
@@ -23,13 +23,14 @@
 // - managed USER membership service starts after repositories and audit
 // - ServiceRegistry cannot become ready without user-management API
 // - trusted server RPC has a fixed contract, allowlist and replay protection
-// - public HTTP and external token authentication remain disabled
+// - external HTTP remains disabled until explicit fail-closed configuration
+// - the pilot external channel is Google-subject-bound and read-only
 // ============================================================
 
-console.log("SystemInit v3.9.0");
+console.log("SystemInit v4.0.0");
 
 const SystemInit = {
-  version: "3.9.0",
+  version: "4.0.0",
 
   initialized: false,
   initializing: false,
@@ -380,6 +381,7 @@ const SystemInit = {
         "updateMembership",
         "deactivateMembership",
         "reactivateMembership",
+        "bindGoogleSubject",
         "health",
       ],
     },
@@ -455,6 +457,140 @@ const SystemInit = {
         "init",
         "reset",
         "handle",
+        "handleWithProfile",
+        "health",
+      ],
+    },
+
+    ExternalHttpConfig: {
+      dependencies: ["Logger"],
+      critical: true,
+      methods: [
+        "init",
+        "reset",
+        "get",
+        "isEnabled",
+        "assertEnabled",
+        "assertVerifierConfigured",
+        "health",
+      ],
+    },
+
+    ExternalHttpContract: {
+      dependencies: [
+        "ExternalHttpConfig",
+        "ServerRequestContract",
+      ],
+      critical: true,
+      methods: [
+        "init",
+        "reset",
+        "parseEvent",
+        "success",
+        "failure",
+        "classify",
+        "textOutput",
+        "health",
+      ],
+    },
+
+    GoogleIdTokenAuthenticator: {
+      dependencies: [
+        "ExternalHttpConfig",
+        "ExternalHttpContract",
+      ],
+      critical: true,
+      methods: [
+        "init",
+        "reset",
+        "authenticate",
+        "fingerprint",
+        "health",
+      ],
+    },
+
+    ExternalHttpRateLimiter: {
+      dependencies: [
+        "ExternalHttpContract",
+        "GoogleIdTokenAuthenticator",
+      ],
+      critical: true,
+      methods: [
+        "init",
+        "reset",
+        "check",
+        "health",
+      ],
+    },
+
+    ExternalUserResolver: {
+      dependencies: [
+        "Database",
+        "SecurityContext",
+        "SecurityGuard",
+        "RoleConstants",
+        "ExternalHttpContract",
+      ],
+      critical: true,
+      methods: [
+        "init",
+        "reset",
+        "resolve",
+        "auditCurrentOrganization",
+        "health",
+      ],
+    },
+
+    ExternalIdentityBindingService: {
+      dependencies: [
+        "SecurityContext",
+        "TrustedEntryPoints",
+        "GoogleIdTokenAuthenticator",
+        "UserMembershipService",
+        "ExternalHttpContract",
+      ],
+      critical: true,
+      methods: [
+        "init",
+        "reset",
+        "bindCurrentCredential",
+        "health",
+      ],
+    },
+
+    ExternalHttpPolicy: {
+      dependencies: [
+        "ServerActionRegistry",
+        "ExternalHttpContract",
+      ],
+      critical: true,
+      methods: [
+        "init",
+        "reset",
+        "allows",
+        "requireAllowed",
+        "list",
+        "health",
+      ],
+    },
+
+    ExternalHttpAdapter: {
+      dependencies: [
+        "ExternalHttpConfig",
+        "ExternalHttpContract",
+        "ExternalHttpRateLimiter",
+        "GoogleIdTokenAuthenticator",
+        "ExternalUserResolver",
+        "ExternalIdentityBindingService",
+        "ExternalHttpPolicy",
+        "ServerRequestBoundary",
+        "SecurityContext",
+      ],
+      critical: true,
+      methods: [
+        "init",
+        "reset",
+        "handleEvent",
         "health",
       ],
     },
@@ -1001,6 +1137,14 @@ const SystemInit = {
       case "ServerIdempotencyStore":
       case "ServerActionRegistry":
       case "ServerRequestBoundary":
+      case "ExternalHttpConfig":
+      case "ExternalHttpContract":
+      case "GoogleIdTokenAuthenticator":
+      case "ExternalHttpRateLimiter":
+      case "ExternalUserResolver":
+      case "ExternalIdentityBindingService":
+      case "ExternalHttpPolicy":
+      case "ExternalHttpAdapter":
         return (
           component.initialized === true &&
           typeof component.health ===
@@ -1815,6 +1959,38 @@ const SystemInit = {
           serverBoundary:
             safeDiagnostics(
               "ServerRequestBoundary"
+            ),
+          externalHttpConfig:
+            safeDiagnostics(
+              "ExternalHttpConfig"
+            ),
+          externalHttpContract:
+            safeDiagnostics(
+              "ExternalHttpContract"
+            ),
+          googleIdTokenAuth:
+            safeDiagnostics(
+              "GoogleIdTokenAuthenticator"
+            ),
+          externalRateLimit:
+            safeDiagnostics(
+              "ExternalHttpRateLimiter"
+            ),
+          externalUserResolver:
+            safeDiagnostics(
+              "ExternalUserResolver"
+            ),
+          externalIdentityBinding:
+            safeDiagnostics(
+              "ExternalIdentityBindingService"
+            ),
+          externalHttpPolicy:
+            safeDiagnostics(
+              "ExternalHttpPolicy"
+            ),
+          externalHttpAdapter:
+            safeDiagnostics(
+              "ExternalHttpAdapter"
             ),
         },
         schema: safeDiagnostics("SchemaManager"),

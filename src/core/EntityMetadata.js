@@ -1,5 +1,5 @@
 // ============================================================
-// EntityMetadata v3.5.0
+// EntityMetadata v3.6.0
 // Enterprise Entity Contract Registry
 // TaxControl ERP Core
 //
@@ -17,14 +17,14 @@
 // ============================================================
 
 
-console.log("EntityMetadata v3.5.0");
+console.log("EntityMetadata v3.6.0");
 
 
 
 const EntityMetadata = {
 
 
-version:"3.5.0",
+version:"3.6.0",
 
 apiVersion:"3.1",
 
@@ -751,6 +751,16 @@ type:"STRING"
 
 
 Email:{
+
+
+type:"STRING"
+
+
+},
+
+
+
+GoogleSubject:{
 
 
 type:"STRING"

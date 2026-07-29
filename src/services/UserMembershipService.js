@@ -1,5 +1,5 @@
 // ============================================================
-// UserMembershipService v1.0.0
+// UserMembershipService v1.1.0
 // Managed USER membership application service
 //
 // Security contract:
@@ -10,15 +10,16 @@
 // - email, UserID and OrganizationID are immutable after creation
 // - the current membership cannot change its own role or deactivate itself
 // - the last active ADMIN/DIRECTOR membership cannot be removed
+// - Google `sub` binding is self-only and requires an internal GAS identity
 // - all mutations pass through UserRepository for canonical events/audit
 // ============================================================
 
 console.log(
-  "UserMembershipService v1.0.0"
+  "UserMembershipService v1.1.0"
 );
 
 const UserMembershipService = {
-  version: "1.0.0",
+  version: "1.1.0",
   initialized: false,
   repository: null,
   managedBy:
@@ -1034,6 +1035,153 @@ const UserMembershipService = {
     });
   },
 
+  _normalizeGoogleSubject(
+    value
+  ) {
+    const subject =
+      String(value || "").trim();
+
+    if (
+      !subject ||
+      subject.length > 255 ||
+      !/^[A-Za-z0-9._:-]+$/
+        .test(subject)
+    ) {
+      throw new Error(
+        "GOOGLE_CREDENTIAL_INVALID"
+      );
+    }
+
+    return subject;
+  },
+
+  bindGoogleSubject(
+    subject,
+    verifiedEmail
+  ) {
+    const actor =
+      this._context();
+
+    if (
+      actor.Source !==
+        "GAS_ACTIVE_USER_DIRECTORY"
+    ) {
+      throw new Error(
+        "EXTERNAL_BINDING_REQUIRES_INTERNAL_SESSION"
+      );
+    }
+
+    const normalizedSubject =
+      this._normalizeGoogleSubject(
+        subject
+      );
+    const email =
+      this._normalizeEmail(
+        verifiedEmail
+      );
+
+    if (
+      email !==
+        this._normalizeEmail(
+          actor.Email
+        )
+    ) {
+      throw new Error(
+        "EXTERNAL_BINDING_EMAIL_MISMATCH"
+      );
+    }
+
+    return this._withLock(() => {
+      const rows =
+        this._allRows();
+      const current =
+        rows.find(
+          (row) =>
+            String(row.UserID) ===
+              String(actor.UserID) &&
+            String(
+              row.OrganizationID
+            ) ===
+              String(
+                actor.OrganizationID
+              )
+        ) || null;
+
+      if (
+        !current ||
+        !this._isActive(current) ||
+        this._emailOf(current) !==
+          email ||
+        RoleConstants.normalize(
+          current.Role
+        ) !== actor.Role
+      ) {
+        throw new Error(
+          "ACTOR_MEMBERSHIP_STALE"
+        );
+      }
+
+      const existing =
+        String(
+          current.GoogleSubject ||
+          ""
+        ).trim();
+
+      if (
+        existing &&
+        existing !==
+          normalizedSubject
+      ) {
+        throw new Error(
+          "EXTERNAL_BINDING_CONFLICT"
+        );
+      }
+
+      const duplicate =
+        rows.find(
+          (row) =>
+            String(row.UserID) !==
+              String(
+                current.UserID
+              ) &&
+            String(
+              row.GoogleSubject ||
+              ""
+            ).trim() ===
+              normalizedSubject
+        ) || null;
+
+      if (duplicate) {
+        throw new Error(
+          "EXTERNAL_BINDING_DUPLICATE"
+        );
+      }
+
+      if (!existing) {
+        this.repository.update(
+          current.UserID,
+          {
+            GoogleSubject:
+              normalizedSubject,
+          },
+          this._managedOptions(
+            "BIND_GOOGLE_SUBJECT"
+          )
+        );
+      }
+
+      return {
+        ...this._publicRow(
+          current
+        ),
+        GoogleIdentityLinked:
+          true,
+        IdentityProvider:
+          "GOOGLE",
+      };
+    });
+  },
+
   health() {
     const repositoryReady =
       !!(
@@ -1055,6 +1203,10 @@ const UserMembershipService = {
       customPermissionGrants:
         false,
       hardDeleteExposed:
+        false,
+      googleSubjectSelfBinding:
+        true,
+      googleSubjectExposed:
         false,
       status:
         this.initialized &&

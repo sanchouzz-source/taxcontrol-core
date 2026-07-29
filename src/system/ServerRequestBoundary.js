@@ -1,18 +1,19 @@
 // ============================================================
-// ServerRequestBoundary v1.0.0
-// Trusted server boundary for container-bound GAS RPC
+// ServerRequestBoundary v1.1.0
+// Canonical server executor for trusted GAS RPC and verified principals
 //
-// This component does not expose doGet/doPost and does not authenticate
-// external mobile clients. Every request is resolved through the current
-// Google account and Users directory by TrustedEntryPoints.
+// Internal calls still resolve through Session -> TrustedUserResolver.
+// Package K additionally permits a profile produced by ExternalUserResolver;
+// no public top-level function accepts an arbitrary profile.
 // ============================================================
 
-console.log("ServerRequestBoundary v1.0.0");
+console.log("ServerRequestBoundary v1.1.0");
 
 const ServerRequestBoundary = {
-  version: "1.0.0",
+  version: "1.1.0",
   initialized: false,
   handled: 0,
+  handledExternal: 0,
   failed: 0,
   lastRequestAt: null,
 
@@ -65,6 +66,7 @@ const ServerRequestBoundary = {
   reset() {
     this.initialized = false;
     this.handled = 0;
+    this.handledExternal = 0;
     this.failed = 0;
     this.lastRequestAt = null;
     return true;
@@ -369,6 +371,97 @@ const ServerRequestBoundary = {
     }
   },
 
+  _assertExternalProfile(profile) {
+    if (
+      !profile ||
+      typeof profile !== "object" ||
+      profile.ExternalAuthenticated !==
+        true ||
+      profile.IdentityProvider !==
+        "GOOGLE" ||
+      profile.Source !==
+        "GOOGLE_ID_TOKEN_HTTP" ||
+      !profile.UserID ||
+      !profile.OrganizationID ||
+      !profile.Role
+    ) {
+      throw ExternalHttpContract
+        .error(
+          "EXTERNAL_PRINCIPAL_INVALID",
+          "Verified external profile required"
+        );
+    }
+
+    return profile;
+  },
+
+  handleWithProfile(
+    rawRequest,
+    profile
+  ) {
+    let request = null;
+
+    try {
+      request =
+        ServerRequestContract
+          .normalize(
+            rawRequest
+          );
+
+      this._ensureStarted();
+
+      if (!this.initialized) {
+        this.init();
+      }
+
+      const principal =
+        this._assertExternalProfile(
+          profile
+        );
+      const response =
+        SecurityContext.runAs(
+          principal,
+          (context) =>
+            this._executeRequest(
+              request,
+              context
+            )
+        );
+
+      this._assertSync(
+        response,
+        "External RPC response"
+      );
+
+      this.handled++;
+      this.handledExternal++;
+      this.lastRequestAt =
+        new Date().toISOString();
+
+      return response;
+    } catch (error) {
+      const classified =
+        ServerRequestContract
+          .classify(error);
+
+      this.failed++;
+      this.lastRequestAt =
+        new Date().toISOString();
+
+      this._logFailure(
+        request || rawRequest,
+        error,
+        classified.code
+      );
+
+      return ServerRequestContract
+        .failure(
+          request || rawRequest,
+          error
+        );
+    }
+  },
+
   health() {
     return {
       module:
@@ -394,13 +487,28 @@ const ServerRequestBoundary = {
             .count()
           : 0,
       handled: this.handled,
+      handledExternal:
+        this.handledExternal,
       failed: this.failed,
       lastRequestAt:
         this.lastRequestAt,
       trustedRpcEnabled: true,
-      publicHttpEnabled: false,
+      publicHttpEnabled:
+        !!(
+          globalThis
+            .ExternalHttpConfig &&
+          ExternalHttpConfig
+            .isEnabled()
+        ),
       externalTokenAuthEnabled:
-        false,
+        !!(
+          globalThis
+            .ExternalHttpConfig &&
+          ExternalHttpConfig
+            .isEnabled()
+        ),
+      verifiedPrincipalBridge:
+        true,
       arbitraryPrincipalInput:
         false,
       arbitraryFunctionDispatch:
@@ -410,8 +518,9 @@ const ServerRequestBoundary = {
 };
 
 /*
- * The only new top-level callable server function in Package J.
- * It remains inaccessible over HTTP because no doGet/doPost is installed.
+ * The internal top-level RPC keeps resolving identity from the active Google
+ * Apps Script session. External profiles are accepted only through the
+ * object-level handleWithProfile method called by ExternalHttpAdapter.
  */
 function runERPServerRequest(
   request

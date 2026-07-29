@@ -1,12 +1,12 @@
 // ============================================================
-// Menu v1.9.0
+// Menu v2.0.0
 // TaxControl ERP UI Menu
 //
 // Every business callback goes through TrustedEntryPoints. onOpen() only
 // creates the menu and never manufactures an authenticated user.
 // ============================================================
 
-console.log("Menu v1.9.0");
+console.log("Menu v2.0.0");
 
 function ensureERPStarted_() {
   const bootstrap = globalThis.Bootstrap;
@@ -121,6 +121,10 @@ function onOpen() {
         "🧩 Service Registry Contract",
         "menuRunServiceRegistryContractTest"
       )
+      .addItem(
+        "🔒 External HTTP Contract",
+        "menuRunExternalHttpContractTest"
+      )
       .addItem("📋 Test Report", "menuTestReport")
   );
 
@@ -151,6 +155,14 @@ function onOpen() {
       .addItem(
         "Выбрать организацию",
         "menuSelectERPOrganization"
+      )
+      .addItem(
+        "Привязать Google для телефона",
+        "menuBindCurrentGoogleIdentity"
+      )
+      .addItem(
+        "Аудит Google-привязок",
+        "menuExternalIdentityBindingAudit"
       )
       .addSeparator()
       .addItem(
@@ -201,7 +213,7 @@ function onOpen() {
   );
 
   menu.addToUi();
-  Logger.log("ERP MENU CREATED v1.9.0");
+  Logger.log("ERP MENU CREATED v2.0.0");
 }
 
 // ============================================================
@@ -298,6 +310,12 @@ function menuRunServiceRegistryContractTest() {
   );
 }
 
+function menuRunExternalHttpContractTest() {
+  return TrustedEntryPoints.runMenu(
+    "TEST_EXTERNAL_HTTP"
+  );
+}
+
 function menuTestReport() {
   return TrustedEntryPoints.runMenu("TEST_REPORT");
 }
@@ -340,6 +358,18 @@ function menuTrustedIdentityStatus() {
 
 function menuSelectERPOrganization() {
   return TrustedEntryPoints.selectOrganization();
+}
+
+function menuBindCurrentGoogleIdentity() {
+  return TrustedEntryPoints.runMenu(
+    "EXTERNAL_GOOGLE_BIND"
+  );
+}
+
+function menuExternalIdentityBindingAudit() {
+  return TrustedEntryPoints.runMenu(
+    "EXTERNAL_GOOGLE_AUDIT"
+  );
 }
 
 function menuShowUserMemberships() {
@@ -394,6 +424,55 @@ function promptMembershipValue_(
   return String(
     response.getResponseText() || ""
   ).trim();
+}
+
+function bindCurrentGoogleIdentityUI() {
+  const credential =
+    promptMembershipValue_(
+      "Привязка Google-аккаунта",
+      "Вставьте краткоживущий Google ID token из тестового мобильного клиента.\n\n" +
+        "Токен используется один раз, не сохраняется и не выводится в журнал."
+    );
+
+  if (!credential) {
+    return {
+      status: "CANCELLED",
+    };
+  }
+
+  const result =
+    ExternalIdentityBindingService
+      .bindCurrentCredential(
+        credential
+      );
+
+  TrustedEntryPoints.showMessage(
+    "Google-аккаунт привязан",
+    JSON.stringify(
+      result,
+      null,
+      2
+    )
+  );
+
+  return result;
+}
+
+function showExternalIdentityBindingAudit() {
+  const report =
+    ExternalUserResolver
+      .auditCurrentOrganization();
+
+  TrustedEntryPoints.showMessage(
+    "Аудит Google-привязок",
+    JSON.stringify(
+      report,
+      null,
+      2
+    )
+  );
+
+  return report;
 }
 
 function showUserMemberships() {
