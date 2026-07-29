@@ -1,5 +1,5 @@
 // ============================================================
-// SpreadsheetAdapter.gs v4.3.0
+// SpreadsheetAdapter.gs v4.4.0
 // TaxControl ERP Core
 //
 // Enterprise Storage Adapter
@@ -21,14 +21,14 @@
 // ============================================================
 
 
-console.log("SpreadsheetAdapter v4.3.0");
+console.log("SpreadsheetAdapter v4.4.0");
 
 
 
 const SpreadsheetAdapter = {
 
 
-version:"4.3.0",
+version:"4.4.0",
 
 
 architecture:
@@ -73,6 +73,8 @@ query:0,
 
 bulk:0,
 
+replace:0,
+
 cacheHit:0,
 
 cacheMiss:0,
@@ -91,9 +93,19 @@ errors:0
 protectedSheets:[
 
 
+"_SystemSchemaTables",
+
+"_SystemSchemaFields",
+
 "_SchemaVersions",
 
 "_SchemaHistory",
+
+"_SchemaMigrations",
+
+"_SchemaUIDMap",
+
+"_SchemaSnapshots",
 
 "_SchemaFields",
 
@@ -367,7 +379,7 @@ return sheet;
 
 
 
-exists(name){
+sheetExists(name){
 
 
 return !!this.getSheet(name);
@@ -735,6 +747,231 @@ this._stats.bulk+=rows.length;
 
 
 return list;
+
+
+},
+
+
+
+
+
+// ============================================================
+// REPLACE TABLE CONTENTS
+// ============================================================
+
+
+replace(sheetName,rows=[],headers=[]){
+
+
+this._require();
+
+
+if(
+typeof sheetName!=="string"
+||
+!sheetName.trim()
+){
+
+throw new Error(
+"SpreadsheetAdapter.replace sheetName required"
+);
+
+}
+
+
+if(!Array.isArray(rows)){
+
+throw new Error(
+"SpreadsheetAdapter.replace rows must be array"
+);
+
+}
+
+
+if(
+!Array.isArray(headers)
+||
+!headers.length
+){
+
+throw new Error(
+"SpreadsheetAdapter.replace headers required"
+);
+
+}
+
+
+const normalizedHeaders =
+headers.map(header=>{
+
+
+if(
+typeof header!=="string"
+||
+!header.trim()
+){
+
+throw new Error(
+"SpreadsheetAdapter.replace invalid header"
+);
+
+}
+
+
+return header;
+
+
+});
+
+
+if(
+new Set(normalizedHeaders).size
+!==
+normalizedHeaders.length
+){
+
+throw new Error(
+"SpreadsheetAdapter.replace duplicate headers"
+);
+
+}
+
+
+let values=[];
+
+
+if(rows.length){
+
+
+const objectRows =
+rows.every(
+row=>
+row
+&&
+typeof row==="object"
+&&
+!Array.isArray(row)
+);
+
+
+const arrayRows =
+rows.every(
+row=>Array.isArray(row)
+);
+
+
+if(
+!objectRows
+&&
+!arrayRows
+){
+
+throw new Error(
+"SpreadsheetAdapter.replace rows must use one format"
+);
+
+}
+
+
+if(objectRows){
+
+
+values =
+rows.map(
+row=>
+this.objectToRow(
+normalizedHeaders,
+row
+)
+);
+
+
+}
+else{
+
+
+rows.forEach((row,index)=>{
+
+
+if(
+row.length
+!==
+normalizedHeaders.length
+){
+
+throw new Error(
+"SpreadsheetAdapter.replace row width mismatch at "+index
+);
+
+}
+
+
+});
+
+
+values =
+rows.map(
+row=>row.slice()
+);
+
+
+}
+
+
+}
+
+
+const sheet =
+this.getOrCreateSheet(
+sheetName
+);
+
+
+if(
+typeof sheet.clearContents==="function"
+){
+
+sheet.clearContents();
+
+}
+else{
+
+sheet.clear();
+
+}
+
+
+this.setHeaders(
+sheet,
+normalizedHeaders
+);
+
+
+if(values.length){
+
+
+sheet
+.getRange(
+2,
+1,
+values.length,
+normalizedHeaders.length
+)
+.setValues(values);
+
+
+}
+
+
+this.invalidate(
+sheetName
+);
+
+
+this._stats.replace++;
+
+
+return rows;
 
 
 },
@@ -1183,6 +1420,15 @@ return result;
 exists(sheetName,idField,id){
 
 
+if(arguments.length===1){
+
+return this.sheetExists(
+sheetName
+);
+
+}
+
+
 return !!this.find(
 sheetName,
 idField,
@@ -1617,6 +1863,17 @@ SpreadsheetAdapter.writeRows =
 function(sheetName,rows,headers=[]){
 
 
+if(headers.length){
+
+return this.replace(
+sheetName,
+rows,
+headers
+);
+
+}
+
+
 const sheet =
 this.getOrCreateSheet(
 sheetName,
@@ -1730,7 +1987,7 @@ SpreadsheetAdapter.hasSheet =
 function(name){
 
 
-return this.exists(name);
+return this.sheetExists(name);
 
 
 };

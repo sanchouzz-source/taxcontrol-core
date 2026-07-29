@@ -1,962 +1,348 @@
 // ============================================================
-// App v4.0.0
+// App v4.1.0
 // TaxControl ERP Application Facade
 //
-// Enterprise Application Lifecycle Controller
+// Lifecycle:
+// Bootstrap.start() -> App.start() -> SystemInit.init()
 //
-// Architecture:
-//
-// App
-//  |
-//  v
-// SystemInit
-//  |
-//  v
-// ERP Core
-//  |
-//  +-- Schema
-//  +-- Database
-//  +-- Repository
-//  +-- Events
-//  +-- Modules
-//
-// Compatible:
-//
-// SystemInit v2.8+
-// ERPDiagnostics v6+
-// RepositoryFactory v3+
-// RepositoryRegistry v2+
-// SchemaRegistry v4+
-//
+// App owns only its local application state.
+// Public ERP commands belong to Bootstrap.js.
 // ============================================================
 
-
-console.log(
-"App v4.0.0"
-);
-
-
-
-
+console.log("App v4.1.0");
 
 const App = {
+  version: "4.1.0",
+  apiVersion: "4.1",
+  name: "TaxControl ERP",
+  platform: "Google Apps Script",
 
+  state: {
+    status: "CREATED",
+    started: false,
+    starting: false,
+    startedAt: null,
+    lastError: null,
+  },
 
-// ============================================================
-// META
-// ============================================================
+  init() {
+    Logger.log("APP INIT v" + this.version);
 
+    const system = globalThis.SystemInit;
 
-version:"4.0.0",
+    if (!system || typeof system.init !== "function") {
+      throw new Error("SystemInit.init unavailable");
+    }
 
-apiVersion:"4.0",
+    this.state.status = "INITIALIZED";
+    return true;
+  },
 
-name:"TaxControl ERP",
+  start() {
+    if (this.state.started) {
+      if (!this.isReady()) {
+        throw new Error(
+          "App state inconsistent: started without ready SystemInit"
+        );
+      }
 
-platform:"Google Apps Script",
+      return {
+        status: "ALREADY_STARTED",
+        startedAt: this.state.startedAt,
+      };
+    }
 
+    if (this.state.starting) {
+      throw new Error("ERP application startup already running");
+    }
 
-state:{
+    this.init();
 
+    try {
+      this.state.starting = true;
+      this.state.status = "STARTING";
+      this.state.lastError = null;
 
-status:"CREATED",
+      Logger.log("========== APP START ==========");
 
-started:false,
+      const result = globalThis.SystemInit.init();
 
-starting:false,
+      if (result && typeof result.then === "function") {
+        throw new Error(
+          "SystemInit.init must be synchronous in Google Apps Script"
+        );
+      }
 
-startedAt:null,
+      if (globalThis.SystemInit.initialized !== true) {
+        throw new Error(
+          "SystemInit did not confirm initialized state"
+        );
+      }
 
-lastError:null
+      this.state.started = true;
+      this.state.status = "READY";
+      this.state.startedAt = new Date().toISOString();
 
-},
+      Logger.log("========== APP READY ==========");
 
+      return {
+        status: "READY",
+        version: this.version,
+        result,
+        startedAt: this.state.startedAt,
+      };
+    } catch (error) {
+      this.state.started = false;
+      this.state.status = "FAILED";
+      this.state.lastError = error.message;
 
+      Logger.error("APP START FAILED " + error.message);
+      throw error;
+    } finally {
+      this.state.starting = false;
+    }
+  },
 
+  isReady() {
+    return (
+      this.state.started === true &&
+      this.state.status === "READY" &&
+      globalThis.SystemInit &&
+      globalThis.SystemInit.initialized === true
+    );
+  },
 
+  health() {
+    const modules = {};
 
+    [
+      "SystemInit",
+      "ERPDiagnostics",
+      "RepositoryRegistry",
+      "RepositoryFactory",
+      "SchemaRegistry",
+      "Database",
+      "EventBus",
+      "ModuleRegistry",
+    ].forEach((name) => {
+      const component = globalThis[name];
 
+      if (!component || typeof component.health !== "function") {
+        return;
+      }
 
-// ============================================================
-// INIT
-// ============================================================
+      try {
+        modules[name] = component.health();
+      } catch (error) {
+        modules[name] = {
+          status: "ERROR",
+          error: error.message,
+        };
+      }
+    });
 
+    return {
+      module: "App",
+      version: this.version,
+      status: this.isReady()
+        ? "OK"
+        : this.state.status === "FAILED"
+          ? "FAILED"
+          : "WARNING",
+      applicationStatus: this.state.status,
+      ready: this.isReady(),
+      state: { ...this.state },
+      modules,
+      timestamp: new Date().toISOString(),
+    };
+  },
 
-init(){
+  readiness() {
+    const diagnostics = globalThis.ERPDiagnostics;
 
+    if (!diagnostics || typeof diagnostics.run !== "function") {
+      return {
+        score: 0,
+        status: "NO_DIAGNOSTICS",
+      };
+    }
 
-Logger.log(
-"APP INIT v"+
-this.version
-);
+    const report = diagnostics.run({
+      skipCoreTest: true,
+    });
 
+    return {
+      score: report.readiness || 0,
+      status: report.status || "UNKNOWN",
+    };
+  },
 
+  diagnostics() {
+    const safeCall = (name, method, args) => {
+      const component = globalThis[name];
 
-if(
-typeof SystemInit==="undefined"
-){
+      if (!component || typeof component[method] !== "function") {
+        return null;
+      }
 
-throw new Error(
-"SystemInit unavailable"
-);
+      try {
+        return component[method](...(args || []));
+      } catch (error) {
+        return {
+          status: "ERROR",
+          error: error.message,
+        };
+      }
+    };
 
-}
+    return {
+      application: this.name,
+      version: this.version,
+      state: { ...this.state },
+      system: safeCall("SystemInit", "diagnostics"),
+      erpDiagnostics: safeCall(
+        "ERPDiagnostics",
+        "run",
+        [{ skipCoreTest: true }]
+      ),
+      repository: safeCall(
+        "RepositoryHealthReport",
+        "details"
+      ),
+      schema: safeCall("SchemaRegistry", "diagnostics"),
+      database: safeCall("Database", "diagnostics"),
+      factory: safeCall("RepositoryFactory", "diagnostics"),
+      timestamp: new Date().toISOString(),
+    };
+  },
 
+  versionReport() {
+    const versionOf = (name) => {
+      const component = globalThis[name];
+      return component && component.version
+        ? component.version
+        : "-";
+    };
 
+    return {
+      App: this.version,
+      SystemInit: versionOf("SystemInit"),
+      ERPDiagnostics: versionOf("ERPDiagnostics"),
+      SchemaRegistry: versionOf("SchemaRegistry"),
+      SchemaManager: versionOf("SchemaManager"),
+      Database: versionOf("Database"),
+      BaseRepository: versionOf("BaseRepository"),
+      RepositoryFactory: versionOf("RepositoryFactory"),
+      RepositoryRegistry: versionOf("RepositoryRegistry"),
+      EventBus: versionOf("EventBus"),
+    };
+  },
 
-this.state.status="INITIALIZED";
+  reset() {
+    Logger.warn("APP RESET");
 
+    const errors = [];
 
+    const resetComponent = (name) => {
+      const component = globalThis[name];
 
-return true;
+      if (!component || typeof component.reset !== "function") {
+        return;
+      }
 
+      try {
+        component.reset();
+      } catch (error) {
+        errors.push(name + ": " + error.message);
+      }
+    };
 
-},
+    // Compatibility cleanup for components that SystemInit v3.1.0
+    // does not yet reset. SystemInit will own this list in package D.
+    [
+      "ModuleRegistry",
+      "BusinessEventProcessor",
+      "EventBus",
+      "EntityService",
+    ].forEach(resetComponent);
 
+    resetComponent("SystemInit");
 
+    [
+      "SchemaManager",
+      "EntityRegistry",
+    ].forEach(resetComponent);
 
+    const repositoryRegistry =
+      globalThis.RepositoryRegistry;
 
+    if (
+      repositoryRegistry &&
+      typeof repositoryRegistry.reset !== "function"
+    ) {
+      repositoryRegistry.repositories = {};
+      repositoryRegistry.ready = false;
 
+      if ("initialized" in repositoryRegistry) {
+        repositoryRegistry.initialized = false;
+      }
+    }
 
+    this.state = {
+      status: "CREATED",
+      started: false,
+      starting: false,
+      startedAt: null,
+      lastError: errors.length
+        ? errors.join("; ")
+        : null,
+    };
 
-// ============================================================
-// START
-// ============================================================
+    if (errors.length) {
+      Logger.error(
+        "APP RESET COMPLETED WITH ERRORS " +
+          errors.join("; ")
+      );
 
+      return {
+        status: "ERROR",
+        errors,
+      };
+    }
 
-start(){
+    Logger.log("APP RESET COMPLETE");
 
+    return {
+      status: "OK",
+    };
+  },
 
-this.init();
+  status() {
+    return {
+      application: this.name,
+      version: this.version,
+      state: { ...this.state },
+      ready: this.isReady(),
+      timestamp: new Date().toISOString(),
+    };
+  },
 
-
-
-if(this.state.started){
-
-
-return {
-
-
-status:"ALREADY_STARTED",
-
-startedAt:
-this.state.startedAt
-
-
+  info() {
+    return {
+      application: this.name,
+      version: this.version,
+      apiVersion: this.apiVersion,
+      platform: this.platform,
+      startupChain: [
+        "Bootstrap",
+        "App",
+        "SystemInit",
+      ],
+      timestamp: new Date().toISOString(),
+    };
+  },
 };
 
+globalThis.App = App;
 
-}
-
-
-
-
-if(this.state.starting){
-
-throw new Error(
-"ERP startup already running"
-);
-
-}
-
-
-
-try{
-
-
-this.state.starting=true;
-
-
-this.state.status="STARTING";
-
-
-
-Logger.log(
-"========== ERP BOOT START =========="
-);
-
-
-
-
-
-const result =
-SystemInit.init();
-
-
-
-
-
-
-this.state.started=true;
-
-this.state.starting=false;
-
-this.state.status="READY";
-
-
-this.state.startedAt =
-new Date();
-
-
-
-
-
-Logger.log(
-"========== ERP READY =========="
-);
-
-
-
-
-
-return {
-
-
-status:"READY",
-
-version:this.version,
-
-result,
-
-
-startedAt:
-this.state.startedAt
-
-
-};
-
-
-
-}
-catch(e){
-
-
-
-this.state.starting=false;
-
-this.state.status="FAILED";
-
-
-this.state.lastError=e.message;
-
-
-
-Logger.error(
-
-"ERP START FAILED "+
-e.message
-
-);
-
-
-
-throw e;
-
-
-}
-
-
-
-},
-
-
-
-
-
-
-
-// ============================================================
-// HEALTH
-// ============================================================
-
-
-health(){
-
-
-
-const modules={};
-
-
-
-const add=(name,obj)=>{
-
-
-if(obj){
-
-modules[name]=obj;
-
-}
-
-
-};
-
-
-
-
-
-try{
-
-
-
-add(
-"SystemInit",
-SystemInit?.health?.()
-);
-
-
-
-add(
-"ERPDiagnostics",
-ERPDiagnostics?.health?.()
-);
-
-
-
-add(
-"RepositoryRegistry",
-RepositoryRegistry?.health?.()
-);
-
-
-
-add(
-"RepositoryFactory",
-RepositoryFactory?.health?.()
-);
-
-
-
-add(
-"SchemaRegistry",
-SchemaRegistry?.health?.()
-);
-
-
-
-add(
-"Database",
-Database?.health?.()
-);
-
-
-
-add(
-"EventBus",
-EventBus?.health?.()
-);
-
-
-
-add(
-"ModuleRegistry",
-ModuleRegistry?.health?.()
-);
-
-
-
-
-
-
-return {
-
-
-module:"App",
-
-version:this.version,
-
-
-status:
-this.state.status,
-
-
-state:this.state,
-
-
-modules,
-
-
-timestamp:
-new Date().toISOString()
-
-
-};
-
-
-
-}
-catch(e){
-
-
-return {
-
-
-module:"App",
-
-status:"ERROR",
-
-error:e.message,
-
-
-timestamp:
-new Date().toISOString()
-
-
-};
-
-
-}
-
-
-
-},
-
-
-
-
-
-
-
-// ============================================================
-// READINESS
-// ============================================================
-
-
-readiness(){
-
-
-
-if(
-typeof ERPDiagnostics==="undefined"
-){
-
-return {
-
-
-score:0,
-
-status:"NO_DIAGNOSTICS"
-
-
-};
-
-
-}
-
-
-
-const report =
-ERPDiagnostics.run({
-
-skipCoreTest:true
-
-});
-
-
-
-return {
-
-
-score:
-report.readiness,
-
-
-status:
-report.status
-
-
-};
-
-
-
-},
-
-
-
-
-
-
-
-// ============================================================
-// DIAGNOSTICS
-// ============================================================
-
-
-diagnostics(){
-
-
-
-return {
-
-
-application:this.name,
-
-
-version:this.version,
-
-
-state:this.state,
-
-
-
-system:
-
-SystemInit?.diagnostics?.()
-||
-null,
-
-
-
-erpDiagnostics:
-
-ERPDiagnostics?.run?.({
-
-skipCoreTest:true
-
-})
-||
-null,
-
-
-
-repository:
-
-RepositoryHealthReport?.details?.()
-||
-null,
-
-
-
-schema:
-
-SchemaRegistry?.diagnostics?.()
-||
-null,
-
-
-
-database:
-
-Database?.diagnostics?.()
-||
-null,
-
-
-
-factory:
-
-RepositoryFactory?.diagnostics?.()
-||
-null,
-
-
-
-timestamp:
-new Date().toISOString()
-
-
-};
-
-
-
-},
-
-
-
-
-
-
-
-// ============================================================
-// VERSION REPORT
-// ============================================================
-
-
-versionReport(){
-
-
-return {
-
-
-ERP:this.version,
-
-
-SystemInit:
-SystemInit?.version || "-",
-
-
-ERPDiagnostics:
-ERPDiagnostics?.version || "-",
-
-
-SchemaRegistry:
-SchemaRegistry?.version || "-",
-
-
-SchemaManager:
-SchemaManager?.version || "-",
-
-
-Database:
-Database?.version || "-",
-
-
-BaseRepository:
-BaseRepository?.version || "-",
-
-
-RepositoryFactory:
-RepositoryFactory?.version || "-",
-
-
-RepositoryRegistry:
-RepositoryRegistry?.version || "-",
-
-
-EventBus:
-EventBus?.version || "-"
-
-
-};
-
-
-},
-
-
-
-
-
-
-
-// ============================================================
-// RESET DEVELOPMENT
-// ============================================================
-
-
-reset(){
-
-
-
-Logger.warn(
-"ERP RESET"
-);
-
-
-
-try{
-
-
-
-this.state={
-
-
-status:"CREATED",
-
-started:false,
-
-starting:false,
-
-startedAt:null,
-
-lastError:null
-
-
-};
-
-
-
-
-
-
-
-SystemInit?.reset?.();
-
-
-
-SchemaRegistry?.reset?.();
-
-
-
-EntityRegistry?.reset?.();
-
-
-
-RepositoryFactory?.reset?.();
-
-
-
-
-
-if(
-typeof RepositoryRegistry!=="undefined"
-){
-
-RepositoryRegistry.repositories={};
-
-RepositoryRegistry.ready=false;
-
-}
-
-
-
-
-Database?.reset?.();
-
-
-
-EventBus?.reset?.();
-
-
-
-ModuleRegistry?.reset?.();
-
-
-
-
-
-
-Logger.log(
-"ERP RESET COMPLETE"
-);
-
-
-
-
-
-return {
-
-
-status:"OK"
-
-};
-
-
-}
-catch(e){
-
-
-
-Logger.error(
-"ERP RESET FAILED "+
-e.message
-);
-
-
-
-return {
-
-
-status:"ERROR",
-
-error:e.message
-
-
-};
-
-
-}
-
-
-
-},
-
-
-
-
-
-
-
-// ============================================================
-// STATUS
-// ============================================================
-
-
-status(){
-
-
-
-return {
-
-
-application:this.name,
-
-
-version:this.version,
-
-
-state:this.state,
-
-
-readiness:
-this.readiness(),
-
-
-timestamp:
-new Date().toISOString()
-
-
-};
-
-
-},
-
-
-
-
-
-
-
-// ============================================================
-// INFO
-// ============================================================
-
-
-info(){
-
-
-return {
-
-
-application:this.name,
-
-
-version:this.version,
-
-
-apiVersion:this.apiVersion,
-
-
-platform:this.platform,
-
-
-
-architecture:[
-
-
-"App",
-
-"SystemInit",
-
-"ERPDiagnostics",
-
-"EntityMetadata",
-
-"EntityRegistry",
-
-"SchemaRegistry",
-
-"SchemaManager",
-
-"SchemaStorage",
-
-"Database",
-
-"BaseRepository",
-
-"RepositoryFactory",
-
-"RepositoryRegistry",
-
-"EntityService",
-
-"EventBus",
-
-"ModuleRegistry"
-
-],
-
-
-
-timestamp:
-new Date().toISOString()
-
-
-};
-
-
-}
-
-
-
-};
-
-
-
-
-
-
-
-
-
-// ============================================================
-// GLOBAL COMMAND API
-// ============================================================
-
-
-function erpStart(){
-
-return App.start();
-
-}
-
-
-
-function erpHealth(){
-
-return App.health();
-
-}
-
-
-
-function erpDiag(){
-
-return App.diagnostics();
-
-}
-
-
-
-function erpReset(){
-
-return App.reset();
-
-}
-
-
-
-function erpInfo(){
-
-return App.info();
-
-}
-
-
-
-function erpStatus(){
-
-return App.status();
-
-}
-
-
-
-
-
-
-
-
-globalThis.App =
-App;
-
-
-
-
-
-
-
-Logger.log(
-
-"App READY v"+
-App.version
-
-);
+Logger.log("App READY v" + App.version);

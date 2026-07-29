@@ -3,29 +3,32 @@
 // ERP TexControl Core
 //
 // Version:
-// SchemaStorage v2.1.0
+// SchemaStorage v2.2.0
 //
 // Compatible:
 // EntityMetadata v3.x
 // SchemaManager v4.2+
 // SchemaBuilder v4.1+
 // EntityRegistry v2.6+
+// SpreadsheetAdapter v4.4+ (v4.3 writeRows fallback)
 //
 // Fix:
 // - idField support
 // - entity restoration
 // - corrupted schema protection
 // - clean reset
+// - explicit bulk replace contract
+// - safe v4.3 adapter fallback
 // ============================================================
 
 
-console.log("SchemaStorage v2.1.0");
+console.log("SchemaStorage v2.2.0");
 
 
 const SchemaStorage = {
 
 
-version:"2.1.0",
+version:"2.2.0",
 
 
 _tablesSheet:"_SystemSchemaTables",
@@ -37,27 +40,109 @@ _migrationsSheet:"_SchemaMigrations",
 
 
 
-_read(sheet){
+_adapter(){
 
 
-if(!SpreadsheetAdapter)
+if(
+typeof SpreadsheetAdapter==="undefined"
+||
+!SpreadsheetAdapter
+){
+
 throw new Error(
 "SpreadsheetAdapter unavailable"
 );
 
+}
 
 
-if(SpreadsheetAdapter.query){
+return SpreadsheetAdapter;
 
-return SpreadsheetAdapter.query(sheet)||[];
+
+},
+
+
+
+
+_toRows(rows,headers){
+
+
+if(!Array.isArray(rows)){
+
+throw new Error(
+"SchemaStorage rows must be array"
+);
+
+}
+
+
+if(
+!Array.isArray(headers)
+||
+!headers.length
+){
+
+throw new Error(
+"SchemaStorage headers required"
+);
+
+}
+
+
+return rows.map((row,index)=>{
+
+
+if(
+!row
+||
+typeof row!=="object"
+||
+Array.isArray(row)
+){
+
+throw new Error(
+"SchemaStorage invalid row at "+index
+);
+
+}
+
+
+return headers.map(
+header=>row[header] ?? ""
+);
+
+
+});
+
+
+},
+
+
+
+
+_read(sheet){
+
+
+const adapter =
+this._adapter();
+
+
+
+if(
+typeof adapter.query==="function"
+){
+
+return adapter.query(sheet)||[];
 
 }
 
 
 
-if(SpreadsheetAdapter.findAll){
+if(
+typeof adapter.findAll==="function"
+){
 
-return SpreadsheetAdapter.findAll(sheet)||[];
+return adapter.findAll(sheet)||[];
 
 }
 
@@ -75,9 +160,15 @@ return [];
 _write(sheet,rows,headers){
 
 
-if(SpreadsheetAdapter.replace){
+const adapter =
+this._adapter();
 
-return SpreadsheetAdapter.replace(
+
+if(
+typeof adapter.replace==="function"
+){
+
+return adapter.replace(
 sheet,
 rows,
 headers
@@ -86,11 +177,16 @@ headers
 }
 
 
-if(SpreadsheetAdapter.write){
+if(
+typeof adapter.writeRows==="function"
+){
 
-return SpreadsheetAdapter.write(
+return adapter.writeRows(
 sheet,
+this._toRows(
 rows,
+headers
+),
 headers
 );
 
@@ -98,7 +194,7 @@ headers
 
 
 throw new Error(
-"SpreadsheetAdapter write unavailable"
+"SpreadsheetAdapter replace unavailable"
 );
 
 
@@ -111,9 +207,15 @@ throw new Error(
 _append(sheet,row){
 
 
-if(SpreadsheetAdapter.insert){
+const adapter =
+this._adapter();
 
-return SpreadsheetAdapter.insert(
+
+if(
+typeof adapter.insert==="function"
+){
+
+return adapter.insert(
 sheet,
 row
 );
@@ -294,6 +396,21 @@ return tables;
 
 
 save(schema){
+
+
+if(
+!schema
+||
+typeof schema!=="object"
+||
+Array.isArray(schema)
+){
+
+throw new Error(
+"SchemaStorage schema must be object"
+);
+
+}
 
 
 

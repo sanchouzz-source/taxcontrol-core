@@ -1,38 +1,27 @@
+// ============================================================
+// Install v2.0.0
+//
+// Installation uses the same lifecycle as every other runtime.
+// Component-by-component initialization is prohibited here.
+// ============================================================
+
 function installSystem() {
-  // 1. Сначала инициализируем SchemaManager (он строит схему из метаданных)
-  if (typeof SchemaManager !== "undefined") {
-    SchemaManager.init();
+  Logger.log(
+    "SYSTEM INSTALL: delegating to canonical ERP startup"
+  );
+
+  if (typeof startERP !== "function") {
+    throw new Error("startERP command unavailable");
   }
 
-  // 2. Затем Database – теперь без внутреннего вызова SchemaManager
-  if (typeof Database !== "undefined") {
-    Database.init();
-  }
+  const result = startERP();
 
-  // 3. Остальные компоненты
-  if (typeof Registry !== "undefined") {
-    Registry.init();
-  }
-
-  if (typeof EventBus !== "undefined") {
-    EventBus.init();
-  }
-
-  if (typeof TransportOrderEventHandler !== "undefined") {
-    TransportOrderEventHandler.init();
-  }
-
-  if (typeof LogisticsEventSubscriptions !== "undefined") {
-    LogisticsEventSubscriptions.init();
-  }
-
-  if (typeof TripEventHandler !== "undefined") {
-    TripEventHandler.init();
-  }
-
-  if (typeof FinanceEngine !== "undefined") {
-    FinanceEngine.init();
+  if (result && typeof result.then === "function") {
+    throw new Error(
+      "installSystem must remain synchronous"
+    );
   }
 
   Logger.log("System installation complete.");
+  return result;
 }

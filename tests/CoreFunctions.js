@@ -1,366 +1,117 @@
-console.log("CoreFunctions");
+// ============================================================
+// CoreFunctions v3.1.0
+// Test and compatibility facade.
+//
+// It does not own ERP state and does not declare startERP,
+// erpHealth or erpDiag.
+// ============================================================
 
-
-/**
- * ============================================================
- * CoreFunctions v3.0.0
- *
- * Unified ERP Control API
- *
- * Единственная точка управления ERP
- * ============================================================
- */
-
+console.log("CoreFunctions v3.1.0");
 
 const CoreFunctions = {
-
-    version:"3.0.0",
-
-
-    // ------------------------------------------------
-    // Проверка ядра
-    // ------------------------------------------------
-
-    checkCore(){
-
-        const required=[
-            "SystemInit",
-            "Logger"
-        ];
-
-
-        const missing=[];
-
-
-        required.forEach(name=>{
-
-            if(typeof globalThis[name]==="undefined"){
-                missing.push(name);
-            }
-
-        });
-
-
-        return {
-            ok:missing.length===0,
-            missing
-        };
-
-    },
-
-
-
-    // ------------------------------------------------
-    // START ERP
-    // ------------------------------------------------
-
-    async start(){
-
-        Logger.log(
-            "========== CORE FUNCTIONS START =========="
-        );
-
-
-        const check=this.checkCore();
-
-
-        if(!check.ok){
-
-            throw new Error(
-                "Missing core: "+
-                check.missing.join(",")
-            );
-
-        }
-
-
-        globalThis.__ERP_STATE__ =
-            globalThis.__ERP_STATE__ ||
-            {
-                started:false,
-                startedAt:null
-            };
-
-
-
-        if(globalThis.__ERP_STATE__.started){
-
-            Logger.warn(
-                "ERP already started"
-            );
-
-            return this.health();
-
-        }
-
-
-
-        try{
-
-
-            const result =
-                await SystemInit.init();
-
-
-
-            globalThis.__ERP_STATE__.started=true;
-
-            globalThis.__ERP_STATE__.startedAt =
-                new Date().toISOString();
-
-
-
-            Logger.log(
-                "ERP START SUCCESS"
-            );
-
-
-            return result;
-
-
-        }
-        catch(e){
-
-
-            Logger.error(
-                "ERP START FAILED "+
-                e.message
-            );
-
-
-            globalThis.__ERP_STATE__.started=false;
-
-
-            throw e;
-
-        }
-
-
-    },
-
-
-
-    // ------------------------------------------------
-    // HEALTH
-    // ------------------------------------------------
-
-    health(){
-
-
-        try{
-
-
-            if(typeof ERPDiagnostics!=="undefined"
-                &&
-               ERPDiagnostics.run){
-
-
-                return ERPDiagnostics.run();
-
-            }
-
-
-
-            if(typeof SystemInit!=="undefined"
-                &&
-               SystemInit.health){
-
-
-                return SystemInit.health();
-
-            }
-
-
-
-            return {
-
-                status:"WARNING",
-                message:
-                "Diagnostics unavailable"
-
-            };
-
-
-        }
-        catch(e){
-
-            return {
-
-                status:"ERROR",
-                error:e.message
-
-            };
-
-        }
-
-    },
-
-
-
-
-    // ------------------------------------------------
-    // DIAGNOSTICS
-    // ------------------------------------------------
-
-    diagnostics(){
-
-
-        try{
-
-
-            if(typeof ERPDiagnostics!=="undefined"
-                &&
-               ERPDiagnostics.diagnostics){
-
-
-                return ERPDiagnostics.diagnostics();
-
-            }
-
-
-
-            return {
-
-
-                system:
-                SystemInit?.diagnostics?.()
-
-
-            };
-
-
-        }
-        catch(e){
-
-            return {
-
-                status:"ERROR",
-                error:e.message
-
-            };
-
-        }
-
-    },
-
-
-
-
-
-    // ------------------------------------------------
-    // FULL TEST
-    // ------------------------------------------------
-
-    startupTest(){
-
-
-        if(typeof SystemStartupTest!=="undefined"
-            &&
-           SystemStartupTest.fullHealth){
-
-
-            return SystemStartupTest.fullHealth();
-
-        }
-
-
-        return {
-
-            status:"WARNING",
-            message:
-            "SystemStartupTest unavailable"
-
-        };
-
-
-    },
-
-
-
-
-
-    // ------------------------------------------------
-    // STATUS
-    // ------------------------------------------------
-
-    status(){
-
-        return {
-
-
-            version:this.version,
-
-
-            state:
-            globalThis.__ERP_STATE__ || {},
-
-
-            system:
-            typeof SystemInit!=="undefined"
-            ?
-            SystemInit.initialized
-            :
-            false
-
-
-        };
-
+  version: "3.1.0",
+
+  checkCore() {
+    const required = [
+      "Logger",
+      "SystemInit",
+      "App",
+      "Bootstrap",
+    ];
+
+    const missing = required.filter(
+      (name) => typeof globalThis[name] === "undefined"
+    );
+
+    return {
+      ok: missing.length === 0,
+      missing,
+    };
+  },
+
+  start() {
+    Logger.log(
+      "========== CORE FUNCTIONS START =========="
+    );
+
+    const check = this.checkCore();
+
+    if (!check.ok) {
+      throw new Error(
+        "Missing core: " + check.missing.join(",")
+      );
     }
 
+    const result = globalThis.Bootstrap.start();
 
+    if (result && typeof result.then === "function") {
+      throw new Error(
+        "CoreFunctions.start must remain synchronous"
+      );
+    }
 
+    return result;
+  },
+
+  health() {
+    const bootstrap = globalThis.Bootstrap;
+
+    if (!bootstrap) {
+      return {
+        status: "FAILED",
+        error: "Bootstrap unavailable",
+      };
+    }
+
+    bootstrap.ensureStarted();
+    return bootstrap.health();
+  },
+
+  diagnostics() {
+    const bootstrap = globalThis.Bootstrap;
+
+    if (!bootstrap) {
+      return {
+        status: "FAILED",
+        error: "Bootstrap unavailable",
+      };
+    }
+
+    bootstrap.ensureStarted();
+    return bootstrap.diagnostics();
+  },
+
+  startupTest() {
+    const test = globalThis.SystemStartupTest;
+
+    if (test && typeof test.fullHealth === "function") {
+      return test.fullHealth();
+    }
+
+    return {
+      status: "WARNING",
+      message: "SystemStartupTest unavailable",
+    };
+  },
+
+  status() {
+    const bootstrap = globalThis.Bootstrap;
+
+    return bootstrap
+      ? bootstrap.status()
+      : {
+          status: "FAILED",
+          error: "Bootstrap unavailable",
+        };
+  },
 };
 
+globalThis.CoreFunctions = CoreFunctions;
 
-
-// ===================================================
-// GLOBAL API
-// ===================================================
-
-
-globalThis.CoreFunctions =
-    CoreFunctions;
-
-
-
-// ===================================================
-// COMMANDS
-// ===================================================
-
-
-function startERP(){
-
-    return CoreFunctions.start();
-
+function erpTest() {
+  return CoreFunctions.startupTest();
 }
-
-
-
-function erpHealth(){
-
-    return CoreFunctions.health();
-
-}
-
-
-
-function erpDiag(){
-
-    return CoreFunctions.diagnostics();
-
-}
-
-
-
-function erpTest(){
-
-    return CoreFunctions.startupTest();
-
-}
-
-
 
 Logger.log(
-"CoreFunctions READY v"+
-CoreFunctions.version
+  "CoreFunctions READY v" + CoreFunctions.version
 );
