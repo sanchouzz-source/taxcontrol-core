@@ -1,726 +1,452 @@
 // ============================================================
-// TestSystemInitContract v3.1.0
-// TaxControl ERP Core
+// TestSystemInitContract v4.0.0
 //
-// Enterprise Startup Contract Test
-//
-// Checks:
-//
-// Bootstrap
-// SystemInit
-// Repository Layer
-// Event Layer
-// Service Layer
-//
-// No business writes
-//
+// Integration contract for SystemInit v3.2+.
+// Run runSystemInitContractTest() in one GAS execution.
+// The test never clears persisted schema tables.
 // ============================================================
 
-
-console.log(
-"TestSystemInitContract v3.1.0"
-);
-
-
-
 const TestSystemInitContract = {
+  version: "4.0.0",
 
+  assert(condition, message) {
+    if (!condition) {
+      throw new Error(message);
+    }
+  },
 
-version:"3.1.0",
+  assertSync(result, name) {
+    this.assert(
+      !(
+        result &&
+        typeof result.then === "function"
+      ),
+      name + " returned Promise"
+    );
+  },
 
+  run() {
+    const checks = [];
 
+    const check = (name, fn) => {
+      fn();
+      checks.push({
+        name,
+        status: "PASS",
+      });
+    };
 
-run(){
+    const orderBefore = (before, after) => {
+      const order = SystemInit.startupOrder;
+      const beforeIndex = order.indexOf(before);
+      const afterIndex = order.indexOf(after);
 
+      this.assert(
+        beforeIndex >= 0,
+        before + " missing from startup order"
+      );
 
-Logger.log(
-"================================================"
-);
+      this.assert(
+        afterIndex >= 0,
+        after + " missing from startup order"
+      );
 
+      this.assert(
+        beforeIndex < afterIndex,
+        before + " must start before " + after
+      );
+    };
 
+    const initialReset = resetERP();
 
-Logger.log(
-"SYSTEM INIT CONTRACT TEST START"
-);
+    check("INITIAL_RESET_IS_SYNC", () => {
+      this.assertSync(initialReset, "resetERP");
+      this.assert(
+        initialReset.status === "RESET",
+        "Initial reset did not return RESET"
+      );
+    });
 
+    check("INITIAL_SYSTEM_STATE", () => {
+      this.assert(
+        SystemInit.initialized === false,
+        "SystemInit remained initialized"
+      );
+      this.assert(
+        SystemInit.status === "CREATED",
+        "SystemInit did not return to CREATED"
+      );
+      this.assert(
+        Object.keys(SystemInit.componentStatus)
+          .length === 0,
+        "Component status was not cleared"
+      );
+    });
 
+    const startResult = startERP();
 
-Logger.log(
-"================================================"
-);
+    check("START_IS_SYNCHRONOUS", () => {
+      this.assertSync(startResult, "startERP");
+      this.assert(
+        startResult.status === "READY",
+        "startERP did not return READY"
+      );
+    });
 
+    check("SYSTEM_READY_IS_CONFIRMED", () => {
+      this.assert(
+        SystemInit.initialized === true,
+        "SystemInit is not initialized"
+      );
+      this.assert(
+        SystemInit.status === "READY",
+        "SystemInit lifecycle status is not READY"
+      );
+      this.assert(
+        SystemInit.isReady() === true,
+        "SystemInit readiness check failed"
+      );
+      this.assert(
+        App.isReady() === true,
+        "App readiness check failed"
+      );
+    });
 
+    check("GRAPH_IS_VALID", () => {
+      const graph = SystemInit.validateGraph();
 
+      this.assert(
+        graph.valid === true,
+        "Lifecycle graph is invalid"
+      );
+      this.assert(
+        graph.count ===
+          Object.keys(
+            SystemInit.componentDefinitions
+          ).length,
+        "Lifecycle graph lost components"
+      );
+    });
 
-const result={
+    check("FOUNDATION_ORDER", () => {
+      orderBefore("Logger", "Config");
+      orderBefore(
+        "EntityMetadata",
+        "EntityRegistry"
+      );
+      orderBefore(
+        "EntityRegistry",
+        "SchemaRegistry"
+      );
+    });
 
+    check("SCHEMA_ORDER", () => {
+      orderBefore(
+        "SpreadsheetAdapter",
+        "SchemaStorage"
+      );
+      orderBefore(
+        "SpreadsheetAdapter",
+        "SchemaManager"
+      );
+      orderBefore(
+        "SchemaBuilder",
+        "SchemaManager"
+      );
+      orderBefore(
+        "SchemaStorage",
+        "SchemaManager"
+      );
+    });
 
-tests:[],
+    check("REPOSITORY_ORDER", () => {
+      orderBefore("SchemaManager", "Database");
+      orderBefore("Database", "BaseRepository");
+      orderBefore(
+        "BaseRepository",
+        "RepositoryFactory"
+      );
+      orderBefore(
+        "RepositoryFactory",
+        "RepositoryRegistry"
+      );
+      orderBefore(
+        "RepositoryRegistry",
+        "EntityService"
+      );
+    });
 
+    check("EVENT_AND_SERVICE_ORDER", () => {
+      orderBefore(
+        "ERPEventContract",
+        "EventBus"
+      );
+      orderBefore(
+        "EntityService",
+        "ServiceRegistry"
+      );
+      orderBefore(
+        "EventBus",
+        "ServiceRegistry"
+      );
+      orderBefore(
+        "ServiceRegistry",
+        "ClientService"
+      );
+      orderBefore(
+        "ServiceRegistry",
+        "TransportOrderService"
+      );
+    });
 
-summary:{
+    check("CRITICAL_COMPONENTS_READY", () => {
+      SystemInit.criticalComponents
+        .forEach((name) => {
+          const status =
+            SystemInit.componentStatus[name];
 
+          this.assert(
+            status &&
+              status.status === "READY",
+            name + " is not READY"
+          );
+        });
+    });
 
-total:0,
+    check("READY_HAS_TIMING_EVIDENCE", () => {
+      SystemInit.criticalComponents
+        .forEach((name) => {
+          const status =
+            SystemInit.componentStatus[name];
 
+          this.assert(
+            typeof status.duration === "number" &&
+              status.duration >= 0,
+            name + " has invalid duration"
+          );
+          this.assert(
+            !!status.startedAt &&
+              !!status.finishedAt,
+            name + " has incomplete timestamps"
+          );
+        });
+    });
 
-passed:0,
+    check("REQUIRED_SERVICES_READY", () => {
+      [
+        "ClientService",
+        "TransportOrderService",
+      ].forEach((name) => {
+        this.assert(
+          ServiceRegistry.has(name),
+          name + " missing in ServiceRegistry"
+        );
+        this.assert(
+          SystemInit.componentStatus[name]
+            .status === "READY",
+          name + " lifecycle is not READY"
+        );
+      });
+    });
 
+    check("MODULE_LIFECYCLE_IS_EXPLICIT", () => {
+      const health = SystemInit.health();
 
-failed:0
+      this.assert(
+        health.modules.mode ===
+          "REGISTERED_ONLY" ||
+          health.modules.mode === "UNAVAILABLE",
+        "Module lifecycle mode is ambiguous"
+      );
 
+      if (
+        health.modules.mode ===
+        "REGISTERED_ONLY"
+      ) {
+        this.assert(
+          health.modules.startedAll === false,
+          "Package C must not start modules"
+        );
+      }
+    });
 
-}
+    check("SYSTEM_HEALTH_IS_TRUTHFUL", () => {
+      const health = SystemInit.health();
 
+      this.assert(
+        health.status === "OK",
+        "SystemInit health is not OK"
+      );
+      this.assert(
+        health.ready === true,
+        "SystemInit health does not confirm readiness"
+      );
+      this.assert(
+        health.critical.ready.length ===
+          health.critical.required.length,
+        "Not all critical components are ready"
+      );
+    });
 
+    const bootCount = Bootstrap.state.bootCount;
+    const repeatedStart = startERP();
 
+    check("START_IS_IDEMPOTENT", () => {
+      this.assertSync(
+        repeatedStart,
+        "repeated startERP"
+      );
+      this.assert(
+        repeatedStart.status ===
+          "ALREADY_STARTED",
+        "Repeated start is not idempotent"
+      );
+      this.assert(
+        Bootstrap.state.bootCount === bootCount,
+        "Repeated start changed bootCount"
+      );
+    });
+
+    const finalReset = resetERP();
+
+    check("FINAL_RESET_IS_SYNCHRONOUS", () => {
+      this.assertSync(finalReset, "resetERP");
+      this.assert(
+        finalReset.status === "RESET",
+        "Final reset did not return RESET"
+      );
+    });
+
+    check("DEEP_RUNTIME_RESET", () => {
+      const falseFlags = [
+        [
+          "Config.initialized",
+          Config.initialized,
+        ],
+        [
+          "EntityMetadata.initialized",
+          EntityMetadata.initialized,
+        ],
+        [
+          "EntityRegistry.initialized",
+          EntityRegistry.initialized,
+        ],
+        [
+          "SchemaRegistry.initialized",
+          SchemaRegistry.initialized,
+        ],
+        [
+          "SpreadsheetAdapter.initialized",
+          SpreadsheetAdapter.initialized,
+        ],
+        [
+          "SchemaManager.initialized",
+          SchemaManager.initialized,
+        ],
+        [
+          "Database.initialized",
+          Database.initialized,
+        ],
+        [
+          "RepositoryFactory.initialized",
+          RepositoryFactory.initialized,
+        ],
+        [
+          "RepositoryRegistry.ready",
+          RepositoryRegistry.ready,
+        ],
+        [
+          "EntityService.ready",
+          EntityService.ready,
+        ],
+        [
+          "EventBus.ready",
+          EventBus.ready,
+        ],
+        [
+          "ServiceRegistry.initialized",
+          ServiceRegistry.initialized,
+        ],
+        [
+          "ClientService.initialized",
+          ClientService.initialized,
+        ],
+        [
+          "TransportOrderService.initialized",
+          TransportOrderService.initialized,
+        ],
+      ];
+
+      falseFlags.forEach(([name, value]) => {
+        this.assert(
+          value === false,
+          name + " was not reset"
+        );
+      });
+
+      this.assert(
+        BaseRepository.ready() === false,
+        "BaseRepository remained ready"
+      );
+
+      if (
+        typeof ModuleRegistry !== "undefined"
+      ) {
+        this.assert(
+          ModuleRegistry.initialized === false,
+          "ModuleRegistry remained initialized"
+        );
+      }
+
+      this.assert(
+        SystemInit.initialized === false &&
+          SystemInit.status === "CREATED",
+        "SystemInit did not return to CREATED"
+      );
+    });
+
+    return {
+      test: "TestSystemInitContract",
+      version: this.version,
+      status: "PASS",
+      checks,
+      count: checks.length,
+      timestamp: new Date().toISOString(),
+    };
+  },
 };
-
-
-
-
-
-
-// ========================================================
-// SYSTEM
-// ========================================================
-
-
-this.check(
-
-result,
-
-"SYSTEM_INIT_EXISTS",
-
-()=>{
-
-
-if(
-typeof SystemInit==="undefined"
-){
-
-throw new Error(
-"SystemInit missing"
-);
-
-}
-
-
-}
-
-);
-
-
-
-
-
-
-
-
-// ========================================================
-// DATABASE
-// ========================================================
-
-
-this.check(
-
-result,
-
-"DATABASE_READY",
-
-()=>{
-
-
-if(
-typeof Database==="undefined"
-){
-
-throw new Error(
-"Database missing"
-);
-
-}
-
-
-
-}
-
-);
-
-
-
-
-
-
-
-
-// ========================================================
-// REPOSITORY
-// ========================================================
-
-
-this.check(
-
-result,
-
-"BASE_REPOSITORY_READY",
-
-()=>{
-
-
-if(
-typeof BaseRepository==="undefined"
-){
-
-throw new Error(
-"BaseRepository missing"
-);
-
-}
-
-
-}
-
-);
-
-
-
-
-
-
-
-this.check(
-
-result,
-
-"REPOSITORY_FACTORY_READY",
-
-()=>{
-
-
-if(
-typeof RepositoryFactory==="undefined"
-){
-
-throw new Error(
-"RepositoryFactory missing"
-);
-
-}
-
-
-}
-
-);
-
-
-
-
-
-
-
-
-this.check(
-
-result,
-
-"REPOSITORY_REGISTRY_READY",
-
-()=>{
-
-
-if(
-typeof RepositoryRegistry==="undefined"
-){
-
-throw new Error(
-"RepositoryRegistry missing"
-);
-
-}
-
-
-}
-
-);
-
-
-
-
-
-
-
-
-// ========================================================
-// EVENTS
-// ========================================================
-
-
-this.check(
-
-result,
-
-"EVENT_CONTRACT_READY",
-
-()=>{
-
-
-if(
-typeof ERPEventContract==="undefined"
-){
-
-throw new Error(
-"ERPEventContract missing"
-);
-
-}
-
-
-}
-
-);
-
-
-
-
-
-
-
-this.check(
-
-result,
-
-"EVENTBUS_READY",
-
-()=>{
-
-
-if(
-typeof EventBus==="undefined"
-){
-
-throw new Error(
-"EventBus missing"
-);
-
-}
-
-
-}
-
-);
-
-
-
-
-
-
-
-
-// ========================================================
-// SERVICES
-// ========================================================
-
-
-this.check(
-
-result,
-
-"SERVICE_REGISTRY_READY",
-
-()=>{
-
-
-if(
-typeof ServiceRegistry==="undefined"
-){
-
-throw new Error(
-"ServiceRegistry missing"
-);
-
-}
-
-
-
-if(
-!ServiceRegistry.initialized
-){
-
-throw new Error(
-"ServiceRegistry not initialized"
-);
-
-}
-
-
-}
-
-);
-
-
-
-
-
-
-
-
-this.check(
-
-result,
-
-"CLIENT_SERVICE_READY",
-
-()=>{
-
-
-const service =
-
-ServiceRegistry.get(
-"ClientService"
-);
-
-
-
-if(
-!service
-){
-
-throw new Error(
-"ClientService missing"
-);
-
-}
-
-
-
-if(
-typeof service.create!=="function"
-){
-
-throw new Error(
-"ClientService.create missing"
-);
-
-}
-
-
-}
-
-);
-
-
-
-
-
-
-
-
-
-this.check(
-
-result,
-
-"TRANSPORT_ORDER_SERVICE_READY",
-
-()=>{
-
-
-const service =
-
-ServiceRegistry.get(
-"TransportOrderService"
-);
-
-
-
-if(
-!service
-){
-
-throw new Error(
-"TransportOrderService missing"
-);
-
-}
-
-
-
-if(
-typeof service.create!=="function"
-){
-
-throw new Error(
-"TransportOrderService.create missing"
-);
-
-}
-
-
-}
-
-);
-
-
-
-
-
-
-
-
-// ========================================================
-// HEALTH
-// ========================================================
-
-
-this.check(
-
-result,
-
-"SYSTEM_HEALTH",
-
-()=>{
-
-
-const health =
-SystemInit.health();
-
-
-
-if(
-health.status!=="OK"
-){
-
-throw new Error(
-"System health status "
-+
-health.status
-);
-
-}
-
-
-}
-
-);
-
-
-
-
-
-
-
-
-// ========================================================
-// SUMMARY
-// ========================================================
-
-
-result.summary.total =
-result.tests.length;
-
-
-
-result.summary.passed =
-
-result.tests.filter(
-
-x=>
-
-x.status==="PASS"
-
-).length;
-
-
-
-
-
-result.summary.failed =
-
-result.tests.filter(
-
-x=>
-
-x.status==="FAIL"
-
-).length;
-
-
-
-
-
-result.status =
-
-result.summary.failed===0
-
-?
-
-"PASS"
-
-:
-
-"FAIL";
-
-
-
-
-
-
-
-Logger.log(
-
-JSON.stringify(
-
-result,
-
-null,
-
-2
-
-)
-
-);
-
-
-
-
-
-
-Logger.log(
-"================================================"
-);
-
-
-
-Logger.log(
-
-"SYSTEM INIT CONTRACT TEST RESULT: "
-+
-result.status
-
-);
-
-
-
-Logger.log(
-"================================================"
-);
-
-
-
-return result;
-
-
-},
-
-
-
-
-
-
-
-// ========================================================
-// ASSERT
-// ========================================================
-
-
-check(
-result,
-name,
-fn
-){
-
-
-try{
-
-
-fn();
-
-
-
-result.tests.push({
-
-
-name:name,
-
-
-status:"PASS"
-
-
-});
-
-
-
-Logger.log(
-
-name+
-" PASS"
-
-);
-
-
-
-}
-catch(e){
-
-
-
-result.tests.push({
-
-
-name:name,
-
-
-status:"FAIL",
-
-
-error:e.message
-
-
-});
-
-
-
-Logger.error(
-
-name+
-" FAIL "
-+
-e.message
-
-);
-
-
-
-}
-
-
-
-}
-
-
-
-};
-
-
-
-
-
-
 
 globalThis.TestSystemInitContract =
-TestSystemInitContract;
+  TestSystemInitContract;
 
+function runSystemInitContractTest() {
+  let result;
 
+  try {
+    result =
+      TestSystemInitContract.run();
 
+    Logger.log(
+      "PACKAGE C CONTRACT PASS checks=" +
+        result.count
+    );
 
+    return result;
+  } catch (error) {
+    try {
+      resetERP();
+    } catch (resetError) {
+      Logger.error(
+        "PACKAGE C TEST CLEANUP FAILED " +
+          resetError.message
+      );
+    }
 
+    throw error;
+  }
+}
 
-
-function runSystemInitContractTest(){
-
-
-return TestSystemInitContract.run();
-
-
+// Explicit compatibility alias for package documentation and direct runs.
+function runSystemInitLifecycleContractTest() {
+  return runSystemInitContractTest();
 }
