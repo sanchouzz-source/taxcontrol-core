@@ -1,5 +1,5 @@
 // ============================================================
-// EntityRegistry v2.6.0
+// EntityRegistry v2.7.0
 // Enterprise Runtime Entity Registry
 // TaxControl ERP Core
 //
@@ -12,13 +12,13 @@
 // ============================================================
 
 
-console.log("EntityRegistry v2.6.0");
+console.log("EntityRegistry v2.7.0");
 
 
 const EntityRegistry = {
 
 
-version:"2.6.0",
+version:"2.7.0",
 
 initialized:false,
 
@@ -28,6 +28,15 @@ entities:{},
 
 
 aliases:{
+
+
+ORGANIZATION:"ORGANIZATION",
+Organization:"ORGANIZATION",
+Organizations:"ORGANIZATION",
+
+USER:"USER",
+User:"USER",
+Users:"USER",
 
 
 CLIENT:"CLIENT",
@@ -85,6 +94,13 @@ KPI:"KPI",
 AUD:"AUDIT",
 
 VER:"VERSION"
+
+,
+
+FAILED_EVENT:"FAILED_EVENT",
+FailedEvent:"FAILED_EVENT",
+FailedEvents:"FAILED_EVENT",
+FEV:"FAILED_EVENT"
 
 
 },
@@ -242,6 +258,26 @@ meta.timestamps!==false,
 
 audit:
 meta.audit===true,
+
+
+system:
+meta.system===true,
+
+
+organization:
+meta.organization,
+
+
+organizationScope:
+meta.organizationScope,
+
+
+permissions:
+meta.permissions || {},
+
+
+options:
+meta.options || {},
 
 
 relations:

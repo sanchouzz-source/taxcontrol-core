@@ -1,5 +1,5 @@
 // ============================================================
-// RouteRepository v3.0.2
+// RouteRepository v3.0.3
 // Enterprise Repository
 // TaxControl ERP Core
 //
@@ -34,7 +34,7 @@
 
 
 console.log(
-"RouteRepository v3.0.2"
+"RouteRepository v3.0.3"
 );
 
 
@@ -42,7 +42,7 @@ console.log(
 const RouteRepository = {
 
 
-version:"3.0.2",
+version:"3.0.3",
 
 entity:"ROUTE",
 
@@ -999,28 +999,7 @@ RouteRepository;
 // ============================================================
 
 
-try{
-
-
-RouteRepository.init();
-
-
-RouteRepository.register();
-
-
-}
-catch(e){
-
-
-Logger.warn(
-
-"RouteRepository deferred: "+
-e.message
-
-);
-
-
-}
+// Lifecycle is started by RepositoryRegistry.
 
 
 

@@ -1,5 +1,5 @@
 // ============================================================
-// SpreadsheetAdapter.gs v4.4.0
+// SpreadsheetAdapter.gs v4.5.0
 // TaxControl ERP Core
 //
 // Enterprise Storage Adapter
@@ -21,14 +21,14 @@
 // ============================================================
 
 
-console.log("SpreadsheetAdapter v4.4.0");
+console.log("SpreadsheetAdapter v4.5.0");
 
 
 
 const SpreadsheetAdapter = {
 
 
-version:"4.4.0",
+version:"4.5.0",
 
 
 architecture:
@@ -1058,7 +1058,7 @@ id
 
 
 
-findAll(sheetName){
+findAll(sheetName,options={}){
 
 
 const sheet =
@@ -1094,7 +1094,8 @@ values[0];
 
 
 
-return values
+const rows =
+values
 .slice(1)
 .map(
 row=>
@@ -1102,10 +1103,22 @@ this.rowToObject(
 headers,
 row
 )
-)
-.filter(
-x=>
-x.Deleted!==true
+);
+
+
+
+if(
+options.includeDeleted===true
+){
+
+return rows;
+
+}
+
+
+
+return rows.filter(
+row=>!this.isDeleted(row)
 );
 
 
@@ -1118,11 +1131,14 @@ x.Deleted!==true
 
 
 
-query(sheetName,filters={}){
+query(sheetName,filters={},options={}){
 
 
 const rows =
-this.findAll(sheetName);
+this.findAll(
+sheetName,
+options
+);
 
 
 
@@ -1155,12 +1171,50 @@ String(filters[key])
 
 
 
-findWhere(sheetName,criteria){
+findWhere(sheetName,criteria={},options={}){
 
 
 return this.query(
 sheetName,
-criteria
+criteria,
+options
+);
+
+
+},
+
+
+
+
+
+
+
+isDeleted(row){
+
+
+if(!row){
+
+return false;
+
+}
+
+
+
+const value =
+row.Deleted;
+
+
+
+return (
+
+value===true
+||
+value===1
+||
+String(value)
+.trim()
+.toLowerCase()==="true"
+
 );
 
 

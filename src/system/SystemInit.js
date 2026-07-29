@@ -1,5 +1,5 @@
 // ============================================================
-// SystemInit v3.4.0
+// SystemInit v3.6.0
 // Enterprise ERP Lifecycle Orchestrator
 // TaxControl ERP Core
 //
@@ -16,12 +16,15 @@
 // - critical module failure prevents ERP READY
 // - optional module failure is reported as a warning
 // - event runtime is fully reset after managed modules stop
+// - security catalog, roles and request context are lifecycle components
+// - OrganizationScope is ready before Database and Repository layers
+// - startup never creates an implicit authenticated user
 // ============================================================
 
-console.log("SystemInit v3.4.0");
+console.log("SystemInit v3.6.0");
 
 const SystemInit = {
-  version: "3.4.0",
+  version: "3.6.0",
 
   initialized: false,
   initializing: false,
@@ -57,14 +60,159 @@ const SystemInit = {
       methods: ["init"],
     },
 
+    PermissionConstants: {
+      dependencies: ["Logger"],
+      critical: true,
+      methods: [
+        "init",
+        "reset",
+        "list",
+        "has",
+        "forEntity",
+      ],
+    },
+
+    RoleConstants: {
+      dependencies: ["Logger"],
+      critical: true,
+      methods: [
+        "init",
+        "reset",
+        "has",
+        "list",
+      ],
+    },
+
+    RoleManager: {
+      dependencies: [
+        "PermissionConstants",
+        "RoleConstants",
+      ],
+      critical: true,
+      methods: [
+        "init",
+        "reset",
+        "hasPermission",
+        "validate",
+      ],
+    },
+
+    SecurityContext: {
+      dependencies: ["RoleConstants"],
+      critical: true,
+      methods: [
+        "init",
+        "reset",
+        "get",
+        "require",
+        "runAs",
+        "runAsSystem",
+        "isAuthenticated",
+      ],
+    },
+
+    UserSession: {
+      dependencies: ["SecurityContext"],
+      critical: true,
+      methods: [
+        "init",
+        "reset",
+        "login",
+        "logout",
+        "getUser",
+      ],
+    },
+
+    OrganizationContext: {
+      dependencies: ["SecurityContext"],
+      critical: true,
+      methods: [
+        "init",
+        "reset",
+        "get",
+        "tryGet",
+        "require",
+        "run",
+      ],
+    },
+
+    Settings: {
+      dependencies: [
+        "SecurityContext",
+        "OrganizationContext",
+      ],
+      critical: true,
+      methods: [
+        "init",
+        "reset",
+        "setCurrentOrganization",
+        "getCurrentOrganization",
+      ],
+    },
+
+    SecurityGuard: {
+      dependencies: [
+        "PermissionConstants",
+        "RoleManager",
+        "SecurityContext",
+      ],
+      critical: true,
+      methods: [
+        "init",
+        "reset",
+        "check",
+        "require",
+        "requireEntity",
+        "runInternal",
+      ],
+    },
+
+    Auth: {
+      dependencies: [
+        "SecurityContext",
+        "SecurityGuard",
+        "RoleConstants",
+      ],
+      critical: true,
+      methods: [
+        "init",
+        "reset",
+        "getCurrentUser",
+        "hasPermission",
+        "requirePermission",
+      ],
+    },
+
     EntityMetadata: {
       dependencies: ["Logger"],
       critical: true,
       methods: ["init", "list", "validate"],
     },
 
+    OrganizationScope: {
+      dependencies: [
+        "EntityMetadata",
+        "SecurityContext",
+        "SecurityGuard",
+      ],
+      critical: true,
+      methods: [
+        "init",
+        "reset",
+        "validate",
+        "prepareCreate",
+        "prepareUpdate",
+        "scopeCriteria",
+        "filterRecord",
+        "filterRows",
+      ],
+    },
+
     EntityRegistry: {
-      dependencies: ["EntityMetadata"],
+      dependencies: [
+        "EntityMetadata",
+        "OrganizationScope",
+      ],
       critical: true,
       methods: ["init", "list", "validate"],
     },
@@ -112,6 +260,7 @@ const SystemInit = {
         "SchemaManager",
         "SpreadsheetAdapter",
         "EntityRegistry",
+        "OrganizationScope",
       ],
       critical: true,
       methods: ["init", "reset", "list"],
@@ -121,6 +270,8 @@ const SystemInit = {
       dependencies: [
         "Database",
         "EntityRegistry",
+        "SecurityGuard",
+        "OrganizationScope",
       ],
       critical: true,
       methods: ["init", "reset", "ready"],
@@ -138,7 +289,27 @@ const SystemInit = {
     RepositoryRegistry: {
       dependencies: ["RepositoryFactory"],
       critical: true,
-      methods: ["init", "list"],
+      methods: [
+        "init",
+        "reset",
+        "list",
+        "isReady",
+      ],
+    },
+
+    AuditLog: {
+      dependencies: [
+        "EntityRegistry",
+        "RepositoryRegistry",
+        "SecurityContext",
+        "SecurityGuard",
+      ],
+      critical: true,
+      methods: [
+        "init",
+        "reset",
+        "write",
+      ],
     },
 
     EntityService: {
@@ -146,6 +317,9 @@ const SystemInit = {
         "RepositoryFactory",
         "RepositoryRegistry",
         "EntityRegistry",
+        "AuditLog",
+        "SecurityGuard",
+        "OrganizationScope",
       ],
       critical: true,
       methods: ["init", "reset"],
@@ -199,6 +373,7 @@ const SystemInit = {
         "refresh",
         "reset",
         "has",
+        "validate",
       ],
     },
 
@@ -208,7 +383,7 @@ const SystemInit = {
         "RepositoryFactory",
       ],
       critical: true,
-      methods: ["init"],
+      methods: ["init", "reset"],
     },
 
     TransportOrderService: {
@@ -217,7 +392,7 @@ const SystemInit = {
         "RepositoryFactory",
       ],
       critical: true,
-      methods: ["init"],
+      methods: ["init", "reset"],
     },
 
     FinanceService: {
@@ -520,9 +695,7 @@ const SystemInit = {
     }
 
     if (name === "ServiceRegistry") {
-      call("init");
-      call("refresh");
-      return true;
+      return call("init");
     }
 
     if (name === "ModuleRegistry") {
@@ -653,16 +826,17 @@ const SystemInit = {
         return component.ready() === true;
 
       case "RepositoryFactory":
-        return (
-          component.initialized === true &&
-          component.list().length > 0
-        );
+        return component.initialized === true;
 
       case "RepositoryRegistry":
         return (
           component.ready === true &&
-          component.list().length > 0
+          component.list().length > 0 &&
+          component.isReady() === true
         );
+
+      case "AuditLog":
+        return component.ready === true;
 
       case "EntityService":
         return component.ready === true;
@@ -954,6 +1128,61 @@ const SystemInit = {
     return true;
   },
 
+  validateSecurity() {
+    const roleErrors =
+      this._component(
+        "RoleManager"
+      ).validate();
+    const scopeErrors =
+      this._component(
+        "OrganizationScope"
+      ).validate();
+
+    this._assertSync(
+      roleErrors,
+      "RoleManager.validate"
+    );
+    this._assertSync(
+      scopeErrors,
+      "OrganizationScope.validate"
+    );
+
+    if (
+      roleErrors.length ||
+      scopeErrors.length
+    ) {
+      throw new Error(
+        "Security validation failed: " +
+          roleErrors
+            .concat(scopeErrors)
+            .join("; ")
+      );
+    }
+
+    if (
+      this._component(
+        "SecurityContext"
+      ).isAuthenticated() === true
+    ) {
+      /*
+       * An already established request context is allowed to survive startup.
+       * Startup itself must never manufacture one.
+       */
+      const current =
+        this._component(
+          "SecurityContext"
+        ).get();
+
+      if (!current) {
+        throw new Error(
+          "SecurityContext authenticated state is inconsistent"
+        );
+      }
+    }
+
+    return true;
+  },
+
   validateServices() {
     const registry =
       this._component("ServiceRegistry");
@@ -968,6 +1197,24 @@ const SystemInit = {
       "ClientService",
       "TransportOrderService",
     ];
+
+    const registryErrors =
+      registry.validate(required);
+
+    this._assertSync(
+      registryErrors,
+      "ServiceRegistry.validate"
+    );
+
+    if (
+      Array.isArray(registryErrors) &&
+      registryErrors.length
+    ) {
+      throw new Error(
+        "Service validation failed: " +
+          registryErrors.join("; ")
+      );
+    }
 
     required.forEach((name) => {
       if (!registry.has(name)) {
@@ -1054,6 +1301,7 @@ const SystemInit = {
       });
 
       this.validate();
+      this.validateSecurity();
       this.validateServices();
 
       const incompleteCritical =
@@ -1379,10 +1627,29 @@ const SystemInit = {
       warnings: [...this.warnings],
       modules: this._moduleLifecycle(),
       details: {
+        security: {
+          context:
+            safeDiagnostics(
+              "SecurityContext"
+            ),
+          guard:
+            safeDiagnostics(
+              "SecurityGuard"
+            ),
+          roles:
+            safeDiagnostics(
+              "RoleManager"
+            ),
+          organizationScope:
+            safeDiagnostics(
+              "OrganizationScope"
+            ),
+        },
         schema: safeDiagnostics("SchemaManager"),
         database: safeDiagnostics("Database"),
         factory: safeDiagnostics("RepositoryFactory"),
         registry: safeDiagnostics("RepositoryRegistry"),
+        audit: safeDiagnostics("AuditLog"),
         services: safeDiagnostics("ServiceRegistry"),
       },
     };
@@ -1437,15 +1704,29 @@ const SystemInit = {
   },
 
   _resetRepositoryRegistry(component) {
-    component.repositories = {};
-    component.ready = false;
-    component.factorySyncCount = 0;
-
-    if ("initialized" in component) {
-      component.initialized = false;
+    if (
+      typeof component.reset !==
+      "function"
+    ) {
+      throw new Error(
+        "RepositoryRegistry.reset unavailable"
+      );
     }
 
-    return true;
+    const result = component.reset();
+
+    this._assertSync(
+      result,
+      "RepositoryRegistry.reset"
+    );
+
+    if (result === false) {
+      throw new Error(
+        "RepositoryRegistry.reset returned false"
+      );
+    }
+
+    return result;
   },
 
   _resetModuleRegistry(component) {
@@ -1516,8 +1797,15 @@ const SystemInit = {
       name === "ClientService" ||
       name === "TransportOrderService"
     ) {
-      component.initialized = false;
-      return true;
+      const result =
+        component.reset();
+
+      this._assertSync(
+        result,
+        name + ".reset"
+      );
+
+      return result !== false;
     }
 
     if (

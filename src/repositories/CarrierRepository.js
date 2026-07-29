@@ -1,5 +1,5 @@
 // ============================================================
-// CarrierRepository v3.0.2
+// CarrierRepository v3.0.3
 // Enterprise Repository
 // TaxControl ERP Core
 //
@@ -17,7 +17,7 @@
 
 
 console.log(
-"CarrierRepository v3.0.2"
+"CarrierRepository v3.0.3"
 );
 
 
@@ -25,7 +25,7 @@ console.log(
 const CarrierRepository = {
 
 
-version:"3.0.2",
+version:"3.0.3",
 
 entity:"CARRIER",
 
@@ -808,28 +808,7 @@ CarrierRepository;
 // ============================================================
 
 
-try{
-
-
-CarrierRepository.init();
-
-
-CarrierRepository.register();
-
-
-}
-catch(e){
-
-
-Logger.warn(
-
-"CarrierRepository deferred: "+
-e.message
-
-);
-
-
-}
+// Lifecycle is started by RepositoryRegistry.
 
 
 

@@ -1,151 +1,112 @@
-console.log("UserSession");
+// ============================================================
+// UserSession v1.0.0
+// Compatibility facade over execution-local SecurityContext
+// ============================================================
 
+console.log("UserSession v1.0.0");
 
 const UserSession = {
+  version: "1.0.0",
+  initialized: false,
 
+  init() {
+    if (
+      typeof SecurityContext ===
+        "undefined"
+    ) {
+      throw new Error(
+        "UserSession requires SecurityContext"
+      );
+    }
 
-version:"0.1.0",
+    this.initialized = true;
+    return true;
+  },
 
+  get current() {
+    return this.getUser();
+  },
 
-current:null,
+  login(user) {
+    if (!this.initialized) {
+      this.init();
+    }
 
+    return SecurityContext.set(user);
+  },
 
+  logout() {
+    return SecurityContext.clear();
+  },
 
-login(user){
+  getUser() {
+    return SecurityContext.get();
+  },
 
+  getRole() {
+    const user = this.getUser();
+    return user ? user.Role : null;
+  },
 
-this.current={
+  getOrganizationID() {
+    const user = this.getUser();
+    return user
+      ? user.OrganizationID
+      : null;
+  },
 
+  isAuthenticated() {
+    return SecurityContext
+      .isAuthenticated();
+  },
 
-    UserID:user.UserID,
+  runAs(user, callback) {
+    return SecurityContext.runAs(
+      user,
+      callback
+    );
+  },
 
-    OrganizationID:
-        user.OrganizationID,
+  reset() {
+    SecurityContext.clear();
+    this.initialized = false;
+    return true;
+  },
 
+  health() {
+    const details = {
+      version: this.version,
+      initialized: this.initialized,
+      authenticated:
+        this.isAuthenticated(),
+    };
 
-    Role:
-        user.Role,
+    if (
+      typeof HealthContract !==
+        "undefined" &&
+      typeof HealthContract.create ===
+        "function"
+    ) {
+      return HealthContract.create(
+        "UserSession",
+        this.initialized
+          ? "OK"
+          : "WARNING",
+        details
+      );
+    }
 
-
-    LoginAt:
-        new Date()
-        .toISOString()
-
-
+    return {
+      module: "UserSession",
+      status:
+        this.initialized
+          ? "OK"
+          : "WARNING",
+      ...details,
+    };
+  },
 };
-
-
-
-Logger.log(
-
-"SESSION LOGIN "
-+
-this.current.UserID
-+
-" "
-+
-this.current.Role
-
-);
-
-
-},
-
-
-
-
-
-logout(){
-
-
-Logger.log(
-"SESSION LOGOUT "
-+
-(this.current?.UserID || "")
-);
-
-
-this.current=null;
-
-
-},
-
-
-
-
-
-getUser(){
-
-
-return this.current;
-
-
-},
-
-
-
-
-
-getRole(){
-
-
-return this.current
-?
-this.current.Role
-:
-null;
-
-
-},
-
-
-
-
-
-isAuthenticated(){
-
-
-return !!this.current;
-
-
-},
-
-
-
-
-
-health(){
-
-
-return HealthContract.create(
-
-"UserSession",
-
-this.current
-?
-"OK"
-:
-"WARNING",
-
-{
-
-version:this.version,
-
-authenticated:
-!!this.current
-
-}
-
-);
-
-
-}
-
-
-
-};
-
-
 
 globalThis.UserSession =
-UserSession;
+  UserSession;
+

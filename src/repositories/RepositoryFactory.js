@@ -1,5 +1,5 @@
 // ============================================================
-// RepositoryFactory v3.1.1
+// RepositoryFactory v3.2.0
 // Enterprise Repository Factory + Registry Synchronization
 // TaxControl ERP Core
 //
@@ -15,6 +15,11 @@
 //       |
 // BaseRepository
 //
+// Fixed in v3.2.0:
+// - SystemInit is the only startup owner
+// - initialization no longer starts RepositoryRegistry indirectly
+// - Registry synchronization uses explicit recursion guards
+//
 // Fixed in v3.1.1:
 // - imports repositories already collected by RepositoryRegistry
 // - supports repositories loaded before RepositoryFactory
@@ -27,10 +32,10 @@
 // RepositoryRegistry v2.1+
 // ============================================================
 
-console.log("RepositoryFactory v3.1.1");
+console.log("RepositoryFactory v3.2.0");
 
 const RepositoryFactory = {
-  version: "3.1.1",
+  version: "3.2.0",
 
   initialized: false,
   repositories: {},
@@ -50,17 +55,7 @@ const RepositoryFactory = {
         this.version
     );
 
-    /*
-     * The factory is loaded after several repository files in the
-     * current Apps Script project. RepositoryRegistry has already
-     * collected those global repositories by this point.
-     *
-     * Set initialized before synchronization because registry.register()
-     * calls back into RepositoryFactory.register().
-     */
     this.initialized = true;
-
-    this.syncRegistry();
 
     Logger.log(
       "RepositoryFactory READY v" +
@@ -114,7 +109,11 @@ const RepositoryFactory = {
     ) {
       RepositoryRegistry.register(
         key,
-        repository
+        repository,
+        {
+          force: options.force === true,
+          skipFactory: true,
+        }
       );
     }
 
@@ -472,8 +471,6 @@ const RepositoryFactory = {
 
 globalThis.RepositoryFactory =
   RepositoryFactory;
-
-RepositoryFactory.init();
 
 Logger.log(
   "RepositoryFactory GLOBAL READY v" +

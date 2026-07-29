@@ -1,750 +1,356 @@
-console.log("AuditLog");
+// ============================================================
+// AuditLog v2.2.0
+// TaxControl ERP Core
+//
+// Package F contract:
+// - AUDIT is an entity, never a physical table name at Database API level
+// - AuditRepository is the single persistence route
+// - query methods use repository criteria, not identifier lookup
+// - SystemInit owns init/reset
+// - actor and organization come only from SecurityContext
+// - no DEFAULT/SYSTEM fallback is used for an unauthenticated request
+// - terminal audit persistence runs as a trusted internal operation
+// ============================================================
 
-
+console.log("AuditLog v2.2.0");
 
 const AuditLog = {
+  version: "2.2.0",
+  entity: "AUDIT",
+  ready: false,
 
-
-
-version:"2.0.0",
-
-
-table:"AuditLog",
-
-
-entity:"AUDIT",
-
-
-ready:false,
-
-
-
-
-
-
-/*
-====================================
-INIT
-====================================
-*/
-
-
-init(){
-
-
-
-    if(this.ready){
-
-
-        Logger.log(
-            "AuditLog ALREADY READY"
-        );
-
-
-        return;
-
-
+  init() {
+    if (this.ready) {
+      return true;
     }
 
+    if (
+      typeof EntityRegistry ===
+        "undefined" ||
+      typeof EntityRegistry.has !==
+        "function" ||
+      !EntityRegistry.has(this.entity)
+    ) {
+      throw new Error(
+        "AuditLog entity not registered: " +
+          this.entity
+      );
+    }
 
+    const repository =
+      this.getRepository();
 
-
-
-    if(
-        !EntityRegistry.has(
-            this.entity
-        )
-    ){
-
-
+    [
+      "create",
+      "findAll",
+    ].forEach((method) => {
+      if (
+        typeof repository[method] !==
+        "function"
+      ) {
         throw new Error(
-
-            "AuditLog entity not registered: "
-            +
-            this.entity
-
+          "AuditLog repository API missing " +
+            method
         );
+      }
+    });
 
-
-    }
-
-
-
-
-
-
-
-    this.ready=true;
-
-
+    this.ready = true;
 
     Logger.log(
-
-        "AuditLog READY v"
-        +
+      "AuditLog READY v" +
         this.version
-
     );
 
+    return true;
+  },
 
+  reset() {
+    this.ready = false;
+    return true;
+  },
 
-},
+  requireReady() {
+    if (!this.ready) {
+      throw new Error(
+        "AuditLog is not initialized; call startERP()"
+      );
+    }
+  },
 
-
-
-
-
-
-
-/*
-====================================
-WRITE
-ЕДИНАЯ ТОЧКА АУДИТА
-====================================
-*/
-
-
-write(data){
-
-
-
-    if(!data){
-
-
-        throw new Error(
-
-            "Audit data missing"
-
-        );
-
-
+  getRepository() {
+    if (
+      typeof AuditRepository !==
+        "undefined"
+    ) {
+      return AuditRepository;
     }
 
+    if (
+      typeof RepositoryFactory !==
+        "undefined" &&
+      typeof RepositoryFactory.get ===
+        "function"
+    ) {
+      return RepositoryFactory.get(
+        this.entity
+      );
+    }
 
+    throw new Error(
+      "AuditLog repository unavailable"
+    );
+  },
 
+  write(data) {
+    this.requireReady();
 
-
-
-
-    const meta =
-
-        EntityRegistry.get(
-            this.entity
-        );
-
-
-
-
-
-
+    if (
+      !data ||
+      typeof data !== "object" ||
+      Array.isArray(data)
+    ) {
+      throw new Error(
+        "Audit data missing"
+      );
+    }
 
     const record = {
-
-
-
-        /*
-        ID через EntityRegistry
-        */
-
-
-        AuditID:
-
-            IdService.generate(
-                this.entity
-            ),
-
-
-
-
-
-
-
-        OrganizationID:
-
-            this.getOrganizationID(),
-
-
-
-
-
-
-
-        Entity:
-
-            data.entity
-            ||
-            "",
-
-
-
-
-
-
-
-        EntityID:
-
-            data.entityId
-            ||
-            "",
-
-
-
-
-
-
-
-        Action:
-
-            data.action
-            ||
-            "SYSTEM",
-
-
-
-
-
-
-
-
-        UserID:
-
-            this.getUserID(),
-
-
-
-
-
-
-
-        EventID:
-
-            data.eventId
-            ||
-            "",
-
-
-
-
-
-
-
-        Before:
-
-            this.serialize(
-                data.before
-            ),
-
-
-
-
-
-
-
-        After:
-
-            this.serialize(
-                data.after
-            ),
-
-
-
-
-
-
-
-        Source:
-
-            data.source
-            ||
-            "ERP",
-
-
-
-
-
-
-
-        Version:
-
-            Number(
-                data.version
-                ||
-                1
-            ),
-
-
-
-
-
-
-
-
-        EntityVersion:
-
-            Number(
-                data.entityVersion
-                ||
-                1
-            ),
-
-
-
-
-
-
-
-        CreatedAt:
-
-            new Date()
-            .toISOString()
-
-
-
+      AuditID:
+        data.AuditID ||
+        IdService.generate(
+          this.entity
+        ),
+      OrganizationID:
+        this.getOrganizationID(),
+      Entity:
+        data.entity ||
+        data.Entity ||
+        "",
+      EntityID:
+        data.entityId ||
+        data.EntityID ||
+        "",
+      Action:
+        data.action ||
+        data.Action ||
+        "SYSTEM",
+      UserID:
+        this.getUserID(),
+      EventID:
+        data.eventId ||
+        data.EventID ||
+        "",
+      Before:
+        this.serialize(
+          data.before ??
+          data.Before
+        ),
+      After:
+        this.serialize(
+          data.after ??
+          data.After
+        ),
+      Source:
+        data.source ||
+        data.Source ||
+        "ERP",
+      Version:
+        Number(
+          data.version ||
+          data.Version ||
+          1
+        ),
+      EntityVersion:
+        Number(
+          data.entityVersion ||
+          data.EntityVersion ||
+          1
+        ),
+      CreatedAt:
+        data.CreatedAt ||
+        new Date().toISOString(),
     };
-
-
-
-
-
-
 
     this.insert(record);
 
-
-
-
-
     return record;
-
-
-
-},
-
-
-
-
-
-
-
-/*
-====================================
-DATABASE INSERT
-====================================
-*/
-
-
-insert(record){
-
-
-
-    try{
-
-
-
-
-
-        if(
-            !Database
-            ||
-            !Database.insert
-        ){
-
-
-            throw new Error(
-
-                "Database unavailable"
-
-            );
-
-
-        }
-
-
-
-
-
-
-
-        Database.insert(
-
-            this.table,
-
-            record
-
-        );
-
-
-
-
-
-
-
-        Logger.log(
-
-            "AUDIT "
-            +
-            record.Action
-            +
-            " "
-            +
-            record.Entity
-            +
-            " "
-            +
-            record.EntityID
-
-        );
-
-
-
-
-
-    }
-    catch(e){
-
-
-
-        Logger.log(
-
-            "AUDIT WRITE ERROR "
-            +
-            e.message
-
-        );
-
-
-
-        throw e;
-
-
-    }
-
-
-
-},
-
-
-
-
-
-
-
-/*
-====================================
-SEARCH
-====================================
-*/
-
-
-findByEntity(entity,id){
-
-
-
-    if(
-        !Database?.find
-    ){
-
-
-        return [];
-
-
-    }
-
-
-
-
-
-
-    return Database.find(
-
-        this.table,
-
-        {
-
-
-            Entity:
-                entity,
-
-
-            EntityID:
-                id
-
-
-        }
-
+  },
+
+  insert(record) {
+    this.requireReady();
+
+    const write = () =>
+      this.getRepository().create(
+        record
+      );
+    const result =
+      typeof SecurityGuard !==
+        "undefined" &&
+      typeof SecurityGuard
+        .runInternal === "function"
+        ? SecurityGuard
+          .runInternal(write)
+        : write();
+
+    Logger.log(
+      "AUDIT " +
+        record.Action +
+        " " +
+        record.Entity +
+        " " +
+        record.EntityID
     );
 
+    return result;
+  },
 
+  findByEntity(entity, id) {
+    this.requireReady();
 
-},
+    const repository =
+      this.getRepository();
 
-
-
-
-
-
-
-findByEvent(eventId){
-
-
-
-    if(
-        !Database?.find
-    ){
-
-
-        return [];
-
-
+    if (
+      typeof repository.findByEntity ===
+      "function"
+    ) {
+      return repository.findByEntity(
+        entity,
+        id
+      );
     }
 
+    return repository.findWhere({
+      Entity: entity,
+      EntityID: id,
+    });
+  },
 
+  findByEvent(eventId) {
+    this.requireReady();
 
+    const repository =
+      this.getRepository();
 
+    if (
+      typeof repository.findByEvent ===
+      "function"
+    ) {
+      return repository.findByEvent(
+        eventId
+      );
+    }
 
+    return repository.findWhere({
+      EventID: eventId,
+    });
+  },
 
+  serialize(value) {
+    if (
+      value === undefined ||
+      value === null
+    ) {
+      return "";
+    }
 
-    return Database.find(
+    if (typeof value === "string") {
+      return value;
+    }
 
-        this.table,
+    return JSON.stringify(value);
+  },
 
-        {
+  getOrganizationID() {
+    if (
+      typeof SecurityContext !==
+        "undefined" &&
+      typeof SecurityContext
+        .getOrganizationId ===
+        "function"
+    ) {
+      return SecurityContext
+        .getOrganizationId();
+    }
 
-            EventID:eventId
-
-        }
-
+    throw new Error(
+      "AuditLog security context unavailable"
     );
+  },
 
-
-
-},
-
-
-
-
-
-
-
-/*
-====================================
-SERIALIZE
-====================================
-*/
-
-
-serialize(value){
-
-
-
-    if(
-        value===undefined
-        ||
-        value===null
-    ){
-
-
-        return "";
-
-
+  getUserID() {
+    if (
+      typeof SecurityContext !==
+        "undefined" &&
+      typeof SecurityContext
+        .getUserId === "function"
+    ) {
+      return SecurityContext
+        .getUserId();
     }
 
-
-
-
-
-
-    if(
-        typeof value==="string"
-    ){
-
-
-        return value;
-
-
-    }
-
-
-
-
-
-
-    return JSON.stringify(
-        value
+    throw new Error(
+      "AuditLog user context unavailable"
     );
+  },
 
+  health() {
+    let repositoryReady = false;
+    let error = null;
 
-},
+    try {
+      const repository =
+        this.getRepository();
 
-
-
-
-
-
-
-/*
-====================================
-CONTEXT
-====================================
-*/
-
-
-getOrganizationID(){
-
-
-
-    if(
-        globalThis.OrganizationContext
-    ){
-
-
-        return OrganizationContext.get();
-
-
+      repositoryReady =
+        typeof repository.create ===
+          "function" &&
+        typeof repository.findAll ===
+          "function";
+    } catch (healthError) {
+      error = healthError.message;
     }
 
+    const details = {
+      version: this.version,
+      entity: this.entity,
+      ready: this.ready,
+      repositoryReady,
+      error,
+    };
 
+    const status =
+      this.ready &&
+      repositoryReady
+        ? "OK"
+        : "WARNING";
 
-
-    return "DEFAULT";
-
-
-
-},
-
-
-
-
-
-
-
-getUserID(){
-
-
-
-    if(
-        globalThis.UserSession
-    ){
-
-
-
-        if(
-            UserSession.current
-        ){
-
-
-            return (
-                UserSession.current.UserID
-                ||
-                "SYSTEM"
-            );
-
-
-        }
-
-
-
-
-        if(
-            UserSession.userId
-        ){
-
-
-            return UserSession.userId;
-
-
-        }
-
-
-
+    if (
+      typeof HealthContract !==
+        "undefined" &&
+      typeof HealthContract.create ===
+        "function"
+    ) {
+      return HealthContract.create(
+        "AuditLog",
+        status,
+        details
+      );
     }
 
-
-
-
-    return "SYSTEM";
-
-
-
-},
-
-
-
-
-
-
-
-/*
-====================================
-HEALTH
-====================================
-*/
-
-
-health(){
-
-
-
-return HealthContract.create(
-
-    "AuditLog",
-
-
-    this.ready
-    ?
-    "OK"
-    :
-    "WARNING",
-
-
-
-    {
-
-
-        version:
-            this.version,
-
-
-        table:
-            this.table,
-
-
-        entity:
-            this.entity
-
-
-    }
-
-
-);
-
-
-
-}
-
-
-
+    return {
+      module: "AuditLog",
+      status,
+      ...details,
+    };
+  },
 };
 
-
-
-
-
-
-
 globalThis.AuditLog =
-AuditLog;
-
-
-
-
-
-
+  AuditLog;
 
 Logger.log(
-
-    "AuditLog READY v"
-    +
+  "AuditLog GLOBAL READY v" +
     AuditLog.version
-
 );

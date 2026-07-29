@@ -1,5 +1,5 @@
 // ============================================================
-// TripRepository v3.2.0
+// TripRepository v3.2.1
 // Enterprise Transport Repository
 // TaxControl ERP Core
 //
@@ -39,7 +39,7 @@
 
 
 console.log(
-"TripRepository v3.2.0"
+"TripRepository v3.2.1"
 );
 
 
@@ -52,7 +52,7 @@ const TripRepository = {
 // ============================================================
 
 
-version:"3.2.0",
+version:"3.2.1",
 
 entity:"TRIP",
 
@@ -2127,28 +2127,7 @@ TripRepository;
 // ============================================================
 
 
-try{
-
-
-TripRepository.init();
-
-
-TripRepository.register();
-
-
-}
-catch(e){
-
-
-Logger.warn(
-
-"TripRepository deferred: "+
-e.message
-
-);
-
-
-}
+// Lifecycle is started by RepositoryRegistry.
 
 
 

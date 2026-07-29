@@ -1,0 +1,8 @@
+{
+  "name": "taxcontrol-security-isolation-package-g",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "test": "node verify_security_package_g.js"
+  }
+}

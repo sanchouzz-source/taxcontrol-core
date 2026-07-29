@@ -1,67 +1,155 @@
+// ============================================================
+// EventStore v2.0.0
+// Organization-scoped legacy event log
+// ============================================================
+
+console.log("EventStore v2.0.0");
+
 const EventStore = {
+  version: "2.0.0",
+  initialized: false,
 
-    log(eventType, payload) {
+  init() {
+    this.initialized = true;
+    return true;
+  },
 
-        const sheet = SpreadsheetApp
-            .getActiveSpreadsheet()
-            .getSheetByName("EventLog");
+  getSheet() {
+    const sheet =
+      SpreadsheetApp
+        .getActiveSpreadsheet()
+        .getSheetByName(
+          "EventLog"
+        );
 
-        const event = {
-            EventID: IdService.generate("EVT"),
-            EventType: eventType,
-            Payload: JSON.stringify(payload || {}),
-            CreatedAt: new Date(),
-            OrganizationID:
-                PropertiesService.getScriptProperties().getProperty("CURRENT_ORG")
-        };
-
-        const row = [
-            event.EventID,
-            event.EventType,
-            event.Payload,
-            event.CreatedAt,
-            event.OrganizationID
-        ];
-
-        sheet.appendRow(row);
-
-        return event;
+    if (!sheet) {
+      throw new Error(
+        "EventLog sheet missing"
+      );
     }
+
+    return sheet;
+  },
+
+  log(eventType, payload) {
+    const context =
+      SecurityContext.require();
+    const event = {
+      EventID:
+        IdService.generate("EVT"),
+      EventType: eventType,
+      Payload: JSON.stringify(
+        payload || {}
+      ),
+      CreatedAt: new Date(),
+      OrganizationID:
+        context.OrganizationID,
+    };
+
+    this.getSheet().appendRow([
+      event.EventID,
+      event.EventType,
+      event.Payload,
+      event.CreatedAt,
+      event.OrganizationID,
+    ]);
+
+    return event;
+  },
+
+  reset() {
+    this.initialized = false;
+    return true;
+  },
+
+  health() {
+    return {
+      module: "EventStore",
+      version: this.version,
+      status:
+        this.initialized
+          ? "OK"
+          : "WARNING",
+      initialized: this.initialized,
+    };
+  },
 };
 
 const EventReplay = {
+  version: "2.0.0",
 
-    replay() {
+  replay() {
+    SecurityGuard.require(
+      "EVENT_REPLAY"
+    );
 
-        const sheet = SpreadsheetApp
-            .getActiveSpreadsheet()
-            .getSheetByName("EventLog");
+    const organizationId =
+      OrganizationContext.get();
+    const values =
+      EventStore.getSheet()
+        .getDataRange()
+        .getValues();
 
-        const values = sheet.getDataRange().getValues();
-        const headers = values[0];
-
-        for (let i = 1; i < values.length; i++) {
-
-            const row = {};
-
-            headers.forEach((h, idx) => {
-                row[h] = values[i][idx];
-            });
-
-            const payload = JSON.parse(row.Payload || "{}");
-
-            const handlers = EventBus.handlers[row.EventType];
-
-            if (!handlers) continue;
-
-            handlers.forEach(fn => {
-                try {
-                    fn(payload);
-                } catch (e) {
-                    Logger.log("Replay error: " + e.message);
-                }
-            });
-        }
+    if (!values.length) {
+      return {
+        replayed: 0,
+        skipped: 0,
+      };
     }
+
+    const headers = values[0];
+    let replayed = 0;
+    let skipped = 0;
+
+    values.slice(1)
+      .forEach((valuesRow) => {
+        const row = {};
+
+        headers.forEach(
+          (header, index) => {
+            row[header] =
+              valuesRow[index];
+          }
+        );
+
+        if (
+          String(
+            row.OrganizationID ||
+              ""
+          ) !==
+          String(organizationId)
+        ) {
+          skipped++;
+          return;
+        }
+
+        const payload =
+          JSON.parse(
+            row.Payload || "{}"
+          );
+
+        EventBus.emit(
+          row.EventType,
+          payload,
+          {
+            source:
+              "EventReplay",
+            organizationId,
+          }
+        );
+
+        replayed++;
+      });
+
+    return {
+      replayed,
+      skipped,
+      organizationId,
+    };
+  },
 };
-globalThis.EventStore = EventStore;
+
+globalThis.EventStore =
+  EventStore;
+globalThis.EventReplay =
+  EventReplay;

@@ -1,5 +1,5 @@
 // ============================================================
-// DriverRepository v3.0.0
+// DriverRepository v3.0.1
 // Enterprise Repository
 // TaxControl ERP Core
 //
@@ -28,7 +28,7 @@
 
 
 console.log(
-"DriverRepository v3.0.0"
+"DriverRepository v3.0.1"
 );
 
 
@@ -38,7 +38,7 @@ const DriverRepository = {
 
 
 
-version:"3.0.0",
+version:"3.0.1",
 
 
 entity:"DRIVER",
@@ -869,29 +869,7 @@ DriverRepository;
 // ============================================================
 
 
-try{
-
-
-DriverRepository.init();
-
-
-DriverRepository.register();
-
-
-
-}
-catch(e){
-
-
-Logger.warn(
-
-"DriverRepository deferred "+
-e.message
-
-);
-
-
-}
+// Lifecycle is started by RepositoryRegistry.
 
 
 

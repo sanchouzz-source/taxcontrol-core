@@ -1,16 +1,16 @@
 // ============================================================
-// CoreRepairTool v1.0
+// CoreRepairTool v1.1
 // ERP Auto Diagnostics Repair Assistant
 // ============================================================
 
 
-console.log("CoreRepairTool v1.0");
+console.log("CoreRepairTool v1.1");
 
 
 const CoreRepairTool = {
 
 
-version:"1.0.0",
+version:"1.1.0",
 
 
 
@@ -324,10 +324,34 @@ EntityRegistry.get(entity);
 
 
 
-RepositoryFactory.register(
-entity,
-"BaseRepository"
+if(!meta){
+
+throw new Error(
+"Metadata missing "+entity
 );
+
+}
+
+
+
+const repository =
+RepositoryFactory.get(entity);
+
+
+
+if(
+!repository
+||
+typeof repository.create!=="function"
+||
+typeof repository.findById!=="function"
+){
+
+throw new Error(
+"Repository creation failed "+entity
+);
+
+}
 
 
 
@@ -338,7 +362,14 @@ entity,
 
 action:"REGISTER_REPOSITORY",
 
-status:"OK"
+status:"OK",
+
+repository:
+repository.entity
+||
+repository.constructor?.name
+||
+"Repository"
 
 
 };

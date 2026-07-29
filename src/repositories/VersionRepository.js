@@ -1,5 +1,5 @@
 // ============================================================
-// VersionRepository v2.0.0
+// VersionRepository v2.0.1
 // Append-Only Version History Repository
 // TaxControl ERP Core
 //
@@ -22,10 +22,10 @@
 // RepositoryRegistry v2.1+
 // ============================================================
 
-console.log("VersionRepository v2.0.0");
+console.log("VersionRepository v2.0.1");
 
 const VersionRepository = {
-  version: "2.0.0",
+  version: "2.0.1",
 
   entity: "VERSION",
   table: "Versions",
@@ -721,15 +721,6 @@ const VersionRepository = {
 
 globalThis.VersionRepository =
   VersionRepository;
-
-try {
-  VersionRepository.init();
-} catch (error) {
-  Logger.warn(
-    "VersionRepository deferred: " +
-      error.message
-  );
-}
 
 Logger.log(
   "VersionRepository GLOBAL READY v" +

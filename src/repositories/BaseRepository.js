@@ -1,5 +1,5 @@
 // ============================================================
-// BaseRepository v6.4.0
+// BaseRepository v6.6.0
 // Enterprise Repository Base
 // TaxControl ERP Core
 //
@@ -13,6 +13,17 @@
 // ERPDiagnostics v6+
 // RepositoryHealthReport v2+
 // ERPControlCenter v1+
+//
+// Fixed in v6.6.0:
+// - every CRUD operation requires the real role permission
+// - every read is filtered by active OrganizationID
+// - foreign OrganizationID values are rejected on create/update
+// - delete/restore cannot target a foreign organization
+//
+// Fixed in v6.5.0:
+// - findWhere/findOne/findBy accept options consistently
+// - includeDeleted reaches Database and SpreadsheetAdapter
+// - count/exists/search/paginate share the same read contract
 //
 // Fixed in v6.4.0:
 // - BaseRepository is the only owner of entity CRUD events
@@ -38,10 +49,10 @@
 //    BaseRepository.update("CLIENT", id, data);
 // ============================================================
 
-console.log("BaseRepository v6.4.0");
+console.log("BaseRepository v6.6.0");
 
 const BaseRepository = {
-  version: "6.4.0",
+  version: "6.6.0",
 
   architecture:
     "EntityService -> RepositoryFactory -> Repository -> Database",
@@ -172,6 +183,168 @@ const BaseRepository = {
   },
 
   // ============================================================
+  // SECURITY / ORGANIZATION SCOPE
+  // ============================================================
+
+  _requireAccess(
+    entity,
+    action,
+    metadata = null
+  ) {
+    if (
+      typeof SecurityGuard ===
+        "undefined" ||
+      typeof SecurityGuard
+        .requireEntity !==
+        "function"
+    ) {
+      return true;
+    }
+
+    return SecurityGuard.requireEntity(
+      entity,
+      action,
+      metadata
+    );
+  },
+
+  _scopeOptions(
+    metadata,
+    options = {}
+  ) {
+    return {
+      ...options,
+      metadata,
+    };
+  },
+
+  _scopeCreate(
+    entity,
+    data,
+    metadata,
+    options = {}
+  ) {
+    if (
+      typeof OrganizationScope ===
+        "undefined"
+    ) {
+      return { ...data };
+    }
+
+    return OrganizationScope
+      .prepareCreate(
+        entity,
+        data,
+        this._scopeOptions(
+          metadata,
+          options
+        )
+      );
+  },
+
+  _scopeUpdate(
+    entity,
+    existing,
+    data,
+    metadata,
+    options = {}
+  ) {
+    if (
+      typeof OrganizationScope ===
+        "undefined"
+    ) {
+      return { ...data };
+    }
+
+    return OrganizationScope
+      .prepareUpdate(
+        entity,
+        existing,
+        data,
+        this._scopeOptions(
+          metadata,
+          options
+        )
+      );
+  },
+
+  _scopeCriteria(
+    entity,
+    criteria,
+    metadata,
+    options = {}
+  ) {
+    if (
+      typeof OrganizationScope ===
+        "undefined"
+    ) {
+      return {
+        ...(criteria || {}),
+      };
+    }
+
+    return OrganizationScope
+      .scopeCriteria(
+        entity,
+        criteria,
+        this._scopeOptions(
+          metadata,
+          options
+        )
+      );
+  },
+
+  _scopeRecord(
+    entity,
+    record,
+    metadata,
+    options = {}
+  ) {
+    if (
+      typeof OrganizationScope ===
+        "undefined"
+    ) {
+      return record;
+    }
+
+    return OrganizationScope
+      .filterRecord(
+        entity,
+        record,
+        this._scopeOptions(
+          metadata,
+          options
+        )
+      );
+  },
+
+  _scopeRows(
+    entity,
+    rows,
+    metadata,
+    options = {}
+  ) {
+    if (
+      typeof OrganizationScope ===
+        "undefined"
+    ) {
+      return Array.isArray(rows)
+        ? rows
+        : [];
+    }
+
+    return OrganizationScope
+      .filterRows(
+        entity,
+        rows,
+        this._scopeOptions(
+          metadata,
+          options
+        )
+      );
+  },
+
+  // ============================================================
   // ADAPTER CALL
   // ============================================================
 
@@ -282,12 +455,28 @@ const BaseRepository = {
   // CREATE PAYLOAD
   // ============================================================
 
-  _prepareCreatePayload(entity, data) {
+  _prepareCreatePayload(
+    entity,
+    data,
+    options = {}
+  ) {
     this._requireEntity(entity, "create");
     this._requireData(data, "create");
 
     const meta = this.getEntityMeta(entity);
-    const payload = { ...data };
+    this._requireAccess(
+      entity,
+      "CREATE",
+      meta
+    );
+
+    const payload =
+      this._scopeCreate(
+        entity,
+        data,
+        meta,
+        options
+      );
     const idField = meta.idField || "ID";
 
     if (!payload[idField]) {
@@ -328,24 +517,29 @@ const BaseRepository = {
 
     let entity;
     let data;
+    let opts;
 
     if (this.entity) {
       entity = this.entity;
       data = entityOrData || {};
+      opts = dataOrOptions || {};
     } else {
       entity = this.resolveEntity(entityOrData);
       data = dataOrOptions || {};
+      opts = options || {};
     }
 
     const prepared = this._prepareCreatePayload(
       entity,
-      data
+      data,
+      opts
     );
 
     let result = this._callAdapter(
       "insert",
       entity,
-      prepared.payload
+      prepared.payload,
+      opts
     );
 
     if (!result || typeof result !== "object") {
@@ -395,27 +589,45 @@ const BaseRepository = {
     this._requireEntity(entity, "findById");
     this._requireId(id, "findById");
 
+    const meta = this.getEntityMeta(entity);
+    this._requireAccess(
+      entity,
+      "READ",
+      meta
+    );
+
     const result = this._callAdapter(
       "find",
       entity,
-      id
+      id,
+      opts
     );
 
     if (!result) {
       return null;
     }
 
-    const meta = this.getEntityMeta(entity);
+    const scopedResult =
+      this._scopeRecord(
+        entity,
+        result,
+        meta,
+        opts
+      );
+
+    if (!scopedResult) {
+      return null;
+    }
 
     if (
       meta.softDelete !== false &&
       opts.includeDeleted !== true &&
-      this.isDeleted(result)
+      this.isDeleted(scopedResult)
     ) {
       return null;
     }
 
-    return result;
+    return scopedResult;
   },
 
   // ============================================================
@@ -431,14 +643,36 @@ const BaseRepository = {
       );
     }
 
+    const meta = this.getMeta();
+
+    this._requireAccess(
+      this.entity,
+      "READ",
+      meta
+    );
+
+    const scopedFilters =
+      this._scopeCriteria(
+        this.entity,
+        filters,
+        meta,
+        options
+      );
+
     let rows =
       this._callAdapter(
         "query",
         this.entity,
-        filters
+        scopedFilters,
+        options
       ) || [];
 
-    const meta = this.getMeta();
+    rows = this._scopeRows(
+      this.entity,
+      rows,
+      meta,
+      options
+    );
 
     if (
       meta.softDelete !== false &&
@@ -452,16 +686,37 @@ const BaseRepository = {
     return rows;
   },
 
-  findWhere(criteria = {}) {
-    return this.findAll(criteria);
+  findWhere(criteria = {}, options = {}) {
+    return this.findAll(
+      criteria,
+      options
+    );
+  },
+
+  findBy(field, value, options = {}) {
+    if (!field) {
+      throw new Error(
+        "BaseRepository.findBy: field missing"
+      );
+    }
+
+    return this.findOne(
+      {
+        [field]: value,
+      },
+      options
+    );
   },
 
   // ============================================================
   // FIND ONE
   // ============================================================
 
-  findOne(criteria = {}) {
-    const rows = this.findAll(criteria);
+  findOne(criteria = {}, options = {}) {
+    const rows = this.findAll(
+      criteria,
+      options
+    );
 
     return rows.length ? rows[0] : null;
   },
@@ -470,26 +725,42 @@ const BaseRepository = {
   // UPDATE
   // ============================================================
 
-  update(entityOrId, idOrData = {}, data = {}) {
+  update(
+    entityOrId,
+    idOrData = {},
+    data = {},
+    options = {}
+  ) {
     this._requireAdapter();
 
     let entity;
     let id;
     let payload;
+    let opts;
 
     if (this.entity) {
       entity = this.entity;
       id = entityOrId;
       payload = idOrData || {};
+      opts = data || {};
     } else {
       entity = this.resolveEntity(entityOrId);
       id = idOrData;
       payload = data || {};
+      opts = options || {};
     }
 
     this._requireEntity(entity, "update");
     this._requireId(id, "update");
     this._requireData(payload, "update");
+
+    const meta = this.getEntityMeta(entity);
+
+    this._requireAccess(
+      entity,
+      "UPDATE",
+      meta
+    );
 
     /*
      * IMPORTANT:
@@ -503,21 +774,31 @@ const BaseRepository = {
     const old = this.entity
       ? this.findById(
           id,
-          { includeDeleted: true }
+          {
+            ...opts,
+            includeDeleted: true,
+          }
         )
       : this.findById(
           entity,
           id,
-          { includeDeleted: true }
+          {
+            ...opts,
+            includeDeleted: true,
+          }
         );
 
     if (!old) {
       throw new Error(entity + " not found " + id);
     }
 
-    payload = { ...payload };
-
-    const meta = this.getEntityMeta(entity);
+    payload = this._scopeUpdate(
+      entity,
+      old,
+      payload,
+      meta,
+      opts
+    );
 
     this.applySystemFields(meta, payload, true);
 
@@ -525,7 +806,8 @@ const BaseRepository = {
       "update",
       entity,
       id,
-      payload
+      payload,
+      opts
     );
 
     if (!result || typeof result !== "object") {
@@ -551,41 +833,68 @@ const BaseRepository = {
       result
     );
 
-    return result;
+    return this._scopeRecord(
+      entity,
+      result,
+      meta,
+      opts
+    );
   },
 
   // ============================================================
   // DELETE
   // ============================================================
 
-  delete(entityOrId, id = null) {
+  delete(
+    entityOrId,
+    id = null,
+    options = {}
+  ) {
     this._requireAdapter();
 
     let entity;
     let key;
+    let opts;
 
     if (this.entity) {
       entity = this.entity;
       key = entityOrId;
+      opts =
+        id &&
+        typeof id === "object"
+          ? id
+          : options;
     } else {
       entity = this.resolveEntity(entityOrId);
       key = id;
+      opts = options || {};
     }
 
     this._requireEntity(entity, "delete");
     this._requireId(key, "delete");
 
     const meta = this.getEntityMeta(entity);
+    this._requireAccess(
+      entity,
+      "DELETE",
+      meta
+    );
 
     const old = this.entity
       ? this.findById(
           key,
-          { includeDeleted: true }
+          {
+            ...opts,
+            includeDeleted: true,
+          }
         )
       : this.findById(
           entity,
           key,
-          { includeDeleted: true }
+          {
+            ...opts,
+            includeDeleted: true,
+          }
         );
 
     if (!old) {
@@ -593,10 +902,18 @@ const BaseRepository = {
     }
 
     if (meta.softDelete !== false) {
-      const payload = {
-        Deleted: true,
-        DeletedAt: new Date().toISOString(),
-      };
+      const payload =
+        this._scopeUpdate(
+          entity,
+          old,
+          {
+            Deleted: true,
+            DeletedAt:
+              new Date().toISOString(),
+          },
+          meta,
+          opts
+        );
 
       this.applySystemFields(
         meta,
@@ -608,7 +925,8 @@ const BaseRepository = {
         "update",
         entity,
         key,
-        payload
+        payload,
+        opts
       );
 
       if (
@@ -637,13 +955,19 @@ const BaseRepository = {
         result
       );
 
-      return result;
+      return this._scopeRecord(
+        entity,
+        result,
+        meta,
+        opts
+      );
     }
 
     const result = this._callAdapter(
       "delete",
       entity,
-      key
+      key,
+      opts
     );
 
     this.emit(
@@ -669,43 +993,72 @@ const BaseRepository = {
   // RESTORE
   // ============================================================
 
-  restore(entityOrId, id = null) {
+  restore(
+    entityOrId,
+    id = null,
+    options = {}
+  ) {
     this._requireAdapter();
 
     let entity;
     let key;
+    let opts;
 
     if (this.entity) {
       entity = this.entity;
       key = entityOrId;
+      opts =
+        id &&
+        typeof id === "object"
+          ? id
+          : options;
     } else {
       entity = this.resolveEntity(entityOrId);
       key = id;
+      opts = options || {};
     }
 
     this._requireEntity(entity, "restore");
     this._requireId(key, "restore");
 
     const meta = this.getEntityMeta(entity);
+    this._requireAccess(
+      entity,
+      "RESTORE",
+      meta
+    );
     const old = this.entity
       ? this.findById(
           key,
-          { includeDeleted: true }
+          {
+            ...opts,
+            includeDeleted: true,
+          }
         )
       : this.findById(
           entity,
           key,
-          { includeDeleted: true }
+          {
+            ...opts,
+            includeDeleted: true,
+          }
         );
 
     if (!old) {
       throw new Error(entity + " not found " + key);
     }
 
-    const payload = {
-      Deleted: false,
-      DeletedAt: null,
-    };
+    const payload =
+      this._scopeUpdate(
+        entity,
+        old,
+        {
+          Deleted: false,
+          DeletedAt: null,
+        },
+        meta,
+        opts
+      );
 
     this.applySystemFields(
       meta,
@@ -717,7 +1070,8 @@ const BaseRepository = {
       "update",
       entity,
       key,
-      payload
+      payload,
+      opts
     );
 
     if (
@@ -746,53 +1100,73 @@ const BaseRepository = {
       result
     );
 
-    return result;
+    return this._scopeRecord(
+      entity,
+      result,
+      meta,
+      opts
+    );
   },
 
   // ============================================================
   // EXISTS
   // ============================================================
 
-  exists(entityOrId, id = null) {
+  exists(
+    entityOrId,
+    id = null,
+    options = {}
+  ) {
     if (this.entity) {
-      return !!this.findById(entityOrId);
+      const opts =
+        id &&
+        typeof id === "object"
+          ? id
+          : options;
+
+      return !!this.findById(
+        entityOrId,
+        opts
+      );
     }
 
-    return !!this.findById(entityOrId, id);
+    return !!this.findById(
+      entityOrId,
+      id,
+      options
+    );
   },
 
-  existsBy(field, value) {
-    return this.findAll({
-      [field]: value,
-    }).length > 0;
+  existsBy(field, value, options = {}) {
+    return !!this.findBy(
+      field,
+      value,
+      options
+    );
   },
 
   // ============================================================
   // COUNT
   // ============================================================
 
-  count(filters = {}) {
-    const adapter = this._requireAdapter();
+  count(filters = {}, options = {}) {
+    this._requireAdapter();
+    const meta = this.getMeta();
 
-    if (
-      adapter.count &&
-      typeof adapter.count === "function"
-    ) {
-      try {
-        return adapter.count(
-          this.entity,
-          filters
-        );
-      } catch (e) {
-        // The findAll fallback is used below.
-      }
-    }
+    this._requireAccess(
+      this.entity,
+      "READ",
+      meta
+    );
 
-    return this.findAll(filters).length;
+    return this.findAll(
+      filters,
+      options
+    ).length;
   },
 
-  getAllCount() {
-    return this.count();
+  getAllCount(options = {}) {
+    return this.count({}, options);
   },
 
   countDeleted() {
@@ -808,8 +1182,11 @@ const BaseRepository = {
   // SEARCH
   // ============================================================
 
-  search(field, value) {
-    const rows = this.findAll();
+  search(field, value, options = {}) {
+    const rows = this.findAll(
+      {},
+      options
+    );
     const searchValue =
       String(value).toLowerCase();
 
@@ -825,8 +1202,16 @@ const BaseRepository = {
   // PAGINATE
   // ============================================================
 
-  paginate(page = 1, limit = 50, filters = {}) {
-    const rows = this.findAll(filters);
+  paginate(
+    page = 1,
+    limit = 50,
+    filters = {},
+    options = {}
+  ) {
+    const rows = this.findAll(
+      filters,
+      options
+    );
     const start = (page - 1) * limit;
 
     return {
@@ -841,8 +1226,11 @@ const BaseRepository = {
   // BULK
   // ============================================================
 
-  bulkCreate(list = []) {
-    return this.bulkInsert(list);
+  bulkCreate(list = [], options = {}) {
+    return this.bulkInsert(
+      list,
+      options
+    );
   },
 
   bulkUpdate(ids, data) {
@@ -861,18 +1249,29 @@ const BaseRepository = {
   // BULK INSERT
   // ============================================================
 
-  bulkInsert(entityOrList, list = []) {
+  bulkInsert(
+    entityOrList,
+    list = [],
+    options = {}
+  ) {
     const adapter = this._requireAdapter();
 
     let entity;
     let rows;
+    let opts;
 
     if (this.entity) {
       entity = this.entity;
       rows = entityOrList;
+      opts =
+        list &&
+        !Array.isArray(list)
+          ? list
+          : options;
     } else {
       entity = this.resolveEntity(entityOrList);
       rows = list;
+      opts = options || {};
     }
 
     this._requireEntity(entity, "bulkInsert");
@@ -898,8 +1297,12 @@ const BaseRepository = {
     ) {
       return rows.map((item) => {
         return this.entity
-          ? this.create(item)
-          : this.create(entity, item);
+          ? this.create(item, opts)
+          : this.create(
+              entity,
+              item,
+              opts
+            );
       });
     }
 
@@ -910,7 +1313,8 @@ const BaseRepository = {
     const preparedRows = rows.map((item) => {
       return this._prepareCreatePayload(
         entity,
-        item
+        item,
+        opts
       );
     });
 
@@ -920,7 +1324,8 @@ const BaseRepository = {
 
     let results = adapter.bulkInsert(
       entity,
-      payloads
+      payloads,
+      opts
     );
 
     if (
@@ -1007,12 +1412,15 @@ const BaseRepository = {
     }
 
     if (
-      typeof OrganizationContext !== "undefined" &&
-      meta.organization !== false &&
+      typeof OrganizationScope !==
+        "undefined" &&
+      meta.organizationScope ===
+        "FIELD" &&
       !data.OrganizationID
     ) {
       data.OrganizationID =
-        OrganizationContext.get();
+        SecurityContext
+          .getOrganizationId();
     }
 
     return data;

@@ -1,5 +1,5 @@
 // ============================================================
-// ClientRepository v3.0.1
+// ClientRepository v3.0.2
 // Enterprise Repository
 // TaxControl ERP Core
 //
@@ -35,7 +35,7 @@
 
 
 console.log(
-"ClientRepository v3.0.1"
+"ClientRepository v3.0.2"
 );
 
 
@@ -51,7 +51,7 @@ const ClientRepository = {
 // ============================================================
 
 
-version:"3.0.1",
+version:"3.0.2",
 
 entity:"CLIENT",
 
@@ -1097,29 +1097,7 @@ ClientRepository;
 // ============================================================
 
 
-try{
-
-
-ClientRepository.init();
-
-
-ClientRepository.register();
-
-
-
-}
-catch(e){
-
-
-Logger.warn(
-
-"ClientRepository deferred: "+
-e.message
-
-);
-
-
-}
+// Lifecycle is started by RepositoryRegistry.
 
 
 

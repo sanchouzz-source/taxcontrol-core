@@ -1,5 +1,5 @@
 // ============================================================
-// AuditRepository v2.0.0
+// AuditRepository v2.0.1
 // Append-Only System Repository
 // TaxControl ERP Core
 //
@@ -24,10 +24,10 @@
 // RepositoryRegistry v2.1+
 // ============================================================
 
-console.log("AuditRepository v2.0.0");
+console.log("AuditRepository v2.0.1");
 
 const AuditRepository = {
-  version: "2.0.0",
+  version: "2.0.1",
 
   entity: "AUDIT",
   table: "AuditLog",
@@ -663,15 +663,6 @@ const AuditRepository = {
 
 globalThis.AuditRepository =
   AuditRepository;
-
-try {
-  AuditRepository.init();
-} catch (error) {
-  Logger.warn(
-    "AuditRepository deferred: " +
-      error.message
-  );
-}
 
 Logger.log(
   "AuditRepository GLOBAL READY v" +

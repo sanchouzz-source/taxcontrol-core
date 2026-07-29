@@ -1,5 +1,5 @@
 // ============================================================
-// Database v5.2.0
+// Database v5.4.0
 // TaxControl ERP Core
 //
 // Storage Engine
@@ -15,12 +15,18 @@
 // RepositoryFactory v2.5.8+
 // EntityService v5.0+
 // SystemInit v2.5+
+//
+// Package G:
+// - every scoped read is filtered by active OrganizationID
+// - create/update reject foreign OrganizationID values
+// - delete/restore cannot target a foreign organization
+// - bypass requires an explicit runAsSystem() context
 // ============================================================
 
-console.log("Database v5.2.0");
+console.log("Database v5.4.0");
 
 const Database = {
-  version: "5.2.0",
+  version: "5.4.0",
 
   architecture:
     "Repository -> Database -> SpreadsheetAdapter",
@@ -229,40 +235,181 @@ const Database = {
   },
 
   // ============================================================
+  // ORGANIZATION SCOPE
+  // ============================================================
+
+  _scopeOptions(meta, options = {}) {
+    return {
+      ...options,
+      metadata: meta,
+    };
+  },
+
+  _scopeCreate(
+    entity,
+    data,
+    meta,
+    options = {}
+  ) {
+    if (
+      typeof OrganizationScope ===
+        "undefined"
+    ) {
+      return { ...data };
+    }
+
+    return OrganizationScope
+      .prepareCreate(
+        entity,
+        data,
+        this._scopeOptions(
+          meta,
+          options
+        )
+      );
+  },
+
+  _scopeCriteria(
+    entity,
+    filters,
+    meta,
+    options = {}
+  ) {
+    if (
+      typeof OrganizationScope ===
+        "undefined"
+    ) {
+      return { ...(filters || {}) };
+    }
+
+    return OrganizationScope
+      .scopeCriteria(
+        entity,
+        filters,
+        this._scopeOptions(
+          meta,
+          options
+        )
+      );
+  },
+
+  _scopeRecord(
+    entity,
+    record,
+    meta,
+    options = {}
+  ) {
+    if (
+      typeof OrganizationScope ===
+        "undefined"
+    ) {
+      return record;
+    }
+
+    return OrganizationScope
+      .filterRecord(
+        entity,
+        record,
+        this._scopeOptions(
+          meta,
+          options
+        )
+      );
+  },
+
+  _scopeRows(
+    entity,
+    rows,
+    meta,
+    options = {}
+  ) {
+    if (
+      typeof OrganizationScope ===
+        "undefined"
+    ) {
+      return Array.isArray(rows)
+        ? rows
+        : [];
+    }
+
+    return OrganizationScope
+      .filterRows(
+        entity,
+        rows,
+        this._scopeOptions(
+          meta,
+          options
+        )
+      );
+  },
+
+  // ============================================================
   // CREATE
   // ============================================================
 
-  insert(entity, data) {
+  insert(entity, data, options = {}) {
     this._require();
 
     const meta = this.getMeta(entity);
+    const payload =
+      this._scopeCreate(
+        entity,
+        data,
+        meta,
+        options
+      );
 
     if (!this._adapter.appendObject) {
       throw new Error("Adapter appendObject missing");
     }
 
-    this._adapter.appendObject(meta.table, data);
+    this._adapter.appendObject(
+      meta.table,
+      payload
+    );
 
     this._stats.inserts++;
     this._stats.adapterCalls++;
 
-    return { ...data };
+    return { ...payload };
   },
 
   // ============================================================
   // BULK
   // ============================================================
 
-  bulkInsert(entity, items = []) {
+  bulkInsert(
+    entity,
+    items = [],
+    options = {}
+  ) {
     if (!items.length) return [];
 
     const meta = this.getMeta(entity);
+    const payloads = items.map(
+      (item) =>
+        this._scopeCreate(
+          entity,
+          item,
+          meta,
+          options
+        )
+    );
 
     let result;
     if (this._adapter.bulkInsert) {
-      result = this._adapter.bulkInsert(meta.table, items);
+      result = this._adapter.bulkInsert(
+        meta.table,
+        payloads
+      );
     } else {
-      result = items.map((x) => this.insert(entity, x));
+      result = payloads.map((item) =>
+        this.insert(
+          entity,
+          item,
+          options
+        )
+      );
     }
 
     this._stats.bulkInserts++;
@@ -275,7 +422,7 @@ const Database = {
   // READ
   // ============================================================
 
-  find(entity, id) {
+  find(entity, id, options = {}) {
     this._require();
 
     if (!this._adapter.findById) {
@@ -291,15 +438,24 @@ const Database = {
 
     this._stats.adapterCalls++;
 
-    return result;
+    return this._scopeRecord(
+      entity,
+      result,
+      meta,
+      options
+    );
   },
 
   // get – алиас для find
-  get(entity, id) {
-    return this.find(entity, id);
+  get(entity, id, options = {}) {
+    return this.find(
+      entity,
+      id,
+      options
+    );
   },
 
-  findAll(entity) {
+  findAll(entity, options = {}) {
     this._require();
 
     const meta = this.getMeta(entity);
@@ -308,50 +464,118 @@ const Database = {
       throw new Error("Adapter findAll missing");
     }
 
-    const rows = this._adapter.findAll(meta.table);
+    const rows = this._adapter.findAll(
+      meta.table,
+      options
+    );
 
     this._stats.queries++;
     this._stats.adapterCalls++;
 
-    return Array.isArray(rows) ? rows : [];
+    return this._scopeRows(
+      entity,
+      rows,
+      meta,
+      options
+    );
   },
 
   // Исправлен query – без дублирования счётчиков
-  query(entity, filters = {}) {
-    const rows = this.findAll(entity);
+  query(entity, filters = {}, options = {}) {
+    const meta = this.getMeta(entity);
+    const scopedFilters =
+      this._scopeCriteria(
+        entity,
+        filters,
+        meta,
+        options
+      );
+    const rows = this.findAll(
+      entity,
+      options
+    );
 
     // findAll уже увеличивает счётчики, здесь только фильтрация
     return rows.filter((row) => {
-      return Object.keys(filters).every(
-        (key) => String(row[key]) === String(filters[key])
+      return Object.keys(scopedFilters).every(
+        (key) =>
+          String(row[key]) ===
+          String(scopedFilters[key])
       );
     });
   },
 
-  findWhere(entity, criteria = {}) {
-    return this.query(entity, criteria);
+  findWhere(
+    entity,
+    criteria = {},
+    options = {}
+  ) {
+    return this.query(
+      entity,
+      criteria,
+      options
+    );
   },
 
-  findOne(entity, criteria = {}) {
-    const rows = this.query(entity, criteria);
+  findOne(
+    entity,
+    criteria = {},
+    options = {}
+  ) {
+    const rows = this.query(
+      entity,
+      criteria,
+      options
+    );
     return rows.length ? rows[0] : null;
   },
 
-  count(entity, filters = {}) {
-    return this.query(entity, filters).length;
+  count(
+    entity,
+    filters = {},
+    options = {}
+  ) {
+    return this.query(
+      entity,
+      filters,
+      options
+    ).length;
   },
 
-  exists(entity, id) {
-    return !!this.find(entity, id);
+  exists(entity, id, options = {}) {
+    return !!this.find(
+      entity,
+      id,
+      options
+    );
   },
 
-  existsBy(entity, field, value) {
-    const rows = this.query(entity, { [field]: value });
+  existsBy(
+    entity,
+    field,
+    value,
+    options = {}
+  ) {
+    const rows = this.query(
+      entity,
+      { [field]: value },
+      options
+    );
     return rows.length > 0;
   },
 
-  paginate(entity, page = 1, limit = 50, filters = {}) {
-    const rows = this.query(entity, filters);
+  paginate(
+    entity,
+    page = 1,
+    limit = 50,
+    filters = {},
+    options = {}
+  ) {
+    const rows = this.query(
+      entity,
+      filters,
+      options
+    );
     const start = (page - 1) * limit;
     return {
       page,
@@ -365,7 +589,12 @@ const Database = {
   // UPDATE
   // ============================================================
 
-  update(entity, id, data) {
+  update(
+    entity,
+    id,
+    data,
+    options = {}
+  ) {
     this._require();
 
     if (!this._adapter.updateById) {
@@ -373,24 +602,58 @@ const Database = {
     }
 
     const meta = this.getMeta(entity);
+    const existing = this.find(
+      entity,
+      id,
+      {
+        ...options,
+        includeDeleted: true,
+      }
+    );
+
+    if (!existing) {
+      throw new Error(
+        entity + " not found " + id
+      );
+    }
+
+    const payload =
+      typeof OrganizationScope !==
+        "undefined"
+        ? OrganizationScope
+          .prepareUpdate(
+            entity,
+            existing,
+            data,
+            this._scopeOptions(
+              meta,
+              options
+            )
+          )
+        : { ...data };
     const result = this._adapter.updateById(
       meta.table,
       this.idField(entity),
       id,
-      data
+      payload
     );
 
     this._stats.updates++;
     this._stats.adapterCalls++;
 
-    return result;
+    return this._scopeRecord(
+      entity,
+      result,
+      meta,
+      options
+    );
   },
 
   // ============================================================
   // DELETE
   // ============================================================
 
-  delete(entity, id) {
+  delete(entity, id, options = {}) {
     this._require();
 
     if (!this._adapter.delete) {
@@ -398,6 +661,21 @@ const Database = {
     }
 
     const meta = this.getMeta(entity);
+    const existing = this.find(
+      entity,
+      id,
+      {
+        ...options,
+        includeDeleted: true,
+      }
+    );
+
+    if (!existing) {
+      throw new Error(
+        entity + " not found " + id
+      );
+    }
+
     const result = this._adapter.delete(
       meta.table,
       this.idField(entity),
@@ -410,14 +688,24 @@ const Database = {
     return result;
   },
 
-  softDelete(entity, id) {
-    return this.update(entity, id, {
-      Deleted: true,
-      DeletedAt: new Date().toISOString()
-    });
+  softDelete(
+    entity,
+    id,
+    options = {}
+  ) {
+    return this.update(
+      entity,
+      id,
+      {
+        Deleted: true,
+        DeletedAt:
+          new Date().toISOString()
+      },
+      options
+    );
   },
 
-  restore(entity, id) {
+  restore(entity, id, options = {}) {
     this._require();
 
     if (!this._adapter.restore) {
@@ -425,6 +713,21 @@ const Database = {
     }
 
     const meta = this.getMeta(entity);
+    const existing = this.find(
+      entity,
+      id,
+      {
+        ...options,
+        includeDeleted: true,
+      }
+    );
+
+    if (!existing) {
+      throw new Error(
+        entity + " not found " + id
+      );
+    }
+
     const result = this._adapter.restore(
       meta.table,
       this.idField(entity),
@@ -434,7 +737,12 @@ const Database = {
     this._stats.restores++;
     this._stats.adapterCalls++;
 
-    return result;
+    return this._scopeRecord(
+      entity,
+      result,
+      meta,
+      options
+    );
   },
 
   // ============================================================

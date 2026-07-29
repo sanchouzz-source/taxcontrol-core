@@ -1,5 +1,5 @@
 // ============================================================
-// FailedEventRepository v3.0.0
+// FailedEventRepository v3.0.2
 // Durable Failed-Event Queue Repository
 // TaxControl ERP Core
 //
@@ -26,10 +26,10 @@
 // RepositoryRegistry v2.1+
 // ============================================================
 
-console.log("FailedEventRepository v3.0.0");
+console.log("FailedEventRepository v3.0.2");
 
 const FailedEventRepository = {
-  version: "3.0.0",
+  version: "3.0.2",
 
   entity: "FAILED_EVENT",
   table: "FailedEvents",
@@ -209,36 +209,89 @@ const FailedEventRepository = {
       );
     }
 
-    return this.create({
-      ID:
-        options.id,
-      EventID:
-        event.id ||
-        event.eventId ||
-        "",
-      Entity:
-        event.entity ||
-        "UNKNOWN",
-      Type:
-        event.type ||
-        "UNKNOWN",
-      Payload: event,
-      Error:
-        error?.message ||
-        String(error || "Unknown error"),
-      Attempts:
-        options.attempts ?? 0,
-      Status:
-        options.status ||
-        "FAILED",
-      Processor:
-        options.processor ||
-        "EventRetryQueue",
-      OrganizationID:
-        options.organizationId,
-      NextRetryAt:
-        options.nextRetryAt,
-    });
+    const organizationId =
+      options.organizationId ||
+      event.organizationId ||
+      event.metadata
+        ?.organizationId ||
+      event.payload
+        ?.OrganizationID ||
+      null;
+    const persist = () => {
+      const write = () =>
+        this.create({
+          ID: options.id,
+          EventID:
+            event.id ||
+            event.eventId ||
+            "",
+          Entity:
+            event.entity ||
+            "UNKNOWN",
+          Type:
+            event.type ||
+            "UNKNOWN",
+          Payload: event,
+          Error:
+            error?.message ||
+            String(
+              error ||
+              "Unknown error"
+            ),
+          Attempts:
+            options.attempts ?? 0,
+          Status:
+            options.status ||
+            "FAILED",
+          Processor:
+            options.processor ||
+            "EventRetryQueue",
+          OrganizationID:
+            organizationId,
+          NextRetryAt:
+            options.nextRetryAt,
+        });
+
+      return (
+        typeof SecurityGuard !==
+          "undefined" &&
+        typeof SecurityGuard
+          .runInternal ===
+          "function"
+          ? SecurityGuard
+            .runInternal(write)
+          : write()
+      );
+    };
+
+    if (
+      typeof SecurityContext !==
+        "undefined" &&
+      SecurityContext
+        .isAuthenticated()
+    ) {
+      return persist();
+    }
+
+    if (
+      organizationId &&
+      typeof SecurityContext !==
+        "undefined"
+    ) {
+      return SecurityContext
+        .runAsSystem(
+          {
+            organizationId,
+            source:
+              "FAILED_EVENT_PERSISTENCE",
+          },
+          persist
+        );
+    }
+
+    throw new Error(
+      "FailedEventRepository.save requires organization context"
+    );
   },
 
   bulkCreate(items = [], options = {}) {
@@ -987,15 +1040,6 @@ const FailedEventRepository = {
 
 globalThis.FailedEventRepository =
   FailedEventRepository;
-
-try {
-  FailedEventRepository.init();
-} catch (error) {
-  Logger.warn(
-    "FailedEventRepository deferred: " +
-      error.message
-  );
-}
 
 Logger.log(
   "FailedEventRepository GLOBAL READY v" +

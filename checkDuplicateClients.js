@@ -1,22 +1,26 @@
-function checkDuplicateClients(){
+function checkDuplicateClients() {
+  SecurityGuard.require(
+    "CLIENT_READ"
+  );
 
-    const clients =
-        Database.query("Clients",{});
+  const clients =
+    Database.query("CLIENT", {});
+  const map = {};
+  const duplicates = [];
 
+  clients.forEach((client) => {
+    if (map[client.ClientID]) {
+      duplicates.push(
+        client.ClientID
+      );
+      Logger.log(
+        "DUPLICATE: " +
+          client.ClientID
+      );
+    }
 
-    const map = {};
+    map[client.ClientID] = true;
+  });
 
-
-    clients.forEach(c=>{
-
-        if(map[c.ClientID]){
-            Logger.log(
-              "DUPLICATE: " + c.ClientID
-            );
-        }
-
-        map[c.ClientID]=true;
-
-    });
-
+  return duplicates;
 }

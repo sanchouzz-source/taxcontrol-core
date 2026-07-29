@@ -1,458 +1,289 @@
 // ============================================================
-// ServiceRegistry v1.2.0
+// ServiceRegistry v1.3.0
 // TaxControl ERP Core
 //
-// Service Dependency Container
-//
-// Lifecycle:
-//
-// SystemInit
-//      |
-//      ↓
-// ServiceRegistry.init()
-//      |
-//      ↓
-// ServiceRegistry.refresh()
-//      |
-//      ↓
-// register services
-//
+// Package F contract:
+// - SystemInit owns service initialization
+// - registry registration never initializes a service
+// - required service APIs and ready state can be validated explicitly
 // ============================================================
 
-
-console.log(
-"ServiceRegistry v1.2.0"
-);
-
-
+console.log("ServiceRegistry v1.3.0");
 
 const ServiceRegistry = {
-
-
-version:"1.2.0",
-
-
-initialized:false,
-
-
-services:{},
-
-
-lastRefresh:null,
-
-
-
-
-// ============================================================
-// INIT
-// ============================================================
-
-
-init(){
-
-
-if(this.initialized){
-
-return true;
-
-}
-
-
-Logger.log(
-"ServiceRegistry INIT v"+
-this.version
-);
-
-
-
-this.initialized=true;
-
-
-return true;
-
-},
-
-
-
-
-
-// ============================================================
-// REFRESH
-// ============================================================
-
-
-refresh(){
-
-
-Logger.log(
-"ServiceRegistry REFRESH START"
-);
-
-
-
-this.registerDefaults();
-
-
-
-this.lastRefresh =
-new Date()
-.toISOString();
-
-
-
-Logger.log(
-
-"ServiceRegistry REFRESH COMPLETE count="
-+
-this.count()
-
-);
-
-
-
-return true;
-
-},
-
-
-
-
-
-
-// ============================================================
-// REGISTER
-// ============================================================
-
-
-register(
-name,
-service,
-options={}
-){
-
-
-if(!name){
-
-throw new Error(
-"Service name required"
-);
-
-}
-
-
-
-if(!service){
-
-return null;
-
-}
-
-
-
-if(
-this.services[name]
-&&
-!options.force
-){
-
-Logger.warn(
-
-"Service already registered "
-+
-name
-
-);
-
-
-
-return this.services[name];
-
-}
-
-
-
-this.services[name]=service;
-
-
-
-Logger.log(
-
-"Service registered "
-+
-name
-
-);
-
-
-
-return service;
-
-},
-
-
-
-
-
-
-// ============================================================
-// REGISTER IF EXISTS
-// ============================================================
-
-
-registerIfExists(
-name,
-service
-){
-
-
-if(
-!service
-){
-
-Logger.warn(
-
-"Service unavailable "
-+
-name
-
-);
-
-
-return null;
-
-}
-
-
-
-return this.register(
-name,
-service
-);
-
-
-},
-
-
-
-
-
-
-// ============================================================
-// DEFAULT SERVICES
-// ============================================================
-
-
-registerDefaults(){
-
-
-
-this.registerIfExists(
-
-"ClientService",
-
-globalThis.ClientService
-
-);
-
-
-
-
-this.registerIfExists(
-
-"TransportOrderService",
-
-globalThis.TransportOrderService
-
-);
-
-
-
-
-this.registerIfExists(
-
-"FinanceService",
-
-globalThis.FinanceService
-
-);
-
-
-
-
-this.registerIfExists(
-
-"KPIService",
-
-globalThis.KPIService
-
-);
-
-
-
-},
-
-
-
-
-
-
-// ============================================================
-// GET
-// ============================================================
-
-
-get(name){
-
-
-return this.services[name] || null;
-
-
-},
-
-
-
-
-
-
-// ============================================================
-// HAS
-// ============================================================
-
-
-has(name){
-
-
-return !!this.services[name];
-
-
-},
-
-
-
-
-
-
-// ============================================================
-// LIST
-// ============================================================
-
-
-list(){
-
-
-return Object.keys(
-this.services
-);
-
-
-},
-
-
-
-
-
-
-// ============================================================
-// COUNT
-// ============================================================
-
-
-count(){
-
-
-return this.list().length;
-
-
-},
-
-
-
-
-
-
-// ============================================================
-// HEALTH
-// ============================================================
-
-
-health(){
-
-
-return {
-
-
-module:
-"ServiceRegistry",
-
-
-version:
-this.version,
-
-
-initialized:
-this.initialized,
-
-
-count:
-this.count(),
-
-
-services:
-this.list(),
-
-
-lastRefresh:
-this.lastRefresh,
-
-
-status:
-
-this.initialized
-?
-"OK"
-:
-"NOT_READY"
-
-
+  version: "1.3.0",
+
+  initialized: false,
+  services: {},
+  lastRefresh: null,
+
+  contracts: {
+    ClientService: [
+      "init",
+      "reset",
+      "create",
+      "findDuplicate",
+      "health",
+    ],
+    TransportOrderService: [
+      "init",
+      "reset",
+      "create",
+      "assignVehicle",
+      "complete",
+      "health",
+    ],
+  },
+
+  init() {
+    if (this.initialized) {
+      return true;
+    }
+
+    this.initialized = true;
+    this.refresh();
+
+    Logger.log(
+      "ServiceRegistry READY v" +
+        this.version +
+        " count=" +
+        this.count()
+    );
+
+    return true;
+  },
+
+  refresh() {
+    this.registerDefaults();
+    this.lastRefresh =
+      new Date().toISOString();
+
+    return true;
+  },
+
+  register(
+    name,
+    service,
+    options = {}
+  ) {
+    if (!name) {
+      throw new Error(
+        "Service name required"
+      );
+    }
+
+    if (!service) {
+      return null;
+    }
+
+    const missing =
+      this.missingMethods(
+        name,
+        service
+      );
+
+    if (missing.length) {
+      throw new Error(
+        name +
+          " service API missing: " +
+          missing.join(", ")
+      );
+    }
+
+    if (
+      this.services[name] &&
+      !options.force
+    ) {
+      return this.services[name];
+    }
+
+    this.services[name] = service;
+
+    return service;
+  },
+
+  registerIfExists(name, service) {
+    if (!service) {
+      Logger.warn(
+        "Service unavailable " + name
+      );
+      return null;
+    }
+
+    return this.register(
+      name,
+      service
+    );
+  },
+
+  registerDefaults() {
+    [
+      "ClientService",
+      "TransportOrderService",
+      "FinanceService",
+      "KPIService",
+    ].forEach((name) => {
+      const service =
+        globalThis[name];
+
+      if (!service) {
+        if (
+          name === "ClientService" ||
+          name ===
+            "TransportOrderService"
+        ) {
+          Logger.warn(
+            "Service unavailable " +
+              name
+          );
+        }
+
+        return;
+      }
+
+      this.register(
+        name,
+        service,
+        { force: true }
+      );
+    });
+
+    return this.count();
+  },
+
+  missingMethods(name, service) {
+    const contract =
+      this.contracts[name] || [];
+
+    return contract.filter(
+      (method) =>
+        typeof service[method] !==
+        "function"
+    );
+  },
+
+  get(name) {
+    return this.services[name] || null;
+  },
+
+  has(name) {
+    return !!this.services[name];
+  },
+
+  list() {
+    return Object.keys(this.services);
+  },
+
+  count() {
+    return this.list().length;
+  },
+
+  validate(
+    required = [
+      "ClientService",
+      "TransportOrderService",
+    ]
+  ) {
+    const errors = [];
+
+    required.forEach((name) => {
+      const service = this.get(name);
+
+      if (!service) {
+        errors.push(
+          "Required service missing " +
+            name
+        );
+        return;
+      }
+
+      const missing =
+        this.missingMethods(
+          name,
+          service
+        );
+
+      if (missing.length) {
+        errors.push(
+          name +
+            " API missing: " +
+            missing.join(", ")
+        );
+      }
+
+      if (
+        "initialized" in service &&
+        service.initialized !== true
+      ) {
+        errors.push(
+          name + " is not initialized"
+        );
+      }
+
+      if (
+        typeof service.health ===
+        "function"
+      ) {
+        const health =
+          service.health();
+
+        if (
+          !health ||
+          health.status !== "OK"
+        ) {
+          errors.push(
+            name + " health is not OK"
+          );
+        }
+      }
+    });
+
+    return errors;
+  },
+
+  health() {
+    const validation =
+      this.initialized
+        ? this.validate()
+        : [
+            "ServiceRegistry is not initialized",
+          ];
+
+    return {
+      module: "ServiceRegistry",
+      version: this.version,
+      initialized:
+        this.initialized,
+      count: this.count(),
+      services: this.list(),
+      lastRefresh:
+        this.lastRefresh,
+      validation,
+      status:
+        this.initialized &&
+        validation.length === 0
+          ? "OK"
+          : "NOT_READY",
+    };
+  },
+
+  diagnostics() {
+    return this.health();
+  },
+
+  reset() {
+    this.services = {};
+    this.initialized = false;
+    this.lastRefresh = null;
+
+    return true;
+  },
 };
-
-
-},
-
-
-
-
-
-
-// ============================================================
-// RESET
-// ============================================================
-
-
-reset(){
-
-
-this.services={};
-
-
-this.initialized=false;
-
-
-this.lastRefresh=null;
-
-
-
-return true;
-
-}
-
-
-
-};
-
-
-
-
 
 globalThis.ServiceRegistry =
-ServiceRegistry;
+  ServiceRegistry;
+
+Logger.log(
+  "ServiceRegistry GLOBAL READY v" +
+    ServiceRegistry.version
+);

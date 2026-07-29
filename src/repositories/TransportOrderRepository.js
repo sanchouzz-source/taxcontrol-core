@@ -1,5 +1,5 @@
 // ============================================================
-// TransportOrderRepository v3.0.0
+// TransportOrderRepository v3.0.1
 // Enterprise Transport Order Repository
 // TaxControl ERP Core
 //
@@ -34,7 +34,7 @@
 // ============================================================
 
 console.log(
-  "TransportOrderRepository v3.0.0"
+  "TransportOrderRepository v3.0.1"
 );
 
 const TransportOrderRepository = {
@@ -42,7 +42,7 @@ const TransportOrderRepository = {
   // META
   // ============================================================
 
-  version: "3.0.0",
+  version: "3.0.1",
 
   entity: "TRANSPORT_ORDER",
 
@@ -1188,28 +1188,6 @@ const TransportOrderRepository = {
 
 globalThis.TransportOrderRepository =
   TransportOrderRepository;
-
-// ============================================================
-// SAFE INIT AND REGISTRATION
-// ============================================================
-
-try {
-  TransportOrderRepository.init();
-} catch (error) {
-  Logger.warn(
-    "TransportOrderRepository init deferred: " +
-      error.message
-  );
-}
-
-try {
-  TransportOrderRepository.register();
-} catch (error) {
-  Logger.warn(
-    "TransportOrderRepository registration deferred: " +
-      error.message
-  );
-}
 
 // ============================================================
 // READY

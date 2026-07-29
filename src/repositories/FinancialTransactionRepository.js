@@ -1,5 +1,5 @@
 // ============================================================
-// FinancialTransactionRepository v3.1.0
+// FinancialTransactionRepository v3.1.1
 // Enterprise Finance Repository
 // TaxControl ERP Core
 //
@@ -39,7 +39,7 @@
 
 
 console.log(
-"FinancialTransactionRepository v3.1.0"
+"FinancialTransactionRepository v3.1.1"
 );
 
 
@@ -55,7 +55,7 @@ const FinancialTransactionRepository = {
 // ============================================================
 
 
-version:"3.1.0",
+version:"3.1.1",
 
 entity:"FINANCIAL_TRANSACTION",
 
@@ -1514,29 +1514,7 @@ FinancialTransactionRepository;
 // ============================================================
 
 
-try{
-
-
-FinancialTransactionRepository.init();
-
-
-FinancialTransactionRepository.register();
-
-
-
-}
-catch(e){
-
-
-Logger.warn(
-
-"FinancialTransactionRepository deferred: "+
-e.message
-
-);
-
-
-}
+// Lifecycle is started by RepositoryRegistry.
 
 
 

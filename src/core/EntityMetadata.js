@@ -1,5 +1,5 @@
 // ============================================================
-// EntityMetadata v3.3.0
+// EntityMetadata v3.4.0
 // Enterprise Entity Contract Registry
 // TaxControl ERP Core
 //
@@ -17,14 +17,14 @@
 // ============================================================
 
 
-console.log("EntityMetadata v3.3.0");
+console.log("EntityMetadata v3.4.0");
 
 
 
 const EntityMetadata = {
 
 
-version:"3.3.0",
+version:"3.4.0",
 
 apiVersion:"3.1",
 
@@ -453,7 +453,7 @@ return true;
 globalThis.EntityMetadata =
 EntityMetadata;
 // ============================================================
-// EntityMetadata v3.3.0
+// EntityMetadata v3.4.0
 // PART 2/3
 // CORE BUSINESS ENTITIES
 // ============================================================
@@ -1341,7 +1341,7 @@ type:"BOOLEAN"
 
 
 // ============================================================
-// EntityMetadata v3.3.0
+// EntityMetadata v3.4.0
 // PART 3/3
 // LOGISTICS + FINANCE + SYSTEM
 // ============================================================
@@ -2694,6 +2694,118 @@ generated:true
 
 
 
+
+
+
+
+// ============================================================
+// PACKAGE G SECURITY METADATA
+// ============================================================
+//
+// Security metadata is applied before SchemaRegistry and SchemaManager run.
+// Missing OrganizationID columns are therefore added through the normal
+// schema-migration path; existing row values are never backfilled here.
+// ============================================================
+
+EntityMetadata.organizationScopedEntities = [
+  "ORGANIZATION",
+  "USER",
+  "CLIENT",
+  "TRIP",
+  "VEHICLE",
+  "DRIVER",
+  "CARRIER",
+  "ROUTE",
+  "CARGO",
+  "TRANSPORT_ORDER",
+  "CLIENT_FINANCE_PROFILE",
+  "FINANCIAL_TRANSACTION",
+  "KPI",
+  "AUDIT",
+  "VERSION",
+  "FAILED_EVENT",
+];
+
+EntityMetadata.applySecurityContracts =
+function () {
+  const actions = [
+    "CREATE",
+    "READ",
+    "UPDATE",
+    "DELETE",
+    "RESTORE",
+  ];
+
+  this.organizationScopedEntities
+    .forEach((entity) => {
+      const metadata =
+        this.entities[entity];
+
+      if (!metadata) {
+        throw new Error(
+          "Security metadata missing " +
+            entity
+        );
+      }
+
+      metadata.organization = true;
+      metadata.organizationScope =
+        entity === "ORGANIZATION"
+          ? "ENTITY"
+          : "FIELD";
+
+      if (
+        entity !== "ORGANIZATION" &&
+        !metadata.fields.OrganizationID
+      ) {
+        metadata.fields.OrganizationID = {
+          type: "REFERENCE",
+          reference: "ORGANIZATION",
+          required: true,
+        };
+      }
+
+      if (
+        entity !== "ORGANIZATION"
+      ) {
+        metadata.fields
+          .OrganizationID.required =
+          true;
+      }
+
+      metadata.permissions = {};
+
+      actions.forEach((action) => {
+        metadata.permissions[
+          action.toLowerCase()
+        ] =
+          entity +
+          "_" +
+          action;
+      });
+    });
+
+  [
+    "__TEST_DATABASE",
+    "__TEST_EVENTS",
+    "__TEST_REPOSITORY",
+  ].forEach((entity) => {
+    const metadata =
+      this.entities[entity];
+
+    if (metadata) {
+      metadata.organization = false;
+      metadata.organizationScope =
+        "GLOBAL";
+      metadata.permissions = {};
+    }
+  });
+
+  return true;
+};
+
+EntityMetadata
+  .applySecurityContracts();
 
 
 

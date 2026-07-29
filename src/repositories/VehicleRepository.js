@@ -1,5 +1,5 @@
 // ============================================================
-// VehicleRepository v3.1.0
+// VehicleRepository v3.1.1
 // Enterprise Repository
 // TaxControl ERP Core
 //
@@ -31,7 +31,7 @@
 
 
 console.log(
-"VehicleRepository v3.1.0"
+"VehicleRepository v3.1.1"
 );
 
 
@@ -46,7 +46,7 @@ const VehicleRepository = {
 // ============================================================
 
 
-version:"3.1.0",
+version:"3.1.1",
 
 entity:"VEHICLE",
 
@@ -1508,28 +1508,7 @@ VehicleRepository;
 // ============================================================
 
 
-try{
-
-
-VehicleRepository.init();
-
-
-VehicleRepository.register();
-
-
-}
-catch(e){
-
-
-Logger.warn(
-
-"VehicleRepository deferred: "+
-e.message
-
-);
-
-
-}
+// Lifecycle is started by RepositoryRegistry.
 
 
 

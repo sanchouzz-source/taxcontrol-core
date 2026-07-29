@@ -1,306 +1,147 @@
-console.log("Versioning");
+// ============================================================
+// Versioning v1.0.0
+// Organization-scoped version history facade
+//
+// Replaces the legacy direct-sheet implementation and never reads shared
+// script-level user or organization state.
+// ============================================================
 
+console.log("Versioning v1.0.0");
 
 const Versioning = {
+  version: "1.0.0",
+  initialized: false,
 
+  init() {
+    if (
+      typeof VersionRepository ===
+        "undefined"
+    ) {
+      throw new Error(
+        "Versioning requires VersionRepository"
+      );
+    }
 
-version:"0.1.0",
+    this.initialized = true;
+    return true;
+  },
 
+  requireReady() {
+    if (!this.initialized) {
+      this.init();
+    }
 
+    return true;
+  },
 
-// =========================
-// SAVE VERSION
-// =========================
+  save(entity, id, data) {
+    this.requireReady();
 
-save(entity,id,data){
+    const context =
+      SecurityContext.require();
+    const snapshot =
+      data &&
+      typeof data === "object"
+        ? { ...data }
+        : data;
 
+    if (
+      snapshot &&
+      typeof snapshot === "object" &&
+      snapshot.OrganizationID &&
+      String(snapshot.OrganizationID) !==
+        String(
+          context.OrganizationID
+        )
+    ) {
+      throw new Error(
+        "CROSS_ORGANIZATION_ACCESS_DENIED"
+      );
+    }
 
-const sheet =
-this.getSheet();
+    const write = () =>
+      VersionRepository
+        .createVersion(
+          entity,
+          id,
+          snapshot,
+          {
+            organizationId:
+              context.OrganizationID,
+            source: "Versioning",
+          }
+        );
 
+    return (
+      typeof SecurityGuard !==
+        "undefined" &&
+      typeof SecurityGuard
+        .runInternal === "function"
+        ? SecurityGuard
+          .runInternal(write)
+        : write()
+    );
+  },
 
+  get(entity, id) {
+    this.requireReady();
 
-const version = {
+    if (
+      typeof VersionRepository
+        .findByEntity === "function"
+    ) {
+      return VersionRepository
+        .findByEntity(entity, id);
+    }
 
+    return VersionRepository
+      .findAll({
+        Entity: entity,
+        EntityID: id,
+      });
+  },
 
-id:
-Utilities.getUuid(),
+  last(entity, id) {
+    this.requireReady();
 
+    if (
+      typeof VersionRepository
+        .findLatest === "function"
+    ) {
+      return VersionRepository
+        .findLatest(entity, id);
+    }
 
-timestamp:
-new Date(),
+    const history =
+      this.get(entity, id);
 
+    return history.length
+      ? history[
+          history.length - 1
+        ]
+      : null;
+  },
 
-organizationId:
-PropertiesService
-.getScriptProperties()
-.getProperty(
-"CURRENT_ORG"
-)
-||
-"ORG000001",
+  reset() {
+    this.initialized = false;
+    return true;
+  },
 
-
-entity:entity,
-
-
-entityId:id,
-
-
-snapshot:
-JSON.stringify(data)
-
-
-
+  health() {
+    return {
+      module: "Versioning",
+      version: this.version,
+      status:
+        this.initialized
+          ? "OK"
+          : "WARNING",
+      initialized: this.initialized,
+      repository:
+        typeof VersionRepository !==
+          "undefined",
+    };
+  },
 };
-
-
-
-sheet.appendRow([
-
-
-version.id,
-
-version.timestamp,
-
-version.organizationId,
-
-version.entity,
-
-version.entityId,
-
-version.snapshot
-
-
-]);
-
-
-
-Logger.log(
-"VERSION SAVED "
-+
-entity
-+
-" "
-+
-id
-);
-
-
-
-return version;
-
-
-},
-
-
-
-
-
-// =========================
-// GET HISTORY
-// =========================
-
-
-get(entity,id){
-
-
-const sheet =
-this.getSheet();
-
-
-
-const values =
-sheet
-.getDataRange()
-.getValues();
-
-
-
-if(values.length<=1){
-
-return [];
-
-}
-
-
-
-return values
-.slice(1)
-.filter(row=>{
-
-
-return String(row[3])===String(entity)
-&&
-String(row[4])===String(id);
-
-
-})
-.map(row=>{
-
-
-return {
-
-
-id:row[0],
-
-
-timestamp:row[1],
-
-
-organizationId:row[2],
-
-
-entity:row[3],
-
-
-entityId:row[4],
-
-
-snapshot:
-JSON.parse(row[5])
-
-
-};
-
-
-});
-
-
-
-},
-
-
-
-
-
-// =========================
-// LAST VERSION
-// =========================
-
-
-last(entity,id){
-
-
-const history =
-this.get(entity,id);
-
-
-
-if(history.length===0){
-
-return null;
-
-}
-
-
-
-return history[
-history.length-1
-];
-
-
-},
-
-
-
-
-
-// =========================
-// SHEET
-// =========================
-
-
-getSheet(){
-
-
-const ss =
-SpreadsheetApp
-.getActive();
-
-
-
-let sheet =
-ss.getSheetByName(
-"Versions"
-);
-
-
-
-if(!sheet){
-
-
-sheet =
-ss.insertSheet(
-"Versions"
-);
-
-
-
-sheet
-.getRange(
-1,
-1,
-1,
-6
-)
-.setValues([
-
-[
-"VersionID",
-"Timestamp",
-"OrganizationID",
-"Entity",
-"EntityID",
-"Snapshot"
-]
-
-]);
-
-
-}
-
-
-
-return sheet;
-
-
-},
-
-
-
-
-
-// =========================
-// HEALTH
-// =========================
-
-
-health(){
-
-
-return HealthContract.create(
-
-"Versioning",
-
-"OK",
-
-{
-
-version:this.version
-
-}
-
-);
-
-
-}
-
-
-
-};
-
-
 
 globalThis.Versioning =
-Versioning;
+  Versioning;

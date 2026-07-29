@@ -1,5 +1,5 @@
 // ============================================================
-// KPIRepository v3.0.0
+// KPIRepository v3.0.1
 // Enterprise Repository
 // TaxControl ERP Core
 //
@@ -31,7 +31,7 @@
 
 
 console.log(
-"KPIRepository v3.0.0"
+"KPIRepository v3.0.1"
 );
 
 
@@ -46,7 +46,7 @@ const KPIRepository = {
 // ============================================================
 
 
-version:"3.0.0",
+version:"3.0.1",
 
 entity:"KPI",
 
@@ -1101,28 +1101,7 @@ KPIRepository;
 // ============================================================
 
 
-try{
-
-
-KPIRepository.init();
-
-
-KPIRepository.register();
-
-
-}
-catch(e){
-
-
-Logger.warn(
-
-"KPIRepository deferred: "+
-e.message
-
-);
-
-
-}
+// Lifecycle is started by RepositoryRegistry.
 
 
 

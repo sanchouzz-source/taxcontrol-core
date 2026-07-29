@@ -1,5 +1,5 @@
 // ============================================================
-// SchemaRegistry v4.0.6
+// SchemaRegistry v4.1.0
 // Enterprise Schema Registry
 // TaxControl ERP Core
 //
@@ -24,14 +24,14 @@
 // ============================================================
 
 
-console.log("SchemaRegistry v4.0.6");
+console.log("SchemaRegistry v4.1.0");
 
 
 
 const SchemaRegistry = {
 
 
-version:"4.0.6",
+version:"4.1.0",
 
 
 initialized:false,
@@ -508,6 +508,26 @@ meta.audit===true,
 
 system:
 meta.system===true,
+
+
+
+organization:
+meta.organization,
+
+
+
+organizationScope:
+meta.organizationScope,
+
+
+
+permissions:
+meta.permissions || {},
+
+
+
+options:
+meta.options || {},
 
 
 

@@ -1,5 +1,5 @@
 // ============================================================
-// CargoRepository v3.0.1
+// CargoRepository v3.0.2
 // Enterprise Repository
 // TaxControl ERP Core
 //
@@ -30,7 +30,7 @@
 
 
 console.log(
-"CargoRepository v3.0.1"
+"CargoRepository v3.0.2"
 );
 
 
@@ -46,7 +46,7 @@ const CargoRepository = {
 // ============================================================
 
 
-version:"3.0.1",
+version:"3.0.2",
 
 entity:"CARGO",
 
@@ -948,29 +948,7 @@ CargoRepository;
 // ============================================================
 
 
-try{
-
-
-CargoRepository.init();
-
-
-CargoRepository.register();
-
-
-
-}
-catch(e){
-
-
-Logger.warn(
-
-"CargoRepository deferred: "+
-e.message
-
-);
-
-
-}
+// Lifecycle is started by RepositoryRegistry.
 
 
 
