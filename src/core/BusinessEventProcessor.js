@@ -1,375 +1,661 @@
-console.log("BusinessEventProcessor v1.8");
+// ============================================================
+// BusinessEventProcessor v2.0.0
+// Canonical Business Event Processor
+//
+// Package E contract:
+// - accepts only the ERPEventContract v2 shape internally
+// - never republishes an already published event
+// - never republishes repository CRUD lifecycle events
+// - audit delivery belongs to the event/audit subscriber layer
+// - lifecycle and handlers are synchronous for Google Apps Script
+// ============================================================
+
+console.log("BusinessEventProcessor v2.0.0");
 
 const BusinessEventProcessor = {
-  version: "1.8.0",
+  version: "2.0.0",
 
   ready: false,
   processed: 0,
   failed: 0,
   duplicates: 0,
-  auditFailed: 0,
+  publishSuppressed: 0,
   lastProcessed: null,
   startTime: null,
   eventCounter: 0,
+
   CLEANUP_INTERVAL: 100,
   CACHE_TTL_SECONDS: 86400,
   MAX_MEMORY_CACHE: 5000,
 
-  handlerCache: {},
   HANDLERS: {},
+  handlerCache: {},
   _memoryCache: {},
   _memoryCacheKeys: [],
 
-  // ----- ИНИЦИАЛИЗАЦИЯ -----
   init() {
-    if (this.ready) return;
+    if (this.ready) {
+      return true;
+    }
+
+    if (
+      typeof ERPEventContract === "undefined" ||
+      typeof ERPEventContract.create !== "function"
+    ) {
+      throw new Error(
+        "BusinessEventProcessor requires ERPEventContract"
+      );
+    }
+
+    if (
+      typeof EventBus === "undefined" ||
+      typeof EventBus.emit !== "function"
+    ) {
+      throw new Error(
+        "BusinessEventProcessor requires EventBus"
+      );
+    }
+
     this.startTime = Date.now();
     this.ready = true;
     this.cleanupProcessedEvents();
-    Logger.info("BusinessEventProcessor READY v" + this.version);
+    this._log(
+      "log",
+      "BusinessEventProcessor READY v" +
+      this.version
+    );
+    return true;
   },
 
-  // ----- РЕГИСТРАЦИЯ ОБРАБОТЧИКА -----
-  registerHandler(entity, handler) {
-    if (!entity || !handler) return;
-    this.HANDLERS[entity] = handler;
-    Logger.debug(`Handler registered: ${entity}`);
+  reset() {
+    this.ready = false;
+    this.processed = 0;
+    this.failed = 0;
+    this.duplicates = 0;
+    this.publishSuppressed = 0;
+    this.lastProcessed = null;
+    this.startTime = null;
+    this.eventCounter = 0;
+    this.HANDLERS = {};
+    this.handlerCache = {};
+    this._memoryCache = {};
+    this._memoryCacheKeys = [];
+    return true;
   },
 
-  // ----- ОСНОВНОЙ МЕТОД ОБРАБОТКИ -----
-  process(event) {
-    if (!this.ready) this.init();
+  _log(level, message) {
+    const logger = globalThis.Logger;
 
-    let success = false;
-    let duplicate = false;
-    let error = null;
-    const started = Date.now();
-
-    try {
-      if (!event) throw new Error("EMPTY ERP EVENT");
-      if (!event.entity) throw new Error("EVENT ENTITY REQUIRED");
-      if (!event.id) Logger.warn("EVENT WITHOUT ID, deduplication disabled");
-
-      Logger.info(`BUSINESS EVENT ${event.entity} ${event.type} (${event.id || 'no-id'})`);
-
-      // Проверка дубликата
-      if (this.isProcessed(event.id)) {
-        Logger.warn(`DUPLICATE EVENT ${event.id}`);
-        duplicate = true;
-        this.duplicates++;
-        return;
-      }
-
-      // 1. Бизнес-обработка
-      this.dispatch(event);
-
-      // 2. Отметка об успешной обработке (сохраняем состояние)
-      this.markProcessed(event);
-      success = true;
-      this.processed++;
-      this.lastProcessed = new Date().toISOString();
-
-      // 3. Публикация бизнес-события (может упасть, но бизнес уже выполнен)
-      const publishResult = this.publishBusinessEvent(event);
-      if (!publishResult.published) {
-        // Если публикация не удалась, записываем в failed и retry (уже сделано внутри publishBusinessEvent)
-        // Но не меняем success, т.к. бизнес-процесс выполнен
-      }
-
-      // 4. Аудит (не должен валить бизнес)
-      this.processAudit(event);
-
-    } catch (e) {
-      success = false;
-      error = e;
-      this.failed++;
-      Logger.error(`BUSINESS PROCESS ERROR ${e.message}`);
-      this.failedEvent(event, e);
-    } finally {
-      const duration = Date.now() - started;
-      this.logExecution(event, success, error, duplicate, duration);
-      this.eventCounter++;
-      if (this.eventCounter % this.CLEANUP_INTERVAL === 0) {
-        this.cleanupProcessedEvents();
-      }
+    if (
+      logger &&
+      typeof logger[level] === "function"
+    ) {
+      logger[level](message);
+      return;
     }
+
+    const target =
+      typeof console[level] === "function"
+        ? console[level]
+        : console.log;
+
+    target.call(console, message);
   },
 
-  // ----- ПУБЛИКАЦИЯ БИЗНЕС-СОБЫТИЯ В EVENTBUS (с валидацией и retry) -----
-  publishBusinessEvent(event) {
-    const result = {
-      published: false,
-      handlers: 0,
-      error: null
-    };
-
-    try {
-      if (!event || !event.entity || !event.type) {
-        throw new Error("Cannot publish business event: missing entity or type");
-      }
-
-      const eventName = `${event.entity}_${event.type}`;
-
-      // ---- Валидация схемы (если есть ERPEventSchemaRegistry) ----
-      if (typeof ERPEventSchemaRegistry !== "undefined" && ERPEventSchemaRegistry.validate) {
-        const validation = ERPEventSchemaRegistry.validate(eventName, event);
-        if (!validation.valid) {
-          throw new Error(`Schema validation failed: ${validation.error}`);
-        }
-      }
-
-      // ---- Обогащение события (correlationId, causationId, version) ----
-      const enrichedEvent = {
-        ...event,
-        version: event.version || "1.0",
-        correlationId: event.correlationId || event.id || null,
-        causationId: event.causationId || null,
-        timestamp: event.timestamp || new Date().toISOString()
-      };
-
-      Logger.debug(`Publishing business event: ${eventName}`);
-
-      // ---- Отправка в EventBus ----
-      if (typeof EventBus !== "undefined" && EventBus.emit) {
-        const emitResult = EventBus.emit(eventName, enrichedEvent, { source: "BusinessEventProcessor" });
-        result.handlers = emitResult?.handlers || 0;
-        result.published = true;
-        Logger.debug(`Business event ${eventName} published, handlers: ${result.handlers}`);
-      } else {
-        throw new Error("EventBus not available");
-      }
-
-    } catch (e) {
-      result.error = e.message;
-      Logger.error(`Failed to publish business event: ${e.message}`);
-
-      // ---- Обработка ошибки: запись в FailedEvent и RetryQueue ----
-      try {
-        const failedEventData = {
-          eventId: event?.id || "unknown",
-          entity: event?.entity || "UNKNOWN",
-          type: event?.type || "UNKNOWN",
-          payload: JSON.stringify(event || {}),
-          error: e.message,
-          status: "PENDING",
-          timestamp: new Date().toISOString()
-        };
-
-        // Запись в FailedEventRepository (если есть)
-        if (typeof FailedEventRepository !== "undefined" && FailedEventRepository.create) {
-          FailedEventRepository.create(failedEventData);
-        }
-
-        // Добавление в очередь ретрая (если есть)
-        if (typeof EventRetryQueue !== "undefined" && EventRetryQueue.enqueue) {
-          EventRetryQueue.enqueue(event, e);
-        }
-      } catch (retryError) {
-        Logger.error(`Failed to record failed event: ${retryError.message}`);
-      }
+  _assertSync(result, label) {
+    if (
+      result &&
+      typeof result.then === "function"
+    ) {
+      throw new Error(
+        label +
+        " must be synchronous in Google Apps Script"
+      );
     }
 
     return result;
   },
 
-  // ----- ПРОВЕРКА ДУБЛЯ -----
-  isProcessed(id) {
-    if (!id) return false;
+  registerHandler(entity, handler) {
+    const name =
+      ERPEventContract.normalizeName(entity);
+
+    if (!name || !handler) {
+      throw new Error(
+        "Business handler requires entity and handler"
+      );
+    }
+
+    this.HANDLERS[name] = handler;
+    delete this.handlerCache[name];
+    return true;
+  },
+
+  unregisterHandler(entity) {
+    const name =
+      ERPEventContract.normalizeName(entity);
+
+    delete this.HANDLERS[name];
+    delete this.handlerCache[name];
+    return true;
+  },
+
+  normalize(event) {
+    if (
+      ERPEventContract.isCanonical(event)
+    ) {
+      return event;
+    }
+
+    return ERPEventContract.create(event);
+  },
+
+  process(event, options = {}) {
+    if (!this.ready) {
+      this.init();
+    }
+
+    const started = Date.now();
+    let envelope = null;
+    let success = false;
+    let duplicate = false;
+    let error = null;
+    let publishResult = null;
+
     try {
-      const cache = CacheService.getScriptCache();
-      if (cache.get(id)) return true;
-    } catch (e) { /* игнорируем */ }
-    // Проверка в таблице EventExecutionLog
-    try {
-      const logger = globalThis.EventExecutionLog;
-      if (logger && typeof logger.exists === "function") {
-        if (logger.exists(id)) return true;
+      envelope = this.normalize(event);
+
+      if (this.isProcessed(envelope.id)) {
+        duplicate = true;
+        this.duplicates++;
+
+        return {
+          status: "DUPLICATE",
+          event: envelope,
+          published: false,
+        };
       }
-    } catch (e) { /* игнорируем */ }
-    // Fallback память
-    if (this._memoryCache[id]) {
-      const age = Date.now() - this._memoryCache[id];
-      if (age < this.CACHE_TTL_SECONDS * 1000) return true;
-      else {
-        delete this._memoryCache[id];
-        const idx = this._memoryCacheKeys.indexOf(id);
-        if (idx > -1) this._memoryCacheKeys.splice(idx, 1);
+
+      this.dispatch(envelope);
+      this.markProcessed(envelope);
+
+      success = true;
+      this.processed++;
+      this.lastProcessed =
+        new Date().toISOString();
+
+      publishResult =
+        this.publishBusinessEvent(
+          envelope,
+          options
+        );
+
+      return {
+        status: "SUCCESS",
+        event: envelope,
+        published:
+          publishResult.published === true,
+        publishResult,
+      };
+    } catch (caught) {
+      error = caught;
+      this.failed++;
+      this.failedEvent(
+        envelope || event,
+        caught
+      );
+
+      this._log(
+        "error",
+        "BUSINESS PROCESS ERROR " +
+        caught.message
+      );
+
+      return {
+        status: "FAILED",
+        event: envelope || event || null,
+        published: false,
+        error: caught.message,
+      };
+    } finally {
+      this.logExecution(
+        envelope || event,
+        success,
+        error,
+        duplicate,
+        Date.now() - started
+      );
+
+      this.eventCounter++;
+
+      if (
+        this.eventCounter %
+          this.CLEANUP_INTERVAL ===
+        0
+      ) {
+        this.cleanupProcessedEvents();
       }
     }
+  },
+
+  publishBusinessEvent(event, options = {}) {
+    const result = {
+      published: false,
+      suppressed: false,
+      handlers: 0,
+      reason: null,
+      error: null,
+    };
+
+    try {
+      const envelope = this.normalize(event);
+
+      if (
+        envelope.metadata?.publishedBy ===
+        "EventBus"
+      ) {
+        this.publishSuppressed++;
+        result.suppressed = true;
+        result.reason = "ALREADY_PUBLISHED";
+        return result;
+      }
+
+      if (
+        typeof EventBus.isLifecycleEvent ===
+          "function" &&
+        EventBus.isLifecycleEvent(envelope.name)
+      ) {
+        this.publishSuppressed++;
+        result.suppressed = true;
+        result.reason =
+          "CRUD_OWNED_BY_BASE_REPOSITORY";
+        return result;
+      }
+
+      if (options.publish === false) {
+        this.publishSuppressed++;
+        result.suppressed = true;
+        result.reason = "PUBLISH_DISABLED";
+        return result;
+      }
+
+      const emitted = EventBus.emit(
+        envelope.name,
+        envelope,
+        {
+          source:
+            envelope.source ||
+            "BusinessEventProcessor",
+          metadata: {
+            processedBy:
+              "BusinessEventProcessor",
+          },
+        }
+      );
+
+      this._assertSync(
+        emitted,
+        "EventBus.emit"
+      );
+
+      result.handlers =
+        emitted.handlers || 0;
+      result.published =
+        emitted.suppressed !== true;
+      result.suppressed =
+        emitted.suppressed === true;
+      result.reason =
+        emitted.reason || null;
+      return result;
+    } catch (caught) {
+      result.error = caught.message;
+      this.recordPublishFailure(event, caught);
+      return result;
+    }
+  },
+
+  recordPublishFailure(event, error) {
+    try {
+      if (
+        typeof FailedEventRepository !==
+          "undefined" &&
+        typeof FailedEventRepository.create ===
+          "function"
+      ) {
+        FailedEventRepository.create({
+          eventId: event?.id || "unknown",
+          entity:
+            event?.entity || "UNKNOWN",
+          type: event?.type || "UNKNOWN",
+          payload: JSON.stringify(event || {}),
+          error: error.message,
+          status: "PENDING",
+          timestamp: new Date().toISOString(),
+        });
+      }
+    } catch (ignored) {
+      // Reliability logging must not fail the caller.
+    }
+
+    this.failedEvent(event, error);
+  },
+
+  dispatch(event) {
+    const entity =
+      ERPEventContract.normalizeName(
+        event.entity
+      );
+    let handler = this.HANDLERS[entity];
+
+    if (!handler && this.handlerCache[entity]) {
+      handler = this.handlerCache[entity];
+    }
+
+    if (!handler && entity) {
+      const handlerName =
+        this.getHandlerName(entity);
+
+      handler = globalThis[handlerName] || null;
+
+      if (handler) {
+        this.handlerCache[entity] = handler;
+      }
+    }
+
+    if (!handler) {
+      return false;
+    }
+
+    return this._invokeHandler(
+      handler,
+      event
+    );
+  },
+
+  getHandlerName(entity) {
+    return String(entity || "")
+      .split("_")
+      .filter(Boolean)
+      .map(
+        (word) =>
+          word.charAt(0).toUpperCase() +
+          word.slice(1).toLowerCase()
+      )
+      .join("") + "EventHandler";
+  },
+
+  _invokeHandler(handler, event) {
+    let result;
+
+    if (
+      typeof handler === "function"
+    ) {
+      result = handler(event);
+    } else if (
+      typeof handler.handle === "function"
+    ) {
+      result = handler.handle(event);
+    } else if (
+      typeof handler.onEvent === "function"
+    ) {
+      result = handler.onEvent(event);
+    } else if (
+      typeof handler.process === "function"
+    ) {
+      result =
+        handler.process.length >= 2
+          ? handler.process(
+              event.type,
+              event
+            )
+          : handler.process(event);
+    } else {
+      throw new Error(
+        "Business handler has no callable method"
+      );
+    }
+
+    return this._assertSync(
+      result,
+      "Business event handler"
+    );
+  },
+
+  isProcessed(id) {
+    if (!id) {
+      return false;
+    }
+
+    try {
+      if (
+        typeof CacheService !== "undefined"
+      ) {
+        const cache =
+          CacheService.getScriptCache();
+
+        if (cache.get(id)) {
+          return true;
+        }
+      }
+    } catch (ignored) {
+      // Memory fallback is checked below.
+    }
+
+    try {
+      const executionLog =
+        globalThis.EventExecutionLog;
+
+      if (
+        executionLog &&
+        typeof executionLog.exists ===
+          "function" &&
+        executionLog.exists(id)
+      ) {
+        return true;
+      }
+    } catch (ignored) {
+      // Memory fallback is checked below.
+    }
+
+    const storedAt = this._memoryCache[id];
+
+    if (!storedAt) {
+      return false;
+    }
+
+    if (
+      Date.now() - storedAt <
+      this.CACHE_TTL_SECONDS * 1000
+    ) {
+      return true;
+    }
+
+    delete this._memoryCache[id];
+    this._memoryCacheKeys =
+      this._memoryCacheKeys.filter(
+        (key) => key !== id
+      );
     return false;
   },
 
   markProcessed(event) {
-    if (!event.id) return;
+    if (!event || !event.id) {
+      return false;
+    }
+
+    let cached = false;
+
     try {
-      const cache = CacheService.getScriptCache();
-      cache.put(event.id, "1", this.CACHE_TTL_SECONDS);
-    } catch (e) {
+      if (
+        typeof CacheService !== "undefined"
+      ) {
+        CacheService.getScriptCache().put(
+          event.id,
+          "1",
+          this.CACHE_TTL_SECONDS
+        );
+        cached = true;
+      }
+    } catch (ignored) {
+      cached = false;
+    }
+
+    if (!cached) {
       this._addToMemoryCache(event.id);
     }
+
     try {
-      const logger = globalThis.EventExecutionLog;
-      if (logger && typeof logger.markProcessed === "function") {
-        logger.markProcessed(event.id);
+      const executionLog =
+        globalThis.EventExecutionLog;
+
+      if (
+        executionLog &&
+        typeof executionLog.markProcessed ===
+          "function"
+      ) {
+        executionLog.markProcessed(event.id);
       }
-    } catch (e) { /* игнорируем */ }
+    } catch (ignored) {
+      // Event processing has already succeeded.
+    }
+
+    return true;
   },
 
   _addToMemoryCache(id) {
-    if (this._memoryCacheKeys.length >= this.MAX_MEMORY_CACHE) {
-      const oldest = this._memoryCacheKeys.shift();
+    if (this._memoryCache[id]) {
+      this._memoryCache[id] = Date.now();
+      return;
+    }
+
+    while (
+      this._memoryCacheKeys.length >=
+      this.MAX_MEMORY_CACHE
+    ) {
+      const oldest =
+        this._memoryCacheKeys.shift();
       delete this._memoryCache[oldest];
     }
+
     this._memoryCache[id] = Date.now();
     this._memoryCacheKeys.push(id);
   },
 
   cleanupProcessedEvents() {
-    const now = Date.now();
-    const ttlMs = this.CACHE_TTL_SECONDS * 1000;
-    for (const id in this._memoryCache) {
-      if (now - this._memoryCache[id] > ttlMs) {
-        delete this._memoryCache[id];
-        const idx = this._memoryCacheKeys.indexOf(id);
-        if (idx > -1) this._memoryCacheKeys.splice(idx, 1);
-      }
-    }
-    while (this._memoryCacheKeys.length > this.MAX_MEMORY_CACHE) {
-      const oldest = this._memoryCacheKeys.shift();
-      delete this._memoryCache[oldest];
-    }
-  },
+    const cutoff =
+      Date.now() -
+      this.CACHE_TTL_SECONDS * 1000;
 
-  // ----- ДИСПЕТЧЕР -----
-  dispatch(event) {
-    const entity = event.entity;
-    let handler = this.HANDLERS[entity];
-    if (handler) {
-      this._invokeHandler(handler, event);
-      return;
-    }
-    if (this.handlerCache[entity]) {
-      this._invokeHandler(this.handlerCache[entity], event);
-      return;
-    }
-    const handlerName = this.getHandlerName(entity);
-    Logger.debug(`Dispatcher -> ${handlerName}`);
-    handler = globalThis[handlerName];
-    if (handler) {
-      this.handlerCache[entity] = handler;
-      this._invokeHandler(handler, event);
-      return;
-    }
-    Logger.warn(`No handler for entity ${entity}`);
-  },
-
-  getHandlerName(entity) {
-    return entity
-      .split('_')
-      .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-      .join('') + 'EventHandler';
-  },
-
-  _invokeHandler(handler, event) {
-    if (typeof handler.handle === "function") {
-      return handler.handle(event);
-    } else if (typeof handler.process === "function") {
-      return handler.process(event);
-    } else if (typeof handler.onEvent === "function") {
-      return handler.onEvent(event);
-    } else {
-      Logger.warn(`Handler ${handler.constructor?.name || 'unknown'} has no process method`);
-      return null;
-    }
-  },
-
-  // ----- АУДИТ -----
-  processAudit(event) {
-    try {
-      const audit = globalThis.AuditEventHandler;
-      if (audit && typeof audit.onEvent === "function") {
-        audit.onEvent(event);
-      }
-    } catch (e) {
-      this.auditFailed++;
-      Logger.error(`AUDIT ERROR ${e.message}`);
-      try {
-        const logger = globalThis.EventExecutionLog;
-        if (logger && typeof logger.log === "function") {
-          logger.log({
-            eventId: event.id || null,
-            entity: event.entity || "UNKNOWN",
-            eventType: event.type || "UNKNOWN",
-            status: "AUDIT_FAILED",
-            processor: "BusinessEventProcessor",
-            error: e.message,
-            timestamp: new Date().toISOString()
-          });
+    this._memoryCacheKeys =
+      this._memoryCacheKeys.filter((id) => {
+        if (this._memoryCache[id] < cutoff) {
+          delete this._memoryCache[id];
+          return false;
         }
-      } catch (logError) { /* игнорируем */ }
-    }
+
+        return true;
+      });
+
+    return true;
   },
 
-  // ----- ОБРАБОТКА ОШИБОК (ретрай) -----
   failedEvent(event, error) {
-    if (!event) return;
-    const retry = globalThis.EventRetryQueue;
-    if (retry && typeof retry.enqueue === "function") {
-      retry.enqueue(event, error);
-    }
-  },
-
-  // ----- ТЕХНИЧЕСКОЕ ЛОГИРОВАНИЕ -----
-  logExecution(event, success, error, duplicate, duration) {
     try {
-      if (!event) return;
-      const logData = {
-        eventId: event.id || null,
-        entity: event.entity || "UNKNOWN",
-        eventType: event.type || "UNKNOWN",
-        status: duplicate ? "DUPLICATE" : (success ? "SUCCESS" : "FAILED"),
-        processor: "BusinessEventProcessor",
-        error: error ? error.message : null,
-        executionTime: duration,
-        timestamp: new Date().toISOString()
-      };
-      const logger = globalThis.EventExecutionLog;
-      if (logger && typeof logger.log === "function") {
-        logger.log(logData);
-      } else {
-        Logger.debug(`EXECUTION LOG: ${JSON.stringify(logData)}`);
+      if (
+        typeof EventRetryQueue !==
+          "undefined" &&
+        typeof EventRetryQueue.enqueue ===
+          "function"
+      ) {
+        EventRetryQueue.enqueue(event, error);
       }
-    } catch (e) {
-      Logger.error(`LOG ERROR ${e.message}`);
+    } catch (ignored) {
+      // Retry infrastructure is optional here.
     }
   },
 
-  // ----- HEALTH -----
-  health() {
-    const total = this.processed + this.failed + this.duplicates;
-    const rate = this.processed === 0 ? 0 : (this.duplicates / this.processed * 100);
-    return HealthContract.create(
-      "BusinessEventProcessor",
-      this.ready ? "OK" : "WARNING",
-      {
-        version: this.version,
-        processed: this.processed,
-        failed: this.failed,
-        duplicates: this.duplicates,
-        auditFailed: this.auditFailed,
-        duplicateRate: rate.toFixed(2) + "%",
-        eventsPerMinute: this.startTime
-          ? ((this.processed + this.failed + this.duplicates) / ((Date.now() - this.startTime) / 60000)).toFixed(2)
-          : 0,
-        cacheMode: "CacheService + Table + Memory(FIFO)",
-        cacheTTL: this.CACHE_TTL_SECONDS + "s",
-        cleanupInterval: this.CLEANUP_INTERVAL,
-        uptime: this.startTime ? Math.floor((Date.now() - this.startTime) / 1000) + "s" : "0s",
-        lastProcessed: this.lastProcessed || null
+  logExecution(
+    event,
+    success,
+    error,
+    duplicate,
+    duration
+  ) {
+    try {
+      if (!event) {
+        return false;
       }
-    );
-  }
+
+      const data = {
+        eventId: event.id || null,
+        entity:
+          event.entity || "UNKNOWN",
+        eventType:
+          event.type || "UNKNOWN",
+        status:
+          duplicate
+            ? "DUPLICATE"
+            : success
+              ? "SUCCESS"
+              : "FAILED",
+        processor:
+          "BusinessEventProcessor",
+        error:
+          error ? error.message : null,
+        executionTime: duration,
+        timestamp: new Date().toISOString(),
+      };
+      const executionLog =
+        globalThis.EventExecutionLog;
+
+      if (
+        executionLog &&
+        typeof executionLog.log === "function"
+      ) {
+        executionLog.log(data);
+      }
+
+      return true;
+    } catch (ignored) {
+      return false;
+    }
+  },
+
+  health() {
+    const details = {
+      version: this.version,
+      ready: this.ready,
+      processed: this.processed,
+      failed: this.failed,
+      duplicates: this.duplicates,
+      publishSuppressed:
+        this.publishSuppressed,
+      handlers:
+        Object.keys(this.HANDLERS).length,
+      cacheEntries:
+        this._memoryCacheKeys.length,
+      lastProcessed: this.lastProcessed,
+    };
+
+    if (
+      typeof HealthContract !== "undefined" &&
+      typeof HealthContract.create === "function"
+    ) {
+      return HealthContract.create(
+        "BusinessEventProcessor",
+        this.ready ? "OK" : "WARNING",
+        details
+      );
+    }
+
+    return {
+      module: "BusinessEventProcessor",
+      status:
+        this.ready ? "OK" : "WARNING",
+      ...details,
+    };
+  },
 };
 
-globalThis.BusinessEventProcessor = BusinessEventProcessor;
-Logger.info("BusinessEventProcessor LOADED v1.8.0");
+globalThis.BusinessEventProcessor =
+  BusinessEventProcessor;

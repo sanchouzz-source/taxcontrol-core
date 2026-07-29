@@ -1,5 +1,5 @@
 // ============================================================
-// SystemInit v3.2.0
+// SystemInit v3.4.0
 // Enterprise ERP Lifecycle Orchestrator
 // TaxControl ERP Core
 //
@@ -12,13 +12,16 @@
 // - required components cannot be silently skipped
 // - READY is confirmed by component state
 // - reset runs in reverse dependency order
-// - ModuleRegistry is registered only; module start belongs to package D
+// - ModuleRegistry starts real manifest wrappers synchronously
+// - critical module failure prevents ERP READY
+// - optional module failure is reported as a warning
+// - event runtime is fully reset after managed modules stop
 // ============================================================
 
-console.log("SystemInit v3.2.0");
+console.log("SystemInit v3.4.0");
 
 const SystemInit = {
-  version: "3.2.0",
+  version: "3.4.0",
 
   initialized: false,
   initializing: false,
@@ -151,19 +154,37 @@ const SystemInit = {
     ERPEventContract: {
       dependencies: ["Logger"],
       critical: true,
-      methods: ["init", "create", "validate"],
+      methods: [
+        "init",
+        "reset",
+        "create",
+        "validate",
+        "isCanonical",
+        "payloadOf",
+      ],
     },
 
     EventBus: {
       dependencies: ["ERPEventContract"],
       critical: true,
-      methods: ["init", "emit", "clear"],
+      methods: [
+        "init",
+        "emit",
+        "subscribe",
+        "unsubscribe",
+        "reset",
+        "isLifecycleEvent",
+      ],
     },
 
     BusinessEventProcessor: {
       dependencies: ["EventBus"],
       critical: false,
-      methods: ["init"],
+      methods: [
+        "init",
+        "reset",
+        "process",
+      ],
     },
 
     ServiceRegistry: {
@@ -218,8 +239,17 @@ const SystemInit = {
         "RepositoryRegistry",
         "ServiceRegistry",
       ],
-      critical: false,
-      methods: ["init", "loadManifest", "health"],
+      critical: true,
+      methods: [
+        "init",
+        "setEventBus",
+        "loadManifest",
+        "startAll",
+        "stopAll",
+        "reset",
+        "isReady",
+        "health",
+      ],
     },
   },
 
@@ -398,6 +428,46 @@ const SystemInit = {
       );
     });
 
+    const manifest =
+      globalThis.ERP_MODULE_MANIFEST;
+
+    if (!manifest) {
+      errors.push(
+        "ERP_MODULE_MANIFEST unavailable"
+      );
+    } else if (
+      typeof manifest.validate !== "function"
+    ) {
+      errors.push(
+        "ERP_MODULE_MANIFEST.validate unavailable"
+      );
+    } else {
+      try {
+        const manifestErrors =
+          manifest.validate();
+
+        this._assertSync(
+          manifestErrors,
+          "ERP_MODULE_MANIFEST.validate"
+        );
+
+        if (
+          Array.isArray(manifestErrors) &&
+          manifestErrors.length
+        ) {
+          errors.push(
+            "ERP_MODULE_MANIFEST invalid: " +
+              manifestErrors.join("; ")
+          );
+        }
+      } catch (error) {
+        errors.push(
+          "ERP_MODULE_MANIFEST validation failed: " +
+            error.message
+        );
+      }
+    }
+
     if (errors.length) {
       throw new Error(
         "Lifecycle preflight failed: " +
@@ -456,25 +526,54 @@ const SystemInit = {
     }
 
     if (name === "ModuleRegistry") {
-      call("init");
-
-      if (
-        typeof component.setEventBus === "function"
-      ) {
-        call(
-          "setEventBus",
-          [this._component("EventBus")]
-        );
-      }
-
       const manifest =
         globalThis.ERP_MODULE_MANIFEST;
 
+      call(
+        "setEventBus",
+        [this._component("EventBus")]
+      );
+      call("init", [manifest]);
+      call("startAll");
+
+      const summary =
+        typeof component.summary === "function"
+          ? component.summary()
+          : null;
+
       if (
-        manifest &&
-        typeof component.loadManifest === "function"
+        summary &&
+        Array.isArray(summary.failedModules)
       ) {
-        call("loadManifest", [manifest]);
+        summary.failedModules
+          .filter((item) => !item.critical)
+          .forEach((item) => {
+            const warning =
+              "Optional module " +
+              item.name +
+              " failed: " +
+              (item.error || item.status);
+
+            if (
+              !this.warnings.includes(warning)
+            ) {
+              this.warnings.push(warning);
+            }
+          });
+      }
+
+      if (
+        summary &&
+        Array.isArray(summary.warnings)
+      ) {
+        summary.warnings.forEach((message) => {
+          const warning =
+            "Module warning: " + message;
+
+          if (!this.warnings.includes(warning)) {
+            this.warnings.push(warning);
+          }
+        });
       }
 
       return true;
@@ -570,6 +669,7 @@ const SystemInit = {
 
       case "ERPEventContract":
         return (
+          component.initialized === true &&
           typeof component.create === "function" &&
           typeof component.validate === "function"
         );
@@ -591,7 +691,9 @@ const SystemInit = {
         return (
           component.initialized === true &&
           typeof component.count === "function" &&
-          component.count() > 0
+          component.count() > 0 &&
+          typeof component.isReady === "function" &&
+          component.isReady() === true
         );
 
       default:
@@ -996,7 +1098,21 @@ const SystemInit = {
       const rollbackErrors =
         this._resetComponents(
           this.startupOrder.filter(
-            (name) => this.started[name] === true
+            (name) => {
+              const status =
+                this.componentStatus[name];
+
+              return (
+                this.started[name] === true ||
+                (
+                  status &&
+                  [
+                    "STARTING",
+                    "FAILED",
+                  ].includes(status.status)
+                )
+              );
+            }
           )
         );
 
@@ -1098,22 +1214,83 @@ const SystemInit = {
         mode: "UNAVAILABLE",
         initialized: false,
         registered: 0,
+        startCompleted: false,
         startedAll: false,
+        readyForERP: false,
       };
     }
 
+    const summary =
+      typeof registry.summary === "function"
+        ? registry.summary()
+        : {
+            initialized:
+              registry.initialized === true,
+            startCompleted:
+              registry.startCompleted === true,
+            startedAll:
+              registry.startedAll === true,
+            readyForERP:
+              typeof registry.isReady ===
+                "function"
+                ? registry.isReady()
+                : false,
+            total:
+              typeof registry.count ===
+                "function"
+                ? registry.count()
+                : 0,
+            ready: 0,
+            failed: 0,
+            criticalFailed: 0,
+          };
+
+    let mode = "REGISTERED_ONLY";
+
+    if (summary.startCompleted) {
+      if (
+        summary.criticalFailed > 0 ||
+        !summary.readyForERP
+      ) {
+        mode = "FAILED";
+      } else if (
+        summary.failed > 0 ||
+        (
+          Array.isArray(summary.warnings) &&
+          summary.warnings.length > 0
+        )
+      ) {
+        mode = "DEGRADED";
+      } else {
+        mode = "RUNNING";
+      }
+    }
+
     return {
-      mode: "REGISTERED_ONLY",
-      initialized:
-        registry.initialized === true,
+      mode,
+      initialized: summary.initialized,
       registered:
-        typeof registry.count === "function"
-          ? registry.count()
-          : 0,
+        summary.total ??
+        (
+          typeof registry.count === "function"
+            ? registry.count()
+            : 0
+        ),
+      startCompleted:
+        summary.startCompleted === true,
       startedAll:
-        registry.startedAll === true,
-      note:
-        "Module start is intentionally deferred to package D",
+        summary.startedAll === true,
+      readyForERP:
+        summary.readyForERP === true,
+      ready: summary.ready || 0,
+      failed: summary.failed || 0,
+      criticalFailed:
+        summary.criticalFailed || 0,
+      coverage: summary.coverage || 0,
+      failedModules:
+        summary.failedModules || [],
+      warnings: summary.warnings || [],
+      order: summary.order || [],
     };
   },
 
@@ -1216,39 +1393,46 @@ const SystemInit = {
   // ============================================================
 
   _resetEventBus(component) {
-    /*
-     * Package C does not yet own subscription startup. Preserve handlers
-     * registered by top-level compatibility files so a reset followed by a
-     * start in the same GAS runtime does not silently lose subscriptions.
-     * Package D will move those registrations under module lifecycle.
-     */
-    component.events =
-      component.events || {};
-    component.history = [];
-    component.ready = false;
-    component._idCounter = 0;
+    if (typeof component.reset !== "function") {
+      throw new Error(
+        "EventBus.reset unavailable"
+      );
+    }
 
-    if (typeof Set !== "undefined") {
-      component._processing = new Set();
+    const result = component.reset();
+    this._assertSync(
+      result,
+      "EventBus.reset"
+    );
+
+    if (result === false) {
+      throw new Error(
+        "EventBus.reset returned false"
+      );
     }
 
     return true;
   },
 
   _resetBusinessEventProcessor(component) {
-    component.ready = false;
-    component.processed = 0;
-    component.failed = 0;
-    component.duplicates = 0;
-    component.auditFailed = 0;
-    component.lastProcessed = null;
-    component.startTime = null;
-    component.eventCounter = 0;
-    component.handlerCache = {};
-    component.HANDLERS =
-      component.HANDLERS || {};
-    component._memoryCache = {};
-    component._memoryCacheKeys = [];
+    if (typeof component.reset !== "function") {
+      throw new Error(
+        "BusinessEventProcessor.reset unavailable"
+      );
+    }
+
+    const result = component.reset();
+    this._assertSync(
+      result,
+      "BusinessEventProcessor.reset"
+    );
+
+    if (result === false) {
+      throw new Error(
+        "BusinessEventProcessor.reset returned false"
+      );
+    }
+
     return true;
   },
 
@@ -1265,30 +1449,25 @@ const SystemInit = {
   },
 
   _resetModuleRegistry(component) {
-    const started =
-      component.started || {};
-
-    if (
-      component.startedAll === true ||
-      Object.keys(started).length > 0
-    ) {
+    if (typeof component.reset !== "function") {
       throw new Error(
-        "ModuleRegistry has started modules; " +
-          "synchronous stop lifecycle is not available yet"
+        "ModuleRegistry.reset unavailable"
       );
     }
 
-    component.modules = {};
-    component.started = {};
-    component.failed = {};
-    component.pending = {};
-    component.criticalModules = {};
-    component.phaseHistory = [];
-    component.initialized = false;
-    component.starting = false;
-    component.startedAll = false;
-    component.eventBus = null;
-    component.loader = null;
+    const result = component.reset();
+
+    this._assertSync(
+      result,
+      "ModuleRegistry.reset"
+    );
+
+    if (result === false) {
+      throw new Error(
+        "ModuleRegistry.reset returned false"
+      );
+    }
+
     return true;
   },
 
@@ -1320,8 +1499,12 @@ const SystemInit = {
     }
 
     if (name === "ERPEventContract") {
-      component.sequence = 0;
-      return true;
+      const result = component.reset();
+      this._assertSync(
+        result,
+        "ERPEventContract.reset"
+      );
+      return result !== false;
     }
 
     if (name === "EntityMetadata") {

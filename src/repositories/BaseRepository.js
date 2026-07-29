@@ -1,5 +1,5 @@
 // ============================================================
-// BaseRepository v6.3.1
+// BaseRepository v6.4.0
 // Enterprise Repository Base
 // TaxControl ERP Core
 //
@@ -13,6 +13,12 @@
 // ERPDiagnostics v6+
 // RepositoryHealthReport v2+
 // ERPControlCenter v1+
+//
+// Fixed in v6.4.0:
+// - BaseRepository is the only owner of entity CRUD events
+// - soft delete emits DELETED instead of UPDATED
+// - restore emits RESTORED instead of UPDATED
+// - every lifecycle event contains the canonical entityId
 //
 // Fixed in v6.3.1:
 // - update() correctly reads the old row in a bound repository
@@ -32,10 +38,10 @@
 //    BaseRepository.update("CLIENT", id, data);
 // ============================================================
 
-console.log("BaseRepository v6.3.1");
+console.log("BaseRepository v6.4.0");
 
 const BaseRepository = {
-  version: "6.3.1",
+  version: "6.4.0",
 
   architecture:
     "EntityService -> RepositoryFactory -> Repository -> Database",
@@ -571,17 +577,6 @@ const BaseRepository = {
 
     const meta = this.getEntityMeta(entity);
 
-    if (meta.softDelete !== false) {
-      const payload = {
-        Deleted: true,
-        DeletedAt: new Date().toISOString(),
-      };
-
-      return this.entity
-        ? this.update(key, payload)
-        : this.update(entity, key, payload);
-    }
-
     const old = this.entity
       ? this.findById(
           key,
@@ -595,6 +590,54 @@ const BaseRepository = {
 
     if (!old) {
       throw new Error(entity + " not found " + key);
+    }
+
+    if (meta.softDelete !== false) {
+      const payload = {
+        Deleted: true,
+        DeletedAt: new Date().toISOString(),
+      };
+
+      this.applySystemFields(
+        meta,
+        payload,
+        true
+      );
+
+      let result = this._callAdapter(
+        "update",
+        entity,
+        key,
+        payload
+      );
+
+      if (
+        !result ||
+        typeof result !== "object"
+      ) {
+        result = {
+          ...old,
+          ...payload,
+        };
+      }
+
+      this.emit(
+        meta.events?.deleted,
+        old,
+        result,
+        "DELETE",
+        entity
+      );
+
+      this.audit(
+        "DELETE",
+        entity,
+        key,
+        old,
+        result
+      );
+
+      return result;
     }
 
     const result = this._callAdapter(
@@ -643,14 +686,67 @@ const BaseRepository = {
     this._requireEntity(entity, "restore");
     this._requireId(key, "restore");
 
+    const meta = this.getEntityMeta(entity);
+    const old = this.entity
+      ? this.findById(
+          key,
+          { includeDeleted: true }
+        )
+      : this.findById(
+          entity,
+          key,
+          { includeDeleted: true }
+        );
+
+    if (!old) {
+      throw new Error(entity + " not found " + key);
+    }
+
     const payload = {
       Deleted: false,
       DeletedAt: null,
     };
 
-    return this.entity
-      ? this.update(key, payload)
-      : this.update(entity, key, payload);
+    this.applySystemFields(
+      meta,
+      payload,
+      true
+    );
+
+    let result = this._callAdapter(
+      "update",
+      entity,
+      key,
+      payload
+    );
+
+    if (
+      !result ||
+      typeof result !== "object"
+    ) {
+      result = {
+        ...old,
+        ...payload,
+      };
+    }
+
+    this.emit(
+      meta.events?.restored,
+      old,
+      result,
+      "RESTORE",
+      entity
+    );
+
+    this.audit(
+      "RESTORE",
+      entity,
+      key,
+      old,
+      result
+    );
+
+    return result;
   },
 
   // ============================================================
@@ -940,16 +1036,33 @@ const BaseRepository = {
       typeof EventBus === "undefined" ||
       !EventBus.emit
     ) {
-      return;
+      return false;
     }
 
-    EventBus.emit(event, {
-      entity: entity || this.entity,
+    const entityName = entity || this.entity;
+    const meta = this.getEntityMeta(entityName);
+    const idField = meta.idField || "ID";
+    const entityId =
+      after?.[idField] ??
+      before?.[idField] ??
+      null;
+
+    return EventBus.emit(event, {
+      entity: entityName,
+      entityId,
       action,
       before,
       after,
+      payload: after ?? before ?? null,
       source: "BaseRepository",
       timestamp: new Date().toISOString(),
+      metadata: {
+        publisher: "BaseRepository",
+        repository:
+          this.getRepositoryName(),
+      },
+    }, {
+      source: "BaseRepository",
     });
   },
 

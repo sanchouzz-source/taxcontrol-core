@@ -1,259 +1,758 @@
-console.log("EventBus v2.3");
+// ============================================================
+// EventBus v3.0.0
+// Synchronous Canonical ERP Event Bus
+//
+// Package E contract:
+// - every subscriber receives ERPEventContract v2 envelope
+// - BaseRepository is the only CRUD lifecycle publisher
+// - subscriptions have stable identities and owners
+// - reset removes all transient state and subscriptions
+// - Promise handlers are rejected in Google Apps Script
+// ============================================================
+
+console.log("EventBus v3.0.0");
 
 const EventBus = {
-  version: "2.3.0",
+  version: "3.0.0",
+
   events: {},
   history: [],
   ready: false,
+
   _processing: new Set(),
-  _idCounter: 0,
+  _subscriptionCounter: 0,
+  _historyLimit: 1000,
+
+  metrics: {
+    published: 0,
+    suppressed: 0,
+    delivered: 0,
+    handlerFailures: 0,
+    cycles: 0,
+  },
+
+  lifecycleOwner: "BaseRepository",
+  lifecyclePattern:
+    /_(CREATED|UPDATED|DELETED|RESTORED)$/,
 
   init() {
     if (this.ready) {
-      Logger.log("EventBus ALREADY READY");
+      return true;
+    }
+
+    if (
+      typeof ERPEventContract === "undefined" ||
+      typeof ERPEventContract.create !== "function"
+    ) {
+      throw new Error(
+        "EventBus requires ERPEventContract"
+      );
+    }
+
+    if (
+      typeof ERPEventContract.init === "function"
+    ) {
+      this._assertSync(
+        ERPEventContract.init(),
+        "ERPEventContract.init"
+      );
+    }
+
+    this.ready = true;
+    this._log(
+      "log",
+      "EventBus READY v" + this.version
+    );
+    return true;
+  },
+
+  _assertSync(result, label) {
+    if (
+      result &&
+      typeof result.then === "function"
+    ) {
+      throw new Error(
+        label +
+        " must be synchronous in Google Apps Script"
+      );
+    }
+
+    return result;
+  },
+
+  _log(level, message) {
+    const logger = globalThis.Logger;
+
+    if (
+      logger &&
+      typeof logger[level] === "function"
+    ) {
+      logger[level](message);
       return;
     }
-    this.ready = true;
-    Logger.log("EventBus READY v" + this.version);
+
+    const target =
+      typeof console[level] === "function"
+        ? console[level]
+        : console.log;
+
+    target.call(console, message);
   },
 
-  // ---- ГЕНЕРАТОРЫ ID ----
-  _generateId() {
-    this._idCounter++;
-    const timestamp = Date.now().toString(36);
-    const counter = this._idCounter.toString(36).padStart(6, '0');
-    return `EVT${timestamp}${counter}`;
-  },
-
-  _generateCorrelationId() {
-    const now = Date.now().toString(36);
-    const rand = Math.random().toString(36).substring(2, 8);
-    return `COR${now}${rand}`;
-  },
-
-  /*
-  ====================================
-  SUBSCRIBE
-  ====================================
-  */
-  subscribe(eventName, handler, options = {}) {
-    if (!eventName) {
-      throw new Error("EventBus event required");
-    }
-    if (typeof handler !== "function") {
-      throw new Error("EventBus handler must function");
-    }
-    if (!this.events[eventName]) {
-      this.events[eventName] = [];
+  _normalizeName(eventName) {
+    if (
+      typeof ERPEventContract !== "undefined" &&
+      typeof ERPEventContract.normalizeName ===
+        "function"
+    ) {
+      return ERPEventContract.normalizeName(
+        eventName
+      );
     }
 
-    const handlerName = options.name || handler.name || "anonymous";
-
-    const exists = this.events[eventName].some(
-      item => item.name === handlerName || item.handler === handler
-    );
-
-    if (exists) {
-      Logger.debug("SKIP DUPLICATE SUBSCRIPTION " + eventName + " " + handlerName);
-      return { event: eventName, duplicate: true };
-    }
-
-    this.events[eventName].push({
-      handler,
-      name: handlerName,
-      createdAt: new Date().toISOString()
-    });
-
-    Logger.debug("SUBSCRIBED " + eventName + " " + handlerName);
-    return { event: eventName, handler, name: handlerName };
+    return String(eventName || "")
+      .trim()
+      .toUpperCase();
   },
 
-  on(eventName, handler, options = {}) {
-    return this.subscribe(eventName, handler, options);
-  },
-
-  /*
-  ====================================
-  UNSUBSCRIBE
-  ====================================
-  */
-  off(eventName, handler) {
-    if (!this.events[eventName]) return;
-    this.events[eventName] = this.events[eventName].filter(
-      item => item.handler !== handler
+  isLifecycleEvent(eventName) {
+    return this.lifecyclePattern.test(
+      this._normalizeName(eventName)
     );
   },
 
-  /*
-  ====================================
-  PUBLISH (улучшенная защита от циклов, корреляция, расширенный метаданные)
-  ====================================
-  */
-  publish(eventName, payload = {}, options = {}) {
-    if (!eventName) {
-      throw new Error("Event name required");
+  _source(payload, options) {
+    const input =
+      payload &&
+      typeof payload === "object"
+        ? payload
+        : {};
+
+    return (
+      options.source ||
+      input.source ||
+      input.metadata?.source ||
+      "ERP"
+    );
+  },
+
+  _looksLikeEnvelope(payload) {
+    if (
+      !payload ||
+      typeof payload !== "object" ||
+      Array.isArray(payload)
+    ) {
+      return false;
     }
 
-    const source = options.source || payload.metadata?.source || "ERP";
-    const userId = options.userId || payload.metadata?.userId || null;
-    const tenantId = options.tenantId || payload.metadata?.tenantId || null;
+    return [
+      "name",
+      "event",
+      "type",
+      "action",
+      "entity",
+      "entityId",
+      "payload",
+      "data",
+      "before",
+      "after",
+      "source",
+      "metadata",
+      "timestamp",
+      "correlationId",
+    ].some((field) =>
+      Object.prototype.hasOwnProperty.call(
+        payload,
+        field
+      )
+    );
+  },
 
-    // ---- Защита от циклов (учитываем entityId) ----
-    const entityId = payload.entityId || payload.id || '';
-    const key = `${eventName}:${source}:${entityId}`;
+  _eventParams(eventName, payload, options) {
+    const name = this._normalizeName(eventName);
+    const source = this._source(
+      payload,
+      options
+    );
+    const input =
+      payload &&
+      typeof payload === "object" &&
+      !Array.isArray(payload)
+        ? payload
+        : { payload };
+    const optionMetadata =
+      options.metadata || {};
 
-    if (this._processing.has(key)) {
-      Logger.warn(`CYCLE DETECTED: ${eventName} from ${source} for ${entityId} – skipping`);
+    if (this._looksLikeEnvelope(input)) {
+      const hasExplicitPayload = [
+        "payload",
+        "data",
+        "before",
+        "after",
+      ].some((field) =>
+        Object.prototype.hasOwnProperty.call(
+          input,
+          field
+        )
+      );
+
       return {
-        event: eventName,
-        cyclical: true,
+        ...input,
+        ...(
+          hasExplicitPayload
+            ? {}
+            : { payload: input }
+        ),
+        name,
         source,
-        entityId
+        userId:
+          options.userId ||
+          input.userId ||
+          null,
+        tenantId:
+          options.tenantId ||
+          input.tenantId ||
+          null,
+        metadata: {
+          ...(input.metadata || {}),
+          ...optionMetadata,
+          source,
+          publishedBy: "EventBus",
+        },
       };
     }
-    this._processing.add(key);
 
-    // ---- Генерация ID и корреляции ----
-    const eventId = payload.id || this._generateId();
-    const correlationId = payload.correlationId || this._generateCorrelationId();
-    const retryCount = (payload.metadata?.retryCount || 0);
+    const type =
+      ERPEventContract.typeFromName(name);
+    const lifecycle =
+      this.isLifecycleEvent(name);
 
-    // ---- Формирование нового Event Envelope ----
-    const envelope = {
-      id: eventId,
-      correlationId: correlationId,
-      name: eventName,
-      entity: payload.entity || null,
-      entityId: payload.entityId || null,
-      payload: payload.data || payload,
-      before: payload.before || null,
-      after: payload.after || null,
+    return {
+      name,
+      source,
+      entity:
+        ERPEventContract.entityFromName(name),
+      type,
+      action:
+        ERPEventContract.actionFromType(type),
+      payload: input,
+      before:
+        lifecycle && type === "DELETED"
+          ? input
+          : null,
+      after:
+        lifecycle && type !== "DELETED"
+          ? input
+          : null,
+      userId: options.userId || null,
+      tenantId: options.tenantId || null,
       metadata: {
-        source: source,
-        userId: userId,
-        tenantId: tenantId,
-        timestamp: new Date().toISOString(),
-        version: payload.version || "1.0",
-        retryCount: retryCount
-      }
+        ...optionMetadata,
+        source,
+        publishedBy: "EventBus",
+      },
     };
+  },
 
-    // Дополнительные метаданные
-    if (payload.metadata) {
-      Object.assign(envelope.metadata, payload.metadata);
+  _record(entry) {
+    this.history.push(entry);
+
+    if (this.history.length > this._historyLimit) {
+      this.history.splice(
+        0,
+        this.history.length - this._historyLimit
+      );
     }
 
-    // ---- Сохранение в историю ----
-    this.history.push({
-      id: eventId,
-      correlationId: correlationId,
+    return entry;
+  },
+
+  _suppressedResult(
+    eventName,
+    source,
+    reason
+  ) {
+    this.metrics.suppressed++;
+
+    const timestamp = new Date().toISOString();
+
+    this._record({
+      id: null,
+      correlationId: null,
       event: eventName,
-      entity: envelope.entity,
-      entityId: envelope.entityId,
-      source: source,
-      status: "PUBLISHED",
-      timestamp: envelope.metadata.timestamp
+      entity: null,
+      entityId: null,
+      source,
+      status: "SUPPRESSED",
+      reason,
+      timestamp,
     });
 
-    const listeners = [...(this.events[eventName] || [])];
-    Logger.log("EVENT " + eventName + " HANDLERS " + listeners.length);
-
-    let executed = 0;
-
-    // ---- Безопасная рассылка с очисткой _processing в finally ----
-    try {
-      for (const item of listeners) {
-        try {
-          item.handler(envelope);
-          executed++;
-        } catch (handlerError) {
-          Logger.error(`EVENT HANDLER ERROR (${item.name}): ${handlerError.message}`);
-        }
-      }
-    } finally {
-      // Гарантированно удаляем ключ из стека обработки
-      this._processing.delete(key);
-    }
+    this._log(
+      "warn",
+      "EVENT SUPPRESSED " +
+      eventName +
+      " source=" +
+      source +
+      " reason=" +
+      reason
+    );
 
     return {
       event: eventName,
+      handlers: 0,
+      executed: 0,
+      failed: 0,
+      suppressed: true,
+      reason,
+      owner: this.lifecycleOwner,
+      source,
+      envelope: null,
+    };
+  },
+
+  subscribe(eventName, handler, options = {}) {
+    const name = this._normalizeName(eventName);
+
+    if (!name) {
+      throw new Error("EventBus event required");
+    }
+
+    if (typeof handler !== "function") {
+      throw new Error(
+        "EventBus handler must be a function"
+      );
+    }
+
+    if (!this.events[name]) {
+      this.events[name] = [];
+    }
+
+    const explicitName =
+      options.name || null;
+    const owner =
+      options.owner ||
+      options.module ||
+      "UNMANAGED";
+
+    const existing = this.events[name].find(
+      (item) =>
+        item.handler === handler ||
+        (
+          explicitName &&
+          item.name === explicitName &&
+          item.owner === owner
+        )
+    );
+
+    if (existing) {
+      this._log(
+        "debug",
+        "SKIP DUPLICATE SUBSCRIPTION " +
+        name +
+        " " +
+        (explicitName || existing.name)
+      );
+
+      return {
+        ...existing,
+        duplicate: true,
+      };
+    }
+
+    this._subscriptionCounter++;
+
+    const item = {
+      id:
+        "SUB" +
+        this._subscriptionCounter
+          .toString(36)
+          .padStart(6, "0"),
+      event: name,
+      handler,
+      name:
+        explicitName ||
+        handler.name ||
+        "anonymous_" +
+        this._subscriptionCounter,
+      owner,
+      createdAt: new Date().toISOString(),
+    };
+
+    this.events[name].push(item);
+
+    this._log(
+      "debug",
+      "SUBSCRIBED " +
+      name +
+      " " +
+      item.name +
+      " owner=" +
+      owner
+    );
+
+    return {
+      ...item,
+      duplicate: false,
+    };
+  },
+
+  on(eventName, handler, options = {}) {
+    return this.subscribe(
+      eventName,
+      handler,
+      options
+    );
+  },
+
+  unsubscribe(eventName, target) {
+    const name = this._normalizeName(eventName);
+    const list = this.events[name] || [];
+
+    if (!list.length) {
+      return 0;
+    }
+
+    const next = list.filter((item) => {
+      if (target === undefined || target === null) {
+        return false;
+      }
+
+      if (typeof target === "function") {
+        return item.handler !== target;
+      }
+
+      if (typeof target === "string") {
+        return (
+          item.id !== target &&
+          item.name !== target
+        );
+      }
+
+      return (
+        item !== target &&
+        item.id !== target.id &&
+        item.handler !== target.handler
+      );
+    });
+
+    const removed = list.length - next.length;
+
+    if (next.length) {
+      this.events[name] = next;
+    } else {
+      delete this.events[name];
+    }
+
+    return removed;
+  },
+
+  off(eventName, target) {
+    return this.unsubscribe(eventName, target);
+  },
+
+  removeOwner(owner) {
+    let removed = 0;
+
+    Object.keys(this.events).forEach(
+      (eventName) => {
+        const list = this.events[eventName];
+        const next = list.filter(
+          (item) => item.owner !== owner
+        );
+
+        removed += list.length - next.length;
+
+        if (next.length) {
+          this.events[eventName] = next;
+        } else {
+          delete this.events[eventName];
+        }
+      }
+    );
+
+    return removed;
+  },
+
+  publish(eventName, payload = {}, options = {}) {
+    if (!this.ready) {
+      this.init();
+    }
+
+    const name = this._normalizeName(eventName);
+
+    if (!name) {
+      throw new Error("Event name required");
+    }
+
+    const source = this._source(
+      payload,
+      options
+    );
+
+    if (
+      this.isLifecycleEvent(name) &&
+      source !== this.lifecycleOwner &&
+      options.allowLifecycleOverride !== true
+    ) {
+      return this._suppressedResult(
+        name,
+        source,
+        "CRUD_EVENT_OWNER"
+      );
+    }
+
+    const params = this._eventParams(
+      name,
+      payload,
+      {
+        ...options,
+        metadata: {
+          ...(options.metadata || {}),
+          lifecycleOverride:
+            options.allowLifecycleOverride === true,
+        },
+      }
+    );
+    const envelope =
+      ERPEventContract.create(params);
+    const processingKey =
+      envelope.name +
+      ":" +
+      (
+        envelope.entityId ||
+        envelope.correlationId
+      );
+
+    if (this._processing.has(processingKey)) {
+      this.metrics.cycles++;
+
+      this._record({
+        id: envelope.id,
+        correlationId:
+          envelope.correlationId,
+        event: envelope.name,
+        entity: envelope.entity,
+        entityId: envelope.entityId,
+        source: envelope.source,
+        status: "CYCLE_SUPPRESSED",
+        timestamp: envelope.timestamp,
+      });
+
+      return {
+        event: envelope.name,
+        handlers: 0,
+        executed: 0,
+        failed: 0,
+        cyclical: true,
+        suppressed: true,
+        reason: "CYCLE",
+        eventId: envelope.id,
+        correlationId:
+          envelope.correlationId,
+        envelope,
+      };
+    }
+
+    this._processing.add(processingKey);
+    this.metrics.published++;
+
+    this._record({
+      id: envelope.id,
+      correlationId: envelope.correlationId,
+      event: envelope.name,
+      entity: envelope.entity,
+      entityId: envelope.entityId,
+      source: envelope.source,
+      status: "PUBLISHED",
+      timestamp: envelope.timestamp,
+    });
+
+    const listeners = [
+      ...(this.events[name] || []),
+    ];
+    let executed = 0;
+    let failed = 0;
+
+    try {
+      listeners.forEach((item) => {
+        try {
+          const result =
+            item.handler(envelope);
+
+          this._assertSync(
+            result,
+            "Event handler " + item.name
+          );
+
+          executed++;
+          this.metrics.delivered++;
+        } catch (error) {
+          failed++;
+          this.metrics.handlerFailures++;
+
+          this._log(
+            "error",
+            "EVENT HANDLER ERROR (" +
+            item.name +
+            "): " +
+            error.message
+          );
+        }
+      });
+    } finally {
+      this._processing.delete(processingKey);
+    }
+
+    return {
+      event: envelope.name,
       handlers: listeners.length,
       executed,
-      eventId,
-      correlationId
+      failed,
+      suppressed: false,
+      eventId: envelope.id,
+      correlationId:
+        envelope.correlationId,
+      envelope,
     };
   },
 
   emit(eventName, payload = {}, options = {}) {
-    return this.publish(eventName, payload, options);
+    return this.publish(
+      eventName,
+      payload,
+      options
+    );
   },
 
-  dispatch(eventName, payload = {}, options = {}) {
-    return this.publish(eventName, payload, options);
+  dispatch(
+    eventName,
+    payload = {},
+    options = {}
+  ) {
+    return this.publish(
+      eventName,
+      payload,
+      options
+    );
   },
 
-  // ---- ПРОСМОТР ЦЕПОЧКИ СОБЫТИЙ ----
   trace(correlationId) {
-    const events = this.history.filter(e => e.correlationId === correlationId);
-    if (events.length === 0) {
-      Logger.debug(`No events found for correlationId: ${correlationId}`);
-    }
-    return events;
+    return this.history.filter(
+      (event) =>
+        event.correlationId === correlationId
+    );
   },
 
-  // ---- СПИСОК ВСЕХ КОРРЕЛЯЦИЙ (для диагностики) ----
   correlations() {
     const result = {};
-    this.history.forEach(e => {
-      if (e.correlationId) {
-        if (!result[e.correlationId]) {
-          result[e.correlationId] = [];
-        }
-        result[e.correlationId].push({
-          event: e.event,
-          entityId: e.entityId,
-          timestamp: e.timestamp
-        });
+
+    this.history.forEach((event) => {
+      if (!event.correlationId) {
+        return;
       }
+
+      if (!result[event.correlationId]) {
+        result[event.correlationId] = [];
+      }
+
+      result[event.correlationId].push({
+        event: event.event,
+        entityId: event.entityId,
+        status: event.status,
+        timestamp: event.timestamp,
+      });
     });
+
     return result;
   },
 
-  // ---- СТАНДАРТНЫЕ МЕТОДЫ ----
   list() {
     return Object.keys(this.events);
   },
 
   listeners(eventName) {
-    return (this.events[eventName] || []).length;
+    return (
+      this.events[
+        this._normalizeName(eventName)
+      ] || []
+    ).length;
+  },
+
+  clearHistory() {
+    this.history = [];
+    return true;
+  },
+
+  clearSubscriptions() {
+    this.events = {};
+    return true;
   },
 
   clear() {
+    this.clearSubscriptions();
+    this._processing = new Set();
+    return true;
+  },
+
+  reset() {
     this.events = {};
-    this._processing.clear();
-    Logger.debug("EVENT BUS CLEARED");
+    this.history = [];
+    this.ready = false;
+    this._processing = new Set();
+    this._subscriptionCounter = 0;
+    this.metrics = {
+      published: 0,
+      suppressed: 0,
+      delivered: 0,
+      handlerFailures: 0,
+      cycles: 0,
+    };
+    return true;
   },
 
   debug() {
-    Logger.log(JSON.stringify(this.events, null, 2));
+    this._log(
+      "log",
+      JSON.stringify(this.events, null, 2)
+    );
   },
 
   health() {
-    return HealthContract.create(
-      "EventBus",
-      this.ready ? "OK" : "WARNING",
-      {
-        version: this.version,
-        events: this.list(),
-        handlers: Object.values(this.events).reduce(
-          (total, list) => total + list.length,
+    const details = {
+      version: this.version,
+      ready: this.ready,
+      events: this.list(),
+      handlers: Object.values(this.events)
+        .reduce(
+          (total, list) =>
+            total + list.length,
           0
         ),
-        history: this.history.length
-      }
-    );
-  }
+      history: this.history.length,
+      lifecycleOwner: this.lifecycleOwner,
+      metrics: {
+        ...this.metrics,
+      },
+    };
+
+    if (
+      typeof HealthContract !== "undefined" &&
+      typeof HealthContract.create === "function"
+    ) {
+      return HealthContract.create(
+        "EventBus",
+        this.ready ? "OK" : "WARNING",
+        details
+      );
+    }
+
+    return {
+      module: "EventBus",
+      status: this.ready ? "OK" : "WARNING",
+      ...details,
+    };
+  },
 };
 
 globalThis.EventBus = EventBus;
-Logger.log("EventBus READY v2.3.0");
