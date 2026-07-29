@@ -1,5 +1,5 @@
 // ============================================================
-// SystemInit v3.8.0
+// SystemInit v3.9.0
 // Enterprise ERP Lifecycle Orchestrator
 // TaxControl ERP Core
 //
@@ -22,12 +22,14 @@
 // - trusted request entry points resolve identity only after Database is ready
 // - managed USER membership service starts after repositories and audit
 // - ServiceRegistry cannot become ready without user-management API
+// - trusted server RPC has a fixed contract, allowlist and replay protection
+// - public HTTP and external token authentication remain disabled
 // ============================================================
 
-console.log("SystemInit v3.8.0");
+console.log("SystemInit v3.9.0");
 
 const SystemInit = {
-  version: "3.8.0",
+  version: "3.9.0",
 
   initialized: false,
   initializing: false,
@@ -378,6 +380,81 @@ const SystemInit = {
         "updateMembership",
         "deactivateMembership",
         "reactivateMembership",
+        "health",
+      ],
+    },
+
+    ServerRequestContract: {
+      dependencies: ["Logger"],
+      critical: true,
+      methods: [
+        "init",
+        "reset",
+        "normalize",
+        "success",
+        "failure",
+        "classify",
+        "stableStringify",
+        "byteLength",
+        "health",
+      ],
+    },
+
+    ServerIdempotencyStore: {
+      dependencies: [
+        "Logger",
+        "ServerRequestContract",
+      ],
+      critical: true,
+      methods: [
+        "init",
+        "reset",
+        "claim",
+        "complete",
+        "abort",
+        "purgeExpired",
+        "health",
+      ],
+    },
+
+    ServerActionRegistry: {
+      dependencies: [
+        "ServerRequestContract",
+        "PermissionConstants",
+        "RoleConstants",
+        "SecurityContext",
+        "SecurityGuard",
+        "UserMembershipService",
+      ],
+      critical: true,
+      methods: [
+        "init",
+        "reset",
+        "get",
+        "has",
+        "list",
+        "count",
+        "validatePayload",
+        "authorize",
+        "execute",
+        "health",
+      ],
+    },
+
+    ServerRequestBoundary: {
+      dependencies: [
+        "ServerRequestContract",
+        "ServerIdempotencyStore",
+        "ServerActionRegistry",
+        "TrustedEntryPoints",
+        "SecurityContext",
+        "SecurityGuard",
+      ],
+      critical: true,
+      methods: [
+        "init",
+        "reset",
+        "handle",
         "health",
       ],
     },
@@ -919,6 +996,18 @@ const SystemInit = {
       case "TransportOrderService":
       case "UserMembershipService":
         return component.initialized === true;
+
+      case "ServerRequestContract":
+      case "ServerIdempotencyStore":
+      case "ServerActionRegistry":
+      case "ServerRequestBoundary":
+        return (
+          component.initialized === true &&
+          typeof component.health ===
+            "function" &&
+          component.health().status ===
+            "OK"
+        );
 
       case "ModuleRegistry":
         return (
@@ -1710,6 +1799,22 @@ const SystemInit = {
           entryPoints:
             safeDiagnostics(
               "TrustedEntryPoints"
+            ),
+          serverRequestContract:
+            safeDiagnostics(
+              "ServerRequestContract"
+            ),
+          serverIdempotency:
+            safeDiagnostics(
+              "ServerIdempotencyStore"
+            ),
+          serverActions:
+            safeDiagnostics(
+              "ServerActionRegistry"
+            ),
+          serverBoundary:
+            safeDiagnostics(
+              "ServerRequestBoundary"
             ),
         },
         schema: safeDiagnostics("SchemaManager"),

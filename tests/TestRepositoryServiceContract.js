@@ -1,5 +1,5 @@
 // ============================================================
-// TestRepositoryServiceContract v1.1.0
+// TestRepositoryServiceContract v1.2.0
 // Non-destructive GAS contract for Package F
 //
 // No spreadsheet row is created, updated or deleted.
@@ -7,7 +7,7 @@
 // ============================================================
 
 const TestRepositoryServiceContract = {
-  version: "1.1.0",
+  version: "1.2.0",
 
   requiredRepositories: [
     "USER",
@@ -120,7 +120,7 @@ const TestRepositoryServiceContract = {
         "Unexpected AuditLog version"
       );
       this.assert(
-        SystemInit.version === "3.8.0",
+        SystemInit.version === "3.9.0",
         "Unexpected SystemInit version"
       );
     });

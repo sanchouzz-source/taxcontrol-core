@@ -1,6 +1,6 @@
 // ============================================================
-// TestTrustedAccessContract v1.1.0
-// Non-destructive GAS contract for Packages H/I
+// TestTrustedAccessContract v1.2.0
+// Non-destructive GAS contract for Packages H/I/J
 // ============================================================
 
 function runTrustedAccessContractTest() {
@@ -71,6 +71,11 @@ function runTrustedAccessContractTest() {
         typeof UserMembershipService ===
           "object",
         "UserMembershipService unavailable"
+      );
+      assert(
+        typeof ServerRequestBoundary ===
+          "object",
+        "ServerRequestBoundary unavailable"
       );
     }
   );
@@ -167,6 +172,10 @@ function runTrustedAccessContractTest() {
       before(
         "UserMembershipService",
         "TrustedEntryPoints"
+      );
+      before(
+        "TrustedEntryPoints",
+        "ServerRequestBoundary"
       );
     }
   );
@@ -356,14 +365,45 @@ function runTrustedAccessContractTest() {
   );
 
   check(
-    "WEB_API_REMAINS_CLOSED",
+    "PUBLIC_HTTP_REMAINS_CLOSED",
     () => {
       assert(
         typeof globalThis.doGet ===
           "undefined" &&
         typeof globalThis.doPost ===
           "undefined",
-        "Package H must not enable web API"
+        "Package J must not enable public HTTP API"
+      );
+    }
+  );
+
+  check(
+    "TRUSTED_RPC_BOUNDARY_ENABLED",
+    () => {
+      assert(
+        typeof runERPServerRequest ===
+          "function",
+        "Trusted RPC entry point unavailable"
+      );
+
+      const health =
+        ServerRequestBoundary
+          .health();
+
+      assert(
+        health.publicHttpEnabled ===
+          false,
+        "Public HTTP unexpectedly enabled"
+      );
+      assert(
+        health.externalTokenAuthEnabled ===
+          false,
+        "External token authentication unexpectedly enabled"
+      );
+      assert(
+        health.arbitraryPrincipalInput ===
+          false,
+        "Arbitrary principal input is enabled"
       );
     }
   );
@@ -385,7 +425,7 @@ function runTrustedAccessContractTest() {
         item.status === "FAIL"
     );
   const result = {
-    package: "H.1",
+    package: "H.1–J.1",
     status:
       failed.length
         ? "FAIL"
