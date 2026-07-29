@@ -1,5 +1,5 @@
 // ============================================================
-// TestSecurityIsolationContract v1.0.0
+// TestSecurityIsolationContract v1.1.0
 // Non-destructive GAS contract for Package G
 //
 // No spreadsheet row is created, updated or deleted. CRUD scenarios use an
@@ -7,7 +7,7 @@
 // ============================================================
 
 const TestSecurityIsolationContract = {
-  version: "1.0.0",
+  version: "1.1.0",
 
   manager: {
     UserID: "SEC_MANAGER",
@@ -247,7 +247,7 @@ const TestSecurityIsolationContract = {
       );
       this.assert(
         SystemInit.version ===
-          "3.6.0",
+          "3.8.0",
         "Unexpected SystemInit version"
       );
       this.assert(

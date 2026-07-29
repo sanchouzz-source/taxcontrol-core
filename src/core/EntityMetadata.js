@@ -1,5 +1,5 @@
 // ============================================================
-// EntityMetadata v3.4.0
+// EntityMetadata v3.5.0
 // Enterprise Entity Contract Registry
 // TaxControl ERP Core
 //
@@ -17,14 +17,14 @@
 // ============================================================
 
 
-console.log("EntityMetadata v3.4.0");
+console.log("EntityMetadata v3.5.0");
 
 
 
 const EntityMetadata = {
 
 
-version:"3.4.0",
+version:"3.5.0",
 
 apiVersion:"3.1",
 
@@ -453,7 +453,7 @@ return true;
 globalThis.EntityMetadata =
 EntityMetadata;
 // ============================================================
-// EntityMetadata v3.4.0
+// EntityMetadata v3.5.0
 // PART 2/3
 // CORE BUSINESS ENTITIES
 // ============================================================
@@ -494,8 +494,6 @@ timestamps:true,
 
 
 audit:true,
-
-
 
 fields:{
 
@@ -667,6 +665,33 @@ timestamps:true,
 
 audit:true,
 
+options:{
+
+
+managedMutationService:
+"UserMembershipService"
+
+
+},
+
+
+events:{
+
+
+created:"USER_CREATED",
+
+
+updated:"USER_UPDATED",
+
+
+deleted:"USER_DELETED",
+
+
+restored:"USER_RESTORED"
+
+
+},
+
 
 
 fields:{
@@ -742,6 +767,26 @@ type:"STRING",
 
 
 required:true
+
+
+},
+
+
+
+Permissions:{
+
+
+type:"STRING"
+
+
+},
+
+
+
+DeniedPermissions:{
+
+
+type:"STRING"
 
 
 },
@@ -1341,7 +1386,7 @@ type:"BOOLEAN"
 
 
 // ============================================================
-// EntityMetadata v3.4.0
+// EntityMetadata v3.5.0
 // PART 3/3
 // LOGISTICS + FINANCE + SYSTEM
 // ============================================================

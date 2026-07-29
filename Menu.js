@@ -1,12 +1,12 @@
 // ============================================================
-// Menu v1.8.0
+// Menu v1.9.0
 // TaxControl ERP UI Menu
 //
 // Every business callback goes through TrustedEntryPoints. onOpen() only
 // creates the menu and never manufactures an authenticated user.
 // ============================================================
 
-console.log("Menu v1.8.0");
+console.log("Menu v1.9.0");
 
 function ensureERPStarted_() {
   const bootstrap = globalThis.Bootstrap;
@@ -154,6 +154,27 @@ function onOpen() {
       )
       .addSeparator()
       .addItem(
+        "Список пользователей",
+        "menuShowUserMemberships"
+      )
+      .addItem(
+        "Добавить пользователя",
+        "menuCreateUserMembership"
+      )
+      .addItem(
+        "Изменить роль",
+        "menuChangeUserMembershipRole"
+      )
+      .addItem(
+        "Отключить пользователя",
+        "menuDeactivateUserMembership"
+      )
+      .addItem(
+        "Включить пользователя",
+        "menuReactivateUserMembership"
+      )
+      .addSeparator()
+      .addItem(
         "Аудит OrganizationID",
         "menuOrganizationScopeAudit"
       )
@@ -180,7 +201,7 @@ function onOpen() {
   );
 
   menu.addToUi();
-  Logger.log("ERP MENU CREATED v1.8.0");
+  Logger.log("ERP MENU CREATED v1.9.0");
 }
 
 // ============================================================
@@ -321,6 +342,265 @@ function menuSelectERPOrganization() {
   return TrustedEntryPoints.selectOrganization();
 }
 
+function menuShowUserMemberships() {
+  return TrustedEntryPoints.runMenu(
+    "USER_MEMBERSHIP_LIST"
+  );
+}
+
+function menuCreateUserMembership() {
+  return TrustedEntryPoints.runMenu(
+    "USER_MEMBERSHIP_CREATE"
+  );
+}
+
+function menuChangeUserMembershipRole() {
+  return TrustedEntryPoints.runMenu(
+    "USER_MEMBERSHIP_ROLE"
+  );
+}
+
+function menuDeactivateUserMembership() {
+  return TrustedEntryPoints.runMenu(
+    "USER_MEMBERSHIP_DEACTIVATE"
+  );
+}
+
+function menuReactivateUserMembership() {
+  return TrustedEntryPoints.runMenu(
+    "USER_MEMBERSHIP_REACTIVATE"
+  );
+}
+
+function promptMembershipValue_(
+  title,
+  message
+) {
+  const ui =
+    SpreadsheetApp.getUi();
+  const response = ui.prompt(
+    title,
+    message,
+    ui.ButtonSet.OK_CANCEL
+  );
+
+  if (
+    response.getSelectedButton() !==
+      ui.Button.OK
+  ) {
+    return null;
+  }
+
+  return String(
+    response.getResponseText() || ""
+  ).trim();
+}
+
+function showUserMemberships() {
+  const rows =
+    UserMembershipService
+      .listMemberships({
+        includeInactive: true,
+        includeDeleted: false,
+      });
+
+  TrustedEntryPoints.showMessage(
+    "Пользователи текущей организации",
+    JSON.stringify(
+      {
+        count: rows.length,
+        memberships: rows,
+      },
+      null,
+      2
+    )
+  );
+
+  return rows;
+}
+
+function createUserMembershipUI() {
+  const email =
+    promptMembershipValue_(
+      "Добавление пользователя",
+      "Введите email Google-аккаунта"
+    );
+
+  if (email === null) {
+    return {
+      status: "CANCELLED",
+    };
+  }
+
+  const name =
+    promptMembershipValue_(
+      "Добавление пользователя",
+      "Введите имя пользователя"
+    );
+
+  if (name === null) {
+    return {
+      status: "CANCELLED",
+    };
+  }
+
+  const role =
+    promptMembershipValue_(
+      "Добавление пользователя",
+      "Введите роль: ADMIN, DIRECTOR, MANAGER, ACCOUNTANT, DISPATCHER, DRIVER или VIEWER"
+    );
+
+  if (role === null) {
+    return {
+      status: "CANCELLED",
+    };
+  }
+
+  const result =
+    UserMembershipService
+      .createMembership({
+        Email: email,
+        Name: name,
+        Role: role,
+      });
+
+  TrustedEntryPoints.showMessage(
+    "Пользователь добавлен",
+    JSON.stringify(
+      result,
+      null,
+      2
+    )
+  );
+
+  return result;
+}
+
+function changeUserMembershipRoleUI() {
+  const userId =
+    promptMembershipValue_(
+      "Изменение роли",
+      "Введите UserID"
+    );
+
+  if (userId === null) {
+    return {
+      status: "CANCELLED",
+    };
+  }
+
+  const role =
+    promptMembershipValue_(
+      "Изменение роли",
+      "Введите новую роль"
+    );
+
+  if (role === null) {
+    return {
+      status: "CANCELLED",
+    };
+  }
+
+  const result =
+    UserMembershipService
+      .changeRole(
+        userId,
+        role
+      );
+
+  TrustedEntryPoints.showMessage(
+    "Роль изменена",
+    JSON.stringify(
+      result,
+      null,
+      2
+    )
+  );
+
+  return result;
+}
+
+function deactivateUserMembershipUI() {
+  const userId =
+    promptMembershipValue_(
+      "Отключение пользователя",
+      "Введите UserID"
+    );
+
+  if (userId === null) {
+    return {
+      status: "CANCELLED",
+    };
+  }
+
+  const ui =
+    SpreadsheetApp.getUi();
+  const confirmation = ui.alert(
+    "Отключение пользователя",
+    "Отключить членство " +
+      userId +
+      "?",
+    ui.ButtonSet.YES_NO
+  );
+
+  if (
+    confirmation !==
+      ui.Button.YES
+  ) {
+    return {
+      status: "CANCELLED",
+    };
+  }
+
+  const result =
+    UserMembershipService
+      .deactivateMembership(
+        userId
+      );
+
+  TrustedEntryPoints.showMessage(
+    "Пользователь отключён",
+    JSON.stringify(
+      result,
+      null,
+      2
+    )
+  );
+
+  return result;
+}
+
+function reactivateUserMembershipUI() {
+  const userId =
+    promptMembershipValue_(
+      "Включение пользователя",
+      "Введите UserID"
+    );
+
+  if (userId === null) {
+    return {
+      status: "CANCELLED",
+    };
+  }
+
+  const result =
+    UserMembershipService
+      .reactivateMembership(
+        userId
+      );
+
+  TrustedEntryPoints.showMessage(
+    "Пользователь включён",
+    JSON.stringify(
+      result,
+      null,
+      2
+    )
+  );
+
+  return result;
+}
+
 function menuOrganizationScopeAudit() {
   const result =
     runOrganizationScopeAudit();
@@ -449,6 +729,14 @@ function showERPVersion() {
     SystemInit: componentVersion_("SystemInit"),
     ServiceRegistry:
       componentVersion_("ServiceRegistry"),
+    UserMembershipService:
+      componentVersion_(
+        "UserMembershipService"
+      ),
+    UserRepository:
+      componentVersion_(
+        "UserRepository"
+      ),
     ClientService:
       componentVersion_("ClientService"),
     TransportOrderService:
@@ -497,4 +785,4 @@ function clearERPCache() {
   }
 }
 
-Logger.log("ERP MENU READY v1.8.0");
+Logger.log("ERP MENU READY v1.9.0");

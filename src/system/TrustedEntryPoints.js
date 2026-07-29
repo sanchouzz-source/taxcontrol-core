@@ -1,5 +1,5 @@
 // ============================================================
-// TrustedEntryPoints v1.0.0
+// TrustedEntryPoints v1.1.0
 // Managed request boundary for Google Sheets menu callbacks
 //
 // The startup runtime is created first. The current Google account is then
@@ -8,10 +8,10 @@
 // from an event object, query string, request body, or client-side call.
 // ============================================================
 
-console.log("TrustedEntryPoints v1.0.0");
+console.log("TrustedEntryPoints v1.1.0");
 
 const TrustedEntryPoints = {
-  version: "1.0.0",
+  version: "1.1.0",
   initialized: false,
 
   menuActions: {
@@ -124,6 +124,31 @@ const TrustedEntryPoints = {
       handler: "showKPIReport",
       permission: "REPORT_VIEW",
     },
+    USER_MEMBERSHIP_LIST: {
+      handler:
+        "showUserMemberships",
+      permission: "USER_READ",
+    },
+    USER_MEMBERSHIP_CREATE: {
+      handler:
+        "createUserMembershipUI",
+      permission: "USER_CREATE",
+    },
+    USER_MEMBERSHIP_ROLE: {
+      handler:
+        "changeUserMembershipRoleUI",
+      permission: "USER_UPDATE",
+    },
+    USER_MEMBERSHIP_DEACTIVATE: {
+      handler:
+        "deactivateUserMembershipUI",
+      permission: "USER_DELETE",
+    },
+    USER_MEMBERSHIP_REACTIVATE: {
+      handler:
+        "reactivateUserMembershipUI",
+      permission: "USER_RESTORE",
+    },
     DATABASE_REPAIR: {
       handler: "repairDatabase",
       permission: "SYSTEM_ADMIN",
@@ -151,6 +176,7 @@ const TrustedEntryPoints = {
       "TrustedUserResolver",
       "SecurityContext",
       "SecurityGuard",
+      "UserMembershipService",
     ].forEach((name) => {
       if (!globalThis[name]) {
         throw new Error(
@@ -505,6 +531,11 @@ const TrustedEntryPoints = {
           this.menuActions
         ).length,
       webApiEnabled: false,
+      userManagementEnabled:
+        typeof UserMembershipService !==
+          "undefined" &&
+        UserMembershipService
+          .initialized === true,
     };
   },
 };
@@ -525,4 +556,3 @@ function selectERPOrganization(
 
 globalThis.TrustedEntryPoints =
   TrustedEntryPoints;
-

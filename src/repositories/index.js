@@ -1,5 +1,5 @@
 // ============================================================
-// RepositoryRegistry v3.0.0
+// RepositoryRegistry v3.1.0
 // Managed Repository Lifecycle Registry
 // TaxControl ERP Core
 //
@@ -9,12 +9,13 @@
 // - every lifecycle call is synchronous in Google Apps Script
 // - reset releases bound BaseRepository instances in reverse order
 // - Factory/Registry synchronization cannot recurse indefinitely
+// - USER is bound to the managed UserRepository from Package I
 // ============================================================
 
-console.log("RepositoryRegistry v3.0.0");
+console.log("RepositoryRegistry v3.1.0");
 
 const RepositoryRegistry = {
-  version: "3.0.0",
+  version: "3.1.0",
 
   ready: false,
   status: "CREATED",
@@ -26,6 +27,9 @@ const RepositoryRegistry = {
   factorySyncCount: 0,
 
   aliases: {
+    USER: "USER",
+    Users: "USER",
+    User: "USER",
     CLIENT: "CLIENT",
     Clients: "CLIENT",
     Client: "CLIENT",
@@ -53,6 +57,7 @@ const RepositoryRegistry = {
   },
 
   globalRepositories: {
+    USER: "UserRepository",
     CLIENT: "ClientRepository",
     TRIP: "TripRepository",
     VEHICLE: "VehicleRepository",

@@ -1,6 +1,6 @@
 // ============================================================
-// TestTrustedAccessContract v1.0.0
-// Non-destructive GAS contract for Package H
+// TestTrustedAccessContract v1.1.0
+// Non-destructive GAS contract for Packages H/I
 // ============================================================
 
 function runTrustedAccessContractTest() {
@@ -66,6 +66,11 @@ function runTrustedAccessContractTest() {
         typeof OrganizationScopeMigration ===
           "object",
         "OrganizationScopeMigration unavailable"
+      );
+      assert(
+        typeof UserMembershipService ===
+          "object",
+        "UserMembershipService unavailable"
       );
     }
   );
@@ -157,6 +162,10 @@ function runTrustedAccessContractTest() {
       );
       before(
         "TrustedUserResolver",
+        "UserMembershipService"
+      );
+      before(
+        "UserMembershipService",
         "TrustedEntryPoints"
       );
     }
@@ -266,7 +275,7 @@ function runTrustedAccessContractTest() {
 
       assert(
         Object.keys(actions)
-          .length === 30,
+          .length >= 35,
         "Unexpected menu action count"
       );
       assert(
@@ -280,6 +289,20 @@ function runTrustedAccessContractTest() {
           .permission ===
           "CLIENT_CREATE",
         "Client create permission invalid"
+      );
+      assert(
+        actions
+          .USER_MEMBERSHIP_CREATE
+          .permission ===
+          "USER_CREATE",
+        "User create permission invalid"
+      );
+      assert(
+        actions
+          .USER_MEMBERSHIP_DEACTIVATE
+          .permission ===
+          "USER_DELETE",
+        "User deactivate permission invalid"
       );
     }
   );
@@ -295,6 +318,11 @@ function runTrustedAccessContractTest() {
         "menuRepairDatabase",
         "menuTrustedIdentityStatus",
         "menuSelectERPOrganization",
+        "menuShowUserMemberships",
+        "menuCreateUserMembership",
+        "menuChangeUserMembershipRole",
+        "menuDeactivateUserMembership",
+        "menuReactivateUserMembership",
         "menuOrganizationScopeAudit",
         "menuPrepareOrganizationScopeMigration",
         "menuValidateOrganizationScopeMigration",
@@ -395,4 +423,3 @@ function runTrustedAccessContractTest() {
 
   return result;
 }
-

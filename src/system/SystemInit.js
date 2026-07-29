@@ -1,5 +1,5 @@
 // ============================================================
-// SystemInit v3.7.0
+// SystemInit v3.8.0
 // Enterprise ERP Lifecycle Orchestrator
 // TaxControl ERP Core
 //
@@ -20,12 +20,14 @@
 // - OrganizationScope is ready before Database and Repository layers
 // - startup never creates an implicit authenticated user
 // - trusted request entry points resolve identity only after Database is ready
+// - managed USER membership service starts after repositories and audit
+// - ServiceRegistry cannot become ready without user-management API
 // ============================================================
 
-console.log("SystemInit v3.7.0");
+console.log("SystemInit v3.8.0");
 
 const SystemInit = {
-  version: "3.7.0",
+  version: "3.8.0",
 
   initialized: false,
   initializing: false,
@@ -288,6 +290,7 @@ const SystemInit = {
         "TrustedUserResolver",
         "SecurityContext",
         "SecurityGuard",
+        "UserMembershipService",
       ],
       critical: true,
       methods: [
@@ -358,6 +361,27 @@ const SystemInit = {
       methods: ["init", "reset"],
     },
 
+    UserMembershipService: {
+      dependencies: [
+        "RepositoryRegistry",
+        "AuditLog",
+        "SecurityContext",
+        "SecurityGuard",
+        "RoleConstants",
+      ],
+      critical: true,
+      methods: [
+        "init",
+        "reset",
+        "listMemberships",
+        "createMembership",
+        "updateMembership",
+        "deactivateMembership",
+        "reactivateMembership",
+        "health",
+      ],
+    },
+
     ERPEventContract: {
       dependencies: ["Logger"],
       critical: true,
@@ -399,6 +423,7 @@ const SystemInit = {
         "EntityService",
         "EventBus",
         "RepositoryRegistry",
+        "UserMembershipService",
       ],
       critical: true,
       methods: [
@@ -892,6 +917,7 @@ const SystemInit = {
 
       case "ClientService":
       case "TransportOrderService":
+      case "UserMembershipService":
         return component.initialized === true;
 
       case "ModuleRegistry":

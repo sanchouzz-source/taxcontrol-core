@@ -1,23 +1,34 @@
 // ============================================================
-// ServiceRegistry v1.3.0
+// ServiceRegistry v1.4.0
 // TaxControl ERP Core
 //
 // Package F contract:
 // - SystemInit owns service initialization
 // - registry registration never initializes a service
 // - required service APIs and ready state can be validated explicitly
+// - managed USER membership operations are a required service contract
 // ============================================================
 
-console.log("ServiceRegistry v1.3.0");
+console.log("ServiceRegistry v1.4.0");
 
 const ServiceRegistry = {
-  version: "1.3.0",
+  version: "1.4.0",
 
   initialized: false,
   services: {},
   lastRefresh: null,
 
   contracts: {
+    UserMembershipService: [
+      "init",
+      "reset",
+      "listMemberships",
+      "createMembership",
+      "updateMembership",
+      "deactivateMembership",
+      "reactivateMembership",
+      "health",
+    ],
     ClientService: [
       "init",
       "reset",
@@ -118,6 +129,7 @@ const ServiceRegistry = {
 
   registerDefaults() {
     [
+      "UserMembershipService",
       "ClientService",
       "TransportOrderService",
       "FinanceService",
@@ -128,6 +140,8 @@ const ServiceRegistry = {
 
       if (!service) {
         if (
+          name ===
+            "UserMembershipService" ||
           name === "ClientService" ||
           name ===
             "TransportOrderService"
@@ -180,6 +194,7 @@ const ServiceRegistry = {
 
   validate(
     required = [
+      "UserMembershipService",
       "ClientService",
       "TransportOrderService",
     ]
